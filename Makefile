@@ -20,17 +20,12 @@ wonderland_boot: wonderland all_boot
 start: all start_all
 rstakeout: wonderland compile
 
-deps: mochi gen_cluster stoplight cp_dep_beams
+deps: mochi gen_cluster cp_dep_beams
 
 mochi:
 	(cd deps/mochiweb;$(MAKE))
 gen_cluster:
 	(cd deps/gen_cluster;$(MAKE))
-
-stoplight:
-	[ -d $(STOPLIGHT_DIR) ] || (mkdir -p $(INCLUDE_DIR) && cd $(INCLUDE_DIR) && git clone git://github.com/jashmenn/stoplight.git)
-	cd $(STOPLIGHT_DIR) && git pull origin master
-	cd $(STOPLIGHT_DIR) && rake
 
 cp_dep_beams:
 	cp $(DEPS_DIR)/*/ebin/*.beam $(EBIN)
@@ -59,15 +54,10 @@ test: $(TEST_EBIN_DIR) compile
 					-s init stop
 	
 boot: compile
-	(cd $(EBIN); erl -pa ../$(EBIN) $(DEP_EBIN_DIRS_DOTDOT) -pz ../$(STOPLIGHT_DIR)/ebin -noshell -run make_boot write_scripts hermes $(VERSION) stoplight $(STOPLIGHT_VERSION))
+	(cd $(EBIN); erl -pa ../$(EBIN) $(DEP_EBIN_DIRS_DOTDOT) -noshell -run make_boot write_scripts hermes $(VERSION))
 
 release:
-	(cd $(EBIN); erl -pa ../$(EBIN) $(DEP_EBIN_DIRS_DOTDOT) -pz ../$(STOPLIGHT_DIR)/ebin -noshell -run make_boot write_release_scripts hermes $(VERSION) stoplight $(STOPLIGHT_VERSION))
-
-#relup:
-#	(cd $(EBIN); erl -pa ../$(EBIN) $(DEP_EBIN_DIRS_DOTDOT) -pz ../$(STOPLIGHT_DIR)/ebin -noshell -run systools make_relup "hermes-0.0.2", ["hermes-0.0.1"], ["hermes-0.0.1"])
-
-# (cd $(EBIN); erl -pa ../$(EBIN) -pa ../$(EBIN_DIRS) -pz ../$(STOPLIGHT_DIR)/ebin -noshell -run target_system create "hermes-$(VERSION)" -s init stop)
+	(cd $(EBIN); erl -pa ../$(EBIN) $(DEP_EBIN_DIRS_DOTDOT) -noshell -run make_boot write_release_scripts hermes $(VERSION))
 
 target_system: $(RELFILE)
 	escript scripts/target_system create "ebin/hermes-$(VERSION)"
