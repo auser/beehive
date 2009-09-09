@@ -12,6 +12,7 @@
 
 %% API
 -export([start_link/0, start_link/1]).
+-export ([register_application/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -25,6 +26,9 @@
 %%====================================================================
 %% API
 %%====================================================================
+register_application(AppDetails) ->
+  gen_server:call({register_application, AppDetails}).
+  
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
@@ -61,6 +65,10 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
+handle_call({register_application, AppDetails}, _From, #state{applications = Apps} = State) ->
+  NewState = State#state{applications = lists:append([Apps, [AppDetails]])},
+  {reply, ok, NewState};
+
 handle_call({list_local_applications}, _From, State) ->
   Reply = handle_list_local_applications(State),
   {reply, Reply, State};
