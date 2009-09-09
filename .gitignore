@@ -14,4 +14,9 @@ web/
 *.rrd
 deps/stoplight
 include/stoplight
-ebin/hermes-*.tar.gz
+ebin/beehive-*.tar.gz
+*.sw?
+.DS_Store
+coverage
+rdoc
+pkg
