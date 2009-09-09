@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if [[ -z $1 ]]; then
+if [ -z $1 ]; then
   echo "You must pass the name of the git repos when using this script";
   echo ""
   echo "Usage: "
@@ -18,11 +18,11 @@ STORE_DIRECTORY=$2
 MOUNT_LOCATION=$3
 FS_DIRECTORY=$STORE_DIRECTORY/$APP_NAME
 
-if [[ -z $STORE_DIRECTORY ]]; then
+if [ -z $STORE_DIRECTORY ]; then
   STORE_DIRECTORY="/var/www"
 fi
 
-if [[ -z $MOUNT_LOCATION ]]; then
+if [ -z $MOUNT_LOCATION ]; then
   MOUNT_LOCATION="/mnt"
 fi
 
@@ -41,19 +41,19 @@ STR="#!/bin/sh
 # Runs after a commit and stores sqsh files in $STORE_DIRECTORY
 
 TIMESTAMPED_NAME=$APP_NAME-\$(date +%s).sqsh
-if [[ ! -d \"$FS_DIRECTORY\" ]]; then
+if [ ! -d \"$FS_DIRECTORY\" ]; then
   mkdir -p $FS_DIRECTORY
 fi
 
 # Make the squashfs filesystem
 sudo mksquashfs \$GIT_DIR $FS_DIRECTORY/\$TIMESTAMPED_NAME
 
-if [[ ! -d \"$MOUNT_LOCATION/$APP_NAME\" ]]; then
+if [ ! -d \"$MOUNT_LOCATION/$APP_NAME\" ]; then
   sudo mkdir -p $MOUNT_LOCATION/$APP_NAME
 fi
 
 # Unmount the old one
-if [[ ! -d \"$MOUNT_LOCATION/$APP_NAME\" ]]; then
+if [ ! -d \"$MOUNT_LOCATION/$APP_NAME\" ]; then
   sudo umount $MOUNT_LOCATION/$APP_NAME
 fi
 
@@ -62,3 +62,4 @@ sudo mount $FS_DIRECTORY/\$TIMESTAMPED_NAME $MOUNT_LOCATION/$APP_NAME -t squashf
 "
 
 echo "$STR" > hooks/post-commit
+chmod +x hooks/post-commit
