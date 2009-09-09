@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, start_link/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -29,8 +29,10 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-start_link() ->
-  gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+start_link() -> start_link([]).
+
+start_link(Args) ->
+  gen_server:start_link({local, ?SERVER}, ?MODULE, Args, []).
 
 %%====================================================================
 %% gen_server callbacks
@@ -60,7 +62,7 @@ init([]) ->
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
 handle_call({list_local_applications}, _From, State) ->
-  Reply = handle_list_local_applications(),
+  Reply = handle_list_local_applications(State),
   {reply, Reply, State};
 handle_call(_Request, _From, State) ->
   Reply = ok,
@@ -105,8 +107,8 @@ code_change(_OldVsn, State, _Extra) ->
 %% HANDLERS
 %%====================================================================
 
-handle_list_local_applications(State) ->
-  
+handle_list_local_applications(#state{applications = Apps} = _State) ->
+  ?INFO("Applications: ~p~n", [Apps]).
 
 %%--------------------------------------------------------------------
 %%% Internal functions

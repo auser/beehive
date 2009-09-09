@@ -8,7 +8,7 @@
 
 -module (beehive_logger).
 -behaviour(gen_server).
--include ("beehive_logger.hrl").
+-include ("beehive.hrl").
 
 %% API
 -export([start_link/1, stop/1, append/1, print/0, upread/1,
@@ -225,13 +225,9 @@ getint32(F) ->
     
 
 get_log_from_config(Conf) ->
-  case config:get(log_path) of
-    {error, _} -> 
-      case proplists:get_value(log_path, Conf) of
-        {ok, L} -> L;
-        _ -> get_log_from_environment()
-      end;
-    {ok, V} -> V
+  case proplists:get_value(log_path, Conf) of
+    {ok, L} -> L;
+    _ -> get_log_from_environment()
   end.
   
 get_log_from_environment() ->
