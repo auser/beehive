@@ -39,6 +39,8 @@ STR="#!/bin/sh
 
 # Bash script from beehive (http://github.com/auser/beehive.git)
 # Runs after a commit and stores sqsh files in $STORE_DIRECTORY
+# Make sure this is in your /etc/sudoers file
+# %admin ALL=(ALL) NOPASSWD: /bin/mount,/bin/umount
 
 DATE=\$(date +%s)
 TIMESTAMPED_NAME=$APP_NAME-\$DATE.sqsh
