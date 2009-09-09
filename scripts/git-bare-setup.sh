@@ -13,6 +13,7 @@ if [ -z $1 ]; then
   echo ""
   exit 1;
 fi
+
 APP_NAME=$1
 STORE_DIRECTORY=$2
 MOUNT_LOCATION=$3
