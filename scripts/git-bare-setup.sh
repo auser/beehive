@@ -23,7 +23,12 @@ if [[ -z $RUN ]]; then
 fi
 
 echo "Making post-commit hook"
-echo "cat scripts/git-commit-hook.sh > hooks/post-commit"
-if [[ -z $RUN ]]; then
-  cat scripts/git-commit-hook.sh > $APP_NAME/hooks/post-commit
+if [[ -z $RUN ]]; then  
+  STR="
+    #!/bin/sh
+    
+    Post commit hook
+  "
+  
+   echo $STR > $APP_NAME/hooks/post-commit
 fi

@@ -1,3 +1,2 @@
-hi
-hi 
-hi
+#!/bin/sh
+
