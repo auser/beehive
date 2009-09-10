@@ -10,8 +10,7 @@ module Beehive
 <line>
 Commands
 
-<blue>help</blue>           Display this screen
-
+Help                  Display this screen
         EOE
       end
       
