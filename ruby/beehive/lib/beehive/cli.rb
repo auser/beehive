@@ -1,16 +1,13 @@
 module Beehive
   
-  class Cli
-    
-    def self.run(argv, remote_server=nil)
-      require 'optparse'
-
-      options = {}      
-      options[:remote_server] = remote_server if remote_server
+  module Cli
       
-      opts = OptionParser.new {|opts|
-        opts.banner = "Usage: beehive [options]"
-        
+    def self.run(command, argv=[])
+      require 'optparse'
+      require 'commands/base'
+
+      options = {}
+      opts = OptionParser.new {|opts|        
         opts.on('-l location', '--location <string>', "The location on the remote server to store the filesystem", String)  do |val|
           options[:server_location] = val
         end
@@ -19,17 +16,17 @@ module Beehive
           options[:remote_server] = val
         end
         
+        opts.banner = "Usage: beehive [options]"
         opts.on( '-h', '--help', 'Display this screen' ) do
-            puts opts
-            exit
-          end
+          puts opts
+          exit
+        end
       }.parse! argv
       
       # Defaults
       options[:server_location] ||= "/var/beehive"
-      
-      ssh(options[:server_location], options)
-      options
+      command_klass = Beehive::Command.const_get(command.capitalize).new
+      command_klass.send(:run, options)
     end
     
   end

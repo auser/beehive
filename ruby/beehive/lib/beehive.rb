@@ -1,9 +1,8 @@
 $:.unshift(File.dirname(__FILE__)+"/beehive")
 
-%w(connection cli).each do |lib|
-  require "#{lib}"
+%w(askable colors).each do |lib|
+  require File.dirname(__FILE__)+"/beehive/mixins/#{lib}"
 end
 
 module Beehive
-  include Beehive::Connection
 end

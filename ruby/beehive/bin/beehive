@@ -2,7 +2,9 @@
 
 $:.unshift(File.dirname(__FILE__)+"/../lib")
 require "beehive"
+require 'beehive/cli'
 
-p Beehive::Cli.run(ARGV.dup)
+args = ARGV.dup
+command = args.shift.strip rescue 'help'
 
-Beehive
+Beehive::Cli.run(command, args)
