@@ -22,7 +22,6 @@ REPOS_BASE=$PREFIX/repos
 SQUASH_BASE=$PREFIX/squashed_fs
 SRC_BASE=$PREFIX/src
 TMP_DIR=$PREFIX/tmp
-LOG_DIR=$PREFIX/logs
 
 FS_DIRECTORY=$SQUASH_BASE/$APP_NAME
 MOUNT_LOCATION=$MOUNT_BASE/$APP_NAME
@@ -39,6 +38,9 @@ if [ ! -d $REPOS_BASE/$APP_NAME.git ]; then
 fi
 if [ ! -d $FS_DIRECTORY ]; then
   mkdir -p $FS_DIRECTORY
+fi
+if [ ! -d $MOUNT_LOCATION ]; then
+  mkdir -p $MOUNT_LOCATION
 fi
 if [ ! -d $MOUNT_LOCATION ]; then
   mkdir -p $MOUNT_LOCATION
@@ -68,19 +70,16 @@ mksquashfs \$TMP_GIT_CLONE $FS_DIRECTORY/\$TIMESTAMPED_NAME
 ln -sf $FS_DIRECTORY/\$TIMESTAMPED_NAME \$MOUNT_FILE
 
 # Get it ready to mount
-
-if [ \$( grep \"$APP_NAME\" /etc/fstab | wc -l) -eq 0 ]; then
-  echo \"\$MOUNT_FILE $MOUNT_LOCATION squashfs  ro,users,auto,nohide 0 0\" >> /etc/fstab
-fi
-
-# Unmount the old one
-if [ -d \"\$MOUNT_FILE/.git\" ]; then
-  umount \$MOUNT_FILE
+# Unmount the old ones
+if [ ! \$(mount | grep -q $APP_NAME) ]; then
+  for i in \$(mount | grep $APP_NAME | awk '{print \$1}'); do
+    echo 'unmounting \$i'
+    sudo umount \$i
+  done
 fi
 
 # Mount the new one!
 sudo mount \$MOUNT_FILE $MOUNT_LOCATION -t squashfs -o loop
-# sudo mount \$MOUNT_FILE -o loop
 
 # Clean up
 rm -Rf \$TMP_GIT_CLONE
