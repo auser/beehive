@@ -1,0 +1,10 @@
+#!/usr/bin/env ruby
+
+$:.unshift(File.dirname(__FILE__)+"/../lib")
+require "beehive"
+require 'beehive/cli'
+
+args = ARGV.dup
+command = args.shift.strip rescue 'help'
+
+Beehive::Cli.run(command, args)

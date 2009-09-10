@@ -1,0 +1,2 @@
+vmrun revertToSnapshot "/Users/alerner/Documents/Virtual Machines.localized/Ubuntu 64-bit.vmwarevm/Ubuntu 64-bit.vmx" "with ssh key"
+vmrun start "/Users/alerner/Documents/Virtual Machines.localized/Ubuntu 64-bit.vmwarevm/Ubuntu 64-bit.vmx"
