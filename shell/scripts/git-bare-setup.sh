@@ -21,8 +21,8 @@ MOUNT_BASE=$PREFIX/mnt
 REPOS_BASE=$PREFIX/repos
 SQUASH_BASE=$PREFIX/squashed_fs
 SRC_BASE=$PREFIX/src
-DEVICE_BASE=$PREFIX/dev
 TMP_DIR=$PREFIX/tmp
+LOG_DIR=$PREFIX/logs
 
 FS_DIRECTORY=$SQUASH_BASE/$APP_NAME
 MOUNT_LOCATION=$MOUNT_BASE/$APP_NAME
@@ -42,9 +42,6 @@ if [ ! -d $FS_DIRECTORY ]; then
 fi
 if [ ! -d $MOUNT_LOCATION ]; then
   mkdir -p $MOUNT_LOCATION
-fi
-if [ ! -d $DEVICE_BASE/$APP_NAME ]; then
-  mkdir -p $DEVICE_BASE/$APP_NAME
 fi
 
 echo "Making post-commit hook"

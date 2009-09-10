@@ -19,7 +19,7 @@ REPOS_BASE=$PREFIX/repos
 SQUASH_BASE=$PREFIX/squashed_fs
 SRC_BASE=$PREFIX/src
 TMP_DIR=$PREFIX/tmp
-DEVICE_BASE=$PREFIX/dev
+LOG_DIR=$PREFIX/logs
 
 # Make the base directories
 if [ ! -d $PREFIX ]; then
@@ -41,8 +41,8 @@ fi
 if [ ! -d $TMP_DIR ]; then
   mkdir -p $TMP_DIR
 fi
-if [ ! -d $DEVICE_BASE ]; then
-  mkdir -p $DEVICE_BASE
+if [ ! -d $LOG_DIR ]; then
+  mkdir -p $LOG_DIR
 fi
 
 # Install essential build tools
