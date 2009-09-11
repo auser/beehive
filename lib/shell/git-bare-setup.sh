@@ -22,6 +22,10 @@ REPOS_BASE=$PREFIX/repos
 SQUASH_BASE=$PREFIX/squashed_fs
 SRC_BASE=$PREFIX/src
 TMP_DIR=$PREFIX/tmp
+FS_DIRECTORY=$SQUASH_BASE/$APP_NAME
+
+MOUNT_FILE=$FS_DIRECTORY/$APP_NAME.sqsh
+MOUNT_LOCATION=$MOUNT_BASE/$APP_NAME
 
 cd `dirname $APP_NAME`
 
@@ -33,31 +37,24 @@ if [ ! -d $REPOS_BASE/$APP_NAME.git ]; then
   echo "cd $REPOS_BASE/$APP_NAME && git --bare init"
   cd $REPOS_BASE/$APP_NAME && git --bare init
 fi
+if [ ! -d $MOUNT_LOCATION ]; then
+  mkdir -p $MOUNT_LOCATION
+fi
+if [ ! -d $FS_DIRECTORY ]; then
+  mkdir -p $FS_DIRECTORY
+fi
+
 
 echo "Making post-commit hook"
 STR="#!/bin/sh
 
 # Bash script from beehive (http://github.com/auser/beehive.git)
 # Runs after a commit and stores sqsh files in $STORE_DIRECTORY
-# Make sure this is in your /etc/sudoers file
-# %admin ALL=(ALL) NOPASSWD: /bin/mount,/bin/umount
 
 DATE=\$(date +%s)
 TIMESTAMPED_NAME=$APP_NAME-\$DATE.sqsh
 GIT_REPOS=\$(pwd)
 TMP_GIT_CLONE=$TMP_DIR/$APP_NAME
-FS_DIRECTORY=$SQUASH_BASE/$APP_NAME
-
-MOUNT_FILE=\$FS_DIRECTORY/$APP_NAME.sqsh
-MOUNT_LOCATION=$MOUNT_BASE/$APP_NAME
-
-if [ ! -d \$MOUNT_LOCATION ]; then
-  mkdir -p \$MOUNT_LOCATION
-fi
-
-if [ ! -d \$FS_DIRECTORY ]; then
-  mkdir -p \$FS_DIRECTORY
-fi
 
 # Now chroot here
 mkdir -p \$TMP_GIT_CLONE
@@ -74,42 +71,55 @@ mkdir -p \$TMP_GIT_CLONE/proc
 git clone \$GIT_REPOS \$TMP_GIT_CLONE/home/app
 
 # Make the squashfs filesystem
-mksquashfs \$TMP_GIT_CLONE \$FS_DIRECTORY/\$TIMESTAMPED_NAME
+mksquashfs \$TMP_GIT_CLONE $FS_DIRECTORY/\$TIMESTAMPED_NAME
 
 # Link it
-ln -sf \$FS_DIRECTORY/\$TIMESTAMPED_NAME \$MOUNT_FILE
+ln -sf $FS_DIRECTORY/\$TIMESTAMPED_NAME $MOUNT_FILE
 
 # Get it ready to mount
 
 # Make sure it's in the fstab so it will auto mount on reboot
 if [ \$( grep \"$APP_NAME\" /etc/fstab | wc -l) -eq 0 ]; then
-  echo \"\$MOUNT_FILE \$MOUNT_LOCATION squashfs  ro,users,auto,nohide 0 0\" >> /etc/fstab
+  echo \"$MOUNT_FILE $MOUNT_LOCATION squashfs  ro,users,auto,nohide 0 0\" >> /etc/fstab
 fi
 
 # Unmount the old one
-# if [ ! \$(mount | grep -q $APP_NAME) ]; then
-#   for i in \$(mount | grep $APP_NAME | awk '{print \$1}'); do
-#     sudo umount \$i
-#   done
-# fi
+if [ ! \$(mount | grep -q $APP_NAME) ]; then
+  for i in \$(mount | grep $APP_NAME | awk '{print \$1}'); do
+    echo 'unmounting \$i'
+    sudo umount \$i
+  done
+fi
+
+# Create the directory at the mount location
 
 # Mount the new one!
-sudo mount \$MOUNT_FILE \$MOUNT_LOCATION -t squashfs -o loop
-
-# Bind mount the system
-sudo mount --bind /bin \$MOUNT_LOCATION/bin
-sudo mount --bind /etc \$MOUNT_LOCATION/etc
-sudo mount --bind /usr \$MOUNT_LOCATION/usr
-sudo mount --bind /lib \$MOUNT_LOCATION/lib
-sudo mount --bind /var \$MOUNT_LOCATION/var
-sudo mount -t proc /proc \$MOUNT_LOCATION/proc
+if [ ! -d $MOUNT_LOCATION ]; then
+  mkdir -p $MOUNT_LOCATION
+  mkdir -p $MOUNT_LOCATION/home/app
+  mkdir -p $MOUNT_LOCATION/bin
+  mkdir -p $MOUNT_LOCATION/etc
+  mkdir -p $MOUNT_LOCATION/usr
+  mkdir -p $MOUNT_LOCATION/lib
+  mkdir -p $MOUNT_LOCATION/home
+  mkdir -p $MOUNT_LOCATION/var
+fi
 
 # Chroot
-cd \$MOUNT_LOCATION
-chroot \$MOUNT_LOCATION
+cd $MOUNT_LOCATION
+sudo chroot $MOUNT_LOCATION
+
+sudo mount $MOUNT_FILE $MOUNT_LOCATION/home/app -t squashfs -o loop
+
+# Bind mount the system
+sudo mount --bind /bin $MOUNT_LOCATION/bin -o ro
+sudo mount --bind /etc $MOUNT_LOCATION/etc -o ro
+sudo mount --bind /usr $MOUNT_LOCATION/usr -o ro
+sudo mount --bind /lib $MOUNT_LOCATION/lib -o ro
+sudo mount --bind /var $MOUNT_LOCATION/var -o ro
 
 # Start rails
-if [ -f \$MOUNT_LOCATION/home/app/script/server ]; then
+if [ -f $MOUNT_LOCATION/home/app/script/server ]; then
   /bin/bash $MOUNT_LOCATION/home/app/script/server
 fi
 
