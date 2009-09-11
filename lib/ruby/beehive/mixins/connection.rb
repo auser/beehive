@@ -3,6 +3,14 @@ require "open3"
 module Beehive
   module Connection
     
+    def keypair(k=nil)
+      if k.nil?
+        @keypair ||= File.expand_path("~/.ssh/id_rsa")
+      else
+        @keypair = k
+      end
+    end
+    
     def user(n=nil)
       if n.nil? 
         @user ||= 'root'

@@ -60,7 +60,18 @@ if [ ! -d \$FS_DIRECTORY ]; then
 fi
 
 # Checkout the git repos
-git clone \$GIT_REPOS \$TMP_GIT_CLONE
+git clone \$GIT_REPOS \$TMP_GIT_CLONE/home/app
+
+# Now chroot here
+cd \$TMP_GIT_CLONE
+mkdir -p \$TMP_GIT_CLONE/home/app
+mkdir -p \$TMP_GIT_CLONE/bin
+mkdir -p \$TMP_GIT_CLONE/etc
+mkdir -p \$TMP_GIT_CLONE/usr
+mkdir -p \$TMP_GIT_CLONE/lib
+mkdir -p \$TMP_GIT_CLONE/var
+mkdir -p \$TMP_GIT_CLONE/home
+mkdir -p \$TMP_GIT_CLONE/proc
 
 # Make the squashfs filesystem
 mksquashfs \$TMP_GIT_CLONE \$FS_DIRECTORY/\$TIMESTAMPED_NAME
@@ -85,6 +96,26 @@ fi
 
 # Mount the new one!
 sudo mount \$MOUNT_FILE \$MOUNT_LOCATION -t squashfs -o loop
+
+ls \$MOUNT_LOCATION
+
+# Bind mount the system
+sudo mount --bind /bin \$MOUNT_LOCATION/bin
+sudo mount --bind /etc \$MOUNT_LOCATION/etc
+sudo mount --bind /usr \$MOUNT_LOCATION/usr
+sudo mount --bind /lib \$MOUNT_LOCATION/lib
+sudo mount --bind /var \$MOUNT_LOCATION/var
+sudo mount --bind /home \$MOUNT_LOCATION/home
+sudo mount -t proc /proc \$MOUNT_LOCATION/proc
+
+# Chroot
+cd \$MOUNT_LOCATION
+chroot \$MOUNT_LOCATION
+
+# Start rails
+if [ -f /home/app/script/server ]; then
+  /bin/bash /home/app/script/server
+fi
 
 # Clean up
 rm -Rf \$TMP_GIT_CLONE

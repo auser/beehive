@@ -1,5 +1,7 @@
 module Beehive
   
+  class CommandError < StandardError; end
+  
   module Cli
       
     def self.run(command, argv=[])
@@ -25,8 +27,17 @@ module Beehive
       
       # Defaults
       options[:server_location] ||= "/var/beehive"
-      command_klass = Beehive::Command.const_get(command.capitalize).new
-      command_klass.send(:run, options)
+      begin
+        command_klass = Beehive::Command.const_get(command.capitalize).new(opts)
+        command_klass.send(:run, options)
+      rescue Beehive::CommandError => e
+        Beehive::Command::Help.new.run(:msg => "<red>Error with #{command}: #{e}</red>\n")
+      rescue NameError => e
+        p [:exception, e]
+        Beehive::Command::Help.new.run(:msg => "<red>Unknown command: #{command}</red>\n")
+      rescue Exception => e
+        p [:exception, e.inspect]
+      end
     end
     
   end

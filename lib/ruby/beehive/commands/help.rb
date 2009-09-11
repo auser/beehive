@@ -4,16 +4,15 @@ module Beehive
     class Help < Base
       
       def run(o={})
-        colored_say <<-EOE
-<line>
- <yellow>Beehive</yellow>
+        colored_say o[:msg] if o[:msg]
+        colored_say "<line>
+<yellow>Beehive</yellow>
 <line>
 Commands
 
 Help                  Display this screen
-        EOE
+"
       end
-      
     end
     
   end

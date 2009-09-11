@@ -6,7 +6,6 @@ module Beehive
     end
     
     def bootstrap
-      
     end
     
   end
