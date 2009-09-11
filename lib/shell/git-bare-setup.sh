@@ -59,19 +59,19 @@ if [ ! -d \$FS_DIRECTORY ]; then
   mkdir -p \$FS_DIRECTORY
 fi
 
-# Checkout the git repos
-git clone \$GIT_REPOS \$TMP_GIT_CLONE/home/app
-
 # Now chroot here
+mkdir -p \$TMP_GIT_CLONE
 cd \$TMP_GIT_CLONE
-mkdir -p \$TMP_GIT_CLONE/home/app
+
+# Checkout the git repos
+mkdir -p \$TMP_GIT_CLONE/home
 mkdir -p \$TMP_GIT_CLONE/bin
 mkdir -p \$TMP_GIT_CLONE/etc
 mkdir -p \$TMP_GIT_CLONE/usr
 mkdir -p \$TMP_GIT_CLONE/lib
 mkdir -p \$TMP_GIT_CLONE/var
-mkdir -p \$TMP_GIT_CLONE/home
 mkdir -p \$TMP_GIT_CLONE/proc
+git clone \$GIT_REPOS \$TMP_GIT_CLONE/home/app
 
 # Make the squashfs filesystem
 mksquashfs \$TMP_GIT_CLONE \$FS_DIRECTORY/\$TIMESTAMPED_NAME
@@ -87,17 +87,14 @@ if [ \$( grep \"$APP_NAME\" /etc/fstab | wc -l) -eq 0 ]; then
 fi
 
 # Unmount the old one
-if [ ! \$(mount | grep -q $APP_NAME) ]; then
-  for i in \$(mount | grep $APP_NAME | awk '{print \$1}'); do
-    echo 'unmounting \$i'
-    sudo umount \$i
-  done
-fi
+# if [ ! \$(mount | grep -q $APP_NAME) ]; then
+#   for i in \$(mount | grep $APP_NAME | awk '{print \$1}'); do
+#     sudo umount \$i
+#   done
+# fi
 
 # Mount the new one!
 sudo mount \$MOUNT_FILE \$MOUNT_LOCATION -t squashfs -o loop
-
-ls \$MOUNT_LOCATION
 
 # Bind mount the system
 sudo mount --bind /bin \$MOUNT_LOCATION/bin
@@ -105,7 +102,6 @@ sudo mount --bind /etc \$MOUNT_LOCATION/etc
 sudo mount --bind /usr \$MOUNT_LOCATION/usr
 sudo mount --bind /lib \$MOUNT_LOCATION/lib
 sudo mount --bind /var \$MOUNT_LOCATION/var
-sudo mount --bind /home \$MOUNT_LOCATION/home
 sudo mount -t proc /proc \$MOUNT_LOCATION/proc
 
 # Chroot
@@ -113,8 +109,8 @@ cd \$MOUNT_LOCATION
 chroot \$MOUNT_LOCATION
 
 # Start rails
-if [ -f /home/app/script/server ]; then
-  /bin/bash /home/app/script/server
+if [ -f \$MOUNT_LOCATION/home/app/script/server ]; then
+  /bin/bash $MOUNT_LOCATION/home/app/script/server
 fi
 
 # Clean up
