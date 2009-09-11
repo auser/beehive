@@ -1,4 +1,5 @@
 require "#{File.dirname(__FILE__)}/../../test_helper"
+require "fileutils"
 
 PATH_TEST_ROOT = "/tmp/poolparty" / "path_test"
 PATH_ONE       = PATH_TEST_ROOT / "one"
