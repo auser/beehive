@@ -32,10 +32,11 @@ module Beehive
       end
       
       def rsync_and_setup_remote_directories
+        
         o = ssh("if [ -d #{@prefix} ]; then echo \"\"; else  echo \"no\"; fi").chomp
         if o == "no"
           @pass = ask "sudo password: "
-          ssh "sudo mkdir -p #{@prefix} && sudo chown #{@user} #{@prefix}"
+          ssh "echo #{@pass} | sudo mkdir -p #{@prefix} && sudo chown #{@user} #{@prefix}"
         end
         ssh "sudo grep ^%sudo /etc/sudoers || echo \"%sudo ALL=NOPASSWD: ALL\" | sudo tee -a /etc/sudoers"
         rsync(:source => tmp_dir, :destination => "/opt")
