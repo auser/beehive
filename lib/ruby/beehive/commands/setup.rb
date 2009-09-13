@@ -21,12 +21,12 @@ module Beehive
         @user       ||= "root"
         @prefix     ||= "/opt/beehive"
         @keypair    ||= Keypair.new
-        @script_dir = Beehive.lib_dir + "/scripts"
+        @script_dir = Beehive.lib_dir + "/shell"
         
         # Build the directories
         build_directory_structure
-        # rsync(:source => @script_dir, :destination => "/opt/beehive/scripts")
-        cleanup
+        rsync_and_setup_remote_directories
+        cleanup unless debugging?
       end
       
       private
@@ -36,10 +36,22 @@ module Beehive
         required_directories.each do |dir|
           FileUtils.mkdir_p tmp_dir/dir
         end
+        FileUtils.cp_r @script_dir/".", tmp_dir/"bin"
       end
       
       def required_directories
-        %w(mnt repos squashed_fs src tmp logs)
+        %w(bin mnt repos squashed_fs src tmp logs)
+      end
+      
+      def rsync_and_setup_remote_directories
+        o = ssh("if [ -d #{@prefix} ]; then echo \"\"; else  echo \"no\"; fi").chomp
+        if o == "no"
+          @pass = ask "sudo password: "
+          ssh "sudo mkdir -p #{@prefix} && sudo chown #{@user} #{@prefix}"
+        end
+        rsync(:source => tmp_dir, :destination => "/opt")
+        @os = determine_os
+        p @os
       end
       
       def cleanup
