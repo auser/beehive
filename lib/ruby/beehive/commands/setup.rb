@@ -13,6 +13,7 @@ module Beehive
         
         # Build the directories
         build_directory_structure
+        setup_ssh_login_with_keypair_if_needed
         rsync_and_setup_remote_directories
         cleanup unless debugging?
       end
@@ -31,8 +32,18 @@ module Beehive
         %w(bin mnt repos squashed_fs src tmp logs)
       end
       
+      def setup_ssh_login_with_keypair_if_needed
+        f = Kernel.system("ssh #{user}@#{host} 'ls /'")
+        unless f
+          puts "Sending up keypair"
+          @pass = ask "password: "
+          p keypair.public_key_path
+          scp(:source => keypair.public_key_path, :destination => "/tmp")
+          ssh "mkdir -p ~/.ssh && cat /tmp/#{keypair.basename}.pub >> ~/.ssh/authorized_keys"
+        end
+      end
+      
       def rsync_and_setup_remote_directories
-        
         o = ssh("if [ -d #{@prefix} ]; then echo \"\"; else  echo \"no\"; fi").chomp
         if o == "no"
           @pass = ask "sudo password: "

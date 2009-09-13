@@ -12,13 +12,16 @@ module Beehive
     # Simply shell out and call ssh, simple, reliable and fewest dependencies, but slow
     def ssh( commands=[], extra_ssh_ops={})
       commands = commands.compact.join(' && ') if commands.is_a?(Array)
-      cmd_string = "ssh #{user}@#{host} #{ssh_options(extra_ssh_ops)} "
       if commands.empty?
         #TODO: replace this with a IO.popen call with read_nonblocking to show progress, and accept input
-        Kernel.system(cmd_string)
+        Kernel.system(ssh_string(extra_ssh_ops))
       else
-        system_run(cmd_string+"'#{commands}'")
+        system_run(ssh_string(extra_ssh_ops)+"'#{commands}'")
       end
+    end
+    
+    def ssh_string(extra_ssh_ops={})
+      "ssh #{user}@#{host} #{ssh_options(extra_ssh_ops)} "
     end
     
     # Take a hash of options and join them into a string, combined with default options.
@@ -46,7 +49,7 @@ module Beehive
       source = opts[:source]
       destination_path = opts[:destination] || opts[:source]
       raise StandardError.new("You must pass a local_file to scp") unless source
-      scp_opts = opts[:scp_opts] || ""
+      scp_opts = opts[:scp_opts] || {}
       cmd_string = "scp #{ssh_options(scp_opts)} #{source} #{user}@#{host}:#{destination_path}"
       out = system_run(cmd_string)
       out

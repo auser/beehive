@@ -51,6 +51,10 @@ class Keypair
      @public_key_string = str
   end
   
+  def public_key_path
+    full_filepath + ".pub"
+  end
+  
   # Basename of the keypair
   def basename
     @basename ||= ::File.basename(filepath, ::File.extname(filepath))
