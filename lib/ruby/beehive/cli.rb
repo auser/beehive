@@ -14,7 +14,7 @@ module Beehive
       rescue Beehive::CommandError => e
         Beehive::Command::Help.new.run(:msg => "<red>Error with #{command}: #{e}</red>\n")
       rescue NameError => e
-        p [:exception, e]
+        p [:exception, e.inspect]
         Beehive::Command::Help.new.run(:msg => "<red>Unknown command: #{command}</red>\n")
       rescue Exception => e
         p [:exception, e.inspect]

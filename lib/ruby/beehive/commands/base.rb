@@ -4,6 +4,7 @@ module Beehive
     class Base
       
       include Askable
+      include Beehive::Connection
       
       attr_accessor :args, :host, :user, :keypair
       
@@ -22,15 +23,12 @@ module Beehive
           opts.on('-d', '--debugging') {|v| Beehive.debugging = true}
           opts.on('-r', '--very_debugging') {|v| Beehive.very_debugging = true}
           
-          block.call(opts)
-
-          opts.on('-l location', '--location <string>', "The location on the remote server to store the filesystem", String)  do |val|
-            options[:server_location] = val
-          end
-
-          opts.on('-s server', '--server <string>', "The remote server to bootstrap the git repos", String)  do |val|
-            options[:remote_server] = val
-          end
+          block.call(opts) if block
+          
+          opts.on("-o host", "--host host", 'The remote host') {|u| @host = u }
+          opts.on("-u user", "--user user", 'The user') {|u| @user = u }
+          opts.on("-p prefix", "--prefix prefix") {|u| @prefix = u }
+          opts.on("-k keypair", "--keypair keypair") {|u| @keypair = Keypair.new(u) }
 
           opts.banner = "Usage: beehive [options]"
           opts.on( '-h', '--help', 'Display this screen' ) do
@@ -38,6 +36,14 @@ module Beehive
             exit
           end
         }.parse! @args
+        
+        @host       ||= @args[0]
+        
+        @user       ||= "root"
+        @prefix     ||= "/opt/beehive"
+        @keypair    ||= Keypair.new
+        
+        opts
       end
       
     end

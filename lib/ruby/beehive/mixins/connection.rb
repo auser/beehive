@@ -56,7 +56,7 @@ module Beehive
     # Default to ubuntu
     # Send the determine_os.sh script to the node and run it remotely
     def determine_os
-      o = run("/bin/sh #{@prefix}/determine_os.sh").chomp
+      o = ssh("/bin/sh #{@prefix}/determine_os.sh").chomp
       o.empty? ? :ubuntu : o
     end
     

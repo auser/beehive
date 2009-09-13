@@ -1,4 +1,4 @@
-#!/bin/bash +x
+#!/bin/bash
 
 PREFIX=/opt/beehive
 MOUNT_BASE=$PREFIX/mnt
@@ -8,8 +8,22 @@ SRC_BASE=$PREFIX/src
 TMP_DIR=$PREFIX/tmp
 
 # This process creates a dyno environment (http://heroku.com/how/dyno_grid)
-function build_from_env {  
- 
+function create_chroot_env {
+  CHROOT_DIR=$1
+  echo "-----> Creating chroot environment: $CHROOT_DIR"
+  
+  mkdir -p $CHROOT_DIR
+  mkdir -p $CHROOT_DIR/{home,etc,bin,lib,usr,usr/bin,dev}
+  cd $CHROOT_DIR
+  if [ ! -e dev/null ]; then
+    sudo mknod dev/null c 1 3
+  fi
+  if [ ! -e dev/zero ]; then
+    sudo mknod dev/zero c 1 5
+  fi
+}
+
+function build_from_env {
   APP_NAME=$1
   GIT_REPOS=$REPOS_BASE/$APP_NAME
   
@@ -20,14 +34,18 @@ function build_from_env {
   TIMESTAMPED_NAME=$APP_NAME-$DATE.sqsh
   TMP_GIT_CLONE=$TMP_DIR/$APP_NAME
   
+  echo "-----> Building application slug: $APP_NAME"
   # Make the base environment
   mkdir -p $TMP_GIT_CLONE/home
   cd $TMP_GIT_CLONE
   create_chroot_env $TMP_GIT_CLONE
-  git clone $GIT_REPOS $TMP_GIT_CLONE/home/app  
+  
+  echo "----> Checking out latest application"
+  git clone $GIT_REPOS $TMP_GIT_CLONE/home/app
   
   # Make the squashfs filesystem
-  mksquashfs $TMP_GIT_CLONE $FS_DIRECTORY/$TIMESTAMPED_NAME
+  echo "----> Creating and squashing dyno"
+  mksquashfs $TMP_GIT_CLONE $FS_DIRECTORY/$TIMESTAMPED_NAME >/dev/null 2>&1
   # Link it as the "latest" filesystem
   ln -sf $FS_DIRECTORY/$TIMESTAMPED_NAME $MOUNT_FILE
   mount_and_bind $APP_NAME
@@ -55,19 +73,6 @@ function mount_and_bind {
   
   chroot $MOUNT_LOCATION
 }
-function create_chroot_env {
-  CHROOT_DIR=$1
-  
-  mkdir -p $CHROOT_DIR
-  mkdir -p $CHROOT_DIR/{home,etc,bin,lib,usr,usr/bin,dev}
-  cd $CHROOT_DIR
-  if [ ! -e dev/null ]; then
-    sudo mknod dev/null c 1 3
-  fi
-  if [ ! -e dev/zero ]; then
-    sudo mknod dev/zero c 1 5
-  fi
-}
 
 function unmount_already_mounted {
   MOUNT_LOCATION=$1
@@ -83,15 +88,18 @@ function show_usage {
   echo "Usage: $0 (create|destroy) <name>"
   echo ""
 }
+
 if [ -z $2 ]; then
   show_usage
   exit 1;
 fi
 case $1 in
   create )
+      echo "----> Creating new dyno: $2"
       build_from_env $2;
     ;;
   destroy )
+      echo "----> Destroying dyno $2"
       unmount_already_mounted $MOUNT_BASE/$2
     ;;
   * )

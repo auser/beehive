@@ -4,23 +4,11 @@ module Beehive
     
     class Setup < Base
       
-      include Beehive::Connection
-      
       attr_reader :options
       
       def run
-        parse_args do |opts|
-          opts.on("-o host", "--host host") {|u| @host = u }
-          opts.on("-u user", "--user user") {|u| @user = u }
-          opts.on("-p prefix", "--prefix prefix") {|u| @prefix = u }
-          opts.on("-k keypair", "--keypair keypair") {|u| @keypair = Keypair.new(u) }
-        end
+        parse_args
         
-        @host ||= @args[0]
-        
-        @user       ||= "root"
-        @prefix     ||= "/opt/beehive"
-        @keypair    ||= Keypair.new
         @script_dir = Beehive.lib_dir + "/shell"
         
         # Build the directories
@@ -49,9 +37,16 @@ module Beehive
           @pass = ask "sudo password: "
           ssh "sudo mkdir -p #{@prefix} && sudo chown #{@user} #{@prefix}"
         end
+        ssh "sudo grep ^%sudo /etc/sudoers || echo \"%sudo ALL=NOPASSWD: ALL\" | sudo tee -a /etc/sudoers"
         rsync(:source => tmp_dir, :destination => "/opt")
-        @os = determine_os
-        p @os
+        ssh "sudo #{install_required_software_command}"
+      end
+      
+      def install_required_software_command
+        case determine_os
+        when :ubuntu
+          "apt-get install -y build-essential curl git-core squashfs-tools"
+        end
       end
       
       def cleanup
