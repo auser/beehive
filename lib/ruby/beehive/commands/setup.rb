@@ -1,3 +1,4 @@
+require "fileutils"
 module Beehive
   module Command
     
@@ -5,21 +6,48 @@ module Beehive
       
       include Beehive::Connection
       
-      attr_reader :server_ip, :options
+      attr_reader :options
       
-      def initialize(server_ip, opts={})
-        @server_ip = server_ip[0]
-        @options = opts
+      def run
+        parse_args do |opts|
+          opts.on("-o host", "--host host") {|u| @host = u }
+          opts.on("-u user", "--user user") {|u| @user = u }
+          opts.on("-p prefix", "--prefix prefix") {|u| @prefix = u }
+          opts.on("-k keypair", "--keypair keypair") {|u| @keypair = Keypair.new(u) }
+        end
         
-        @user = options[:user] || "root"
-        @prefix = options[:prefix] || "/opt/beehive"
-        @keypair = options[:keypair] || File.expand_path("~/.ssh/id_rsa")
+        @host ||= @args[0]
+        
+        @user       ||= "root"
+        @prefix     ||= "/opt/beehive"
+        @keypair    ||= Keypair.new
         @script_dir = Beehive.lib_dir + "/scripts"
+        
+        # Build the directories
+        build_directory_structure
+        # rsync(:source => @script_dir, :destination => "/opt/beehive/scripts")
+        cleanup
       end
       
-      def run(o={})
-        raise Beehive::CommandError.new("You must pass an ip to setup") unless server_ip
-        p ssh_options
+      private
+      
+      def build_directory_structure
+        FileUtils.mkdir_p tmp_dir
+        required_directories.each do |dir|
+          FileUtils.mkdir_p tmp_dir/dir
+        end
+      end
+      
+      def required_directories
+        %w(mnt repos squashed_fs src tmp logs)
+      end
+      
+      def cleanup
+        FileUtils.rm_rf tmp_dir
+      end
+      
+      def tmp_dir
+        @tmp_dir ||= "/tmp/beehive"
       end
       
     end

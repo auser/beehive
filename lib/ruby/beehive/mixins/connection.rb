@@ -3,30 +3,7 @@ require "open3"
 module Beehive
   module Connection
     
-    def keypair(k=nil)
-      if k.nil?
-        @keypair ||= File.expand_path("~/.ssh/id_rsa")
-      else
-        @keypair = k
-      end
-    end
-    
-    def user(n=nil)
-      if n.nil? 
-        @user ||= 'root'
-      else
-        @user = n
-      end
-    end
-    
-    # hostname or ip to use when running remote commands
-    def host(n=nil)
-      if n.nil? 
-        @host
-      else
-        @host = n
-      end
-    end
+    attr_reader :host, :user
     
     def run(commands, o={})
       ssh(commands)
@@ -60,6 +37,7 @@ module Beehive
       destination_path = opts[:destination] || opts[:source]
       rsync_opts = opts[:rsync_opts] || '-va'
       cmd_string =  "rsync -L -e 'ssh #{ssh_options}' #{rsync_opts} #{opts[:source]}  #{user}@#{host}:#{destination_path}"
+      ddputs "Running rsync with: #{cmd_string}"
       out = system_run(cmd_string)
       out
     end

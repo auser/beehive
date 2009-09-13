@@ -9,7 +9,7 @@ class Keypair
   attr_accessor :filepath
   
   # Create a new key that defaults to id_rsa as the name. 
-  def initialize(fpath)
+  def initialize(fpath=File.expand_path("~/.ssh/id_rsa"))
     @filepath = fpath
     valid?
   end

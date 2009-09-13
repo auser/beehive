@@ -6,11 +6,13 @@ end
 
 module Beehive
   
-  def self.lib_dir
-    @lib_dir ||= File.join(File.dirname(__FILE__), "..")
-  end
-  
   class << self
+    attr_accessor :verbose, :very_verbose, :debugging, :very_debugging
+    
+    def lib_dir
+      @lib_dir ||= File.join(File.dirname(__FILE__), "..")
+    end
+    
     def prefix(n=nil)
       @prefix ||= n ? n : "/opt/beehive"
     end

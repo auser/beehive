@@ -33,7 +33,7 @@ function build_from_env {
   mount_and_bind $APP_NAME
   
   # Cleanup
-  rm -rf $TMP_GIT_CLONE
+  # rm -rf $TMP_GIT_CLONE
 }
 function mount_and_bind {
   APP_NAME=$1
@@ -43,6 +43,7 @@ function mount_and_bind {
   if [ ! -e $LOOP_DEVICE ]; then
     sudo mknod $LOOP_DEVICE b 7 0
   fi
+  
   unmount_already_mounted $MOUNT_LOCATION
   sudo mount $MOUNT_FILE $MOUNT_LOCATION -t squashfs -o loop=$LOOP_DEVICE -o ro
 
@@ -88,7 +89,7 @@ if [ -z $2 ]; then
 fi
 case $1 in
   create )
-    build_from_env $2;
+      build_from_env $2;
     ;;
   destroy )
       unmount_already_mounted $MOUNT_BASE/$2
