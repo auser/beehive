@@ -31,7 +31,6 @@ function install_from_files {
   
   GEM_FILE=$BASE_DIR/.gems
   if [ -f $GEM_FILE ]; then
-    echo "Gemsfile: $GEM_FILE";
     for line in $(cat $BASE_DIR/.gems); do
       sudo gem install $line --no-ri --no-rdoc; 
     done
@@ -61,12 +60,7 @@ function build_from_env {
   
   # Install from files
   install_from_files $TMP_GIT_CLONE/home/app
-  
-  # Create chroot user
-  CHROOT_USER=$APP_NAMEuser
-  echo "TODO: Make user: $CHROOT_USER"
-  
-  
+    
   # Make the squashfs filesystem
   echo "-----> Creating and squashing dyno"
   mksquashfs $TMP_GIT_CLONE $FS_DIRECTORY/$TIMESTAMPED_NAME >/dev/null 2>&1
@@ -82,15 +76,21 @@ function build_from_env {
   rm -rf $TMP_GIT_CLONE
 }
 
-function run_thin {
-  GEM_BIN_DIR=$(gem env | grep EXECUTABLE | grep DIRECTORY | awk '{print $4}')
-  $GEM_BIN_DIR/thin -s 1 \
-                    -R home/app/config.ru \
-                    -p 5000 \
-                    -P tmp/pids/thin.$APP_NAME.pid \
-                    -d \
-                    -l tmp/thin.$APP_NAME.log \
-                    start
+function run_apps {
+  
+  if [ -f home/app/config.ru ]; then
+    echo "-----> config.ru found. Running thin"
+    GEM_BIN_DIR=$(gem env | grep EXECUTABLE | grep DIRECTORY | awk '{print $4}')
+    sudo -u $CHROOT_USER /usr/bin/env -i \
+                      HOME=./home/app \
+                      $GEM_BIN_DIR/thin -s 1 \
+                      -R home/app/config.ru \
+                      -p 5000 \
+                      -P tmp/pids/thin.$APP_NAME.pid \
+                      -d \
+                      -l tmp/thin.$APP_NAME.log \
+                      start
+ fi
 }
 function mount_and_bind {
   APP_NAME=$1
@@ -112,8 +112,10 @@ function mount_and_bind {
   sudo mount --bind /usr $MOUNT_LOCATION/usr -o ro
   sudo mount --bind /lib $MOUNT_LOCATION/lib -o ro
   sudo mount --bind /dev $MOUNT_LOCATION/dev -o ro
-  sudo mount -t proc none $MOUNT_LOCATION/proc
+  sudo mount -t proc /proc $MOUNT_LOCATION/proc
   sudo mount --bind /tmp $MOUNT_LOCATION/tmp -o rw
+  
+  # sudo mount -t unionfs -o dirs=/etc none $MOUNT_LOCATION/home
   
   # If there is a lib64 directory 
   if [ -d /lib64 ]; then
@@ -122,10 +124,23 @@ function mount_and_bind {
   
   echo "-----> Chrooting into $MOUNT_LOCATION"
   cd $MOUNT_LOCATION
-  echo "sudo chroot $MOUNT_LOCATION /bin/bash"
-  sudo /usr/sbin/chroot $MOUNT_LOCATION /bin/bash
-  echo "-----> Running thin"
-  run_thin
+  
+  # Create chroot user
+  CHROOT_USER="$APP_NAME""_user"
+  
+  sudo /usr/sbin/chroot $MOUNT_LOCATION /usr/bin/env -i \
+         HOME=/home/app TERM=$TERM PS1='\u:\w\$ ' \
+         HI="hi" \
+         /bin/bash --login -c "echo ''";
+  
+  if [ $(sudo cat /etc/passwd | grep $CHROOT_USER | grep -v "#" | wc -l) -eq 0 ]; then
+    useradd -s /bin/bash -d $MOUNT_LOCATION/./ -c "$APP_NAME user" -g users $CHROOT_USER;
+  else
+    echo "";
+  fi
+  
+  echo "-----> Running apps"
+  run_apps
 }
 
 function unmount_already_mounted {

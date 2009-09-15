@@ -52,12 +52,7 @@ STR="#!/bin/sh
 # Runs after a commit and stores sqsh files in $STORE_DIRECTORY
 
 echo \"-----> Beehive receiving push\"
-/bin/bash $PREFIX/bin/create_dyno.sh create $APP_NAME
-
-# Start rails
-if [ -f $MOUNT_LOCATION/home/app/script/server ]; then
-  /bin/bash $MOUNT_LOCATION/home/app/script/server
-fi
+sudo /bin/bash $PREFIX/bin/create_dyno.sh create $APP_NAME
 "
 
 echo "$STR" > hooks/post-receive
