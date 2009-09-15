@@ -104,6 +104,7 @@ function mount_and_bind {
   # Unmount the already mounted app files
   unmount_already_mounted $MOUNT_LOCATION $APP_NAME
   
+	# Mount the loop'd filesystem
   sudo mount $MOUNT_FILE $MOUNT_LOCATION -t squashfs -o loop=$LOOP_DEVICE -o ro
 
   # Bind mount the system
@@ -115,7 +116,7 @@ function mount_and_bind {
   sudo mount -t proc /proc $MOUNT_LOCATION/proc
   sudo mount --bind /tmp $MOUNT_LOCATION/tmp -o rw
   
-  # sudo mount -t unionfs -o dirs=/etc none $MOUNT_LOCATION/home
+  # sudo mount -t unionfs -o dirs=/home none $MOUNT_LOCATION/home
   
   # If there is a lib64 directory 
   if [ -d /lib64 ]; then
@@ -148,8 +149,9 @@ function unmount_already_mounted {
   APP_NAME=$2
   LOOP_DEVICE=/dev/loop-$APP_NAME
   
-  echo "$MOUNT_LOCATION/tmp"
+  # First stop the thin app if it's already running
   if [ -f $MOUNT_LOCATION/tmp/pids/thin.$APP_NAME.5000.pid ]; then
+		echo "-----> Killing current running thin app"
     GEM_BIN_DIR=$(gem env | grep EXECUTABLE | grep DIRECTORY | awk '{print $4}')
     $GEM_BIN_DIR/thin -s 1 \
                       -R home/app/config.ru \
