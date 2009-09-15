@@ -26,6 +26,17 @@ function create_chroot_env {
     sudo mknod dev/zero c 1 5
   fi
 }
+function install_from_files {
+  BASE_DIR=$1
+  
+  GEM_FILE=$BASE_DIR/.gems
+  if [ -f $GEM_FILE ]; then
+    echo "Gemsfile: $GEM_FILE";
+    for line in $(cat $BASE_DIR/.gems); do
+      sudo gem install $line --no-ri --no-rdoc; 
+    done
+  fi
+}
 
 function build_from_env {
   APP_NAME=$1
@@ -43,39 +54,35 @@ function build_from_env {
   mkdir -p $TMP_GIT_CLONE/home
   
   cd $TMP_GIT_CLONE
-  mkdir -p $TMP_GIT_CLONE/home/app
-  
   echo "-----> Checking out latest application"
   git clone $GIT_REPOS $TMP_GIT_CLONE/home/app
   
   create_chroot_env $TMP_GIT_CLONE
+  
+  # Install from files
+  install_from_files $TMP_GIT_CLONE/home/app
+  
+  # Create chroot user
+  CHROOT_USER=$APP_NAMEuser
+  echo "TODO: Make user: $CHROOT_USER"
+  
   
   # Make the squashfs filesystem
   echo "-----> Creating and squashing dyno"
   mksquashfs $TMP_GIT_CLONE $FS_DIRECTORY/$TIMESTAMPED_NAME >/dev/null 2>&1
   # Link it as the "latest" filesystem
   ln -sf $FS_DIRECTORY/$TIMESTAMPED_NAME $MOUNT_FILE
+  
+  dir_size=`sudo du -h -s $FS_DIRECTORY/$TIMESTAMPED_NAME | awk '{print $1}'`
+  dyno_size=`sudo du -h -s $MOUNT_FILE | awk '{print $1}'`
+  echo "-----> Dyno is $dyno_size (from $dir_size)"
   mount_and_bind $APP_NAME
   
   # Cleanup
   rm -rf $TMP_GIT_CLONE
 }
-function install_from_files {
-  BASE_DIR=$1
-  
-  echo $BASE_DIR
-  GEM_FILE=$BASE_DIR/.gems
-  if [ -f $GEM_FILE ]; then
-    echo "Gemsfile: $GEM_FILE";
-    for line in $(cat home/app/.gems); do
-      gem install $line; 
-    done
-  fi
-}
 
 function run_thin {
-  install_from_files home/app
-  
   GEM_BIN_DIR=$(gem env | grep EXECUTABLE | grep DIRECTORY | awk '{print $4}')
   $GEM_BIN_DIR/thin -s 1 \
                     -R home/app/config.ru \
@@ -114,8 +121,10 @@ function mount_and_bind {
   fi
   
   echo "-----> Chrooting into $MOUNT_LOCATION"
-  echo chroot $MOUNT_LOCATION
   cd $MOUNT_LOCATION
+  echo "sudo chroot $MOUNT_LOCATION /bin/bash"
+  sudo /usr/sbin/chroot $MOUNT_LOCATION /bin/bash
+  echo "-----> Running thin"
   run_thin
 }
 
