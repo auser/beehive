@@ -129,8 +129,9 @@ function mount_and_bind {
   CHROOT_USER="$APP_NAME""_user"
   
   sudo /usr/sbin/chroot $MOUNT_LOCATION /usr/bin/env -i \
-         HOME=/home/app TERM=$TERM PS1='\u:\w\$ ' \
-         HI="hi" \
+           HOME=/home/app 
+           TERM=$TERM PS1='\u:\w\$ ' \
+           HI="hi" \
          /bin/bash --login -c "echo ''";
   
   if [ $(sudo cat /etc/passwd | grep $CHROOT_USER | grep -v "#" | wc -l) -eq 0 ]; then
