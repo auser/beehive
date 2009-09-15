@@ -179,7 +179,7 @@ dispatch_requests(Req) ->
 % Handle the requests
 handle("/favicon.ico", Req) -> Req:respond({200, [{"Content-Type", "text/html"}], ""});
 handle(Path, Req) ->
-	?INFO("Got request for: ~p~n", Path),
+	?INFO("Got request for: ~p~n", [Path]),
 	Req:ok({"text/html", "<h3>Not found</h3>"}).
 
 start_mochiweb(Args) ->
