@@ -7,7 +7,9 @@ module Beehive
       attr_reader :options
       
       def run
-        parse_args
+        parse_args do |opts|
+          opts.on("--no-nginx") {|n| @no_nginx = true }
+        end
         
         @script_dir = Beehive.lib_dir + "/shell"
         
@@ -15,6 +17,7 @@ module Beehive
         build_directory_structure
         setup_ssh_login_with_keypair_if_needed
         rsync_and_setup_remote_directories
+        setup_application
         cleanup unless debugging?
       end
       
@@ -33,11 +36,10 @@ module Beehive
       end
       
       def setup_ssh_login_with_keypair_if_needed
-        f = Kernel.system("ssh #{user}@#{host} 'ls /'")
+        f = Kernel.system("ssh #{user}@#{host} 'echo \"hi\"' > /dev/null")
         unless f
           puts "Sending up keypair"
           @pass = ask "password: "
-          p keypair.public_key_path
           scp(:source => keypair.public_key_path, :destination => "/tmp")
           ssh "mkdir -p ~/.ssh && cat /tmp/#{keypair.basename}.pub >> ~/.ssh/authorized_keys"
         end
@@ -51,7 +53,8 @@ module Beehive
         end
         ssh "sudo grep ^%sudo /etc/sudoers || echo \"%sudo ALL=NOPASSWD: ALL\" | sudo tee -a /etc/sudoers"
         rsync(:source => tmp_dir, :destination => "/opt")
-        ssh "sudo #{install_required_software_command}"
+        ssh "#{prefix}/bin/setup-host.sh #{user}"
+        # ssh "sudo #{install_required_software_command}"
       end
       
       def install_required_software_command
@@ -61,12 +64,14 @@ module Beehive
         end
       end
       
-      def cleanup
-        FileUtils.rm_rf tmp_dir
+      def setup_application
+        %w(nginx).each do |app|
+          ssh "#{@prefix}/bin/setup-#{app}.sh #{user}" unless instance_variable_get("@no_#{app}")
+        end
       end
       
-      def tmp_dir
-        @tmp_dir ||= "/tmp/beehive"
+      def cleanup
+        FileUtils.rm_rf tmp_dir
       end
       
     end

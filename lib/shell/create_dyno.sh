@@ -13,7 +13,7 @@ function create_chroot_env {
   echo "-----> Creating chroot environment: $CHROOT_DIR"
   
   mkdir -p $CHROOT_DIR
-  mkdir -p $CHROOT_DIR/{home,etc,bin,lib,usr,usr/bin,dev}
+  mkdir -p $CHROOT_DIR/{home,etc,bin,lib,usr,usr/bin,dev,tmp,proc}
   cd $CHROOT_DIR
   if [ ! -e dev/null ]; then
     sudo mknod dev/null c 1 3
@@ -28,7 +28,7 @@ function build_from_env {
   GIT_REPOS=$REPOS_BASE/$APP_NAME
   
   FS_DIRECTORY=$SQUASH_BASE/$APP_NAME
-  MOUNT_FILE=$FS_DIRECTORY/$APP_NAME.sqsh  
+  MOUNT_FILE=$FS_DIRECTORY/$APP_NAME.sqsh
   
   DATE=$(date +%s)
   TIMESTAMPED_NAME=$APP_NAME-$DATE.sqsh
@@ -40,18 +40,18 @@ function build_from_env {
   cd $TMP_GIT_CLONE
   create_chroot_env $TMP_GIT_CLONE
   
-  echo "----> Checking out latest application"
+  echo "-----> Checking out latest application"
   git clone $GIT_REPOS $TMP_GIT_CLONE/home/app
   
   # Make the squashfs filesystem
-  echo "----> Creating and squashing dyno"
+  echo "-----> Creating and squashing dyno"
   mksquashfs $TMP_GIT_CLONE $FS_DIRECTORY/$TIMESTAMPED_NAME >/dev/null 2>&1
   # Link it as the "latest" filesystem
   ln -sf $FS_DIRECTORY/$TIMESTAMPED_NAME $MOUNT_FILE
   mount_and_bind $APP_NAME
   
   # Cleanup
-  # rm -rf $TMP_GIT_CLONE
+  rm -rf $TMP_GIT_CLONE
 }
 function mount_and_bind {
   APP_NAME=$1
@@ -62,7 +62,8 @@ function mount_and_bind {
     sudo mknod $LOOP_DEVICE b 7 0
   fi
   
-  unmount_already_mounted $MOUNT_LOCATION
+  unmount_already_mounted $MOUNT_LOCATION $APP_NAME
+  
   sudo mount $MOUNT_FILE $MOUNT_LOCATION -t squashfs -o loop=$LOOP_DEVICE -o ro
 
   # Bind mount the system
@@ -70,17 +71,49 @@ function mount_and_bind {
   sudo mount --bind /etc $MOUNT_LOCATION/etc -o ro
   sudo mount --bind /usr $MOUNT_LOCATION/usr -o ro
   sudo mount --bind /lib $MOUNT_LOCATION/lib -o ro
+  sudo mount --bind /dev $MOUNT_LOCATION/dev -o ro
+  sudo mount -t proc none $MOUNT_LOCATION/proc
+  sudo mount --bind /tmp $MOUNT_LOCATION/tmp -o rw
   
-  chroot $MOUNT_LOCATION
+  # chroot $MOUNT_LOCATION
+  cd $MOUNT_LOCATION
+  GEM_BIN_DIR=$(gem env | grep EXECUTABLE | grep DIRECTORY | awk '{print $4}')
+  $GEM_BIN_DIR/thin -s 1 \
+                    -R home/app/config.ru \
+                    -p 5000 \
+                    -P $MOUNT_LOCATION/tmp/pids/thin.$APP_NAME.pid \
+                    --prefix $MOUNT_LOCATION \
+                    -d \
+                    -c $MOUNT_LOCATION \
+                    -l $MOUNT_LOCATION/tmp/thin.$APP_NAME.log \
+                    start
 }
 
 function unmount_already_mounted {
   MOUNT_LOCATION=$1
+  APP_NAME=$2
+  LOOP_DEVICE=/dev/loop-$APP_NAME
   
-  MOUNTED=$(mount | grep $MOUNT_LOCATION | awk '{a[i++]=$1} END {for (j=i-1; j>=0;) print a[j--] }')
+  echo "$MOUNT_LOCATION/tmp"
+  if [ -f $MOUNT_LOCATION/tmp/pids/thin.$APP_NAME.5000.pid ]; then
+    GEM_BIN_DIR=$(gem env | grep EXECUTABLE | grep DIRECTORY | awk '{print $4}')
+    $GEM_BIN_DIR/thin -s 1 \
+                      -R home/app/config.ru \
+                      -p 5000 \
+                      -P $MOUNT_LOCATION/tmp/pids/thin.$APP_NAME.pid \
+                      --prefix $MOUNT_LOCATION \
+                      -d \
+                      -c $MOUNT_LOCATION \
+                      -l $MOUNT_LOCATION/tmp/thin.$APP_NAME.log \
+                      stop
+
+  fi
+  
+  MOUNTED=$(mount | grep $MOUNT_LOCATION | awk '{a[i++]=$3} END {for (j=i-1; j>=0;) print a[j--] }')
   for i in $MOUNTED; do
-    sudo umount $i
+    sudo umount $i -f
   done
+  sudo umount $LOOP_DEVICE
 }
 
 function show_usage {
@@ -95,11 +128,11 @@ if [ -z $2 ]; then
 fi
 case $1 in
   create )
-      echo "----> Creating new dyno: $2"
+      echo "-----> Creating new dyno: $2"
       build_from_env $2;
     ;;
   destroy )
-      echo "----> Destroying dyno $2"
+      echo "-----> Destroying dyno $2"
       unmount_already_mounted $MOUNT_BASE/$2
     ;;
   * )

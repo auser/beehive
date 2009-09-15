@@ -1,37 +1,36 @@
 #!/bin/sh
 
-APP_NAME=$1
+USER=$1
+
+if [ -z $USER ]; then
+  USER="root"
+fi
 PREFIX=/opt/beehive
-GROUP=admin
 # Mounts
 MOUNT_BASE=$PREFIX/mnt
 LOG_DIR=$PREFIX/logs
 
 STR="
 server {
-  # Replace this port with the right one for your requirements
-  listen       80;
- 
-  server_name  _;
+  listen          80 default;
+  server_name     _;
+  access_log  $LOG_DIR/default.access.log;
 
-  set \$webroot_path $MOUNT_BASE;
-  root \$webroot_path/\$host;
-  error_page  404              http://$APP_NAME/errors/404.html;
-  access_log  $LOG_DIR/$APP_NAME.access.log;
- 
+  server_name_in_redirect  off;
+
   location / {
-    root   \$webroot_path/\$host/;
-    index  index.html;
-  }
- 
-  location ~ /\.ht {
-    deny  all;
+    index index.html;
+    root  /var/www/nginx-default;
   }
 }
 "
-sudo apt-get install nginx -y
+echo "----> Setting up Nginx: for default as $USER"
+sudo apt-get install -y openssl libopenssl-ruby ruby1.8-dev rubygems nginx
 sudo chmod 777 /etc/nginx/conf.d
 touch /etc/nginx/conf.d/virtual_domains.conf
 echo "$STR" > /etc/nginx/conf.d/virtual_domains.conf
 sudo chmod 755 /etc/nginx/conf.d
 sudo /etc/init.d/nginx start
+
+sudo chown $USER /etc/nginx/sites-*
+sudo gem install rack thin --no-ri --no-rdoc

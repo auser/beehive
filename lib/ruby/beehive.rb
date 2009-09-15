@@ -13,6 +13,10 @@ module Beehive
       @lib_dir ||= File.join(File.dirname(__FILE__), "..")
     end
     
+    def templates_dir
+      @templates_dir ||= File.join(File.dirname(__FILE__), "..", "templates")
+    end
+    
     def prefix(n=nil)
       @prefix ||= n ? n : "/opt/beehive"
     end

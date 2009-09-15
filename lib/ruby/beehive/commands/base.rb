@@ -6,7 +6,7 @@ module Beehive
       include Askable
       include Beehive::Connection
       
-      attr_accessor :args, :host, :user, :keypair
+      attr_accessor :args, :host, :user, :keypair, :prefix
       
       def initialize(args=[])
         @args = args
@@ -44,6 +44,10 @@ module Beehive
         @keypair    ||= Keypair.new
         
         opts
+      end
+      
+      def tmp_dir
+        @tmp_dir ||= "/tmp/beehive"
       end
       
     end
