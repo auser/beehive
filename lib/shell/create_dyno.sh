@@ -14,7 +14,11 @@ function create_chroot_env {
   
   mkdir -p $CHROOT_DIR
   mkdir -p $CHROOT_DIR/{home,etc,bin,lib,usr,usr/bin,dev,tmp,proc}
+  
   cd $CHROOT_DIR
+  if [ -d /lib64 ]; then
+    mkdir -p lib64/
+  fi
   if [ ! -e dev/null ]; then
     sudo mknod dev/null c 1 3
   fi
@@ -37,11 +41,14 @@ function build_from_env {
   echo "-----> Building application slug: $APP_NAME"
   # Make the base environment
   mkdir -p $TMP_GIT_CLONE/home
+  
   cd $TMP_GIT_CLONE
-  create_chroot_env $TMP_GIT_CLONE
+  mkdir -p $TMP_GIT_CLONE/home/app
   
   echo "-----> Checking out latest application"
   git clone $GIT_REPOS $TMP_GIT_CLONE/home/app
+  
+  create_chroot_env $TMP_GIT_CLONE
   
   # Make the squashfs filesystem
   echo "-----> Creating and squashing dyno"
@@ -53,6 +60,17 @@ function build_from_env {
   # Cleanup
   rm -rf $TMP_GIT_CLONE
 }
+
+function run_thin {
+  GEM_BIN_DIR=$(gem env | grep EXECUTABLE | grep DIRECTORY | awk '{print $4}')
+  $GEM_BIN_DIR/thin -s 1 \
+                    -R home/app/config.ru \
+                    -p 5000 \
+                    -P tmp/pids/thin.$APP_NAME.pid \
+                    -d \
+                    -l tmp/thin.$APP_NAME.log \
+                    start
+}
 function mount_and_bind {
   APP_NAME=$1
   MOUNT_LOCATION=$MOUNT_BASE/$APP_NAME
@@ -62,6 +80,7 @@ function mount_and_bind {
     sudo mknod $LOOP_DEVICE b 7 0
   fi
   
+  # Unmount the already mounted app files
   unmount_already_mounted $MOUNT_LOCATION $APP_NAME
   
   sudo mount $MOUNT_FILE $MOUNT_LOCATION -t squashfs -o loop=$LOOP_DEVICE -o ro
@@ -75,18 +94,15 @@ function mount_and_bind {
   sudo mount -t proc none $MOUNT_LOCATION/proc
   sudo mount --bind /tmp $MOUNT_LOCATION/tmp -o rw
   
-  # chroot $MOUNT_LOCATION
+  # If there is a lib64 directory 
+  if [ -d /lib64 ]; then
+    sudo mount --bind /lib64 $MOUNT_LOCATION/lib64 -o ro
+  fi
+  
+  echo "-----> Chrooting into $MOUNT_LOCATION"
+  echo chroot $MOUNT_LOCATION
   cd $MOUNT_LOCATION
-  GEM_BIN_DIR=$(gem env | grep EXECUTABLE | grep DIRECTORY | awk '{print $4}')
-  $GEM_BIN_DIR/thin -s 1 \
-                    -R home/app/config.ru \
-                    -p 5000 \
-                    -P $MOUNT_LOCATION/tmp/pids/thin.$APP_NAME.pid \
-                    --prefix $MOUNT_LOCATION \
-                    -d \
-                    -c $MOUNT_LOCATION \
-                    -l $MOUNT_LOCATION/tmp/thin.$APP_NAME.log \
-                    start
+  run_thin
 }
 
 function unmount_already_mounted {
