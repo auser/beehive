@@ -27,6 +27,18 @@ function create_chroot_env {
   fi
 }
 
+function install_from_files {
+  BASE_DIR=$1
+  
+  GEM_FILE=$BASE_DIR/.gems
+  if [ -f $GEM_FILE ]; then
+    echo "Gemsfile: $GEM_FILE";
+    for line in $(cat home/app/.gems); do
+      gem install $line; 
+    done
+  fi
+}
+
 function build_from_env {
   APP_NAME=$1
   GIT_REPOS=$REPOS_BASE/$APP_NAME
@@ -48,6 +60,7 @@ function build_from_env {
   echo "-----> Checking out latest application"
   git clone $GIT_REPOS $TMP_GIT_CLONE/home/app
   
+  install_from_files $TMP_GIT_CLONE/home/app
   create_chroot_env $TMP_GIT_CLONE
   
   # Make the squashfs filesystem
