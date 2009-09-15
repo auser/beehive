@@ -58,10 +58,14 @@ start_link(Args) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([]) ->
+init(Args) ->
   RunningApplications = find_local_applications(),
   process_flag(trap_exit, true),
-
+	
+	StartArgs = get_start_args(Args),
+	
+  start_mochiweb(StartArgs),
+	
   {ok, #state{
     applications = RunningApplications
   }}.
@@ -164,3 +168,61 @@ handle_list_local_applications(#state{applications = Apps} = _State) ->
 %%% Internal functions
 %%--------------------------------------------------------------------  
 find_local_applications() -> app_discovery:discover_local_apps().
+
+
+dispatch_requests(Req) ->
+  Path = Req:get(path),
+  Action = clean_path(Path),
+  handle(Action, Req).
+
+% HANDLE
+% Handle the requests
+handle("/favicon.ico", Req) -> Req:respond({200, [{"Content-Type", "text/html"}], ""});
+handle(Path, Req) ->
+	?INFO("Got request for: ~p~n", Path),
+	Req:ok({"text/html", "<h3>Not found</h3>"}).
+
+start_mochiweb(Args) ->
+  [Port] = Args,
+  io:format("Starting mochiweb_http with ~p~n", [Port]),
+  mochiweb_http:start([ {port, Port},
+                        {loop, fun dispatch_requests/1}]).
+
+
+%%--------------------------------------------------------------------
+%% Function: get_start_args (Args) -> [port]
+%% Description: Get the start args from the application env
+%%--------------------------------------------------------------------
+get_start_args(Args) ->
+  Module = case proplists:get_value(module, Args) of
+    undefined -> hermes;
+    Else -> Else
+  end,
+  lists:map(fun ({Var, Default}) -> 
+  	  case application:get_env(Module, Var) of
+        undefined -> Default;
+  	    {ok, V} -> V
+      end
+	  end, [
+	        {port, get_env_or_default("ROUTER_PORT", 9991)}
+	       ]).
+	
+get_env_or_default(Env, Default) ->
+	case os:getenv(Env) of
+		false -> Default;
+		E -> E
+	end.
+	
+% Get a clean path
+% strips off the query string
+clean_path(Path) ->
+  case string:str(Path, "?") of
+    0 -> Path;
+    N -> string:substr(Path, 1, string:len(Path) - (N+1))
+  end.
+
+top_level_request(Path) ->
+  case string:tokens(Path, "/") of
+    [CleanPath|_Others] -> CleanPath;
+    [] -> "home"
+  end.
