@@ -26,6 +26,8 @@ mochi:
 	(cd deps/mochiweb;$(MAKE))
 gen_cluster:
 	(cd deps/gen_cluster;$(MAKE))
+# rabbitmq_server:
+# 	(cd deps/rabbitmq-server;$(MAKE))
 
 cp_dep_beams:
 	cp $(DEPS_DIR)/*/ebin/*.beam $(EBIN)

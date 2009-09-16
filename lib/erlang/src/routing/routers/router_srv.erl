@@ -12,7 +12,7 @@
 
 %% API
 -export([start_link/0, start_link/1]).
--export ([find_application/1]).
+-export ([find_application/1, register_application/3, list_applications/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -21,22 +21,24 @@
 % gen_cluster callback
 -export([handle_join/3, handle_node_joined/3, handle_leave/4]).
 
-
 -record (app, {
-					name,				% Name of the application
-					endpoints		% Servers that the app lives on
+					name,   % Name of the application
+					host,   % Pids that the app lives on
+					port    % Port the application lives on
 				}).	
 				
 -record(state, {
-          applications = []
+          applications   % Hosted applications
         }).
+        
 -define(SERVER, ?MODULE).
 
 %%====================================================================
 %% API
 %%====================================================================
-find_application(AppName) ->
-	gen_server:call(?SERVER, {find_application, AppName}).
+find_application(AppName) -> gen_server:call(?SERVER, {find_application, AppName}).
+register_application(AppName, Host, Port) -> gen_server:call(?SERVER, {register_application, AppName, Host, Port}).
+list_applications() -> gen_server:call(?SERVER, {list_local_applications}).
 	
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
@@ -59,15 +61,21 @@ start_link(Args) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init(Args) ->
-  RunningApplications = find_local_applications(),
   process_flag(trap_exit, true),
 	
 	StartArgs = get_start_args(Args),
-	
   start_mochiweb(StartArgs),
+  
+  AppDb = ets:new(?MODULE, [bag]),
+	RunningApplications = find_local_applications([]),
 	
+	lists:map(fun(App) -> 
+	  Name = App#app.name,
+	  ets:insert(AppDb, {Name, App}) end, 
+	RunningApplications),
+  
   {ok, #state{
-    applications = RunningApplications
+    applications = AppDb
   }}.
 
 %%--------------------------------------------------------------------
@@ -79,6 +87,9 @@ init(Args) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
+handle_call({register_application, Name, Host, Port}, _From, State) ->
+  [Reply, State] = handle_register_application(Name, Host, Port, State),
+  {reply, Reply, State};
 handle_call({find_application, AppName}, _From, State) ->
 	Reply = handle_find_application(AppName, State),
 	{reply, Reply, State};
@@ -158,7 +169,14 @@ handle_leave(LeavingPid, Pidlist, Info, State) ->
 %%====================================================================
 %% HANDLERS
 %%====================================================================
-handle_find_application(AppName, State) ->
+handle_register_application(Name, Host, Port, State) ->
+  CurrentApps = State#state.applications,
+  NewApp = #app{name = Name, host = Host, port = Port},
+  Reply = ets:insert(CurrentApps, {Name, NewApp}),
+  ?INFO("Ets info: ~p~n", [Name]),
+  [Reply, State].
+  
+handle_find_application(_AppName, _State) ->
 	none.
 	
 handle_list_local_applications(#state{applications = Apps} = _State) ->
@@ -167,8 +185,9 @@ handle_list_local_applications(#state{applications = Apps} = _State) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------  
-find_local_applications() -> app_discovery:discover_local_apps().
-
+find_local_applications(#state{applications = Apps} = _State) ->
+  ?INFO("Apps: ~p~n", [Apps]),
+  app_discovery:discover_local_apps().
 
 dispatch_requests(Req) ->
   Path = Req:get(path),
@@ -177,10 +196,9 @@ dispatch_requests(Req) ->
 
 % HANDLE
 % Handle the requests
-handle("/favicon.ico", Req) -> Req:respond({200, [{"Content-Type", "text/html"}], ""});
 handle(Path, Req) ->
-	?INFO("Got request for: ~p~n", [Path]),
-	Req:ok({"text/html", "<h3>Not found</h3>"}).
+  HostName = get_hostname_from_request(Req),
+	Req:ok({"text/html", io_lib:format("<h3>Not found: ~p ~p</h3>", [HostName, Req:get(headers)])}).
 
 start_mochiweb(Args) ->
   [Port] = Args,
@@ -221,8 +239,8 @@ clean_path(Path) ->
     N -> string:substr(Path, 1, string:len(Path) - (N+1))
   end.
 
-top_level_request(Path) ->
-  case string:tokens(Path, "/") of
-    [CleanPath|_Others] -> CleanPath;
-    [] -> "home"
-  end.
+% Get the hostname from the headers and get just the application name
+get_hostname_from_request(Req) ->
+  Headers = Req:get(headers),
+  Host = mochiweb_headers:get_value("host", Headers),
+  lists:takewhile(fun (E) -> E =/= $: end, Host).

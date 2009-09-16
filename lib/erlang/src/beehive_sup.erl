@@ -22,7 +22,7 @@ init([Type, Args]) ->
   FullApplicationList = compile_applications( [
                                                 {no_log, BeehiveLoggerSup},
                                                 {no_registry, RegistryApp},
-																								{no_router, RouterApp}
+                                                {no_router, RouterApp}
                                               ]),
   
   {ok,{_SupFlags = {one_for_one, ?MAXIMUM_RESTARTS, ?MAX_DELAY_TIME}, FullApplicationList}}.
