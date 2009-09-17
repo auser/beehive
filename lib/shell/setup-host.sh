@@ -16,7 +16,8 @@ SRC_BASE=$PREFIX/src
 TMP_DIR=$PREFIX/tmp
 LOG_DIR=$PREFIX/logs
 
-required_packages="build-essential curl git-core squashfs-tools"
+required_packages="build-essential curl git-core squashfs-tools erlang-nox"
+web_packages="ruby1.8 ruby1.8-dev rubygems openssl nginx"
 
 echo 'Setting up base at $PREFIX...'
 if [ -e $LOOP_DEVICE ]; then
@@ -47,5 +48,7 @@ else
 fi
 
 echo "Installing required packages";
+sudo apt-get update;
 sudo apt-get install -y $required_packages;
+sudo apt-get install -y $web_packages;
 echo "OK"

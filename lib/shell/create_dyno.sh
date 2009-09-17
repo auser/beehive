@@ -16,6 +16,7 @@ function create_chroot_env {
   mkdir -p $CHROOT_DIR/{home,etc,bin,lib,usr,usr/bin,dev,tmp,proc}
   
   cd $CHROOT_DIR
+  
   if [ -d /lib64 ]; then
     mkdir -p lib64/
   fi
@@ -77,7 +78,8 @@ function build_from_env {
 }
 
 function run_apps {
-  
+  CHROOT_USER=$(get_user_id_from_app_name $APP_NAME)
+  PORT=$(get_port_from_user_id $APP_NAME)
   if [ -f home/app/config.ru ]; then
     echo "-----> config.ru found. Running thin"
     GEM_BIN_DIR=$(gem env | grep EXECUTABLE | grep DIRECTORY | awk '{print $4}')
@@ -85,7 +87,7 @@ function run_apps {
                       HOME=./home/app \
                       $GEM_BIN_DIR/thin -s 1 \
                       -R home/app/config.ru \
-                      -p 5000 \
+                      -p $PORT \
                       -P tmp/pids/thin.$APP_NAME.pid \
                       -d \
                       -l tmp/thin.$APP_NAME.log \
@@ -95,18 +97,19 @@ function run_apps {
 function mount_and_bind {
   APP_NAME=$1
   MOUNT_LOCATION=$MOUNT_BASE/$APP_NAME
-  LOOP_DEVICE=/dev/loop-$APP_NAME
+  LOOP_DEVICE=/dev/$APP_NAME
   
   if [ ! -e $LOOP_DEVICE ]; then
-    sudo mknod $LOOP_DEVICE b 7 0
+    sudo mknod -m 600 $LOOP_DEVICE b 7 0
   fi
   
   # Unmount the already mounted app files
-  unmount_already_mounted $MOUNT_LOCATION $APP_NAME
+  unmount_already_mounted $MOUNT_LOCATION $APP_NAME $LOOP_DEVICE
   
+  echo "-----> sudo mount $MOUNT_FILE $MOUNT_LOCATION -t squashfs -o ro -o loop=$LOOP_DEVICE"
 	# Mount the loop'd filesystem
-  sudo mount $MOUNT_FILE $MOUNT_LOCATION -t squashfs -o loop=$LOOP_DEVICE -o ro
-
+  sudo mount $MOUNT_FILE $MOUNT_LOCATION -t squashfs -o ro -o loop=$LOOP_DEVICE
+  
   # Bind mount the system
   sudo mount --bind /bin $MOUNT_LOCATION/bin -o ro
   sudo mount --bind /etc $MOUNT_LOCATION/etc -o ro
@@ -127,7 +130,7 @@ function mount_and_bind {
   cd $MOUNT_LOCATION
   
   # Create chroot user
-  CHROOT_USER="$APP_NAME""_user"
+  CHROOT_USER=$(get_user_id_from_app_name $APP_NAME)
   
   sudo /usr/sbin/chroot $MOUNT_LOCATION /usr/bin/env -i \
            HOME=/home/app 
@@ -142,21 +145,23 @@ function mount_and_bind {
   fi
   
   echo "-----> Running apps"
-  run_apps
+  run_apps $CHROOT_USER
 }
 
 function unmount_already_mounted {
   MOUNT_LOCATION=$1
   APP_NAME=$2
-  LOOP_DEVICE=/dev/loop-$APP_NAME
+  LOOP_DEVICE=$3
   
   # First stop the thin app if it's already running
-  if [ -f $MOUNT_LOCATION/tmp/pids/thin.$APP_NAME.5000.pid ]; then
+  PORT=$(get_port_from_user_id $APP_NAME)
+  
+  if [ -f $MOUNT_LOCATION/tmp/pids/thin.$APP_NAME.$PORT.pid ]; then
 		echo "-----> Killing current running thin app"
     GEM_BIN_DIR=$(gem env | grep EXECUTABLE | grep DIRECTORY | awk '{print $4}')
     $GEM_BIN_DIR/thin -s 1 \
                       -R home/app/config.ru \
-                      -p 5000 \
+                      -p $PORT \
                       -P $MOUNT_LOCATION/tmp/pids/thin.$APP_NAME.pid \
                       --prefix $MOUNT_LOCATION \
                       -d \
@@ -168,9 +173,20 @@ function unmount_already_mounted {
   
   MOUNTED=$(mount | grep $MOUNT_LOCATION | awk '{a[i++]=$3} END {for (j=i-1; j>=0;) print a[j--] }')
   for i in $MOUNTED; do
-    sudo umount $i -f
+    sudo umount $i -f >/dev/null 2>&1
   done
-  sudo umount $LOOP_DEVICE
+  sudo umount $LOOP_DEVICE >/dev/null 2>&1
+}
+
+function get_user_id_from_app_name {
+  APP_NAME=$1;
+  echo "$APP_NAME""_user"
+}
+function get_port_from_user_id {
+  APP_NAME=$1
+  CHROOT_USER=$(get_user_id_from_app_name $APP_NAME)
+  USER_ID=$(sudo cat /etc/passwd | grep $CHROOT_USER | sed -e 's/:/ /g' | awk '{print $3}')
+  echo $(($USER_ID+4000))
 }
 
 function show_usage {
@@ -190,7 +206,7 @@ case $1 in
     ;;
   destroy )
       echo "-----> Destroying dyno $2"
-      unmount_already_mounted $MOUNT_BASE/$2
+      # unmount_already_mounted $MOUNT_BASE/$2
     ;;
   * )
     show_usage

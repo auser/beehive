@@ -52,7 +52,8 @@ STR="#!/bin/sh
 # Runs after a commit and stores sqsh files in $STORE_DIRECTORY
 
 echo \"-----> Beehive receiving push\"
-sudo /bin/bash $PREFIX/bin/create_dyno.sh create $APP_NAME
+# sudo /bin/bash $PREFIX/bin/create_dyno.sh create $APP_NAME
+sudo /bin/bash $PREFIX/bin/post-received-for.sh $APP_NAME
 "
 
 echo "$STR" > hooks/post-receive

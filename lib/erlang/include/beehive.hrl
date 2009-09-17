@@ -1,3 +1,5 @@
+-define (?ROOT_DIR_PREFIX, "/opt/beehive").
+
 -define (FMT_MSG (Msg, Args), lists:flatten([?MODULE, ?LINE, io_lib:format(Msg, Args)])).
 -define (INFO (Msg, Args),    beehive_logger:info(Msg, Args)).
 -define (DEBUG (Msg, Args),   beehive_logger:debug(Msg, Args)).
