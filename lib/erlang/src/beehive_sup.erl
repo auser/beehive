@@ -16,7 +16,7 @@ init([Type, Args]) ->
   io:format("starting ~p with ~p~n", [?MODULE, Args]),
   
   BeehiveLoggerSup  = { beehive_logger,  {beehive_logger, start_link, [Args]}, permanent,2000,worker,[]},
-  RegistryApp       = { app_registry,  {app_registry_srv, start_link, [Args]}, permanent,2000,worker,[]},
+  RegistryApp       = { app_registry,  {app_registry_app, start, [Type, Args]}, permanent,2000,worker,[]},
 	RouterApp					= { router_app,  {router_app, start, [Type, Args]}, permanent,2000,worker,[]},
   
   FullApplicationList = compile_applications( [

@@ -8,6 +8,7 @@
 
 -module (router_srv).
 -include ("beehive.hrl").
+-include ("beehive_app.hrl").
 -behaviour(gen_cluster).
 
 %% API
@@ -20,17 +21,8 @@
 
 % gen_cluster callback
 -export([handle_join/3, handle_node_joined/3, handle_leave/4]).
-
--record (app, {
-					name,   % Name of the application
-					host,   % Pids that the app lives on
-					port    % Port the application lives on
-				}).	
-				
--record(state, {
-          applications   % Hosted applications
-        }).
         
+-record (state, {}).
 -define(SERVER, ?MODULE).
 
 %%====================================================================
@@ -65,18 +57,8 @@ init(Args) ->
 	
 	StartArgs = get_start_args(Args),
   start_mochiweb(StartArgs),
-  
-  AppDb = ets:new(?MODULE, [bag]),
-	RunningApplications = find_local_applications([]),
-	
-	lists:map(fun(App) -> 
-	  Name = App#app.name,
-	  ets:insert(AppDb, {Name, App}) end, 
-	RunningApplications),
-  
-  {ok, #state{
-    applications = AppDb
-  }}.
+    
+  {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -87,15 +69,6 @@ init(Args) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call({register_application, Name, Host, Port}, _From, State) ->
-  [Reply, State] = handle_register_application(Name, Host, Port, State),
-  {reply, Reply, State};
-handle_call({find_application, AppName}, _From, State) ->
-	Reply = handle_find_application(AppName, State),
-	{reply, Reply, State};
-handle_call({list_local_applications}, _From, State) ->
-  Reply = handle_list_local_applications(State),
-  {reply, Reply, State};
 handle_call(_Request, _From, State) ->
   Reply = ok,
   {reply, Reply, State}.
@@ -169,26 +142,9 @@ handle_leave(LeavingPid, Pidlist, Info, State) ->
 %%====================================================================
 %% HANDLERS
 %%====================================================================
-handle_register_application(Name, Host, Port, State) ->
-  CurrentApps = State#state.applications,
-  NewApp = #app{name = Name, host = Host, port = Port},
-  Reply = ets:insert(CurrentApps, {Name, NewApp}),
-  ?INFO("Ets info: ~p~n", [Name]),
-  [Reply, State].
-  
-handle_find_application(_AppName, _State) ->
-	none.
-	
-handle_list_local_applications(#state{applications = Apps} = _State) ->
-  ?INFO("Applications: ~p~n", [Apps]).
-
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------  
-find_local_applications(#state{applications = Apps} = _State) ->
-  ?INFO("Apps: ~p~n", [Apps]),
-  app_discovery:discover_local_apps().
-
 dispatch_requests(Req) ->
   Path = Req:get(path),
   Action = clean_path(Path),
@@ -196,9 +152,16 @@ dispatch_requests(Req) ->
 
 % HANDLE
 % Handle the requests
+handle("/__beehive", Req) -> Req:ok({"text/html", io_lib:format("<h3>Beehive: ~p</h3>", ["__beehive"])});
+handle("/__beehive/applications", Req) -> 
+  Apps = app_registry_srv:list_applications(),
+  Req:ok({"text/html", io_lib:format("<h3>Beehive: ~p</h3>", [Apps])});
+  
 handle(Path, Req) ->
+  ?INFO("Path not handled: ~p~n", [Path]),
   HostName = get_hostname_from_request(Req),
-	Req:ok({"text/html", io_lib:format("<h3>Not found: ~p ~p</h3>", [HostName, Req:get(headers)])}).
+  RoutePath = ?ROUTER_MODULE:get_path_for(Path, Req),
+	Req:ok({"text/html", io_lib:format("<h3>Not found: ~p ~p ~p</h3>", [HostName, Req:get(headers), RoutePath])}).
 
 start_mochiweb(Args) ->
   [Port] = Args,

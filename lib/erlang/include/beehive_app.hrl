@@ -3,4 +3,4 @@
 -define (DEFAULT_AVERAGE_TIME, 30).
 
 % Type of Router
--define (ROUTER_MODULE, router_srv).
+-define (ROUTER_MODULE, beehive_router).

@@ -12,23 +12,21 @@
 
 %% API
 -export([start_link/0, start_link/1]).
--export ([register_application/1]).
+-export ([find_application/1, register_application/1, list_applications/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {
-          applications = []
-        }).
 -define(SERVER, ?MODULE).
 
 %%====================================================================
 %% API
 %%====================================================================
-register_application(AppDetails) ->
-  gen_server:call({register_application, AppDetails}).
-  
+find_application(AppName) -> gen_server:call(?SERVER, {find_application, AppName}).
+register_application(Args) -> gen_server:call(?SERVER, {register_application, Args}).
+list_applications() -> gen_server:call(?SERVER, {list_local_applications}).
+	
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
@@ -49,12 +47,12 @@ start_link(Args) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([]) ->
-  RunningApplications = find_local_applications(),
+init(_Args) ->
+  process_flag(trap_exit, true),
   
-  {ok, #state{
-    applications = RunningApplications
-  }}.
+	RunningApplications = find_local_applications(),
+  
+  {ok, ets:new(?MODULE,RunningApplications)}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -65,10 +63,12 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call({register_application, AppDetails}, _From, #state{applications = Apps} = State) ->
-  NewState = State#state{applications = lists:append([Apps, [AppDetails]])},
-  {reply, ok, NewState};
-
+handle_call({register_application, Args}, _From, State) ->
+  Reply = handle_register_application(Args, State),
+  {reply, Reply, State};
+handle_call({find_application, AppName}, _From, State) ->
+	Reply = handle_find_application(AppName, State),
+	{reply, Reply, State};
 handle_call({list_local_applications}, _From, State) ->
   Reply = handle_list_local_applications(State),
   {reply, Reply, State};
@@ -111,14 +111,34 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
 
+
 %%====================================================================
 %% HANDLERS
 %%====================================================================
-
-handle_list_local_applications(#state{applications = Apps} = _State) ->
-  ?INFO("Applications: ~p~n", [Apps]).
+handle_register_application(Args, Table) ->
+  Name = proplists:get_value(name, Args),
+  Host = proplists:get_value(host, Args),
+  Port = proplists:get_value(port, Args),
+    
+  % app_registry_client:start_and_link("getbeehive.com", 5001).
+  % TODO: Allow for multiple hosts
+  case ets:lookup(Table, Name) of
+    [] ->
+      ets:insert(Table, {Name, [{host, Host}, {port, Port}]}),
+      {registered, Name};
+    [{Name, _CurrHosts}] ->
+      {already_registered, Name}
+  end.
+  
+handle_find_application(_AppName, _State) ->
+	none.
+	
+handle_list_local_applications(Table) ->
+  ets:tab2list(Table).
 
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------  
-find_local_applications() -> app_discovery:discover_local_apps().
+find_local_applications() ->
+  ?INFO("Apps: ~p~n", [self()]),
+  app_discovery:discover_local_apps().
