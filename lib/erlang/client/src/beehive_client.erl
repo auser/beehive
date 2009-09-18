@@ -1,40 +1,40 @@
 %%%-------------------------------------------------------------------
-%%% File    : app_registry_srv.erl
+%%% File    : beehive_client.erl
 %%% Author  : Ari Lerner
 %%% Description : 
 %%%
-%%% Created :  Tue Sep  1 12:12:32 PDT 2009
+%%% Created :  Fri Sep 18 00:51:55 PDT 2009
 %%%-------------------------------------------------------------------
 
--module (app_registry_srv).
+-module (beehive_client).
 -include ("beehive.hrl").
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, start_link/1]).
--export ([find_application/1, register_application/1, list_applications/0]).
+-export([start_link/1]).
+-export ([register_application/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
+-record(state, {
+        port
+        }).
+        
 -define(SERVER, ?MODULE).
+-define (MAXLINE, 100).
+-define (MAX_ATTEMPTS, 5).
 
 %%====================================================================
 %% API
 %%====================================================================
-find_application(AppName) -> gen_server:call(?SERVER, {find_application, AppName}).
-register_application(Args) -> gen_server:call(?SERVER, {register_application, Args}).
-list_applications() -> gen_server:call(?SERVER, {list_local_applications}).
-	
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-start_link() -> start_link([]).
-
-start_link(Args) ->
-  gen_server:start_link({local, ?SERVER}, ?MODULE, Args, []).
+start_link(Proggie) ->
+  gen_server:start_link({local, ?SERVER}, ?MODULE, Proggie, []).
 
 %%====================================================================
 %% gen_server callbacks
@@ -47,12 +47,17 @@ start_link(Args) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init(_Args) ->
+init([]) ->
   process_flag(trap_exit, true),
   
-	RunningApplications = find_local_applications(),
+  spawn_link(fun() -> connect_to_router(0) end),
   
-  {ok, ets:new(?MODULE,RunningApplications)}.
+  timer:sleep(1000),
+  
+  ExtProg = start_cmd(),
+  ?TRACE("Opening port to: ~p with ~p~n", [ExtProg, ?MODULE]),
+  Port = open_port({spawn, ExtProg}, [stream, {line, ?MAXLINE}]),
+  {ok, #state{port = Port}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -63,15 +68,6 @@ init(_Args) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call({register_application, Args}, _From, State) ->
-  Reply = handle_register_application(Args, State),
-  {reply, Reply, State};
-handle_call({find_application, AppName}, _From, State) ->
-	Reply = handle_find_application(AppName, State),
-	{reply, Reply, State};
-handle_call({list_local_applications}, _From, State) ->
-  Reply = handle_list_local_applications(State),
-  {reply, Reply, State};
 handle_call(_Request, _From, State) ->
   Reply = ok,
   {reply, Reply, State}.
@@ -90,8 +86,12 @@ handle_cast(_Msg, State) ->
 %%                                       {noreply, State, Timeout} |
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
-%%--------------------------------------------------------------------
-handle_info(_Info, State) ->
+%%-------------------------------------------------------------------
+handle_info({'EXIT', Port, Reason}, #state{port = Port} = State) ->
+  ?TRACE("Got an exit: ~p~n", [Reason]),
+  {stop, {port_terminated, Reason}, State};
+handle_info(Info, State) ->
+  ?TRACE("Got info: ~p~n", [Info]),
   {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -101,8 +101,11 @@ handle_info(_Info, State) ->
 %% cleaning up. When it returns, the gen_server terminates with Reason.
 %% The return value is ignored.
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-  ok.
+terminate({port_terminated, _Reason}, #state{port = Port} = _State) ->
+  port_close(Port),
+  ok;
+terminate(_Reason, #state{port = Port} = _State) ->
+  port_close(Port).
 
 %%--------------------------------------------------------------------
 %% Func: code_change(OldVsn, State, Extra) -> {ok, NewState}
@@ -111,34 +114,58 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
 
-
-%%====================================================================
-%% HANDLERS
-%%====================================================================
-handle_register_application(Args, Table) ->
-  Name = proplists:get_value(name, Args),
-  Host = proplists:get_value(host, Args),
-  Port = proplists:get_value(port, Args),
-    
-  % app_registry_client:start_and_link("getbeehive.com", 5001).
-  % TODO: Allow for multiple hosts
-  case ets:lookup(Table, Name) of
-    [] ->
-      ets:insert(Table, {Name, [{host, Host}, {port, Port}]}),
-      {registered, Name};
-    [{Name, _CurrHosts}] ->
-      {already_registered, Name}
-  end.
-  
-handle_find_application(_AppName, _State) ->
-	none.
-	
-handle_list_local_applications(Table) ->
-  ets:tab2list(Table).
-
 %%--------------------------------------------------------------------
 %%% Internal functions
-%%--------------------------------------------------------------------  
-find_local_applications() ->
-  ?INFO("Apps: ~p~n", [self()]),
-  app_discovery:discover_local_apps().
+%%--------------------------------------------------------------------
+
+start_cmd() ->
+  case os:getenv("BEEHIVE_CLIENT_CMD") of
+    false ->
+      case application:get_env(beehive, external_app) of
+        {ok, V} -> V;
+        _ -> "echo"
+      end;
+    V -> V
+  end.
+
+% Register this application
+register_application(Args) ->
+  gen_server:call(app_registry_pid(), {register_application, Args}).
+
+app_registry_pid() ->
+  global:whereis_name(app_registry_srv).
+
+% Router nodes
+router_node() -> get_router_node_from_env().
+
+get_router_node_from_env() ->
+  case os:getenv("ROUTER_NODE") of 
+      false -> localnode(beehive_router);
+      Server -> Server
+  end.
+    
+router_node(Hostname)   ->  case Hostname of
+  H when is_atom(H) -> H;
+  Else -> list_to_atom(Else)
+end.
+
+ping_router() -> 
+  net_adm:ping(router_node()).
+  
+connect_to_router(Attempts) ->  
+  case Attempts > ?MAX_ATTEMPTS of
+    true -> 
+      ?TRACE("Could not connect to the router~n", []);
+    false ->
+      timer:sleep(2000),
+      case ping_router() of
+        pong ->
+          connect_to_router(0);
+        pang -> 
+          ?TRACE("Lost connection with router. Trying to regain connection to ~p~n", [router_node()]),
+          connect_to_router(Attempts+1)
+      end
+  end.
+  
+localnode(Name) ->
+    list_to_atom(lists:append(atom_to_list(Name), lists:dropwhile(fun (E) -> E =/= $@ end, atom_to_list(node())))).

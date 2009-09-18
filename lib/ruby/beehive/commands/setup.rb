@@ -12,6 +12,7 @@ module Beehive
         end
         
         @script_dir = Beehive.lib_dir + "/shell"
+        @erlang_dir = Beehive.lib_dir + "/erlang"
         
         # Build the directories
         build_directory_structure
@@ -29,10 +30,11 @@ module Beehive
           FileUtils.mkdir_p tmp_dir/dir
         end
         FileUtils.cp_r @script_dir/".", tmp_dir/"bin"
+        FileUtils.cp_r @erlang_dir/".", tmp_dir/"src"/"erlang"/"client"
       end
       
       def required_directories
-        %w(bin mnt repos squashed_fs src tmp logs)
+        %w(bin mnt repos squashed_fs src src/erlang tmp logs)
       end
       
       def setup_ssh_login_with_keypair_if_needed

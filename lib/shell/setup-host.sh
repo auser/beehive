@@ -52,3 +52,5 @@ sudo apt-get update;
 sudo apt-get install -y $required_packages;
 sudo apt-get install -y $web_packages;
 echo "OK"
+
+echo "Installing erlang client"
