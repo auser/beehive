@@ -1,4 +1,4 @@
-%% script generated at {2009,11,3} {12,56,54}
+%% script generated at {2009,11,3} {13,15,47}
 {script,
     {"router","0.1"},
     [{preLoaded,
@@ -43,14 +43,14 @@
           rb_format_supp,release_handler,release_handler_1,sasl,sasl_report,
           sasl_report_file_h,sasl_report_tty_h,systools,systools_lib,
           systools_make,systools_rc,systools_relup]},
-     {path,["/Users/auser/Development/erlang/mine/router/ebin/."]},
+     {path,["/Users/auser/Development/ruby/mine/beehive/lib/erlang/ebin/."]},
      {primLoad,[app_srv,http_client_srv]},
      {progress,modules_loaded},
      {path,
          ["/opt/local/lib/erlang/lib/kernel-2.13.3/ebin",
           "/opt/local/lib/erlang/lib/stdlib-1.16.3/ebin",
           "/opt/local/lib/erlang/lib/sasl-2.1.7/ebin",
-          "/Users/auser/Development/erlang/mine/router/ebin/."]},
+          "/Users/auser/Development/ruby/mine/beehive/lib/erlang/ebin/."]},
      {kernelProcess,heart,{heart,start,[]}},
      {kernelProcess,error_logger,{error_logger,start_link,[]}},
      {kernelProcess,application_controller,
