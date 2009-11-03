@@ -218,9 +218,7 @@ handle_cast({Pid, remote_error, Backend, Error}, State) ->
 handle_cast({Pid, remote_done, Backend}, State) ->
   unlink(Pid),
   NewBe = mark_backend_ready(Pid, Backend),
-  % spawn(fun() -> 
-    maybe_handle_next_waiting_client(NewBe, State),
-  % end),
+  spawn(fun() -> maybe_handle_next_waiting_client(NewBe, State) end),
   {noreply, State};
 handle_cast({update_backend_status, Backend, Status}, State) ->
   save_backend(Backend#backend{status = Status}),
@@ -410,6 +408,7 @@ add_backends_from_config() ->
       end
   end.
 
+% Mark the backend instance as pending
 mark_backend_pending(Pid, #backend{pidlist = PidList} = Backend) ->
   save_backend(Backend#backend{
     status = ready,
@@ -436,7 +435,7 @@ mark_backend_ready(Pid, #backend{pidlist = PidList, act_time = CurrActTime, act_
     act_count = ActCount + 1,
     pidlist = lists:keydelete(Pid, 2, PidList)
   },
-  ?EVENT_MANAGER:notify({app_ready, NewBackend}),
+  ?EVENT_MANAGER:notify({backend, ready, NewBackend}),
   save_backend(NewBackend).
 % Mark an instance as broken
 mark_backend_broken(Pid, ErrorStatus, #backend{pidlist = PidList} = Backend) ->
@@ -465,11 +464,12 @@ delete_backend(#backend{name = Hostname} = Backend) ->
   OtherBackends = delete_backend_from_list(Backend, CurrentBackends),
   apps:store(backend, Hostname, OtherBackends).
 
+% Delete a backend from the a list
 delete_backend_from_list(Backend, CurrentBackends) ->
-  lists:filter(fun(B) ->
-      backend_is_same_as(B, Backend) == false
-    end, CurrentBackends).
+  lists:filter(fun(B) -> backend_is_same_as(B, Backend) == false end, CurrentBackends).
     
+% There must be a bette way to do this, but... this checks to see if the name, host and port
+% of the two backends are equal
 backend_is_same_as(#backend{name = Name, port = Port, host = Host} = _Backend, 
                     #backend{name = OtherName, port = OtherPort, host = OtherHost} = _OtherBackend) ->
   case Name == OtherName of

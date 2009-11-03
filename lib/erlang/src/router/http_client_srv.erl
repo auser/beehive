@@ -34,6 +34,7 @@ start_link() ->
   printer:banner(Settings),
   
   mochiweb_http:start([ {port, Port},
+                        {max, 1000000},
                         {loop, fun dispatch_requests/1}]).
 
 dispatch_requests(Req) ->

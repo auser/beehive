@@ -17,9 +17,7 @@
           store/3,
           lookup/2,
           delete/2,
-          filter/2,
           all/1,
-          map/2,
           test/0
         ]).
 
@@ -34,9 +32,7 @@ store(Name, Key, Val) -> gen_server:call(Name, {store, Key, Val}).
 lookup(Name, Key) -> gen_server:call(Name, {lookup, Key}).
 delete(Name, Key) -> gen_server:call(Name, {delete, Key}).
 stop(Name)  -> gen_server:cast(Name, stop).
-filter(Name, Fun) -> gen_server:call(Name, {filter, Fun}).
 all(Name) -> gen_server:call(Name, {all}).
-map(Name, Fun) -> gen_server:call(Name, {map, Fun}).
 
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}

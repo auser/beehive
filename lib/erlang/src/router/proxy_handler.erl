@@ -59,7 +59,7 @@ engage_backend(ClientSock, BalancerPid, Hostname, Req, {ok, #backend{host = Host
   end;
 engage_backend(_ClientSock, _BalancerPid, Hostname, Req, ?BACKEND_TIMEOUT_MSG) ->
   ?LOG(error, "Error getting backend because of timeout: ~p", [Hostname]),
-  Req:respond({404, [{"Content-Type", "text/html"}], ?APP_ERROR("Something went terribly wrong")}),
+  Req:respond({404, [{"Content-Type", "text/html"}], ?APP_ERROR("Something went wrong: Timeout on backend")}),
   exit(error);
 engage_backend(ClientSock, _BalancerPid, Hostname, _Req, {error, Reason}) ->
   ?LOG(error, "Backend for ~p was not found: ~p", [Hostname, Reason]),
@@ -82,7 +82,7 @@ proxy_loop(CSock, SSock, #state{request = Req} = State) ->
       % Received info from the server
       send(CSock, Data),
       inet:setopts(SSock, [{active, false}, {packet, raw}]),
-      case gen_tcp:recv(SSock, 2, 500) of
+      case gen_tcp:recv(SSock, 1024, 500) of
         {ok, D} ->
           ?LOG(info, "More on the socket: ~p", [D]),
           send(CSock, D),
@@ -107,16 +107,14 @@ proxy_loop(CSock, SSock, #state{request = Req} = State) ->
   	  terminate(normal, State);
   	{tcp_error, SSock} ->
       gen_tcp:close(CSock),
-  	  ?LOG(info, "~s:proxy_loop: socket ~w ERROR\n", [?MODULE, SSock]),
       terminate(normal, State);
     ?BACKEND_TIMEOUT_MSG ->
       Req:error(404, [], []),
       terminate(timeout, State);
   	Msg ->
-	    ?LOG(info, "~s:proxy_loop: got ~w\n", [?MODULE, Msg]),
+	    ?LOG(info, "~s:proxy_loop: unexpectedly recieved ~w\n", [?MODULE, Msg]),
 	    proxy_loop(CSock, SSock, State)
   after 60000 ->
-    ?LOG(info, "~s:proxy_loop: TIMEOUT after ~w\n", [?MODULE, State]),
     terminate(normal, State)
   end.
 
