@@ -50,9 +50,9 @@ handle("beehive", Req) ->
 
 handle(Subdomain, Req) ->  
   ClientSock = Req:get(socket),
-  BalancerPid = whereis(apps),    % TODO: Fix this... please
+  BalancerPid = whereis(apps),    % TODO: Fix this... please (go distributed)
   
-  {_, ProxyPid} = http_client_srv_sup:start_client(Req),%spawn_link(?PROXY_HANDLER, proxy, [ClientSock]),
+  {_, ProxyPid} = http_client_srv_sup:start_client(Req), % spawn_link(?PROXY_HANDLER, proxy, [ClientSock]),
   gen_tcp:controlling_process(ClientSock, ProxyPid),
   
   ProxyPid ! {start, Subdomain, BalancerPid, self()}.

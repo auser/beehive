@@ -38,7 +38,7 @@ proxy_init(Req) ->
       engage_backend(ClientSock, BalancerPid, Subdomain, Req, app_srv:get_backend(Subdomain))
   after 30000 ->
     ?LOG(error, "Proxy is b0rked because of timeout", []),
-    Req:respond(400, [], []),
+    Req:respond({400, [], []}),
     exit(error)
   end.
 

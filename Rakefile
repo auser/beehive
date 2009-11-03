@@ -37,9 +37,6 @@ rescue LoadError
   end
 end
 
-
-
-
 task :default => :test
 
 begin
@@ -48,5 +45,15 @@ begin
 rescue LoadError
   task :yardoc do
     abort "RCov is not available. In order to run rcov, you must: sudo gem install spicycode-rcov"
+  end
+end
+
+namespace :erl do
+  desc "Build erlang"
+  task :build do
+    puts `cd lib/erlang && make`
+  end
+  task :run => [:build] do
+    Kernel.system "cd lib/erlang/scripts && ./start_router.sh"
   end
 end
