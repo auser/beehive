@@ -18,6 +18,7 @@
 -define (APP_DB, apps_db).
 -define (BACKEND_DB, backend_db).
 -define (WAIT_DB, waiting_db).
+-define (PID2BACKEND_DB, pid_to_backend_db).
 
 % EVENTS
 -define (EVENT_MANAGER, event_manager).
@@ -54,11 +55,8 @@
   act_time      = 0,
   status        = ready,    % pending | ready | broken
   maxconn       = 10,
-  act_count     = 0,
-  pidlist       = []
+  act_count     = 0
 }).
-
--define (backend_fields, record_info(fields, backend)).
 
 % Application configuration
 -record (app, {

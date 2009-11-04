@@ -138,6 +138,7 @@ init([LocalPort, ConnTimeout, ActTimeout]) ->
   ?LOG(info, "Started ~p:start_link(~p)", [?KVSTORE, ?BACKEND_DB]),
   ?KVSTORE:start_link(?BACKEND_DB),
   ?QSTORE:start_link(?WAIT_DB),
+  ?QSTORE:start_link(?PID2BACKEND_DB),
 
   add_backends_from_config(),
 
