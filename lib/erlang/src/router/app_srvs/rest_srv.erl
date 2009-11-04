@@ -143,7 +143,7 @@ format_proxy_state() ->
    [["<td><b>", X, "</b></td>"] || X <- ["Name", "Host", "Port", "Status", "MaxConn", 
       "TotalActive", "PendConn", "ActConn", "LastErr",
       "LastErrTime", "ActiveCount",
-      "ActiveTime", "Pending clients"]],
+      "ActiveTime", "PendingClients"]],
    "\n",
    format_backend_list(Backends),
    "</table>\n"
@@ -162,7 +162,8 @@ format_backend_list([B|Bs], Acc) ->
       empty -> {[], []};
       E -> E
     end,
-    {Active, Pending} = count_reqs(B),
+    PidList = apps:lookup(backend2pid, B#backend.name),
+    {Active, Pending} = count_reqs(PidList),
     format_backend_list(Bs, [[
        "<tr> ",
        io_lib:format("<td> ~s </td>", [B#backend.name]),
@@ -170,7 +171,7 @@ format_backend_list([B|Bs], Acc) ->
        io_lib:format("<td> ~w </td>", [B#backend.port]),
        io_lib:format("<td> ~w </td>", [B#backend.status]),
        io_lib:format("<td> ~w </td>", [B#backend.maxconn]),
-       io_lib:format("<td> ~w </td>", [length(B#backend.pidlist)]),
+       io_lib:format("<td> ~w </td>", [length(PidList)]),
        io_lib:format("<td> ~w </td>", [length(Pending)]),
        io_lib:format("<td> ~w </td>", [length(Active)]),
        io_lib:format("<td> ~w </td>", [B#backend.lasterr]),
@@ -181,7 +182,7 @@ format_backend_list([B|Bs], Acc) ->
        "</tr>\n"
       ]|Acc]).
       
-count_reqs(Backend) ->
-  Active = lists:filter(fun({Status, _, _} = _Item) -> Status == active end, Backend#backend.pidlist),
-  Pending = lists:filter(fun({Status, _, _} = _Item) -> Status == pending end, Backend#backend.pidlist),
+count_reqs(Pidlist) ->
+  Active = lists:filter(fun({Status, _, _} = _Item) -> Status == active end, Pidlist),
+  Pending = lists:filter(fun({Status, _, _} = _Item) -> Status == pending end, Pidlist),
   {Active, Pending}.

@@ -137,8 +137,8 @@ init([LocalPort, ConnTimeout, ActTimeout]) ->
   
   ?LOG(info, "Started ~p:start_link(~p)", [?KVSTORE, ?BACKEND_DB]),
   ?KVSTORE:start_link(?BACKEND_DB),
+  ?KVSTORE:start_link(?BACKEND2PID_DB),
   ?QSTORE:start_link(?WAIT_DB),
-  ?QSTORE:start_link(?PID2BACKEND_DB),
 
   add_backends_from_config(),
 
@@ -296,10 +296,11 @@ choose_backend(Hostname, FromPid) ->
   end.
 
 choose_from_backends([], _Hostname, _FromPid) -> ?MUST_WAIT_MSG;
-choose_from_backends([Backend|Rest], Hostname, FromPid) ->
+choose_from_backends([#backend{name = Name} = Backend|Rest], Hostname, FromPid) ->
+  PidList = apps:lookup(backend2pid, Name),
   if
     Backend#backend.status =:= ready
-      andalso (length(Backend#backend.pidlist) < Backend#backend.maxconn)
+      andalso (length(PidList) < Backend#backend.maxconn)
       andalso Backend#backend.name =:= Hostname ->
         NewBackend = mark_backend_pending(FromPid, Backend),
         {ok, NewBackend};
@@ -360,7 +361,6 @@ sane_be(B) ->
   	B#backend.maxconn =< 0 -> false;
   	B#backend.act_count =/= 0 -> false;
   	B#backend.act_time =/= 0 -> false;
-  	B#backend.pidlist =/= [] -> false;
   	true -> true
   end.
 
@@ -412,44 +412,64 @@ add_backends_from_config() ->
   end.
 
 % Mark the backend instance as pending
-mark_backend_pending(Pid, #backend{pidlist = PidList} = Backend) ->
-  save_backend(Backend#backend{
-    status = ready,
-    pidlist = [{pending, Pid, date_util:now_to_seconds()}|PidList]
-  }).
+mark_backend_pending(Pid, #backend{name = Name} = Backend) ->
+  PidList = apps:lookup(backend2pid, Name),
+  apps:store(backend2pid, Backend, [{pending, Pid, date_util:now_to_seconds()}|PidList]),
+  save_backend(Backend#backend{status = ready}).
 % Mark this instance as busy
-mark_backend_busy(Pid, #backend{pidlist = OrigPidlist, maxconn = MaxConn} = Backend)   -> 
+mark_backend_busy(Pid, #backend{maxconn = MaxConn, name = Name} = Backend)   -> 
+  OrigPidlist = apps:lookup(backend2pid, Name),
   Status = if 
     length(OrigPidlist) > MaxConn -> busy;
     true -> ready
   end,
   Pidlist = lists:keyreplace(Pid, 2, OrigPidlist, {active, Pid, date_util:now_to_seconds()}),
-  save_backend(Backend#backend{
-    status = Status,
-    pidlist = Pidlist
-  }).
+  % ?LOG(info, "mark_backend_busy pidlist: ~p", [Pidlist]),
+  apps:store(backend2pid, Backend, Pidlist),
+  save_backend(Backend#backend{status = Status}).
+  
 % Mark this instance as ready
-mark_backend_ready(Pid, #backend{pidlist = PidList, act_time = CurrActTime, act_count = ActCount} = Backend)  -> 
-  {value, {_, _, StartTime}} = lists:keysearch(Pid, 2, PidList),
-  ActTime = date_util:now_to_seconds() - StartTime,
+mark_backend_ready(Pid, #backend{name = Name, act_time = CurrActTime, act_count = ActCount} = Backend)  -> 
+  PidList = apps:lookup(backend2pid, Name),
+  ActTime = case lists:keysearch(Pid, 2, PidList) of
+    {value, {_, _, T}} -> CurrActTime + (date_util:now_to_seconds() - T);
+    _ -> CurrActTime
+  end,
   NewBackend = Backend#backend{
     status = ready,
-    act_time = CurrActTime + ActTime,
-    act_count = ActCount + 1,
-    pidlist = lists:keydelete(Pid, 2, PidList)
+    act_time = ActTime,
+    act_count = ActCount + 1
   },
   ?EVENT_MANAGER:notify({backend, ready, NewBackend}),
+  NewPidlist = lists:keydelete(Pid, 2, PidList),
+  % ?LOG(info, "mark_backend_ready pidlist: ~p", [NewPidlist]),
+  apps:store(backend2pid, Backend, NewPidlist),
   save_backend(NewBackend).
+  
 % Mark an instance as broken
-mark_backend_broken(Pid, ErrorStatus, #backend{pidlist = PidList} = Backend) ->
+mark_backend_broken(Pid, ErrorStatus, #backend{name = Name} = Backend) ->
+  PidList = apps:lookup(backend2pid, Name),
   ?LOG(error, "update_backend: Pid ~w for host ~s ~w, error status ~w\n", [Pid, Backend#backend.name, Backend#backend.port, ErrorStatus]),
+  NewPidlist = lists:keydelete(Pid, 2, PidList),
+  apps:store(backend2pid, Backend, NewPidlist),
   save_backend(Backend#backend{
     status = down, 
     lasterr = ErrorStatus,
-    lasterr_time = date_util:now_to_seconds(),
-	  pidlist = lists:keydelete(Pid, 2, PidList)
+    lasterr_time = date_util:now_to_seconds()
 	}).
 
+% Save pid tuple {status, Pid, StartTime}
+save_pid({down, Pid, _} = PidTuple, Backend) ->
+  CurrentPidList = apps:lookup(backend2pid, Backend#backend.name),
+  NewPidlist = lists:keydelete(Pid, 2, CurrentPidList),
+  apps:store(backend2pid, Backend, [NewPidlist]),
+  apps:delete(pid, Pid);
+  
+save_pid({_, Pid, _} = PidTuple, Backend) ->
+  CurrentPidList = apps:lookup(backend2pid, Backend#backend.name),
+  apps:store(backend2pid, Backend, [PidTuple|CurrentPidList]),
+  apps:store(pid, Pid, Backend).
+  
 % Save the backend into the backends lookup
 save_backend(#backend{name = Hostname} = Backend) ->
   NewBackend = Backend#backend{lastresp_time = date_util:now_to_seconds()},

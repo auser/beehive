@@ -19,6 +19,7 @@
 -define (BACKEND_DB, backend_db).
 -define (WAIT_DB, waiting_db).
 -define (PID2BACKEND_DB, pid_to_backend_db).
+-define (BACKEND2PID_DB, backend_to_pid_db).
 
 % EVENTS
 -define (EVENT_MANAGER, event_manager).

@@ -81,7 +81,7 @@ handle_info(_Info, State) ->
 %% do any necessary cleaning up.
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{filename = FileName, log_handle = LH} = _State) ->
-  io:format("Closing logs: ~p", [FileName]),
+  io:format("Closing logs: ~p~n", [FileName]),
   disk_log:close(LH),
   ok.
 
