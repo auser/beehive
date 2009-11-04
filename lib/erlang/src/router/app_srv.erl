@@ -45,7 +45,7 @@
 
 start_link() ->
   LocalPort   = apps:search_for_application_value(client_port, 8080, local_port),
-  ConnTimeout = apps:search_for_application_value(client_port, 1*1000, local_port),
+  ConnTimeout = apps:search_for_application_value(client_port, 2*1000, local_port),
   ActTimeout  = apps:search_for_application_value(client_port, 120*1000, local_port),
   
   start_link(LocalPort, ConnTimeout, ActTimeout).
@@ -237,13 +237,14 @@ handle_info({'EXIT', Pid, shutdown}, State) when Pid == State#proxy_state.accept
   ?LOG(error, "~s:handle_info: acceptor pid ~w shutdown\n", [?MODULE, Pid]),
   {stop, normal, State};
 handle_info({'EXIT', Pid, Reason}, State) ->
-  unlink(Pid),
   case State#proxy_state.acceptor of
 	  Pid ->
 	    %% Acceptor died but not because of shutdown request.
 	    ?LOG(info, "~s:handle_info: acceptor pid ~w died, reason = ~w\n", [?MODULE, Pid, Reason]),
 	    {stop, {acceptor_failed, Pid, Reason}, State};
 	  _ ->
+	    ?LOG(info, "Something exited: ~p because: ~p", [Pid, Reason]),
+      unlink(Pid),
       {noreply, State}
   end;
 handle_info({check_waiter_timeouts}, State) ->
@@ -334,6 +335,7 @@ maybe_handle_next_waiting_client(#backend{name = Name} = Backend, State) ->
   TOTime = date_util:now_to_seconds() - (State#proxy_state.conn_timeout / 1000),
   case ?QSTORE:pop(?WAIT_DB, Name) of
     empty -> ok;
+    % If the request was made at conn_timeout seconds ago
     {value, {_Hostname, From, _Pid, InsertTime}} when InsertTime < TOTime ->
       gen_server:reply(From, ?BACKEND_TIMEOUT_MSG),
       maybe_handle_next_waiting_client(Backend, State);

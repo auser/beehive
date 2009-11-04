@@ -36,7 +36,10 @@ proxy_init(Req) ->
       ClientSock = Req:get(socket),
       inet:setopts(ClientSock, [{packet, http}]),
       engage_backend(ClientSock, BalancerPid, Subdomain, Req, app_srv:get_backend(Subdomain))
-  after 30000 ->
+  after 10000 ->
+    % We only give 10 seconds to the proxy pid to be given control of the socket
+    % this is MORE than enough time for the socket to be given a chance to prepare
+    % to be handled by the proxy accept request. It should be milliseconds
     ?LOG(error, "Proxy is b0rked because of timeout", []),
     Req:respond({400, [], []}),
     exit(error)
