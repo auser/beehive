@@ -35,7 +35,7 @@ proxy_init(Req) ->
     {start, Subdomain, BalancerPid, _From} ->
       ClientSock = Req:get(socket),
       inet:setopts(ClientSock, [{packet, http}]),
-      engage_backend(ClientSock, BalancerPid, Subdomain, Req, app_srv:get_backend(Subdomain))
+      engage_backend(ClientSock, BalancerPid, Subdomain, Req, app_srv:get_backend(self(), Subdomain))
   after 10000 ->
     % We only give 10 seconds to the proxy pid to be given control of the socket
     % this is MORE than enough time for the socket to be given a chance to prepare
@@ -58,7 +58,7 @@ engage_backend(ClientSock, BalancerPid, Hostname, Req, {ok, #backend{host = Host
     Error ->
       ?LOG(error, "Connection to remote TCP server: ~p:~p ~p", [Host, Port, Error]),
       app_srv:remote_error(Backend, Error),
-      engage_backend(ClientSock, BalancerPid, Hostname, Req, app_srv:get_backend(Hostname))
+      engage_backend(ClientSock, BalancerPid, Hostname, Req, app_srv:get_backend(self(), Hostname))
   end;
 engage_backend(_ClientSock, _BalancerPid, Hostname, Req, ?BACKEND_TIMEOUT_MSG) ->
   ?LOG(error, "Error getting backend because of timeout: ~p", [Hostname]),

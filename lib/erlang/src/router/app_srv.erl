@@ -20,7 +20,7 @@
   start_link/1, 
   start_link/3
 ]).
--export([ get_backend/1, 
+-export([ get_backend/2, 
           remote_ok/2, 
           remote_error/2,
           remote_done/2,
@@ -45,7 +45,7 @@
 
 start_link() ->
   LocalPort   = apps:search_for_application_value(client_port, 8080, local_port),
-  ConnTimeout = apps:search_for_application_value(client_port, 2*1000, local_port),
+  ConnTimeout = apps:search_for_application_value(client_port, 5*1000, local_port),
   ActTimeout  = apps:search_for_application_value(client_port, 120*1000, local_port),
   
   start_link(LocalPort, ConnTimeout, ActTimeout).
@@ -59,8 +59,8 @@ start_link(LocalPort, ConnTimeout, ActTimeout) ->
   gen_server:start_link({local, ?MODULE}, ?MODULE, [LocalPort, ConnTimeout, ActTimeout], []).
 
 %% Choose an available back-end host
-get_backend(Hostname) ->
-  gen_server:call(?MODULE, {self(), get_backend, Hostname}).
+get_backend(Pid, Hostname) ->
+  gen_server:call(?MODULE, {Pid, get_backend, Hostname}).
 
 %% Tell the balancer that our assigned back-end is OK.
 %% Note that we don't pass the hostname back to the balancer.  That's
@@ -138,6 +138,7 @@ init([LocalPort, ConnTimeout, ActTimeout]) ->
   ?LOG(info, "Started ~p:start_link(~p)", [?KVSTORE, ?BACKEND_DB]),
   ?KVSTORE:start_link(?BACKEND_DB),
   ?KVSTORE:start_link(?BACKEND2PID_DB),
+  ?KVSTORE:start_link(?PID2BACKEND_DB),
   ?QSTORE:start_link(?WAIT_DB),
 
   add_backends_from_config(),
@@ -165,7 +166,8 @@ init([LocalPort, ConnTimeout, ActTimeout]) ->
 %%----------------------------------------------------------------------
 handle_call({Pid, get_backend, Hostname}, From, State) ->
   case choose_backend(Hostname, From, Pid) of
-	  ?MUST_WAIT_MSG -> {noreply, State};
+	  ?MUST_WAIT_MSG -> 
+	    {noreply, State};
 	  {ok, Backend} -> {reply, {ok, Backend}, State};
 	  {error, Reason} -> {reply, {error, Reason}, State};
 	  E ->
@@ -217,9 +219,7 @@ handle_cast({Pid, remote_error, Backend, Error}, State) ->
   mark_backend_broken(Pid, Error, Backend),
   {noreply, State};
 handle_cast({Pid, remote_done, Backend}, State) ->
-  unlink(Pid),
-  NewBe = mark_backend_ready(Pid, Backend),
-  spawn(fun() -> maybe_handle_next_waiting_client(NewBe, State) end),
+  handle_remote_done(Pid, Backend, State),
   {noreply, State};
 handle_cast({update_backend_status, Backend, Status}, State) ->
   save_backend(Backend#backend{status = Status}),
@@ -244,8 +244,11 @@ handle_info({'EXIT', Pid, Reason}, State) ->
 	    ?LOG(info, "~s:handle_info: acceptor pid ~w died, reason = ~w\n", [?MODULE, Pid, Reason]),
 	    {stop, {acceptor_failed, Pid, Reason}, State};
 	  _ ->
-	    ?LOG(info, "Something exited: ~p because: ~p", [Pid, Reason]),
-      unlink(Pid),
+	    case apps:lookup(pid, Pid) of
+	      Backend when is_record(Backend, backend) ->
+  	      handle_remote_done(Pid, Backend, State);
+  	    _ -> ok
+	    end,
       {noreply, State}
   end;
 handle_info({check_waiter_timeouts}, State) ->
@@ -275,6 +278,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%----------------------------------------------------------------------
 %%% Internal functions
 %%%----------------------------------------------------------------------
+
+handle_remote_done(Pid, Backend, State) ->
+  unlink(Pid),
+  NewBe = mark_backend_ready(Pid, Backend),
+  maybe_handle_next_waiting_client(NewBe, State).
 
 choose_backend(Hostname, From, FromPid) ->
   case choose_backend(Hostname, FromPid) of
@@ -341,13 +349,13 @@ maybe_handle_next_waiting_client(#backend{name = Name} = Backend, State) ->
     {value, {_Hostname, From, _Pid, InsertTime}} when InsertTime < TOTime ->
       gen_server:reply(From, ?BACKEND_TIMEOUT_MSG),
       maybe_handle_next_waiting_client(Backend, State);
-    {value, {Hostname, From, Pid, _InsertTime} = Item} ->
+    {value, {Hostname, From, Pid, _InsertTime}} ->
       case choose_backend(Hostname, From, Pid) of
-        ?MUST_WAIT_MSG -> 
-          ?QSTORE:push(?WAIT_DB, Hostname, Item),
-          ok; % Clearly we are not ready for another backend connection request. :(
-        {ok, B} ->
-          gen_server:reply(From, {ok, B})
+        % Clearly we are not ready for another backend connection request. :(
+        % choose_backend puts the request in the pending queue, so we don't have
+        % to take care of that here
+        ?MUST_WAIT_MSG -> ok;
+        {ok, B} -> gen_server:reply(From, {ok, B})
       end
   end.
   
@@ -412,10 +420,11 @@ add_backends_from_config() ->
   end.
 
 % Mark the backend instance as pending
-mark_backend_pending(Pid, #backend{name = Name} = Backend) ->
-  PidList = apps:lookup(backend2pid, Name),
-  apps:store(backend2pid, Backend, [{pending, Pid, date_util:now_to_seconds()}|PidList]),
+mark_backend_pending(Pid, Backend) ->
+  link(Pid),
+  save_pid({pending, Pid, date_util:now_to_seconds()}, Backend),
   save_backend(Backend#backend{status = ready}).
+  
 % Mark this instance as busy
 mark_backend_busy(Pid, #backend{maxconn = MaxConn, name = Name} = Backend)   -> 
   OrigPidlist = apps:lookup(backend2pid, Name),
@@ -423,16 +432,13 @@ mark_backend_busy(Pid, #backend{maxconn = MaxConn, name = Name} = Backend)   ->
     length(OrigPidlist) > MaxConn -> busy;
     true -> ready
   end,
-  Pidlist = lists:keyreplace(Pid, 2, OrigPidlist, {active, Pid, date_util:now_to_seconds()}),
-  % ?LOG(info, "mark_backend_busy pidlist: ~p", [Pidlist]),
-  apps:store(backend2pid, Backend, Pidlist),
+  save_pid({active, Pid, whatever}, Backend),
   save_backend(Backend#backend{status = Status}).
   
 % Mark this instance as ready
-mark_backend_ready(Pid, #backend{name = Name, act_time = CurrActTime, act_count = ActCount} = Backend)  -> 
-  PidList = apps:lookup(backend2pid, Name),
-  ActTime = case lists:keysearch(Pid, 2, PidList) of
-    {value, {_, _, T}} -> CurrActTime + (date_util:now_to_seconds() - T);
+mark_backend_ready(Pid, #backend{act_time = CurrActTime, act_count = ActCount} = Backend)  -> 
+  ActTime = case apps:lookup(pid, Backend) of
+    {_, _, T} -> CurrActTime + (date_util:now_to_seconds() - T);
     _ -> CurrActTime
   end,
   NewBackend = Backend#backend{
@@ -441,9 +447,7 @@ mark_backend_ready(Pid, #backend{name = Name, act_time = CurrActTime, act_count 
     act_count = ActCount + 1
   },
   ?EVENT_MANAGER:notify({backend, ready, NewBackend}),
-  NewPidlist = lists:keydelete(Pid, 2, PidList),
-  % ?LOG(info, "mark_backend_ready pidlist: ~p", [NewPidlist]),
-  apps:store(backend2pid, Backend, NewPidlist),
+  save_pid({down, Pid, time}, NewBackend),
   save_backend(NewBackend).
   
 % Mark an instance as broken
@@ -459,16 +463,27 @@ mark_backend_broken(Pid, ErrorStatus, #backend{name = Name} = Backend) ->
 	}).
 
 % Save pid tuple {status, Pid, StartTime}
-save_pid({down, Pid, _} = PidTuple, Backend) ->
+save_pid({pending, Pid, _} = PidTuple, Backend) ->
+  PidList = apps:lookup(backend2pid, Backend#backend.name),
+  apps:store(backend2pid, Backend, lists:flatten([PidTuple|PidList])),
+  apps:store(pid, Pid, Backend);
+  
+save_pid({down, Pid, _} = _PidTuple, Backend) ->
   CurrentPidList = apps:lookup(backend2pid, Backend#backend.name),
   NewPidlist = lists:keydelete(Pid, 2, CurrentPidList),
-  apps:store(backend2pid, Backend, [NewPidlist]),
-  apps:delete(pid, Pid);
-  
-save_pid({_, Pid, _} = PidTuple, Backend) ->
-  CurrentPidList = apps:lookup(backend2pid, Backend#backend.name),
-  apps:store(backend2pid, Backend, [PidTuple|CurrentPidList]),
-  apps:store(pid, Pid, Backend).
+  apps:store(backend2pid, Backend, NewPidlist);
+
+save_pid({active, Pid, _} = _PidTuple, Backend) ->
+  OrigPidlist = apps:lookup(backend2pid, Backend#backend.name),
+  PidTuple = case lists:keysearch(Pid, 2, OrigPidlist) of
+    {value, {_, Pid, T}} -> 
+      apps:store(pid, Pid, Backend),
+      {active, Pid, T};
+    _ ->
+      {active, Pid, date_util:now_to_seconds()}
+  end,
+  Pidlist = lists:keyreplace(Pid, 2, OrigPidlist, PidTuple),
+  apps:store(backend2pid, Backend, Pidlist).
   
 % Save the backend into the backends lookup
 save_backend(#backend{name = Hostname} = Backend) ->
