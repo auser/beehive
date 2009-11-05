@@ -33,11 +33,17 @@ start_link(Req) ->
 
 proxy_init(Req) ->
   receive
-    {start, Subdomain, BalancerPid, ClientSock} ->
+    {start, ClientSock, BalancerPid} ->
+      link(BalancerPid),
       ?LOG(info, "port_info in ~p: ~p", [?MODULE, erlang:port_info(ClientSock)]),
       inet:setopts(ClientSock, [{packet, http}]),
+      {Request, Headers, Body} = request(ClientSock, []),
+      Subdomain = parse_subdomain(proplists:get_value('Host', Headers)),
       send(ClientSock, <<"hi">>),
-      engage_backend(ClientSock, BalancerPid, Subdomain, Req, app_srv:get_backend(self(), Subdomain))
+      engage_backend(ClientSock, BalancerPid, Subdomain, Req, app_srv:get_backend(self(), Subdomain));
+    E ->
+      ?LOG(info, "Received: ~p", [E]),
+      proxy_init(Req)
   after 10000 ->
     % We only give 10 seconds to the proxy pid to be given control of the socket
     % this is MORE than enough time for the socket to be given a chance to prepare
@@ -176,3 +182,41 @@ headers_to_list(Headers) ->
 % Send data across a socket
 send(Sock, Data) ->
   gen_tcp:send(Sock, Data).
+  
+% HTTP
+parse_subdomain(HostName) ->
+  StrippedHostname = lists:takewhile(fun (C) -> C =/= $: end, HostName),
+  lists:takewhile(fun (C) -> C =/= $. end, StrippedHostname).
+
+request(Socket, Body) ->
+    case gen_tcp:recv(Socket, 0, ?IDLE_TIMEOUT) of
+        {ok, {http_request, Method, Path, Version}} ->
+            headers(Socket, {Method, Path, Version}, [], Body, 0);
+        {error, {http_error, "\r\n"}} ->
+            request(Socket, Body);
+        {error, {http_error, "\n"}} ->
+            request(Socket, Body);
+        _Other ->
+            gen_tcp:close(Socket),
+            exit(normal)
+    end.
+
+headers(Socket, Request, Headers, _Body, ?MAX_HEADERS) ->
+  %% Too many headers sent, bad request.
+  inet:setopts(Socket, [{packet, raw}]),
+  Req = mochiweb:new_request({Socket, Request, lists:reverse(Headers)}),
+  Req:respond({400, [], []}),
+  gen_tcp:close(Socket),
+  exit(normal);
+
+headers(Socket, Request, Headers, Body, HeaderCount) ->
+  case gen_tcp:recv(Socket, 0, ?IDLE_TIMEOUT) of
+    {ok, http_eoh} ->
+      inet:setopts(Socket, [{packet, raw}]),
+      {Request, Headers, Body};
+    {ok, {http_header, _, Name, _, Value}} ->
+      headers(Socket, Request, [{Name, Value} | Headers], Body, 1 + HeaderCount);
+    _Other ->
+      gen_tcp:close(Socket),
+      exit(normal)
+  end.
