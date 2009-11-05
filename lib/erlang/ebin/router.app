@@ -9,6 +9,7 @@
   {mod, {router, []}},
   {env, [
     {client_port, 8080},
+    {beehive_app_port, 4999},
     {backends, "config/sample.cfg"},
     {kvstore, dict_store},
     {log_path, "/tmp/logs/router.log"}

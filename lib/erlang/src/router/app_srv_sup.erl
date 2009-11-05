@@ -45,11 +45,13 @@ init([Module]) ->
   AppSrv  = {the_app_srv,{app_srv, start_link,[]}, permanent,2000,worker,dynamic},
   KVStore = {the_kv_store,{supervisor,start_link,[{local, the_kv_store}, ?MODULE, [start_module, Module]]},permanent,infinity,supervisor,[]},
   AppManagerSrv  = {the_app_manager,{app_manager, start_link,[]}, permanent, 2000, worker, dynamic},
+  BHApps  = {the_beehive,{rest_server, start_link,[]}, permanent,2000,worker,dynamic},
   
   {ok,{{one_for_one,5,10}, [
       KVStore,
       AppSrv,
-      AppManagerSrv
+      AppManagerSrv,
+      BHApps
     ]}};
   
 init([start_module, Module]) ->

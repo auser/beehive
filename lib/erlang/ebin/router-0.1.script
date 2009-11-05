@@ -1,4 +1,4 @@
-%% script generated at {2009,11,5} {0,51,25}
+%% script generated at {2009,11,5} {2,6,43}
 {script,
     {"router","0.1"},
     [{preLoaded,
@@ -153,6 +153,7 @@
                    {included_applications,[]},
                    {env,
                        [{client_port,8080},
+                        {beehive_app_port,4999},
                         {backends,"config/sample.cfg"},
                         {kvstore,dict_store},
                         {log_path,"/tmp/logs/router.log"}]},

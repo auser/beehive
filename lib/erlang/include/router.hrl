@@ -27,7 +27,7 @@
 -define (LOG_EVENT_HANDLER, log_event_handler).
 
 % Port to start on
--define (STARTING_PORT, 5000).
+-define (STARTING_PORT, 5001).
 
 % Expand when
 -define (EXPAND_WHEN_PENDING_REQUESTS, 3).

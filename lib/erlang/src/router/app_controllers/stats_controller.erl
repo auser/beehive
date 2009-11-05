@@ -1,56 +1,21 @@
 %%%-------------------------------------------------------------------
-%%% File    : rest_srv.erl
+%%% File    : stats_controller.erl
 %%% Author  : Ari Lerner
 %%% Description : 
 %%%
-%%% Created :  Wed Oct  7 22:37:21 PDT 2009
-%%%% rest_srv:start([{port, 8082}]).
+%%% Created :  Thu Nov  5 02:14:23 PST 2009
 %%%-------------------------------------------------------------------
 
--module (rest_srv). 
+-module (stats_controller).
 
 -include ("router.hrl").
 -include ("common.hrl").
 -include ("http.hrl").
 
-% Exports
--export ([dispatch_requests/1]).
-  
-dispatch_requests(Req) ->
-  Path = web_utils:clean_path(Req:get(path)),
-  StrMethod = Req:get(method),
-  Fun = case StrMethod of
-    'GET' -> fun get/2;
-    'POST' -> fun post/2
-  end,
-  case Fun(Path, convert_to_struct(decode_data_from_request(Req))) of
-    {json, Code, ExtraHeaders, RetBody} ->
-      JsonBody = jsonify(RetBody),
-      Req:respond({Code, [{"Content-Type", "text/json"} | ExtraHeaders], JsonBody});
-    {ok, Code, ExtraHeaders, RetBody} ->
-      Req:respond({Code, [{"Content-Type", "text/html"} | ExtraHeaders], RetBody});
-    Body -> 
-      Req:ok({"text/html", Body})
-  end.
-
-decode_data_from_request(Req) ->
-  RecvBody = Req:recv_body(),
-  Data = case RecvBody of
-    undefined -> erlang:list_to_binary("{}");
-    <<>> -> erlang:list_to_binary("{}");
-    B -> B
-  end,
-  Struct = case mochijson2:decode(Data) of
-    {struct, S} -> S;
-    Else -> Else
-  end,
-  Struct.
+-export ([get/1, post/2, put/2, delete/2]).
     
 % PATH HANDLING
-get("/", _Data) ->
-  ?CONTENT_HTML("hi");
-  
-get("/stats", _Data) ->
+get([]) ->
   ?CONTENT_HTML(format_proxy_state());
 
 % get("/status", _Data) ->
@@ -67,7 +32,7 @@ get("/stats", _Data) ->
 %   ?LOG(info, "Apps: ~p", [Content]),
 %   {json, 200, [], {?MODULE, Content}};
   
-get(_UnsupportedPath, _Data) ->
+get(_UnsupportedPath) ->
   "GET".
 
 post("/new", Data) ->
@@ -105,6 +70,9 @@ post("/new", Data) ->
 post(_UnsupportedPath, _Data) ->
   "POST!!!".
   
+put(_Path, _Data) -> "unhandled".
+delete(_Path, _Data) -> "unhandled".
+
 % Private
 convert_to_struct(RawData) ->
   lists:map(fun({BinKey, BinVal}) ->

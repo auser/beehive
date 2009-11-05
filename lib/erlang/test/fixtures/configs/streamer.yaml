@@ -2,4 +2,4 @@ name: streaming
 min_instances: 1
 start_command:  thin -d -R streaming.ru --log /tmp/streaming.log --pid /tmp/streaming-[[PORT]].pid --port [[PORT]] start
 stop_command:   thin -d -R streaming.ru --pid /tmp/streaming-[[PORT]].pid stop
-path: /Users/auser/Development/erlang/mine/router/test/fixtures/apps
+path: /Users/auser/Development/ruby/mine/beehive/lib/erlang/test/fixtures/apps

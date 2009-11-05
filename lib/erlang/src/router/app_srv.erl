@@ -34,7 +34,7 @@
           del_backend/1
         ]). 
 
-%% Debugging exports
+-define (BEEHIVE_APPS, ["beehive"]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
@@ -165,14 +165,27 @@ init([LocalPort, ConnTimeout, ActTimeout]) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %%----------------------------------------------------------------------
 handle_call({Pid, get_backend, Hostname}, From, State) ->
-  case choose_backend(Hostname, From, Pid) of
-	  ?MUST_WAIT_MSG -> 
-	    {noreply, State};
-	  {ok, Backend} -> {reply, {ok, Backend}, State};
-	  {error, Reason} -> {reply, {error, Reason}, State};
-	  E ->
-	    ?LOG(error, "Got weird response in get_backend: ~p", [E]),
-	    {noreply, State}
+  % If this is a request for an internal application, then serve that first
+  % These are abnormal applications because they MUST be running for every router
+  % and app_srv. 
+  case lists:member(Hostname, ?BEEHIVE_APPS) of
+    true ->
+      Backend = #backend{
+        port = apps:search_for_application_value(beehive_app_port, 4999, router), 
+        host = {127,0,0,1}, 
+        name = Hostname
+      },
+      {reply, {ok, Backend}, State};
+    false ->
+      case choose_backend(Hostname, From, Pid) of
+    	  ?MUST_WAIT_MSG -> {noreply, State};
+    	  {ok, Backend} -> 
+    	    {reply, {ok, Backend}, State};
+    	  {error, Reason} -> {reply, {error, Reason}, State};
+    	  E ->
+    	    ?LOG(error, "Got weird response in get_backend: ~p", [E]),
+    	    {noreply, State}
+      end
   end;
 handle_call({get_proxy_state}, _From, State) ->
   Reply = State,
@@ -219,7 +232,7 @@ handle_cast({Pid, remote_error, Backend, Error}, State) ->
   unlink(Pid),
   mark_backend_broken(Pid, Error, Backend),
   {noreply, State};
-handle_cast({Pid, remote_done, Backend}, State) ->
+handle_cast({_Pid, remote_done, _Backend}, State) ->
   % handle_remote_done(Pid, Backend, State),
   {noreply, State};
 handle_cast({update_backend_status, Backend, Status}, State) ->

@@ -70,29 +70,33 @@ engage_backend(ClientSock, BalancerPid, Hostname, Req, {ok, #backend{host = Host
       app_srv:remote_error(Backend, Error),
       engage_backend(ClientSock, BalancerPid, Hostname, Req, app_srv:get_backend(self(), Hostname))
   end;
-engage_backend(_ClientSock, _BalancerPid, Hostname, Req, ?BACKEND_TIMEOUT_MSG) ->
+engage_backend(ClientSock, _BalancerPid, Hostname, _Req, ?BACKEND_TIMEOUT_MSG) ->
   ?LOG(error, "Error getting backend because of timeout: ~p", [Hostname]),
-  Req:respond({404, [{"Content-Type", "text/html"}], ?APP_ERROR("Something went wrong: Timeout on backend")}),
+  send(ClientSock, ?APP_ERROR("Something went wrong: Timeout on backend")),
+  gen_tcp:close(ClientSock),
   exit(error);
 engage_backend(ClientSock, _BalancerPid, Hostname, _Req, {error, Reason}) ->
   ?LOG(error, "Backend for ~p was not found: ~p", [Hostname, Reason]),
   send(ClientSock, ?APP_ERROR(io_lib:format("Error: ~p", [Reason]))),
   gen_tcp:close(ClientSock),
   exit(error);
-engage_backend(_ClientSock, _BalancerPid, Hostname, _Req, Else) ->
+engage_backend(ClientSock, _BalancerPid, Hostname, _Req, Else) ->
   ?LOG(info, "proxy_handler received other message for ~p: ~p", [Hostname, Else]),
+  gen_tcp:close(ClientSock),
   exit(error).
 
 % Handle all the proxy here
-proxy_loop(#state{client_socket = CSock, server_socket = SSock, request = Req} = State) ->
+proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
   receive
 	  {tcp, CSock, Data} ->
       % Received data from the client
+      % ?LOG(info, "Received info from the client: ~p", [Data]),
 	    gen_tcp:send(SSock, Data),
 	    inet:setopts(CSock, [{active, once}]),
 	    proxy_loop(State);
   	{tcp, SSock, Data} ->
       % Received info from the server
+      % ?LOG(info, "Received info from the server: ~p", [Data]),
       send(CSock, Data),
       inet:setopts(SSock, [{active, false}, {packet, raw}]),
       case gen_tcp:recv(SSock, 0, 500) of
@@ -100,15 +104,14 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock, request = Req} =
           send(CSock, D),
           inet:setopts(SSock, [{active, once}]),
           proxy_loop(State);
-        {error, _E} -> 
-          terminate(normal, State)
+        {error, _E} -> terminate(normal, State)
       end;
   	{tcp_closed, CSock} ->
-  	  ?LOG(info, "Client closed connection", []),
+      % ?LOG(info, "Client closed connection", []),
   	  gen_tcp:close(SSock),
   	  terminate(normal, State);
 		{tcp_closed, SSock} ->
-  	  ?LOG(info, "Server closed connection", []),
+      % ?LOG(info, "Server closed connection", []),
   	  gen_tcp:close(CSock),
   	  terminate(normal, State);
   	{tcp_error, SSock} ->
@@ -116,8 +119,7 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock, request = Req} =
       gen_tcp:close(CSock),
       terminate(normal, State);
     ?BACKEND_TIMEOUT_MSG ->
-      ?LOG(info, "Backend timeout message", []),
-      Req:error({404, [], []}),
+      % ?LOG(info, "Backend timeout message", []),
       terminate(timeout, State);
   	Msg ->
 	    ?LOG(info, "~s:proxy_loop: unexpectedly recieved ~w\n", [?MODULE, Msg]),
@@ -128,7 +130,7 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock, request = Req} =
   end.
 
 % Close the connection.
-terminate(Reason, #state{backend = Backend, server_socket = SSock, client_socket = CSock} = _State) ->
+terminate(Reason, #state{server_socket = SSock, client_socket = CSock} = _State) ->
   gen_tcp:close(SSock), gen_tcp:close(CSock),
   exit(Reason).
 
@@ -191,7 +193,8 @@ request(Socket, Body) ->
       request(Socket, Body);
     {error, {http_error, "\n"}} ->
       request(Socket, Body);
-    _Other ->
+    Other ->
+      ?LOG(info, "request received something else: ~p", [Other]),
       gen_tcp:close(Socket),
       exit(normal)
   end.
@@ -210,7 +213,8 @@ headers(Socket, #http_request{headers = Headers} = Request, HeaderCount) ->
       Request;
     {ok, {http_header, _, Name, _, Value}} ->
       headers(Socket, Request#http_request{headers = [{Name, Value} | Headers]}, 1 + HeaderCount);
-    _Other ->
+    Other ->
+      ?LOG(info, "headers received something else: ~p", [Other]),
       gen_tcp:close(Socket),
       exit(normal)
   end.
