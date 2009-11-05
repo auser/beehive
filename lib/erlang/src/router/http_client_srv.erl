@@ -38,6 +38,7 @@ start_link() ->
                         {loop, fun dispatch_requests/1}]).
 
 dispatch_requests(Req) ->
+  ?LOG(info, "should close: ~p", [Req:should_close()]),
   Host = Req:get_header_value("Host"),
   Subdomain = parse_subdomain(Host),
   handle(Subdomain, Req).
@@ -50,12 +51,14 @@ handle("beehive", Req) ->
 
 handle(Subdomain, Req) ->  
   ClientSock = Req:get(socket),
+  inet:setopts(ClientSock, [{active, once}]),
   BalancerPid = whereis(apps),    % TODO: Fix this... please (go distributed)
   
-  {_, ProxyPid} = http_client_srv_sup:start_client(Req), % spawn_link(?PROXY_HANDLER, proxy, [ClientSock]),
+  {ok, ProxyPid} = http_client_srv_sup:start_client(Req),
   gen_tcp:controlling_process(ClientSock, ProxyPid),
+  ?LOG(info, "port_info in ~p: ~p", [?MODULE, erlang:port_info(ClientSock)]),
   
-  ProxyPid ! {start, Subdomain, BalancerPid, self()}.
+  ProxyPid ! {start, Subdomain, BalancerPid, ClientSock}.
     
 parse_subdomain(HostName) ->
   StrippedHostname = lists:takewhile(fun (C) -> C =/= $: end, HostName),

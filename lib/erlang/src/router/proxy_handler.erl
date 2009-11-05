@@ -28,13 +28,15 @@
 }).
 
 start_link(Req) ->
-  spawn_link(fun() -> proxy_init(Req) end).
+  Pid = spawn_link(fun() -> proxy_init(Req) end),
+  {ok, Pid}.
 
 proxy_init(Req) ->
   receive
-    {start, Subdomain, BalancerPid, _From} ->
-      ClientSock = Req:get(socket),
+    {start, Subdomain, BalancerPid, ClientSock} ->
+      ?LOG(info, "port_info in ~p: ~p", [?MODULE, erlang:port_info(ClientSock)]),
       inet:setopts(ClientSock, [{packet, http}]),
+      send(ClientSock, <<"hi">>),
       engage_backend(ClientSock, BalancerPid, Subdomain, Req, app_srv:get_backend(self(), Subdomain))
   after 10000 ->
     % We only give 10 seconds to the proxy pid to be given control of the socket
@@ -46,6 +48,9 @@ proxy_init(Req) ->
   end.
 
 engage_backend(ClientSock, BalancerPid, Hostname, Req, {ok, #backend{host = Host, port = Port} = Backend}) ->
+  ?LOG(info, "in engage_backend found: ~p:~p", [Host, Port]),
+  % This might be a little heavyweight... to connect to the backend on every single request.
+  % TODO: Add connected sockets in the background to return only the backends that are accessible
   SockOpts = [binary, {nodelay, true},
 				              {active, true}, 
 				              {recbuf, ?BUFSIZ},
@@ -84,22 +89,15 @@ proxy_loop(CSock, SSock, #state{request = Req} = State) ->
   	{tcp, SSock, Data} ->
       % Received info from the server
       send(CSock, Data),
-      inet:setopts(SSock, [{active, false}, {packet, raw}]),
-      case gen_tcp:recv(SSock, 1024, 500) of
+      inet:setopts(SSock, [{active, once}, {packet, raw}]),
+      case gen_tcp:recv(SSock, 32, 1000) of
         {ok, D} ->
           ?LOG(info, "More on the socket: ~p", [D]),
           send(CSock, D),
           inet:setopts(SSock, [{active, once}]),
           proxy_loop(CSock, SSock, State);
-        {error, closed} -> terminate(normal, State);
-        {error, timeout} -> terminate(normal, State);
-        E ->
-          ?LOG(info, "No more on the socket: ~p", [E]),
-          terminate(normal, State)
+        {error, _} -> terminate(normal, State)
       end;
-    {close} ->
-      gen_tcp:close(SSock),gen_tcp:close(CSock),
-      terminate(normal, State);
   	{tcp_closed, CSock} ->
   	  ?LOG(info, "Client closed connection", []),
   	  gen_tcp:close(SSock),
@@ -112,12 +110,14 @@ proxy_loop(CSock, SSock, #state{request = Req} = State) ->
       gen_tcp:close(CSock),
       terminate(normal, State);
     ?BACKEND_TIMEOUT_MSG ->
-      Req:error(404, [], []),
+      ?LOG(info, "Backend timeout message", []),
+      Req:error({404, [], []}),
       terminate(timeout, State);
   	Msg ->
 	    ?LOG(info, "~s:proxy_loop: unexpectedly recieved ~w\n", [?MODULE, Msg]),
 	    proxy_loop(CSock, SSock, State)
   after 60000 ->
+    ?LOG(info, "Terminating open proxy connection because of timeout", []),
     terminate(normal, State)
   end.
 

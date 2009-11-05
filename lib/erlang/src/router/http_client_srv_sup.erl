@@ -20,7 +20,8 @@
 start_link() ->
   supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-start_client(Args) -> supervisor:start_child(the_proxy_srv, [Args]).
+start_client(Args) -> 
+  supervisor:start_child(the_proxy_srv, [Args]).
 
 init([]) ->
   ReqSrv    = {the_http_client_srv, {http_client_srv, start_link, []}, permanent, 2000, worker, [http_client_srv]},

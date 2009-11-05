@@ -45,7 +45,7 @@
 
 start_link() ->
   LocalPort   = apps:search_for_application_value(client_port, 8080, local_port),
-  ConnTimeout = apps:search_for_application_value(client_port, 5*1000, local_port),
+  ConnTimeout = apps:search_for_application_value(client_port, 120*1000, local_port),
   ActTimeout  = apps:search_for_application_value(client_port, 120*1000, local_port),
   
   start_link(LocalPort, ConnTimeout, ActTimeout).
@@ -216,10 +216,11 @@ handle_cast({Pid, remote_ok, Backend}, State) ->
   mark_backend_busy(Pid, Backend),
   {noreply, State};
 handle_cast({Pid, remote_error, Backend, Error}, State) ->
+  unlink(Pid),
   mark_backend_broken(Pid, Error, Backend),
   {noreply, State};
 handle_cast({Pid, remote_done, Backend}, State) ->
-  handle_remote_done(Pid, Backend, State),
+  % handle_remote_done(Pid, Backend, State),
   {noreply, State};
 handle_cast({update_backend_status, Backend, Status}, State) ->
   save_backend(Backend#backend{status = Status}),
@@ -373,26 +374,26 @@ sane_be(B) ->
   end.
 
 check_waiter_timeouts(State) ->
-  TOTime = date_util:now_to_seconds() - (State#proxy_state.conn_timeout / 1000),
-  AllBackends = apps:all(backends),
-  lists:map(fun(B) ->
-    NewQ = handle_timeout_queue(B#backend.name, TOTime, queue:new()),
-    ?QSTORE:replace(?WAIT_DB, B#backend.name, NewQ)
-  end, AllBackends),
+  % TOTime = date_util:now_to_seconds() - (State#proxy_state.conn_timeout / 1000),
+  % AllBackends = apps:all(backends),
+  % lists:map(fun(B) ->
+  %   NewQ = handle_timeout_queue(B#backend.name, TOTime, queue:new()),
+  %   ?QSTORE:replace(?WAIT_DB, B#backend.name, NewQ)
+  % end, AllBackends),
   State.
 
-handle_timeout_queue(Name, TOTime, NewQ) ->
-  case ?QSTORE:pop(?WAIT_DB, Name) of
-    {value, Item} ->
-      case Item of
-        {_Hostname, From, _FromPid, Time} when Time < TOTime ->
-          gen_server:reply(From, ?BACKEND_TIMEOUT_MSG),
-          NewQ;
-        _ ->
-          handle_timeout_queue(Name, TOTime, queue:in(Item, NewQ))
-      end;
-    empty -> NewQ
-  end.
+% handle_timeout_queue(Name, TOTime, NewQ) ->
+%   case ?QSTORE:pop(?WAIT_DB, Name) of
+%     {value, Item} ->
+%       case Item of
+%         {_Hostname, From, _FromPid, Time} when Time < TOTime ->
+%           gen_server:reply(From, ?BACKEND_TIMEOUT_MSG),
+%           NewQ;
+%         _ ->
+%           handle_timeout_queue(Name, TOTime, queue:in(Item, NewQ))
+%       end;
+%     empty -> NewQ
+%   end.
   
 % Basic configuration stuff
 % Add apps from a configuration file
@@ -432,14 +433,15 @@ mark_backend_busy(Pid, #backend{maxconn = MaxConn, name = Name} = Backend)   ->
     length(OrigPidlist) > MaxConn -> busy;
     true -> ready
   end,
-  save_pid({active, Pid, whatever}, Backend),
+  save_pid({active, Pid, date_util:now_to_seconds()}, Backend),
   save_backend(Backend#backend{status = Status}).
   
 % Mark this instance as ready
-mark_backend_ready(Pid, #backend{act_time = CurrActTime, act_count = ActCount} = Backend)  -> 
-  ActTime = case apps:lookup(pid, Backend) of
-    {_, _, T} -> CurrActTime + (date_util:now_to_seconds() - T);
-    _ -> CurrActTime
+mark_backend_ready(Pid, #backend{name=Name, act_time = CurrActTime, act_count = ActCount} = Backend)  -> 
+  CurrentPids = apps:lookup(backend2pid, Name),
+  ActTime = case lists:keysearch(Pid, 2, CurrentPids) of
+    {value, {_, _, T}} -> CurrActTime + erlang:abs(date_util:now_to_seconds() - T);
+    false -> CurrActTime
   end,
   NewBackend = Backend#backend{
     status = ready,
@@ -447,7 +449,7 @@ mark_backend_ready(Pid, #backend{act_time = CurrActTime, act_count = ActCount} =
     act_count = ActCount + 1
   },
   ?EVENT_MANAGER:notify({backend, ready, NewBackend}),
-  save_pid({down, Pid, time}, NewBackend),
+  save_pid({down, Pid, date_util:now_to_seconds()}, NewBackend),
   save_backend(NewBackend).
   
 % Mark an instance as broken
@@ -506,7 +508,7 @@ delete_backend(#backend{name = Hostname} = Backend) ->
 delete_backend_from_list(Backend, CurrentBackends) ->
   lists:filter(fun(B) -> backend_is_same_as(B, Backend) == false end, CurrentBackends).
     
-% There must be a bette way to do this, but... this checks to see if the name, host and port
+% There must be a better way to do this, but... this checks to see if the name, host and port
 % of the two backends are equal
 backend_is_same_as(#backend{name = Name, port = Port, host = Host} = _Backend, 
                     #backend{name = OtherName, port = OtherPort, host = OtherHost} = _OtherBackend) ->
