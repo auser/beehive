@@ -24,3 +24,4 @@ TODO
 ===
   * Consider double-storage in router_srv with dynos and backends
   * Add ets/mnesia storage to the front-end servers
+  * Add more than just http servers (abstract the proxying protocols)

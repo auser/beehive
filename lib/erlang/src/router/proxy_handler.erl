@@ -77,6 +77,7 @@ engage_backend(_ClientSock, _BalancerPid, Hostname, Req, ?BACKEND_TIMEOUT_MSG) -
 engage_backend(ClientSock, _BalancerPid, Hostname, _Req, {error, Reason}) ->
   ?LOG(error, "Backend for ~p was not found: ~p", [Hostname, Reason]),
   send(ClientSock, ?APP_ERROR(io_lib:format("Error: ~p", [Reason]))),
+  gen_tcp:close(ClientSock),
   exit(error);
 engage_backend(_ClientSock, _BalancerPid, Hostname, _Req, Else) ->
   ?LOG(info, "proxy_handler received other message for ~p: ~p", [Hostname, Else]),
@@ -96,7 +97,6 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock, request = Req} =
       inet:setopts(SSock, [{active, false}, {packet, raw}]),
       case gen_tcp:recv(SSock, 0, 500) of
         {ok, D} ->
-          ?LOG(info, "More on the socket: ~p", [D]),
           send(CSock, D),
           inet:setopts(SSock, [{active, once}]),
           proxy_loop(State);
@@ -127,8 +127,8 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock, request = Req} =
     terminate(normal, State)
   end.
 
+% Close the connection.
 terminate(Reason, #state{backend = Backend, server_socket = SSock, client_socket = CSock} = _State) ->
-  app_srv:remote_done(Backend, self()),
   gen_tcp:close(SSock), gen_tcp:close(CSock),
   exit(Reason).
 
