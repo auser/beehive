@@ -70,12 +70,11 @@ accept(LSock, BalancerPid) ->
       %       inet:setopts(ClientSock, [{recbuf, ?BUFSIZ}, {sndbuf, ?BUFSIZ}]),
       % gen_tcp:controlling_process(ClientSock, ProxyPid),
       %       ProxyPid ! {start, ClientSock, BalancerPid},
-      {ok, ProxyPid} = http_client_srv_sup:start_client(ClientSock),
-      gen_tcp:controlling_process(ClientSock, ProxyPid),
-      ?LOG(info, "port_info in ~p: ~p", [?MODULE, erlang:port_info(ClientSock)]),
-      
-      ProxyPid ! {start, ClientSock, BalancerPid},
-    
+      spawn(fun() ->
+        {ok, ProxyPid} = http_client_srv_sup:start_client(ClientSock),
+        gen_tcp:controlling_process(ClientSock, ProxyPid),      
+        ProxyPid ! {start, ClientSock, BalancerPid}
+      end),
 	    accept(LSock, BalancerPid);
     Error ->
       ?LOG(error, "There was an error accepting the socket ~p: ~p", [LSock, Error]),

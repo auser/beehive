@@ -89,3 +89,11 @@
   start_time,				          % Proxy start timestamp
   to_timer 				            % Timeout timer ref
 }).
+
+-record (http_request, {
+  client_socket,
+  version = {1,1},
+  headers = [],
+  method,
+  path
+}).

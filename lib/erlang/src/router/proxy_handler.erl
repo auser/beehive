@@ -24,48 +24,47 @@
   backend,          % Backend
   request,          % client request
   start_time,       % time proxy started
+  client_socket,    % client socket
+  server_socket,    % server socket
   timeout           % timeout
 }).
 
-start_link(Req) ->
-  Pid = spawn_link(fun() -> proxy_init(Req) end),
+start_link(ClientSock) ->
+  Pid = spawn_link(fun() -> proxy_init(ClientSock) end),
   {ok, Pid}.
 
-proxy_init(Req) ->
+proxy_init(ClientSock) ->
   receive
     {start, ClientSock, BalancerPid} ->
       link(BalancerPid),
-      ?LOG(info, "port_info in ~p: ~p", [?MODULE, erlang:port_info(ClientSock)]),
+      % Chose here the type of response... for now, it'll just be http, but in the future... maybe tcp?
       inet:setopts(ClientSock, [{packet, http}]),
-      {Request, Headers, Body} = request(ClientSock, []),
-      Subdomain = parse_subdomain(proplists:get_value('Host', Headers)),
-      send(ClientSock, <<"hi">>),
+      Req = request(ClientSock, []),
+      Subdomain = parse_subdomain(proplists:get_value('Host', Req#http_request.headers)),
       engage_backend(ClientSock, BalancerPid, Subdomain, Req, app_srv:get_backend(self(), Subdomain));
-    E ->
-      ?LOG(info, "Received: ~p", [E]),
-      proxy_init(Req)
+    _E ->
+      proxy_init(ClientSock)
   after 10000 ->
     % We only give 10 seconds to the proxy pid to be given control of the socket
     % this is MORE than enough time for the socket to be given a chance to prepare
     % to be handled by the proxy accept request. It should be milliseconds
     ?LOG(error, "Proxy is b0rked because of timeout", []),
-    Req:respond({400, [], []}),
     exit(error)
   end.
 
 engage_backend(ClientSock, BalancerPid, Hostname, Req, {ok, #backend{host = Host, port = Port} = Backend}) ->
-  ?LOG(info, "in engage_backend found: ~p:~p", [Host, Port]),
   % This might be a little heavyweight... to connect to the backend on every single request.
   % TODO: Add connected sockets in the background to return only the backends that are accessible
   SockOpts = [binary, {nodelay, true},
 				              {active, true}, 
 				              {recbuf, ?BUFSIZ},
-			                {sndbuf, ?BUFSIZ}],
-  case gen_tcp:connect(Host, Port, SockOpts, 1000) of
+			                {sndbuf, ?BUFSIZ},
+			                {send_timeout, 5000}],
+  case gen_tcp:connect(Host, Port, SockOpts) of
     {ok, ServerSock} ->
       app_srv:remote_ok(Backend, self()),
       send_initial_request(ServerSock, Req),
-      proxy_loop(ClientSock, ServerSock, #state{request = Req, backend = Backend});
+      proxy_loop(#state{client_socket = ClientSock, server_socket = ServerSock, request = Req, backend = Backend});
     Error ->
       ?LOG(error, "Connection to remote TCP server: ~p:~p ~p", [Host, Port, Error]),
       app_srv:remote_error(Backend, Error),
@@ -84,25 +83,25 @@ engage_backend(_ClientSock, _BalancerPid, Hostname, _Req, Else) ->
   exit(error).
 
 % Handle all the proxy here
-proxy_loop(closed, closed, State) -> terminate(normal, State);
-proxy_loop(CSock, SSock, #state{request = Req} = State) ->
+proxy_loop(#state{client_socket = CSock, server_socket = SSock, request = Req} = State) ->
   receive
 	  {tcp, CSock, Data} ->
       % Received data from the client
 	    gen_tcp:send(SSock, Data),
 	    inet:setopts(CSock, [{active, once}]),
-	    proxy_loop(CSock, SSock, State);
+	    proxy_loop(State);
   	{tcp, SSock, Data} ->
       % Received info from the server
       send(CSock, Data),
-      inet:setopts(SSock, [{active, once}, {packet, raw}]),
-      case gen_tcp:recv(SSock, 32, 1000) of
+      inet:setopts(SSock, [{active, false}, {packet, raw}]),
+      case gen_tcp:recv(SSock, 0, 500) of
         {ok, D} ->
           ?LOG(info, "More on the socket: ~p", [D]),
           send(CSock, D),
           inet:setopts(SSock, [{active, once}]),
-          proxy_loop(CSock, SSock, State);
-        {error, _} -> terminate(normal, State)
+          proxy_loop(State);
+        {error, _E} -> 
+          terminate(normal, State)
       end;
   	{tcp_closed, CSock} ->
   	  ?LOG(info, "Client closed connection", []),
@@ -113,6 +112,7 @@ proxy_loop(CSock, SSock, #state{request = Req} = State) ->
   	  gen_tcp:close(CSock),
   	  terminate(normal, State);
   	{tcp_error, SSock} ->
+  	  ?LOG(error, "tcp_error on server: ~p", [SSock]),
       gen_tcp:close(CSock),
       terminate(normal, State);
     ?BACKEND_TIMEOUT_MSG ->
@@ -121,14 +121,15 @@ proxy_loop(CSock, SSock, #state{request = Req} = State) ->
       terminate(timeout, State);
   	Msg ->
 	    ?LOG(info, "~s:proxy_loop: unexpectedly recieved ~w\n", [?MODULE, Msg]),
-	    proxy_loop(CSock, SSock, State)
+	    proxy_loop(State)
   after 60000 ->
     ?LOG(info, "Terminating open proxy connection because of timeout", []),
     terminate(normal, State)
   end.
 
-terminate(Reason, #state{backend = Backend} = _State) ->
+terminate(Reason, #state{backend = Backend, server_socket = SSock, client_socket = CSock} = _State) ->
   app_srv:remote_done(Backend, self()),
+  gen_tcp:close(SSock), gen_tcp:close(CSock),
   exit(Reason).
 
 send_initial_request(ServerSock, Req) ->
@@ -138,15 +139,8 @@ send_initial_request(ServerSock, Req) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-build_request_headers(Req) ->
-  Path = Req:get(path),
-  Body = [], %Req:recv_body(?MAX_RECV_BODY),
-  RawHeaders = Req:get(headers),
-  Headers = mochiweb_headers:to_list(RawHeaders),
-  Method = Req:get(method),
-  Version = Req:get(version),
-  
-  Length = length(misc_utils:to_list(Body)),
+build_request_headers(#http_request{headers = Headers, path = Path, method = Method, version = Version} = _Req) ->  
+  Length = length([]), % maybe?!?!
   {ok, Hostname} = inet:gethostname(),
   
   NewHeaders = replace_values_in_prolists(
@@ -189,33 +183,33 @@ parse_subdomain(HostName) ->
   lists:takewhile(fun (C) -> C =/= $. end, StrippedHostname).
 
 request(Socket, Body) ->
-    case gen_tcp:recv(Socket, 0, ?IDLE_TIMEOUT) of
-        {ok, {http_request, Method, Path, Version}} ->
-            headers(Socket, {Method, Path, Version}, [], Body, 0);
-        {error, {http_error, "\r\n"}} ->
-            request(Socket, Body);
-        {error, {http_error, "\n"}} ->
-            request(Socket, Body);
-        _Other ->
-            gen_tcp:close(Socket),
-            exit(normal)
-    end.
+  case gen_tcp:recv(Socket, 0, ?IDLE_TIMEOUT) of
+    {ok, {http_request, Method, {abs_path, Path}, Version}} ->
+      Req = #http_request{method = Method, path = Path, version = Version, client_socket = Socket},
+      headers(Socket, Req, 0);
+    {error, {http_error, "\r\n"}} ->
+      request(Socket, Body);
+    {error, {http_error, "\n"}} ->
+      request(Socket, Body);
+    _Other ->
+      gen_tcp:close(Socket),
+      exit(normal)
+  end.
 
-headers(Socket, Request, Headers, _Body, ?MAX_HEADERS) ->
+headers(Socket, _Request, ?MAX_HEADERS) ->
   %% Too many headers sent, bad request.
   inet:setopts(Socket, [{packet, raw}]),
-  Req = mochiweb:new_request({Socket, Request, lists:reverse(Headers)}),
-  Req:respond({400, [], []}),
+  send(Socket, ?ERROR_HTML("Uh oh... too many headers")),
   gen_tcp:close(Socket),
   exit(normal);
 
-headers(Socket, Request, Headers, Body, HeaderCount) ->
+headers(Socket, #http_request{headers = Headers} = Request, HeaderCount) ->
   case gen_tcp:recv(Socket, 0, ?IDLE_TIMEOUT) of
     {ok, http_eoh} ->
       inet:setopts(Socket, [{packet, raw}]),
-      {Request, Headers, Body};
+      Request;
     {ok, {http_header, _, Name, _, Value}} ->
-      headers(Socket, Request, [{Name, Value} | Headers], Body, 1 + HeaderCount);
+      headers(Socket, Request#http_request{headers = [{Name, Value} | Headers]}, 1 + HeaderCount);
     _Other ->
       gen_tcp:close(Socket),
       exit(normal)
