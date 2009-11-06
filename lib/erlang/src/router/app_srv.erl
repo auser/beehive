@@ -131,17 +131,14 @@ del_backend(Host) ->
 %%----------------------------------------------------------------------
 init([LocalPort, ConnTimeout, ActTimeout]) ->
   process_flag(trap_exit, true),
-  Pid     = whereis(http_client_srv),
+  ?NOTIFY({?MODULE, init}),
+  
+  Pid     = whereis(tcp_socket_server),
   
   LocalHost = host:myip(),
-  
-  ?LOG(info, "Started ~p:start_link(~p)", [?KVSTORE, ?BACKEND_DB]),
-  ?KVSTORE:start_link(?BACKEND_DB),
-  ?KVSTORE:start_link(?BACKEND2PID_DB),
-  ?KVSTORE:start_link(?PID2BACKEND_DB),
-  ?QSTORE:start_link(?WAIT_DB),
 
-  add_backends_from_config(),
+  db_utils:init_mnesia(),
+  % add_backends_from_config(),
 
   {ok, TOTimer} = timer:send_interval(1000, {check_waiter_timeouts}),
   {ok, #proxy_state{
@@ -461,7 +458,7 @@ mark_backend_ready(Pid, #backend{name=Name, act_time = CurrActTime, act_count = 
     act_time = ActTime,
     act_count = ActCount + 1
   },
-  ?EVENT_MANAGER:notify({backend, ready, NewBackend}),
+  ?NOTIFY({backend, ready, NewBackend}),
   save_pid({down, Pid, date_util:now_to_seconds()}, NewBackend),
   save_backend(NewBackend).
   

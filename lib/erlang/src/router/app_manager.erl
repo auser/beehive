@@ -95,12 +95,10 @@ init([]) ->
   % Load the applications 
   load_static_configs(),
   
-  % Make sure the minimum number of backends are running for every app
-  timer:send_interval(timer:seconds(5), {ensure_minimum_backends_running}),
   % Try to make sure the pending backends are taken care of by either turning them broken for ready
-  timer:send_interval(timer:seconds(5), {manage_pending_backends}),
+  % timer:send_interval(timer:seconds(5), {manage_pending_backends}),
   % Run maintenance
-  timer:send_interval(timer:minutes(1), {garbage_collection}),
+  % timer:send_interval(timer:minutes(1), {garbage_collection}),
   % timer:send_interval(timer:seconds(10), {clean_up}),
   {ok, #state{}}.
 

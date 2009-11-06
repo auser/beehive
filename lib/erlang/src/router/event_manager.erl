@@ -8,6 +8,8 @@
 
 -module (event_manager).
 
+-include ("router.hrl").
+
 %% API
 -export([start_link/0, add_handler/1, notify/1]).
 
@@ -18,7 +20,10 @@
 %% Description: Creates an event manager.
 %%--------------------------------------------------------------------
 start_link() ->
-  gen_event:start_link({local, ?SERVER}). 
+  O = gen_event:start_link({local, ?SERVER}),
+  % Add the defined event handlers
+  lists:map(fun(Handler) -> add_handler(Handler) end, ?EVENT_HANDLERS),
+  O.
 
 %%--------------------------------------------------------------------
 %% Function: add_handler(Module) -> ok | {'EXIT',Reason} | term()

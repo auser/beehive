@@ -12,13 +12,6 @@
 
 -export([start/2, stop/1]).
 
-start(_Type, _Args) ->
-  case router_sup:start_link([]) of
-    {ok, Pid} -> 
-      ?EVENT_MANAGER:add_handler(?APP_EVENT_HANDLER),
-      ?EVENT_MANAGER:add_handler(?LOG_EVENT_HANDLER),
-      {ok, Pid};
-    Error -> Error
-  end.
+start(_Type, _Args) -> router_sup:start_link([]).
 
 stop(_State) -> ok.

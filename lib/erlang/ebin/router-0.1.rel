@@ -1,1 +1,0 @@
-{release, {"router", "0.1"}, {erts, "5.7.3"}, [{kernel, "2.13.3"}, {stdlib, "1.16.3"}, {sasl, "2.1.7"}, {router, "0.1"}]}.
