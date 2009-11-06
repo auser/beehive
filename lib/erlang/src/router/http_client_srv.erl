@@ -66,10 +66,6 @@ init_accept(LPort, BalancerPid) ->
 accept(LSock, BalancerPid) ->
   case gen_tcp:accept(LSock) of
     {ok, ClientSock} ->
-      %       {ok, ProxyPid} = spawn_link(?PROXY_HANDLER, start_link, [ClientSock]),
-      %       inet:setopts(ClientSock, [{recbuf, ?BUFSIZ}, {sndbuf, ?BUFSIZ}]),
-      % gen_tcp:controlling_process(ClientSock, ProxyPid),
-      %       ProxyPid ! {start, ClientSock, BalancerPid},
       spawn(fun() ->
         {ok, ProxyPid} = http_client_srv_sup:start_client(ClientSock),
         gen_tcp:controlling_process(ClientSock, ProxyPid),      
@@ -80,59 +76,3 @@ accept(LSock, BalancerPid) ->
       ?LOG(error, "There was an error accepting the socket ~p: ~p", [LSock, Error]),
       exit(error)
   end.
-
-
-% INTERNAL
-
-% Make this dynamic-able?
-% handle("beehive", Req) -> 
-%   rest_srv:dispatch_requests(Req);
-
-% handle(Subdomain, Req) ->  
-%   ClientSock = Req:get(socket),
-%   inet:setopts(ClientSock, [{active, once}]),
-%   BalancerPid = whereis(apps),    % TODO: Fix this... please (go distributed)
-%   
-%   {ok, ProxyPid} = http_client_srv_sup:start_client(Req),
-%   gen_tcp:controlling_process(ClientSock, ProxyPid),
-%   ?LOG(info, "port_info in ~p: ~p", [?MODULE, erlang:port_info(ClientSock)]),
-%   
-%   ProxyPid ! {start, Subdomain, BalancerPid, ClientSock}.
-%     
-% parse_subdomain(HostName) ->
-%   StrippedHostname = lists:takewhile(fun (C) -> C =/= $: end, HostName),
-%   lists:takewhile(fun (C) -> C =/= $. end, StrippedHostname).
-% 
-% % HTTP
-% request(Socket, Body) ->
-%     case gen_tcp:recv(Socket, 0, ?IDLE_TIMEOUT) of
-%         {ok, {http_request, Method, Path, Version}} ->
-%             headers(Socket, {Method, Path, Version}, [], Body, 0);
-%         {error, {http_error, "\r\n"}} ->
-%             request(Socket, Body);
-%         {error, {http_error, "\n"}} ->
-%             request(Socket, Body);
-%         _Other ->
-%             gen_tcp:close(Socket),
-%             exit(normal)
-%     end.
-% 
-% headers(Socket, Request, Headers, _Body, ?MAX_HEADERS) ->
-%   %% Too many headers sent, bad request.
-%   inet:setopts(Socket, [{packet, raw}]),
-%   Req = mochiweb:new_request({Socket, Request, lists:reverse(Headers)}),
-%   Req:respond({400, [], []}),
-%   gen_tcp:close(Socket),
-%   exit(normal);
-% 
-% headers(Socket, Request, Headers, Body, HeaderCount) ->
-%   case gen_tcp:recv(Socket, 0, ?IDLE_TIMEOUT) of
-%     {ok, http_eoh} ->
-%       inet:setopts(Socket, [{packet, raw}]),
-%       {Request, Headers, Body};
-%     {ok, {http_header, _, Name, _, Value}} ->
-%       headers(Socket, Request, [{Name, Value} | Headers], Body, 1 + HeaderCount);
-%     _Other ->
-%       gen_tcp:close(Socket),
-%       exit(normal)
-%   end.
