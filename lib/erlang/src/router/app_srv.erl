@@ -137,7 +137,7 @@ init([LocalPort, ConnTimeout, ActTimeout]) ->
   
   LocalHost = host:myip(),
 
-  db_utils:init_mnesia(),
+  db:init(),
   % add_backends_from_config(),
 
   {ok, TOTimer} = timer:send_interval(1000, {check_waiter_timeouts}),
@@ -307,7 +307,7 @@ choose_backend(Hostname, From, FromPid) ->
 %% Find the first available back-end host
 
 choose_backend(Hostname, FromPid) ->
-  case apps:lookup(backends, Hostname) of
+  case app:find_by_hostname(Hostname) of
     error -> {error, unknown_app};
     [] -> {error, unknown_app};
     Backends ->
@@ -316,7 +316,7 @@ choose_backend(Hostname, FromPid) ->
 
 choose_from_backends([], _Hostname, _FromPid) -> ?MUST_WAIT_MSG;
 choose_from_backends([#backend{name = Name} = Backend|Rest], Hostname, FromPid) ->
-  PidList = apps:lookup(backend2pid, Name),
+  PidList = backend_pids:lookup(Name),
   if
     Backend#backend.status =:= ready
       andalso (length(PidList) < Backend#backend.maxconn)
@@ -328,7 +328,7 @@ choose_from_backends([#backend{name = Name} = Backend|Rest], Hostname, FromPid) 
   end.
 
 reset_backend_host(Hostname, Status) ->
-  case apps:lookup(backends, Hostname) of
+  case backend:find_by_hostname(Hostname) of
     error -> {error, unknown_app};
     [] -> {error, unknown_app};
     Backends -> 
@@ -340,16 +340,7 @@ reset_backend(Backend, Status) ->
   save_backend(Backend#backend{status = Status, lasterr = reset, lasterr_time = date_util:now_to_seconds()}).
   
 handle_add_backend(NewBE) when is_record(NewBE, backend) ->
-  case catch sane_be(NewBE) of
-	  true ->
-	    ?LOG(info, "Storing backend for: ~p", [NewBE#backend.name]),
-	    case apps:lookup(backends, NewBE#backend.name) of
-        % undefined means the host doesn't exist in the system yet, so let's add it
-        undefined -> apps:store(backend, NewBE#backend.name, [NewBE]);
-		    _ -> save_backend(NewBE)
-	    end;
-	  _ -> {error, not_sane}
-  end.
+  backend:create_or_update(NewBE).
 
 % Handle the *next* pending client only. 
 maybe_handle_next_waiting_client(#backend{name = Name} = Backend, State) ->
@@ -370,19 +361,6 @@ maybe_handle_next_waiting_client(#backend{name = Name} = Backend, State) ->
       end
   end.
   
-% Check to make sure the backend is "sane"
-sane_be(B) ->
-  Real = #backend{},
-  if 
-	  size(B) =/= size(Real) -> false;
-  	B#backend.name == "" -> false;
-  	B#backend.port =< 0 -> false;
-  	B#backend.maxconn =< 0 -> false;
-  	B#backend.act_count =/= 0 -> false;
-  	B#backend.act_time =/= 0 -> false;
-  	true -> true
-  end.
-
 check_waiter_timeouts(State) ->
   % TOTime = date_util:now_to_seconds() - (State#proxy_state.conn_timeout / 1000),
   % AllBackends = apps:all(backends),

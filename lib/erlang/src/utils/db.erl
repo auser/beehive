@@ -1,0 +1,56 @@
+%%%-------------------------------------------------------------------
+%%% File    : db.erl
+%%% Author  : Ari Lerner
+%%% Description : 
+%%%
+%%% Created :  Fri Nov  6 14:31:12 PST 2009
+%%%-------------------------------------------------------------------
+
+-module (db).
+
+-include ("router.hrl").
+
+-export ([
+  init/0,
+  write/1,
+  delete/2,
+  read/1,
+  index_read/3,
+  find/1,
+  new_id/1,
+  transaction/1
+]).
+
+init() -> schema:install().
+
+new_id(Key) ->
+	mnesia:dirty_update_counter({counter, Key}, 1).
+	
+write(Record) ->
+  {_Time, Value} = timer:tc(mnesia, dirty_write, [Record]),
+  Value.
+  
+delete(Table, Key) ->
+  {_Time, Value} = timer:tc(mnesia, dirty_delete, [Table, Key]),
+  Value.
+
+find(Q) ->
+  F = fun() -> qlc:e(qlc:q(Q)) end,
+  {_Time, Value} = timer:tc(?MODULE, transaction, [F]),
+  Value.
+  	
+read(Tuple) ->
+  {_Time, Value} = timer:tc(mnesia, dirty_read, [Tuple]),
+  Value.
+
+index_read(Table, Value, Key) ->
+  {_Time, Value} = timer:tc(mnesia, dirty_index_read, [Table, Value, Key]),
+  Value.
+  
+transaction(F) ->
+	case mnesia:transaction(F) of
+		{atomic, Result} ->
+			Result;
+		{aborted, _Reason} ->
+			[]
+	end.

@@ -130,7 +130,7 @@ format_backend_list([B|Bs], Acc) ->
       empty -> {[], []};
       E -> E
     end,
-    PidList = apps:lookup(backend2pid, B#backend.name),
+    PidList = backend_pids:lookup(B#backend.name),
     {Active, Pending} = count_reqs(PidList),
     format_backend_list(Bs, [[
        "<tr> ",

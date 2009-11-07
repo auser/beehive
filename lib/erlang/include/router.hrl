@@ -56,7 +56,8 @@
   act_time      = 0,
   status        = ready,    % pending | ready | broken
   maxconn       = 10,
-  act_count     = 0
+  act_count     = 0,
+  pidlist       = []        % proxy pids
 }).
 
 % Application configuration
@@ -76,6 +77,11 @@
   start_command,
   stop_command
 }).
+
+% Pid -> {status, Pid, Startime}
+-record (pid, {status = pending, pid, start_time}).
+-record (app_backends, {app_key, backend_key}).
+
 
 -define(BUFSIZ, (128*1024)).
 
