@@ -38,9 +38,9 @@
 % Even though we have to use 2 functions to lookup the backend, this is still
 % faster than using a function. This may have to be placed into a transaction...
 find_backend_for_pid(Pid) ->
-  BackendPid = db:read({backend_pid, Pid}),
-  io:format("BackendPid: ~p", [BackendPid]),
-  backend:find_by_name(BackendPid#backend_pid.backend_name).
+  [BackendPid|_] = db:read({backend_pid, Pid}),
+  [Backend|_] = backend:find_by_name(BackendPid#backend_pid.backend_name),
+  Backend.
   
   % db:find(qlc:q([
   %   Backend ||  BackendPid <- mnesia:table(backend_pid),
@@ -52,8 +52,8 @@ find_backend_for_pid(Pid) ->
 % Find the pids for the backend named Name
 find_pids_for_backend_name(Name) ->
   db:find(qlc:q([
-    BackendPid#backend_pid.pid ||  BackendPid <- mnesia:table(backend_pid),
-                                    BackendPid#backend_pid.backend_name =:= Name
+    BackendPid || BackendPid <- mnesia:table(backend_pid),
+                  BackendPid#backend_pid.backend_name =:= Name
   ])).
   
 % Insert a new backend pid
@@ -61,39 +61,45 @@ create(PidTuple) ->
   db:write(PidTuple).
   
 test() ->
-  schema:install(),
-  Pid = spawn_link(fun() -> forever_loop() end),
-  register(pid, Pid),
-  Pid2 = spawn_link(fun() -> forever_loop() end),
-  register(pid2, Pid2),
-  test_insert_backend_pid(),
-  find_backend_for_pid_test(),
-  find_pids_for_backend_name_test(),
-  unregister(pid), unregister(pid2).
+  try
+    schema:install(),
+    Pid = spawn_link(fun() -> forever_loop() end),
+    register(pid, Pid),
+    Pid2 = spawn_link(fun() -> forever_loop() end),
+    register(pid2, Pid2),
+    test_insert_backend_pid(),
+    find_backend_for_pid_test(),
+    find_pids_for_backend_name_test()
+  catch
+    error: Why ->
+      io:format("Test failed because: ~p", [Why]),
+      unregister(pid),
+      unregister(pid2)
+  end.
 
 test_insert_backend_pid() ->
   create(#backend_pid{pid=whereis(pid), backend_name="test_app", status=pending, start_time=63424809235}),
   create(#backend_pid{pid=whereis(pid2), backend_name="another_app", status=active, start_time=63424809236}),
-  Fun = fun() -> mnesia:match_object({backend_pid, '_', '_', '_', '_'}) end,
+  Fun = fun() -> mnesia:match_object(#backend_pid{_='_'}) end,
   {atomic,Results} = mnesia:transaction(Fun),
   Expect =  [
-              #backend_pid{pid=whereis(pid2), backend_name="another_app", status=active, start_time=63424809236},
-              #backend_pid{pid=whereis(pid), backend_name="test_app", status=pending, start_time=63424809235}
+              #backend_pid{pid=whereis(pid), backend_name="test_app", status=pending, start_time=63424809235},
+              #backend_pid{pid=whereis(pid2), backend_name="another_app", status=active, start_time=63424809236}
             ],
-  ?assertEqual(Results,Expect).
+  ?assertEqual(lists:sort(Results),Expect).
 
 find_backend_for_pid_test() ->
   Be = #backend{app_name = "test_app"},
   backend:create(Be),
   Res = find_backend_for_pid(whereis(pid)),
-  ?assertEqual(Res, [Be]).
+  ?assertEqual(Res, Be).
   
 find_pids_for_backend_name_test() ->
   create(#backend_pid{pid=whereis(pid), backend_name="test_app", status=active, start_time=63424809235}),
   create(#backend_pid{pid=whereis(pid2), backend_name="another_app", status=pending, start_time=63424809239}),
-  Res = find_pids_for_backend_name("test_app"),
-  Expect = [{whereis(pid), active, 63424809235}, {whereis(pid2), pending, 63424809239}],
-  io:format("Res: ~p", [Res]),
+  Res1 = find_pids_for_backend_name("test_app"),
+  Res = lists:map(fun(BP) -> BP#backend_pid.pid end, Res1),
+  Expect = [whereis(pid)],
   ?assertEqual(Expect, Res).
   
 forever_loop() ->

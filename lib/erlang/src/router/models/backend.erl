@@ -22,7 +22,7 @@
 -include_lib("stdlib/include/qlc.hrl").
 
 -export ([
-  find_by_hostname/1,
+  find_by_name/1,
   get/1,
   create/1,
   new/1,
@@ -31,7 +31,7 @@
   all/0
 ]).
 
-find_by_hostname(Hostname) ->
+find_by_name(Hostname) ->
   db:read({backend, Hostname}).
 
 new(NewBackend) when is_record(NewBackend, backend) ->
