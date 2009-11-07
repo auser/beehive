@@ -34,7 +34,11 @@ delete(Table, Key) ->
   {_Time, Value} = timer:tc(mnesia, dirty_delete, [Table, Key]),
   Value.
 
-find(Q) ->
+find(F) when is_function(F) ->
+  {_Time, Value} = timer:tc(?MODULE, transaction, [F]),
+  Value;
+  
+find(Q)->
   F = fun() -> qlc:e(qlc:q(Q)) end,
   {_Time, Value} = timer:tc(?MODULE, transaction, [F]),
   Value.

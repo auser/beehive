@@ -1,6 +1,20 @@
 Router
 ===
 
+How it works
+===
+There are 3 mnesia tables setup by the beehive router:
+
+<code>
+  |----------|  |-------------| |-------------|
+  | backends |  | backendpid  | | apps        |
+  |----------|  |-------------| |-------------|
+  | app_name |  | backend_key | | name        |
+  | host     |  | pid         | | pwd         |
+  | ...      |  |-------------| | ...         |
+  |----------|                  |-------------|               
+</code>
+
 ## Proxy
 app_srv:add_backend({"streaming",{127,0,0,1}, 5001}).
 app_srv:add_backend({"srdves3", "services.speak4it.com", 80}).

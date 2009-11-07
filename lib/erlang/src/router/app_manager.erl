@@ -194,10 +194,10 @@ handle_info({manage_pending_backends}, State) ->
   PendingBackends = lists:filter(fun(B) -> B#backend.status == pending end, apps:all(backends)),
   lists:map(fun(B) ->
       BackendStatus = try_to_connect_to_new_instance(B, 10),
-      ?LOG(info, "Marking ~p instance ~p", [B#backend.name, BackendStatus]),
+      ?LOG(info, "Marking ~p instance ~p", [B#backend.app_name, BackendStatus]),
       app_srv:update_backend_status(B, BackendStatus)
     % lists:map(fun(B) ->
-      % ?LOG(info, "Garbage cleaning up on: ~p", [Backends#backend.name])
+      % ?LOG(info, "Garbage cleaning up on: ~p", [Backends#backend.app_name])
     % end, Backends)
   end, PendingBackends),
   {noreply, State};
@@ -206,7 +206,7 @@ handle_info({garbage_collection}, State) ->
   lists:map(fun(_Backends) ->
     ok
     % lists:map(fun(B) ->
-      % ?LOG(info, "Garbage cleaning up on: ~p", [Backends#backend.name])
+      % ?LOG(info, "Garbage cleaning up on: ~p", [Backends#backend.app_name])
     % end, Backends)
   end, apps:all(backends)),
   
@@ -271,7 +271,7 @@ start_new_instance(App, State) ->
   Pid = port_handler:start(RealCmd, App#app.path),
   
   Backend  = #backend{
-    name                    = App#app.name,
+    app_name                = App#app.name,
     host                    = Host,
     port                    = Port,
     status                  = pending,
@@ -285,7 +285,7 @@ start_new_instance(App, State) ->
   % Let the instance know it's ready after it connects
   spawn(fun() ->
     BackendStatus = try_to_connect_to_new_instance(Backend, 10),
-    ?LOG(info, "Marking ~p instance ~p", [Backend#backend.name, BackendStatus]),
+    ?LOG(info, "Marking ~p instance ~p", [Backend#backend.app_name, BackendStatus]),
     app_srv:update_backend_status(Backend, BackendStatus)
   end),
   
@@ -387,7 +387,7 @@ add_application_by_configuration(ConfigProplist, State) ->
 
 % kill the instance of the application
 stop_instance(Backend, #state{dead_apps = DeadApps} = State) ->
-  App = app_srv:lookup(app, Backend#backend.name),
+  App = app_srv:lookup(app, Backend#backend.app_name),
   RealCmd = template_command_string(App#app.stop_command, [
                                                         {"[[PORT]]", erlang:integer_to_list(Backend#backend.port)},
                                                         {"[[GROUP]]", App#app.group},
@@ -397,10 +397,10 @@ stop_instance(Backend, #state{dead_apps = DeadApps} = State) ->
   Backend#backend.pid ! {stop, RealCmd},
   NewDeadApps = [App|DeadApps],
   
-  RunningBackends1 = app_srv:lookup(instances, Backend#backend.name),
+  RunningBackends1 = app_srv:lookup(instances, Backend#backend.app_name),
   RunningBackends = lists:delete(Backend, RunningBackends1),
   
-  apps:store(backend, Backend#backend.name, RunningBackends),
+  apps:store(backend, Backend#backend.app_name, RunningBackends),
   State#state{dead_apps = NewDeadApps}.
 
 % Clean up applications
@@ -503,5 +503,5 @@ mark_instance_ready(Backend)  -> mark_instance_status(Backend, ready).
 % Mark an instance of an app as the denoted status
 mark_instance_status(Backend, Status) ->
   NewBackend = Backend#backend{status = Status, lastresp_time = date_util:now_to_seconds()},
-  apps:store(backend, Backend#backend.name, [NewBackend]),
+  apps:store(backend, Backend#backend.app_name, [NewBackend]),
   NewBackend.

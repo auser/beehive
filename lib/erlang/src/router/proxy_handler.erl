@@ -34,6 +34,7 @@ start_link(ClientSock) ->
   {ok, Pid}.
 
 proxy_init(ClientSock) ->
+  io:format("get backend: ~p", [app_srv:get_backend(self(), "hi")]),
   receive
     {start, ClientSock, RequestPid, Key, Req} ->
       engage_backend(ClientSock, RequestPid, Key, Req, app_srv:get_backend(self(), Key));

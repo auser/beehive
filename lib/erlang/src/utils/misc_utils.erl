@@ -23,3 +23,11 @@ max([H|T]) -> max(H, T).
 max(M, []) -> M;
 max(M, [H|L]) when M > H -> max(M, L);
 max(_M, [H|L]) -> max(H,L).
+
+% Only choose values that are actually in the proplist
+filter_proplist(_Proplist, [], Acc) -> Acc;
+filter_proplist(Proplist, [{K,V}|Rest], Acc) ->
+  case proplists:is_defined(K, Proplist) of
+    false -> filter_proplist(Proplist, Rest, Acc);
+    true -> filter_proplist(Proplist, Rest, [{K,V}|Acc])
+  end.

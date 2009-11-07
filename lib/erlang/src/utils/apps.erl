@@ -58,7 +58,7 @@ lookup(_, _Name) -> undefined.
 
 % Store
 store(app, Name, App) -> ?KVSTORE:store(?APP_DB, Name, App);
-store(backend2pid, Backend, NewPidlist) -> ?KVSTORE:store(?BACKEND2PID_DB, Backend#backend.name, NewPidlist);
+store(backend2pid, Backend, NewPidlist) -> ?KVSTORE:store(?BACKEND2PID_DB, Backend#backend.app_name, NewPidlist);
 store(pid, Pid, Backend) -> ?KVSTORE:store(?PID2BACKEND_DB, Pid, Backend);
 store(backend, Name, Backends) -> ?KVSTORE:store(?BACKEND_DB, Name, Backends);
 store(_, _, _) -> ok.

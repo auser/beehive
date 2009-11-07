@@ -126,15 +126,15 @@ format_backend_list([B|Bs], Acc) ->
       B#backend.lasterr_time -> B#backend.lasterr_time;
       true -> 62167219200
     end,
-    {L1, L2} = case ?QSTORE:get_queue(?WAIT_DB, B#backend.name) of
+    {L1, L2} = case ?QSTORE:get_queue(?WAIT_DB, B#backend.app_name) of
       empty -> {[], []};
       E -> E
     end,
-    PidList = backend_pids:lookup(B#backend.name),
+    PidList = backend_pids:lookup(B#backend.app_name),
     {Active, Pending} = count_reqs(PidList),
     format_backend_list(Bs, [[
        "<tr> ",
-       io_lib:format("<td> ~s </td>", [B#backend.name]),
+       io_lib:format("<td> ~s </td>", [B#backend.app_name]),
        io_lib:format("<td> ~p </td>", [B#backend.host]),
        io_lib:format("<td> ~w </td>", [B#backend.port]),
        io_lib:format("<td> ~w </td>", [B#backend.status]),

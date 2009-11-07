@@ -8,6 +8,16 @@
 
 -module (backend).
 
+% This provides an interface to the backend mnesia table that looks like:
+% |----------|
+% | backends |
+% |----------|
+% | name     |
+% | host     |
+% | ...      |
+% |----------|
+% 
+
 -include ("router.hrl").
 
 -export ([
@@ -15,6 +25,7 @@
   create_or_update/1,
   get/1,
   create/1,
+  new/1,
   update/1,
   delete/1
 ]).
@@ -22,22 +33,16 @@
 find_by_hostname(Hostname) ->
   db:read({backend, Hostname}).
 
-create_or_update(NewBackend) ->
+create_or_update(_NewBackend) ->
   ok.
 
+new(NewBackend) when is_record(NewBackend, backend) ->
+  NewBackend;
+
 new(NewProps) ->
-  #backend{}.
-%   PropList = ?rec_info(backend, Backend),
-%   FilteredProplist = filter_backend_proplist(PropList, NewProps, []),
-%   list_to_tuple([backend|[proplists:get_value(X, FilteredProplist) || X <- record_info(fields, backend)]]).
-%   
-% % Only choose values that are actually in the proplist
-% filter_backend_proplist(_BackendProplist, [], Acc) -> Acc;
-% filter_backend_proplist(BackendProplist, [{K,V}|Rest], Acc) ->
-%   case proplists:is_defined(K, BackendProplist) of
-%     false -> filter_backend_proplist(BackendProplist, Rest, Acc);
-%     true -> filter_backend_proplist(BackendProplist, Rest, [{K,V}|Acc])
-%   end.
+  PropList = ?rec_info(backend, #backend{}),
+  FilteredProplist = misc_utils:filter_proplist(PropList, NewProps, []),
+  list_to_tuple([backend|[proplists:get_value(X, FilteredProplist) || X <- record_info(fields, backend)]]).
 
 get(_) ->
   ok.
@@ -56,7 +61,7 @@ valid(B) ->
   Real = #backend{},
   if 
 	  size(B) =/= size(Real) -> false;
-  	B#backend.name == "" -> false;
+  	B#backend.app_name == "" -> false;
   	B#backend.port =< 0 -> false;
   	B#backend.maxconn =< 0 -> false;
   	B#backend.act_count =/= 0 -> false;

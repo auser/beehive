@@ -3,6 +3,8 @@
 % Extra time to give an app instance breathing room
 -define (TIME_BUFFER, 20).
 
+-define(BUFSIZ, (128*1024)).
+
 % Time period to kill an instance after: defaults to an hour
 -define (RUN_INSTANCE_TIME_PERIOD, 3600).
 
@@ -45,7 +47,7 @@
 
 % Application backend
 -record (backend, {
-  name,
+  app_name,                 % name of the app this backend supports
   host,
   port,
   start_time,               % started
@@ -63,7 +65,6 @@
 % Application configuration
 -record (app, {
   name,
-  backends,
   cmd,
   path,
   url,
@@ -78,12 +79,10 @@
   stop_command
 }).
 
-% Pid -> {status, Pid, Startime}
--record (pid, {status = pending, pid, start_time}).
--record (app_backends, {app_key, backend_key}).
+% Pid -> {Pid, status, Startime}
+-record (pid, {pid, status = pending, start_time}).
 
-
--define(BUFSIZ, (128*1024)).
+-record (backend_pid, {backend_key, pids}).
 
 %% Overall proxy_state of the proxy
 -record(proxy_state, {
