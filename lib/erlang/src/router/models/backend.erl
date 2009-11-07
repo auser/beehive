@@ -19,22 +19,20 @@
 % 
 
 -include ("router.hrl").
+-include_lib("stdlib/include/qlc.hrl").
 
 -export ([
   find_by_hostname/1,
-  create_or_update/1,
   get/1,
   create/1,
   new/1,
   update/1,
-  delete/1
+  delete/1,
+  all/0
 ]).
 
 find_by_hostname(Hostname) ->
   db:read({backend, Hostname}).
-
-create_or_update(_NewBackend) ->
-  ok.
 
 new(NewBackend) when is_record(NewBackend, backend) ->
   NewBackend;
@@ -47,14 +45,19 @@ new(NewProps) ->
 get(_) ->
   ok.
   
-create(_) ->
-  ok.
+create(Backend) when is_record(Backend, backend) ->
+  db:write(Backend);
+create(Proplist) ->
+  db:write(new(Proplist)).
 
 update(_) ->
   ok.
 
 delete(_) ->
   ok.
+
+all() ->
+  db:find(qlc:q([ B || B <- mnesia:table(backend) ])).
   
 % Check to make sure the backend is valid
 valid(B) ->

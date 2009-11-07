@@ -58,8 +58,7 @@
   act_time      = 0,
   status        = ready,    % pending | ready | broken
   maxconn       = 10,
-  act_count     = 0,
-  pidlist       = []        % proxy pids
+  act_count     = 0
 }).
 
 % Application configuration
@@ -79,10 +78,7 @@
   stop_command
 }).
 
-% Pid -> {Pid, status, Startime}
--record (pid, {pid, status = pending, start_time}).
-
--record (backend_pid, {backend_key, pids}).
+-record (backend_pid, {pid, status, start_time, backend_name}).
 
 %% Overall proxy_state of the proxy
 -record(proxy_state, {

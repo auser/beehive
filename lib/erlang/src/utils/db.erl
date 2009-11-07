@@ -37,12 +37,12 @@ delete(Table, Key) ->
 find(F) when is_function(F) ->
   {_Time, Value} = timer:tc(?MODULE, transaction, [F]),
   Value;
-  
-find(Q)->
-  F = fun() -> qlc:e(qlc:q(Q)) end,
+
+find(Q) ->
+  F = fun() -> qlc:eval(Q) end,
   {_Time, Value} = timer:tc(?MODULE, transaction, [F]),
   Value.
-  	
+
 read(Tuple) ->
   {_Time, Value} = timer:tc(mnesia, dirty_read, [Tuple]),
   Value.

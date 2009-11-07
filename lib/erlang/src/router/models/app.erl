@@ -7,6 +7,7 @@
 %%%-------------------------------------------------------------------
 
 -module (app).
+-include ("router.hrl").
 
 -export ([
   find_by_hostname/1,
@@ -25,8 +26,9 @@ get(Name) ->
     [] -> []
   end.
   
-create(_) ->
-  ok.
+% Insert a new app
+create(App) when is_record(App, app) ->
+  db:write(App).
 
 update(_) ->
   ok.

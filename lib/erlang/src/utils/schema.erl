@@ -48,7 +48,7 @@ install_backend(Nodes) ->
     exit:_Why ->
       io:format("Creating table backend\n"),
       mnesia:create_table(backend,[
-        {attributes, record_info(fields, backend)},{type, bag},{disc_copies, Nodes}
+        {attributes, record_info(fields, backend)},{type, set},{disc_copies, Nodes}
       ]);
     Error ->
       io:format("Error creating mnesia table: ~p", [Error]),
@@ -62,7 +62,7 @@ install_backend_pid(Nodes) ->
     exit:_Why ->
       io:format("Creating table backend_pid\n"),
       mnesia:create_table(backend_pid,[
-        {attributes, record_info(fields, backend_pid)},{type, set},{disc_copies, Nodes}
+        {attributes, record_info(fields, backend_pid)},{type, bag},{disc_copies, Nodes}
       ]);
     Error ->
       io:format("Error creating mnesia table: ~p", [Error]),
