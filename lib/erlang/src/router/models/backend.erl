@@ -44,8 +44,8 @@ create(NewProps) ->
 update(_) ->
   ok.
 
-delete(_) ->
-  ok.
+delete(Key) ->
+  db:delete(backend, Key).
 
 all() ->
   db:find(qlc:q([ B || B <- mnesia:table(backend) ])).
@@ -75,7 +75,8 @@ test() ->
     schema:install(),
     create_test(),
     find_by_name_test(),
-    all_test()
+    all_test(),
+    delete_test()
   catch
     throw:Thrown ->
       io:format("Test (~p) failed because ~p~n", [?MODULE, Thrown]),
@@ -103,3 +104,8 @@ all_test() ->
   Be1 = #backend{app_name = "test_app"},
   Be2 = #backend{app_name = "another_app"},
   ?assertEqual([Be1, Be2], all()).
+  
+delete_test() ->
+  Be1 = #backend{app_name = "test_app"},
+  delete("another_app"),
+  ?assertEqual([Be1], all()).

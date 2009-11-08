@@ -10,8 +10,9 @@
 -include ("router.hrl").
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("stdlib/include/qlc.hrl").
+
 % Backend pids are stored in the database like so:
-%   [{BackendName, [{<0.1.0>, active, 020203040}, {<0.2.0>, pending, 020203041}]}]
+%   [{<0.1.0>, active, 020203040, "app_name"}]
 % |-------------|
 % | backendpid  |
 % |-------------|
@@ -24,6 +25,8 @@
 % We can lookup the backend associated with a pid by looking through the keys of the 
 % pidlist for the Pid and return the backend name, which we do a lookup on the backend
 % table to return the backend record
+% 
+% TODO: Investigate if this is necessary in mnesia, or we can do this in ets
 
 -export ([
   find_backend_for_pid/1,
