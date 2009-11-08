@@ -31,6 +31,7 @@
 -export ([
   find_backend_for_pid/1,
   find_pids_for_backend_name/1,
+  mark_backend/3,
   create/1,
   test/0
 ]).
@@ -40,10 +41,14 @@
 % For speed purposes, we'll use dirty read instead of a function
 % Even though we have to use 2 functions to lookup the backend, this is still
 % faster than using a function. This may have to be placed into a transaction...
-find_backend_for_pid(Pid) ->
-  [BackendPid|_] = db:read({backend_pid, Pid}),
-  [Backend|_] = backend:find_by_name(BackendPid#backend_pid.backend_name),
-  Backend.
+find_backend_for_pid(Pid) when is_pid(Pid) ->
+  case db:read({backend_pid, Pid}) of
+    [BackendPid|_] ->
+      backend:find_by_name(BackendPid#backend_pid.backend_name);
+    [] -> []
+  end;
+
+find_backend_for_pid(_) -> [].
   
   % db:find(qlc:q([
   %   Backend ||  BackendPid <- mnesia:table(backend_pid),
@@ -58,11 +63,20 @@ find_pids_for_backend_name(Name) ->
     BackendPid || BackendPid <- mnesia:table(backend_pid),
                   BackendPid#backend_pid.backend_name =:= Name
   ])).
-  
-% Insert a new backend pid
-create(PidTuple) ->
-  db:write(PidTuple).
 
+mark_backend(_Name, FromPid, ready) -> 
+  delete(FromPid);
+mark_backend(Name, FromPid, Status) ->
+  create(#backend_pid{pid=FromPid, 
+                      backend_name=Name,
+                      status=Status, 
+                      start_time=date_util:now_to_seconds()}).
+
+% Insert a new backend pid
+create(PidTuple) -> db:write(PidTuple).
+
+% Delete a backend_pid
+delete(Pid) -> db:delete(backend_pid, Pid).
 
 % TESTS
 test() ->
@@ -74,6 +88,7 @@ test() ->
     Pid2 = spawn_link(fun() -> forever_loop() end),
     register(pid2, Pid2),
     test_insert_backend_pid(),
+    mark_backend_test(),
     find_backend_for_pid_test(),
     find_pids_for_backend_name_test()
   catch
@@ -109,6 +124,12 @@ find_pids_for_backend_name_test() ->
   Res = lists:map(fun(BP) -> BP#backend_pid.pid end, Res1),
   Expect = [whereis(pid)],
   ?assertEqual(Expect, Res).
+
+mark_backend_test() ->
+  mark_backend("test_app", whereis(pid2), ready),
+  Res1 = find_backend_for_pid(whereis(pid2)),
+  Res = lists:map(fun(BP) -> BP#backend_pid.status end, Res1),
+  ?assertEqual([], Res).
 
 % Just to give us pids we can play with
 forever_loop() ->
