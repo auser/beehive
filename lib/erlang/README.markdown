@@ -5,7 +5,7 @@ How it works
 ===
 There are 3 mnesia tables setup by the beehive router:
 
-<code>
+<pre><code>
   |----------|  |-------------| |-------------|
   | backends |  | backendpid  | | apps        |
   |----------|  |-------------| |-------------|
@@ -13,7 +13,7 @@ There are 3 mnesia tables setup by the beehive router:
   | host     |  | pid         | | pwd         |
   | ...      |  |-------------| | ...         |
   |----------|                  |-------------|               
-</code>
+</code></pre>
 
 ## Proxy
 app_srv:add_backend({"streaming",{127,0,0,1}, 5001}).

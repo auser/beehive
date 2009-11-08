@@ -25,7 +25,6 @@
 -export ([
   find_by_name/1,
   create/1,
-  update/1,
   delete/1,
   all/0
 ]).
@@ -40,9 +39,6 @@ create(Backend) when is_record(Backend, backend) ->
   db:write(Backend);
 create(NewProps) ->
   db:write(new(NewProps)).
-
-update(_) ->
-  ok.
 
 delete(Key) ->
   db:delete(backend, Key).
