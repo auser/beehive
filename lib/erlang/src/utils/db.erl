@@ -17,6 +17,7 @@
   read/1,
   index_read/3,
   find/1,
+  clear_table/1,
   new_id/1,
   transaction/1
 ]).
@@ -50,7 +51,10 @@ read(Tuple) ->
 index_read(Table, Value, Key) ->
   {_Time, Value} = timer:tc(mnesia, dirty_index_read, [Table, Value, Key]),
   Value.
-  
+
+clear_table(Table) ->
+  mnesia:clear_table(Table).
+
 transaction(F) ->
 	case mnesia:transaction(F) of
 		{atomic, Result} ->

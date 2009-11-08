@@ -32,8 +32,10 @@
 -export ([test/0]).
 
 find_by_name(Hostname) ->
-  [B|_] = db:read({backend, Hostname}),
-  B.
+  case db:read({backend, Hostname}) of
+    [B|_] -> B;
+    _ -> undefined
+  end.
   
 create(Backend) when is_record(Backend, backend) ->
   db:write(Backend);

@@ -44,10 +44,12 @@
 find_backend_for_pid(Pid) when is_pid(Pid) ->
   case db:read({backend_pid, Pid}) of
     [BackendPid|_] ->
-      backend:find_by_name(BackendPid#backend_pid.backend_name);
+      case backend:find_by_name(BackendPid#backend_pid.backend_name) of
+        undefined -> [];
+        E -> E
+      end;
     [] -> []
   end;
-
 find_backend_for_pid(_) -> [].
   
   % db:find(qlc:q([
@@ -81,7 +83,7 @@ delete(Pid) -> db:delete(backend_pid, Pid).
 % TESTS
 test() ->
   try
-    mnesia:clear_table(backend_pid),
+    db:clear_table(backend_pid),
     schema:install(),
     Pid = spawn_link(fun() -> forever_loop() end),
     register(pid, Pid),
@@ -126,10 +128,22 @@ find_pids_for_backend_name_test() ->
   ?assertEqual(Expect, Res).
 
 mark_backend_test() ->
-  mark_backend("test_app", whereis(pid2), ready),
+  db:clear_table(backend_pid),
+  Be = #backend{app_name = "test_app"},
+  backend:create(Be),
+  
+  create(#backend_pid{pid=whereis(pid2), backend_name="test_app", status=active, start_time=63424809235}),
+  
+  mark_backend("test_app", whereis(pid2), pending),
   Res1 = find_backend_for_pid(whereis(pid2)),
-  Res = lists:map(fun(BP) -> BP#backend_pid.status end, Res1),
-  ?assertEqual([], Res).
+  Res2 = lists:map(fun(BP) -> BP#backend_pid.status end, Res1),
+  io:format("Res2: ~p~n", [Res2]),
+  ?assertEqual([], Res2),
+  
+  mark_backend("test_app", whereis(pid2), ready),
+  Res4 = find_backend_for_pid(whereis(pid2)),
+  Res3 = lists:map(fun(BP) -> BP#backend_pid.status end, Res4),
+  ?assertEqual([], Res3).
 
 % Just to give us pids we can play with
 forever_loop() ->
