@@ -59,9 +59,12 @@ find_pids_for_backend_name(Name) ->
 % Insert a new backend pid
 create(PidTuple) ->
   db:write(PidTuple).
-  
+
+
+% TESTS
 test() ->
   try
+    mnesia:clear_table(backend_pid),
     schema:install(),
     Pid = spawn_link(fun() -> forever_loop() end),
     register(pid, Pid),
@@ -72,7 +75,9 @@ test() ->
     find_pids_for_backend_name_test()
   catch
     error: Why ->
-      io:format("Test failed because: ~p", [Why]),
+      io:format("Test (~p) failed because: ~p", [?MODULE,Why]),
+      whereis(pid) ! exit,
+      whereis(pid2) ! exit,
       unregister(pid),
       unregister(pid2)
   end.
@@ -101,8 +106,10 @@ find_pids_for_backend_name_test() ->
   Res = lists:map(fun(BP) -> BP#backend_pid.pid end, Res1),
   Expect = [whereis(pid)],
   ?assertEqual(Expect, Res).
-  
+
+% Just to give us pids we can play with
 forever_loop() ->
   receive
+    exit -> ok;
     _X -> forever_loop()
   end.

@@ -19,36 +19,27 @@
 % 
 
 -include ("router.hrl").
+-include_lib("eunit/include/eunit.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 
 -export ([
   find_by_name/1,
-  get/1,
   create/1,
-  new/1,
   update/1,
   delete/1,
   all/0
 ]).
 
+-export ([test/0]).
+
 find_by_name(Hostname) ->
-  db:read({backend, Hostname}).
-
-new(NewBackend) when is_record(NewBackend, backend) ->
-  NewBackend;
-
-new(NewProps) ->
-  PropList = ?rec_info(backend, #backend{}),
-  FilteredProplist = misc_utils:filter_proplist(PropList, NewProps, []),
-  list_to_tuple([backend|[proplists:get_value(X, FilteredProplist) || X <- record_info(fields, backend)]]).
-
-get(_) ->
-  ok.
+  [B|_] = db:read({backend, Hostname}),
+  B.
   
 create(Backend) when is_record(Backend, backend) ->
   db:write(Backend);
-create(Proplist) ->
-  db:write(new(Proplist)).
+create(NewProps) ->
+  db:write(new(NewProps)).
 
 update(_) ->
   ok.
@@ -58,16 +49,57 @@ delete(_) ->
 
 all() ->
   db:find(qlc:q([ B || B <- mnesia:table(backend) ])).
-  
-% Check to make sure the backend is valid
-valid(B) ->
-  Real = #backend{},
-  if 
-	  size(B) =/= size(Real) -> false;
-  	B#backend.app_name == "" -> false;
-  	B#backend.port =< 0 -> false;
-  	B#backend.maxconn =< 0 -> false;
-  	B#backend.act_count =/= 0 -> false;
-  	B#backend.act_time =/= 0 -> false;
-  	true -> true
+
+% INERNAL
+new(NewProps) ->
+  PropList = ?rec_info(backend, #backend{}),
+  FilteredProplist1 = misc_utils:filter_proplist(PropList, NewProps, []),
+  FilteredProplist = new_or_previous_value(FilteredProplist1, PropList, []),
+  list_to_tuple([backend|[proplists:get_value(X, FilteredProplist) || X <- record_info(fields, backend)]]).
+
+new_or_previous_value(_NewProplist, [], Acc) -> Acc;
+new_or_previous_value(NewProplist, [{K,V}|Rest], Acc) ->
+  case proplists:is_defined(K,NewProplist) of
+    true -> 
+      NewV = proplists:get_value(K, NewProplist),
+      new_or_previous_value(NewProplist, Rest, [{K, NewV}|Acc]);
+    false ->
+      new_or_previous_value(NewProplist, Rest, [{K, V}|Acc])
   end.
+
+
+% TESTS
+test() ->
+  try
+    mnesia:clear_table(backend),
+    schema:install(),
+    create_test(),
+    find_by_name_test(),
+    all_test()
+  catch
+    throw:Thrown ->
+      io:format("Test (~p) failed because ~p~n", [?MODULE, Thrown]),
+      throw(Thrown)
+  end.
+
+create_test() ->
+  Be1 = #backend{app_name = "test_app"},
+  create(Be1),
+  {atomic,Results1} = mnesia:transaction(fun() -> mnesia:match_object(#backend{_='_'}) end),
+  ?assertEqual([Be1], Results1),
+  % create via proplists
+  Props = [{app_name, "another_app"}],
+  Be2 = new(Props),
+  create(Props),
+  {atomic,Results2} = mnesia:transaction(fun() -> mnesia:match_object(#backend{_='_'}) end),
+  ?assertEqual([Be1, Be2], Results2).
+
+find_by_name_test() ->
+  Be1 = #backend{app_name = "test_app"},
+  Results1 = find_by_name("test_app"),
+  ?assertEqual(Be1, Results1).
+  
+all_test() ->
+  Be1 = #backend{app_name = "test_app"},
+  Be2 = #backend{app_name = "another_app"},
+  ?assertEqual([Be1, Be2], all()).
