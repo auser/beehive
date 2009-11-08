@@ -6,13 +6,13 @@ How it works
 There are 3 mnesia tables setup by the beehive router:
 
 <pre><code>
-  |----------|  |-------------| |-------------|
-  | backends |  | backendpid  | | apps        |
-  |----------|  |-------------| |-------------|
-  | app_name |  | backend_key | | name        |
-  | host     |  | pid         | | pwd         |
-  | ...      |  |-------------| | ...         |
-  |----------|                  |-------------|               
+  |----------|  |-------------|  |-------------|
+  | backends |  | backend_pid |  | apps        |
+  |----------|  |-------------|  |-------------|
+  | app_name |  | backend_key |  | name        |
+  | host     |  | pid         |  | pwd         |
+  | ...      |  |-------------|  | ...         |
+  |----------|                   |-------------|               
 </code></pre>
 
 ## Proxy
@@ -36,7 +36,5 @@ Viewing the list of supported apps:
 
 TODO
 ===
-  * Consider double-storage in router_srv with dynos and backends
   * Add ets/mnesia storage to the front-end servers
   * Add more than just http servers (abstract the proxying protocols)
-  * Consider speed increases that could occur with multiple tables, rather than just 1
