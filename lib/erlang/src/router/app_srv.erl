@@ -147,15 +147,15 @@ handle_call({Pid, get_backend, Hostname}, From, State) ->
   % If this is a request for an internal application, then serve that first
   % These are abnormal applications because they MUST be running for every router
   % and app_srv. 
-  case lists:member(Hostname, ?BEEHIVE_APPS) of
-    true ->
+  case Hostname of
+    base ->
       Backend = #backend{
         port = apps:search_for_application_value(beehive_app_port, 4999, router), 
         host = {127,0,0,1}, 
         app_name = Hostname
       },
       {reply, {ok, Backend}, State};
-    false ->
+    _ ->
       case choose_backend(Hostname, From, Pid) of
     	  ?MUST_WAIT_MSG -> {noreply, State};
     	  {ok, Backend} -> 

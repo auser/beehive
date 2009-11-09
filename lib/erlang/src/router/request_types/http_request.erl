@@ -77,7 +77,7 @@ parse_subdomain(HostName) ->
       StrippedHostname = lists:takewhile(fun (C) -> C =/= $: end, HostName),
       lists:takewhile(fun (C) -> C =/= $. end, StrippedHostname);
     true ->
-      HostName
+      base
   end.
 
 request(Socket, Body) ->
