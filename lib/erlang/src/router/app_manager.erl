@@ -87,11 +87,7 @@ start_link() ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([]) ->
-  % App store will store the application configuration in the format
-  % {Subdomain, {app, record}},{Subdomain2, {app, record_2}}
-  ?KVSTORE:start_link(?APP_DB),
-  
+init([]) ->  
   % Load the applications 
   load_static_configs(),
   
@@ -119,16 +115,8 @@ handle_call({add_application_by_configuration, ConfigProplist}, _From, State) ->
 % Remove an application from this application server
 handle_call({remove_app, AppName}, _From, State) ->
   terminate_app_instances(AppName),
-  ?KVSTORE:delete(?APP_DB, AppName),
   {reply, ok, State};
-    
-% Show the status of the application instances for each app
-handle_call({status}, _From, #state{app_dir = _AppDir} = State) ->
-  Apps = ?KVSTORE:all(?APP_DB),
-  Reply = [
-    {apps, Apps}
-  ],
-  {reply, Reply, State};
+
   
 handle_call(_Request, _From, State) ->
   Reply = ok,
@@ -367,7 +355,7 @@ update_app_configuration(ConfigProplist, App, State) ->
   },
   ?LOG(info, "New app: ~p", [NewApp]),
   
-  apps:store(app, Name, NewApp),
+  app:create(NewApp),
   State.
 
 % Get the current application configuration or the default

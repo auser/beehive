@@ -55,9 +55,16 @@ engage_backend(ClientSock, RequestPid, Hostname, Req, {ok, #backend{host = Host,
 			                {send_timeout, 5000}],
   case gen_tcp:connect(Host, Port, SockOpts) of
     {ok, ServerSock} ->
+      ?NOTIFY({backend, used, Backend}),
       % app_srv:remote_ok(Backend, self()),
       http_request:handle_forward(ServerSock, Req),
-      proxy_loop(#state{client_socket = ClientSock, server_socket = ServerSock, request = Req, backend = Backend});
+      proxy_loop(#state{
+                  start_time = date_util:now_to_seconds(),
+                  client_socket = ClientSock, 
+                  server_socket = ServerSock, 
+                  request = Req, 
+                  backend = Backend}
+                );
     Error ->
       ?LOG(error, "Connection to remote TCP server: ~p:~p ~p", [Host, Port, Error]),
       ?NOTIFY({backend, cannot_connect, Backend}),
@@ -124,7 +131,13 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
   end.
 
 % Close the connection.
-terminate(Reason, #state{server_socket = SSock, client_socket = CSock} = _State) ->
+terminate(Reason, #state{server_socket = SSock, client_socket = CSock, start_time = STime, subdomain = Name} = _State) ->
+  {ok, SocketData} = inet:getstat(SSock, [recv_cnt]),
+  StatsProplist = [
+    {socket, SocketData},
+    {elapsed_time, date_util:now_to_seconds() - STime}
+  ],
+  ?NOTIFY({backend, closing_stats, Name, StatsProplist}),
   gen_tcp:close(SSock), gen_tcp:close(CSock),
   exit(Reason).
 

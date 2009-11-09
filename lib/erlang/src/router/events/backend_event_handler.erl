@@ -36,12 +36,29 @@ init([]) ->
 %% gen_event:notify/2 or gen_event:sync_notify/2, this function is called for
 %% each installed event handler to handle the event.
 %%--------------------------------------------------------------------  
-handle_event({backend, ready, _NewBackend}, State) ->
+handle_event({backend, used, Backend}, State) ->
+  stats_srv:backend_stat({request_begin, Backend#backend.app_name}),
   {ok, State};
   
+handle_event({backend, ready, _NewBackend}, State) ->
+  {ok, State};
+
 handle_event({backend, cannot_connect, Backend}, State) ->
   ?LOG(backend_event, "Cannot connect to backend: ~p", [Backend]),
   backend:update(Backend#backend{status = down}),
+  {ok, State};
+
+handle_event({backend, closing_stats, Name, StatsProplist}, State) ->
+  % When the backend socket connection closes, let's save this data
+  case proplists:get_value(socket, StatsProplist) of
+    {ok, Val} -> stats_srv:backend_stat({socket, Name, Val});
+    _ -> ok
+  end,
+  case proplists:get_value(elapsed_time, StatsProplist) of
+    {ok, Time} -> stats_srv:backend_stat({elapsed_time, Name, Time});
+    _ -> ok
+  end,
+  stats_srv:backend_stat({request_complete, Name}),
   {ok, State};
   
 handle_event(_Event, State) ->
