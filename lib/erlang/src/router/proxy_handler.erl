@@ -61,6 +61,7 @@ engage_backend(ClientSock, RequestPid, Hostname, Req, {ok, #backend{host = Host,
     Error ->
       ?LOG(error, "Connection to remote TCP server: ~p:~p ~p", [Host, Port, Error]),
       ?NOTIFY({backend, cannot_connect, Backend}),
+      timer:sleep(200),
       engage_backend(ClientSock, RequestPid, Hostname, Req, app_srv:get_backend(RequestPid, Hostname))
   end;
 engage_backend(ClientSock, _RequestPid, Hostname, _Req, ?BACKEND_TIMEOUT_MSG) ->

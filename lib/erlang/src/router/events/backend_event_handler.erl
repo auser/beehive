@@ -41,11 +41,10 @@ handle_event({backend, ready, _NewBackend}, State) ->
   
 handle_event({backend, cannot_connect, Backend}, State) ->
   ?LOG(backend_event, "Cannot connect to backend: ~p", [Backend]),
-  backend:update(Backend#backend{status = broken}),
+  backend:update(Backend#backend{status = down}),
   {ok, State};
   
-handle_event(Event, State) ->
-  ?LOG(event, "Received unknown event: ~p", [Event]),
+handle_event(_Event, State) ->
   {ok, State}.
 
 %%--------------------------------------------------------------------

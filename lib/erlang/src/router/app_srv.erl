@@ -60,7 +60,7 @@ start_link(LocalPort, ConnTimeout, ActTimeout) ->
 
 %% Choose an available back-end host
 get_backend(Pid, Hostname) ->
-  gen_server:call(?MODULE, {Pid, get_backend, Hostname}).
+  gen_server:call(?MODULE, {Pid, get_backend, Hostname}, infinity).
 
 %% Tell the balancer that our assigned back-end is OK.
 %% Note that we don't pass the hostname back to the balancer.  That's

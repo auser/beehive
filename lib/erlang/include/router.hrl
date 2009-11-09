@@ -25,7 +25,7 @@
 
 % EVENTS
 -define (EVENT_MANAGER, event_manager).
--define (EVENT_HANDLERS, [app_event_handler, log_event_handler, proxy_event_handler]).
+-define (EVENT_HANDLERS, [app_event_handler, log_event_handler, proxy_event_handler, backend_event_handler]).
 -define (NOTIFY (Event), ?EVENT_MANAGER:notify(Event)).
 
 % Port to start on

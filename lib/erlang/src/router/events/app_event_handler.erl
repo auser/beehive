@@ -43,8 +43,7 @@ handle_event({app_srv, init}, State) ->
   ?QSTORE:start_link(?WAIT_DB),
   {ok, State};
   
-handle_event(Event, State) ->
-  ?LOG(event, "Received unknown event: ~p", [Event]),
+handle_event(_Event, State) ->
   {ok, State}.
 
 %%--------------------------------------------------------------------
