@@ -116,8 +116,8 @@ dispatch_requests(Req) ->
 handle("/favicon.ico", Req) -> Req:respond({200, [{"Content-Type", "text/html"}], ""});
 
 handle(Path, Req) ->
-  CleanPath = list_to_atom(lists:concat([top_level_request(clean_path(Path)), "_controller"])),
-  CAtom = erlang:list_to_atom(top_level_request(CleanPath)),
+  CleanPath = lists:concat([top_level_request(clean_path(Path)), "_controller"]),
+  CAtom = list_to_atom(CleanPath),
   ControllerPath = parse_controller_path(CleanPath),
   
   case CAtom of

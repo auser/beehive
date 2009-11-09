@@ -94,7 +94,7 @@ jsonify(JsonifiableBody) ->
 %%%
 
 format_proxy_state() ->
-  Backends = apps:all(backends),  
+  Backends = backend:all(),
   State = app_srv:get_proxy_state(),
   [
    "<pre>\n",
@@ -109,8 +109,8 @@ format_proxy_state() ->
    "<table>\n",
    "<tr> ",
    [["<td><b>", X, "</b></td>"] || X <- ["Name", "Host", "Port", "Status", "MaxConn", 
-      "TotalActive", "PendConn", "ActConn", "LastErr",
-      "LastErrTime", "ActiveCount",
+      % "TotalActive", "PendConn", "ActConn", 
+      "LastErr", "LastErrTime", "ActiveCount",
       "ActiveTime", "PendingClients"]],
    "\n",
    format_backend_list(Backends),
@@ -130,8 +130,8 @@ format_backend_list([B|Bs], Acc) ->
       empty -> {[], []};
       E -> E
     end,
-    PidList = backend_pids:lookup(B#backend.app_name),
-    {Active, Pending} = count_reqs(PidList),
+    % PidList = backend_pids:lookup(B#backend.app_name),
+    % {Active, Pending} = count_reqs(PidList),
     format_backend_list(Bs, [[
        "<tr> ",
        io_lib:format("<td> ~s </td>", [B#backend.app_name]),
@@ -139,9 +139,9 @@ format_backend_list([B|Bs], Acc) ->
        io_lib:format("<td> ~w </td>", [B#backend.port]),
        io_lib:format("<td> ~w </td>", [B#backend.status]),
        io_lib:format("<td> ~w </td>", [B#backend.maxconn]),
-       io_lib:format("<td> ~w </td>", [length(PidList)]),
-       io_lib:format("<td> ~w </td>", [length(Pending)]),
-       io_lib:format("<td> ~w </td>", [length(Active)]),
+       % io_lib:format("<td> ~w </td>", [length(PidList)]),
+       % io_lib:format("<td> ~w </td>", [length(Pending)]),
+       % io_lib:format("<td> ~w </td>", [length(Active)]),
        io_lib:format("<td> ~w </td>", [B#backend.lasterr]),
        io_lib:format("<td> ~s </td>", [date_util:fmt_date(LastErrTime)]),
        io_lib:format("<td> ~w </td>", [B#backend.act_count]),

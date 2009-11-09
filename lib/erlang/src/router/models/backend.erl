@@ -24,7 +24,9 @@
 
 -export ([
   find_by_name/1,
+  find_all_by_name/1,
   create/1,
+  update/1,
   delete/1,
   all/0
 ]).
@@ -32,15 +34,17 @@
 -export ([test/0]).
 
 find_by_name(Hostname) ->
-  case db:read({backend, Hostname}) of
+  case find_all_by_name(Hostname) of
     [B|_] -> B;
-    _ -> undefined
+    _ -> []
   end.
-  
-create(Backend) when is_record(Backend, backend) ->
-  db:write(Backend);
-create(NewProps) ->
-  db:write(new(NewProps)).
+
+find_all_by_name(Hostname) -> db:read({backend, Hostname}).
+
+create(Backend) when is_record(Backend, backend) -> db:write(Backend);
+create(NewProps) -> db:write(new(NewProps)).
+
+update(Backend) -> create(Backend).
 
 delete(Key) ->
   db:delete(backend, Key).

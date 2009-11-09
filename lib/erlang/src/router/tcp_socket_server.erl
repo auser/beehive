@@ -66,4 +66,4 @@ decode_and_pass_on(ClientSock) ->
   {ok, RoutingKey, Req} = http_request:handle_request(ClientSock),
   {ok, ProxyPid} = ?SUP:start_client(ClientSock),
   gen_tcp:controlling_process(ClientSock, ProxyPid),
-  ProxyPid ! {start, ClientSock, RoutingKey, Req}.
+  ProxyPid ! {start, ClientSock, ProxyPid, RoutingKey, Req}.

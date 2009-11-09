@@ -34,7 +34,6 @@ start_link(ClientSock) ->
   {ok, Pid}.
 
 proxy_init(ClientSock) ->
-  io:format("get backend: ~p", [app_srv:get_backend(self(), "hi")]),
   receive
     {start, ClientSock, RequestPid, Key, Req} ->
       engage_backend(ClientSock, RequestPid, Key, Req, app_srv:get_backend(self(), Key));
@@ -56,12 +55,12 @@ engage_backend(ClientSock, RequestPid, Hostname, Req, {ok, #backend{host = Host,
 			                {send_timeout, 5000}],
   case gen_tcp:connect(Host, Port, SockOpts) of
     {ok, ServerSock} ->
-      app_srv:remote_ok(Backend, self()),
+      % app_srv:remote_ok(Backend, self()),
       http_request:handle_forward(ServerSock, Req),
       proxy_loop(#state{client_socket = ClientSock, server_socket = ServerSock, request = Req, backend = Backend});
     Error ->
       ?LOG(error, "Connection to remote TCP server: ~p:~p ~p", [Host, Port, Error]),
-      app_srv:remote_error(Backend, Error),
+      ?NOTIFY({backend, cannot_connect, Backend}),
       engage_backend(ClientSock, RequestPid, Hostname, Req, app_srv:get_backend(RequestPid, Hostname))
   end;
 engage_backend(ClientSock, _RequestPid, Hostname, _Req, ?BACKEND_TIMEOUT_MSG) ->

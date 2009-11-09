@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% File    : app_event_handler.erl
+%%% File    : backend_event_handler.erl
 %%% Author  : Ari Lerner
 %%% Description : 
 %%%
-%%% Created :  Mon Nov  2 12:13:56 PST 2009
+%%% Created :  Sun Nov  8 17:02:19 PST 2009
 %%%-------------------------------------------------------------------
 
--module (app_event_handler).
+-module (backend_event_handler).
 
 -include ("router.hrl").
 -include ("common.hrl").
@@ -35,12 +35,13 @@ init([]) ->
 %% Description:Whenever an event manager receives an event sent using
 %% gen_event:notify/2 or gen_event:sync_notify/2, this function is called for
 %% each installed event handler to handle the event.
-%%--------------------------------------------------------------------
-handle_event({app_srv, init}, State) ->
-  % ?KVSTORE:start_link(?BACKEND_DB),
-  % ?KVSTORE:start_link(?BACKEND2PID_DB),
-  % ?KVSTORE:start_link(?PID2BACKEND_DB),
-  ?QSTORE:start_link(?WAIT_DB),
+%%--------------------------------------------------------------------  
+handle_event({backend, ready, _NewBackend}, State) ->
+  {ok, State};
+  
+handle_event({backend, cannot_connect, Backend}, State) ->
+  ?LOG(backend_event, "Cannot connect to backend: ~p", [Backend]),
+  backend:update(Backend#backend{status = broken}),
   {ok, State};
   
 handle_event(Event, State) ->
@@ -90,27 +91,3 @@ code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
   
 % INTERNAL METHODS
-% Basic configuration stuff
-% Add apps from a configuration file
-% add_backends_from_config() ->
-%   case apps:search_for_application_value(backends, undefined, router) of
-%     undefined -> ok;
-%     RawPath -> 
-%       Path = case filelib:is_file(RawPath) of
-%         true -> RawPath;
-%         false -> filename:join([filename:absname(""), RawPath])
-%       end,
-%       case file:consult(Path) of
-%         {ok, List} ->
-%           F = fun(V) ->
-%             case V of
-%               {Name, Host, Port} ->
-%                 ?LOG(info, "Adding app: ~p, ~p:~p", [Name, Host, Port]),
-%                 save_backend(#backend{name = Name, host = Host, port = Port, status = ready})
-%             end
-%           end,
-%           lists:map(F, List);
-%         _E -> 
-%           ok
-%       end
-%   end.

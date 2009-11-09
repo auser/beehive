@@ -138,7 +138,7 @@ init([LocalPort, ConnTimeout, ActTimeout]) ->
   LocalHost = host:myip(),
 
   db:init(),
-  % add_backends_from_config(),
+  add_backends_from_config(),
 
   {ok, TOTimer} = timer:send_interval(1000, {check_waiter_timeouts}),
   {ok, #proxy_state{
@@ -307,7 +307,7 @@ choose_backend(Hostname, From, FromPid) ->
 %% Find the first available back-end host
 
 choose_backend(Hostname, FromPid) ->
-  case backend:find_by_hostname(Hostname) of
+  case backend:find_all_by_name(Hostname) of
     [] -> {error, unknown_app};
     Backends ->
       choose_from_backends(Backends, Hostname, FromPid)
@@ -315,19 +315,16 @@ choose_backend(Hostname, FromPid) ->
 
 choose_from_backends([], _Hostname, _FromPid) -> ?MUST_WAIT_MSG;
 choose_from_backends([#backend{app_name = Name} = Backend|Rest], Hostname, FromPid) ->
-  PidList = backend_pid:find_pids_for_backend_name(Name),
   if
-    Backend#backend.status =:= ready
-      andalso (length(PidList) < Backend#backend.maxconn)
-      andalso Backend#backend.app_name =:= Hostname ->
-        NewBackend = mark_backend_pending(FromPid, Backend),
-        {ok, NewBackend};
+    Backend#backend.status =:= ready andalso Name =:= Hostname ->
+        {ok, Backend};
     true ->
+      timer:sleep(200),
       choose_from_backends(Rest, Hostname, FromPid)
   end.
 
 reset_backend_host(Hostname, Status) ->
-  case backend:find_by_hostname(Hostname) of
+  case backend:find_by_name(Hostname) of
     error -> {error, unknown_app};
     [] -> {error, unknown_app};
     Backends -> 
@@ -398,7 +395,7 @@ add_backends_from_config() ->
             case V of
               {Name, Host, Port} ->
                 ?LOG(info, "Adding app: ~p, ~p:~p", [Name, Host, Port]),
-                save_backend(#backend{app_name = Name, host = Host, port = Port, status = ready})
+                backend:create(#backend{app_name = Name, host = Host, port = Port, status = ready})
             end
           end,
           lists:map(F, List);
