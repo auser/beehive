@@ -2,7 +2,7 @@
 
 cd `dirname ../$0`
 DEP_EBINS=`find deps -type d | grep -v \/test\/ | grep ebin | grep -v .svn | grep -v .git`
-if [[ ! -f ebin/router.boot ]]; then
+if [ ! -f ebin/router.boot ]; then
 	make boot
 fi
 
@@ -19,6 +19,4 @@ erl -pa $PWD/ebin \
     -name "router@$HOSTNAME" \
     -s reloader \
 		-mnesia dir $MNESIA_DIR \
-		-detached \
-		-heart \
     -boot router-0.1 $*

@@ -51,12 +51,12 @@ handle_event({backend, cannot_connect, Backend}, State) ->
 handle_event({backend, closing_stats, Name, StatsProplist}, State) ->
   % When the backend socket connection closes, let's save this data
   case proplists:get_value(socket, StatsProplist) of
-    {ok, Val} -> stats_srv:backend_stat({socket, Name, Val});
-    _ -> ok
+    undefined -> ok;
+    Val -> stats_srv:backend_stat({socket, Name, Val})
   end,
   case proplists:get_value(elapsed_time, StatsProplist) of
-    {ok, Time} -> stats_srv:backend_stat({elapsed_time, Name, Time});
-    _ -> ok
+    undefined -> ok;
+    Time -> stats_srv:backend_stat({elapsed_time, Name, Time})
   end,
   stats_srv:backend_stat({request_complete, Name}),
   {ok, State};

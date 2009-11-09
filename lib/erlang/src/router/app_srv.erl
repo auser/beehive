@@ -21,9 +21,6 @@
   start_link/3
 ]).
 -export([ get_backend/2, 
-          remote_ok/2, 
-          remote_error/2,
-          remote_done/2,
           get_proxy_state/0,
           get_host/1,
           reset_host/1, 
@@ -61,21 +58,6 @@ start_link(LocalPort, ConnTimeout, ActTimeout) ->
 %% Choose an available back-end host
 get_backend(Pid, Hostname) ->
   gen_server:call(?MODULE, {Pid, get_backend, Hostname}, infinity).
-
-%% Tell the balancer that our assigned back-end is OK.
-%% Note that we don't pass the hostname back to the balancer.  That's
-%% because the balancer only needs our PID, self(), to figure
-%% everything else out.
-remote_ok(Backend, From) ->
-  gen_server:cast(?MODULE, {From, remote_ok, Backend}).
-
-%% Tell the balancer that our assigned back-end cannot be used.
-remote_error(Backend, Error) ->
-  gen_server:cast(?MODULE, {self(), remote_error, Backend, Error}).
-
-% Free one backend
-remote_done(Backend, From) ->
-  gen_server:cast(?MODULE, {From, remote_done, Backend}).
 
 %% Get the overall status summary of the balancer
 get_proxy_state() ->
@@ -221,17 +203,6 @@ handle_call(Request, From, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %%----------------------------------------------------------------------
-handle_cast({Pid, remote_ok, Backend}, State) ->
-  link(Pid), % So we can watch when the proxy is done
-  mark_backend_busy(Pid, Backend),
-  {noreply, State};
-handle_cast({Pid, remote_error, Backend, Error}, State) ->
-  unlink(Pid),
-  mark_backend_broken(Pid, Error, Backend),
-  {noreply, State};
-handle_cast({_Pid, remote_done, _Backend}, State) ->
-  % handle_remote_done(Pid, Backend, State),
-  {noreply, State};
 handle_cast({update_backend_status, Backend, Status}, State) ->
   save_backend(Backend#backend{status = Status}),
   {noreply, State};
@@ -255,11 +226,6 @@ handle_info({'EXIT', Pid, Reason}, State) ->
 	    ?LOG(info, "~s:handle_info: acceptor pid ~w died, reason = ~w\n", [?MODULE, Pid, Reason]),
 	    {stop, {acceptor_failed, Pid, Reason}, State};
 	  _ ->
-	    case apps:lookup(pid, Pid) of
-	      Backend when is_record(Backend, backend) ->
-  	      handle_remote_done(Pid, Backend, State);
-  	    _ -> ok
-	    end,
       {noreply, State}
   end;
 handle_info({check_waiter_timeouts}, State) ->
@@ -289,12 +255,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%----------------------------------------------------------------------
 %%% Internal functions
 %%%----------------------------------------------------------------------
-
-handle_remote_done(Pid, Backend, State) ->
-  unlink(Pid),
-  NewBe = mark_backend_ready(Pid, Backend),
-  maybe_handle_next_waiting_client(NewBe, State).
-
 choose_backend(Hostname, From, FromPid) ->
   case choose_backend(Hostname, FromPid) of
 	  {ok, Backend} -> {ok, Backend};

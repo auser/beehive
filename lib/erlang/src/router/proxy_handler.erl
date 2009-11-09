@@ -56,13 +56,13 @@ engage_backend(ClientSock, RequestPid, Hostname, Req, {ok, #backend{host = Host,
   case gen_tcp:connect(Host, Port, SockOpts) of
     {ok, ServerSock} ->
       ?NOTIFY({backend, used, Backend}),
-      % app_srv:remote_ok(Backend, self()),
       http_request:handle_forward(ServerSock, Req),
       proxy_loop(#state{
                   start_time = date_util:now_to_seconds(),
                   client_socket = ClientSock, 
                   server_socket = ServerSock, 
-                  request = Req, 
+                  request = Req,
+                  subdomain = Hostname,
                   backend = Backend}
                 );
     Error ->
@@ -100,7 +100,7 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
       % ?LOG(info, "Received info from the server: ~p", [Data]),
       send(CSock, Data),
       inet:setopts(SSock, [{active, false}, {packet, raw}]),
-      case gen_tcp:recv(SSock, 0, 500) of
+      case gen_tcp:recv(SSock, 0, 200) of
         {ok, D} ->
           send(CSock, D),
           inet:setopts(SSock, [{active, once}]),

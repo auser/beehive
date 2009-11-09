@@ -108,47 +108,57 @@ format_proxy_state() ->
    "</pre>\n",
    "<table>\n",
    "<tr> ",
-   [["<td><b>", X, "</b></td>"] || X <- ["Name", "Host", "Port", "Status", "MaxConn", 
-      % "TotalActive", "PendConn", "ActConn", 
-      "LastErr", "LastErrTime", "ActiveCount",
-      "ActiveTime", "PendingClients"]],
+   [["<td><b>", X, "</b></td>"] || X <- ["Name", "Host", "Port", "Status",
+      "TotalReq", "CurrentReq", "LastErr", "LastErrTime", "TotalTime", "AvgRespTime", 
+      "PendingCount", "PacketCount"
+    ]],
    "\n",
    format_backend_list(Backends),
    "</table>\n"
   ].
 
-format_backend_list(List) ->
-    format_backend_list(List, []).
-format_backend_list([], Acc) ->
-    lists:reverse(Acc);
+format_backend_list(List) -> format_backend_list(List, []).
+format_backend_list([], Acc) -> lists:reverse(Acc);
 format_backend_list([B|Bs], Acc) ->
     LastErrTime = if
-      B#backend.lasterr_time -> B#backend.lasterr_time;
-      true -> 62167219200
-    end,
-    {L1, L2} = case ?QSTORE:get_queue(?WAIT_DB, B#backend.app_name) of
-      empty -> {[], []};
-      E -> E
-    end,
-    % PidList = backend_pids:lookup(B#backend.app_name),
-    % {Active, Pending} = count_reqs(PidList),
-    format_backend_list(Bs, [[
-       "<tr> ",
-       io_lib:format("<td> ~s </td>", [B#backend.app_name]),
-       io_lib:format("<td> ~p </td>", [B#backend.host]),
-       io_lib:format("<td> ~w </td>", [B#backend.port]),
-       io_lib:format("<td> ~w </td>", [B#backend.status]),
-       io_lib:format("<td> ~w </td>", [B#backend.maxconn]),
-       % io_lib:format("<td> ~w </td>", [length(PidList)]),
-       % io_lib:format("<td> ~w </td>", [length(Pending)]),
-       % io_lib:format("<td> ~w </td>", [length(Active)]),
-       io_lib:format("<td> ~w </td>", [B#backend.lasterr]),
-       io_lib:format("<td> ~s </td>", [date_util:fmt_date(LastErrTime)]),
-       io_lib:format("<td> ~w </td>", [B#backend.act_count]),
-       io_lib:format("<td> ~w </td>", [B#backend.act_time]),
-       io_lib:format("<td> ~w </td>", [length(L1) + length(L2)]),
-       "</tr>\n"
-      ]|Acc]).
+    B#backend.lasterr_time -> B#backend.lasterr_time;
+    true -> 62167219200
+  end,
+  {L1, L2} = case ?QSTORE:get_queue(?WAIT_DB, B#backend.app_name) of
+    empty -> {[], []};
+    E -> E
+  end,
+
+  #backend_stat{
+    total_requests = TotalReq,
+    current = CurrentReq,
+    total_time = TotalTime,
+    average_req_time = AvgTime,
+    packet_count = PacketCount
+  } = 
+    _BackendStat = case stats_srv:backend_dump(B#backend.app_name) of
+    [{_Name, Q}|_] -> Q;
+    _ -> stats_srv:new_backend_stat()
+  end,
+
+  % PidList = backend_pids:lookup(B#backend.app_name),
+  % {Active, Pending} = count_reqs(PidList),
+  format_backend_list(Bs, [[
+     "<tr> ",
+     io_lib:format("<td> ~s </td>", [B#backend.app_name]),
+     io_lib:format("<td> ~p </td>", [B#backend.host]),
+     io_lib:format("<td> ~w </td>", [B#backend.port]),
+     io_lib:format("<td> ~w </td>", [B#backend.status]),
+     io_lib:format("<td> ~w </td>", [TotalReq]),
+     io_lib:format("<td> ~w </td>", [CurrentReq]),
+     io_lib:format("<td> ~w </td>", [B#backend.lasterr]),
+     io_lib:format("<td> ~s </td>", [date_util:fmt_date(LastErrTime)]),
+     io_lib:format("<td> ~w </td>", [TotalTime]),
+     io_lib:format("<td> ~w </td>", [AvgTime]),
+     io_lib:format("<td> ~w </td>", [length(L1) + length(L2)]),
+     io_lib:format("<td> ~w </td>", [PacketCount]),
+     "</tr>\n"
+    ]|Acc]).
       
 count_reqs(Pidlist) ->
   Active = lists:filter(fun({Status, _, _} = _Item) -> Status == active end, Pidlist),

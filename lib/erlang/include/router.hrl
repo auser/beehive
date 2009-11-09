@@ -91,6 +91,17 @@
   to_timer 				            % Timeout timer ref
 }).
 
+% Stats for a backend
+-record (backend_stat, {
+  total_requests,   % total requests for the backend
+  current,          % current number of requests
+  total_time,       % total active time
+  average_req_time, % average request time
+  % packets
+  packet_count      % total packet counts
+}).
+
+
 -record (http_request, {
   client_socket,
   version = {1,1},

@@ -8,27 +8,22 @@
 %%%-------------------------------------------------------------------
 
 -module (stats_srv).
+
+-include ("router.hrl").
 -behaviour(gen_server2).
 
 %% API
 -export([
   start_link/0,
-  dump/0,
-  backend_stat/1
+  backend_dump/0,
+  backend_dump/1,
+  backend_stat/1,
+  new_backend_stat/0
 ]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
-
--record (backend_stat, {
-  total_requests,   % total requests for the backend
-  current,          % current number of requests
-  total_time,       % total active time
-  average_req_time, % average request time
-  % packets
-  packet_count      % total packet counts
-}).
 
 -record(state, {
   backend_stats     % dict of the backends and their stats
@@ -44,8 +39,8 @@ backend_stat({request_complete, Name})    -> gen_server:cast(?SERVER, {backend_s
 backend_stat({elapsed_time, Name, Time})  -> gen_server:cast(?SERVER, {backend_stat, elapsed_time, Name, Time});
 backend_stat({socket, Name, SocketVals})  -> gen_server:cast(?SERVER, {backend_stat, socket, Name, SocketVals}).
 
-dump() ->
-  gen_server:call(?SERVER, {dump}).
+backend_dump(Name) -> gen_server:call(?SERVER, {backend_dump, Name}).
+backend_dump() -> gen_server:call(?SERVER, {backend_dump}).
 
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
@@ -84,7 +79,11 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call({dump}, _From, #state{backend_stats = Dict} = State) ->
+handle_call({backend_dump, Name}, _From, #state{backend_stats = Dict} = State) ->
+  Dict1 = dict:filter(fun(N,_) -> N =:= Name end, Dict),
+  {reply, dict:to_list(Dict1), State};
+  
+handle_call({backend_dump}, _From, #state{backend_stats = Dict} = State) ->
   Dict1 = dict:filter(fun(_,_) -> true end, Dict),
   {reply, dict:to_list(Dict1), State};
   
@@ -114,16 +113,24 @@ handle_cast({backend_stat, request_complete, Name}, #state{backend_stats = Dict}
   NewDict = dict:store(Name, NewBackendStat2, ADict),
   {noreply, State#state{backend_stats = NewDict}};
   
+handle_cast({backend_stat, elapsed_time, Name, Time}, #state{backend_stats = Dict} = State) ->
+  {#backend_stat{total_time = TTime, average_req_time = AvgTime} = BackendStat, ADict} = dict_with_backend_stat(Name, Dict),
+  Avg1 = (AvgTime + Time) / 2,
+  Total1 = TTime + Time,
+  NewBackendStat = BackendStat#backend_stat{average_req_time = Avg1, total_time = Total1},
+  NewDict = dict:store(Name, NewBackendStat, ADict),
+  {noreply, State#state{backend_stats = NewDict}};
+  
 handle_cast({backend_stat, socket, Name, SocketVals}, #state{backend_stats = Dict} = State) ->
-  {#backend_stat{packet_count = CurrentPacketCount} = NewBackendStat, 
+  {#backend_stat{packet_count = CurrentPacketCount} = BackendStat, 
     ADict} = dict_with_backend_stat(Name, Dict),
   
-  NewBackendStat2 = case proplists:get_value(packet_count, SocketVals) of
-    {ok, Val} -> NewBackendStat#backend_stat{packet_count = CurrentPacketCount + Val};
-    _ -> NewBackendStat
+  NewBackendStat = case proplists:get_value(recv_cnt, SocketVals) of
+    undefined -> ok;
+    Val -> BackendStat#backend_stat{packet_count = CurrentPacketCount + Val}
   end,
   
-  NewDict = dict:store(Name, NewBackendStat2, ADict),
+  NewDict = dict:store(Name, NewBackendStat, ADict),
   {noreply, State#state{backend_stats = NewDict}};
   
 handle_cast(_Msg, State) ->
@@ -164,7 +171,7 @@ new_backend_stat() ->
     total_requests    = 0,
     current           = 0,
     total_time        = 0,
-    average_req_time  = gb_trees:empty(),
+    average_req_time  = 0,
     packet_count      = 0
   }.
   

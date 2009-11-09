@@ -71,8 +71,14 @@ headers_to_list(Headers) ->
 
 % HTTP
 parse_subdomain(HostName) ->
-  StrippedHostname = lists:takewhile(fun (C) -> C =/= $: end, HostName),
-  lists:takewhile(fun (C) -> C =/= $. end, StrippedHostname).
+  NumberOfPeriods = length([X || X <- HostName, X =:= $.]),
+  if
+    NumberOfPeriods > 1 ->
+      StrippedHostname = lists:takewhile(fun (C) -> C =/= $: end, HostName),
+      lists:takewhile(fun (C) -> C =/= $. end, StrippedHostname);
+    true ->
+      HostName
+  end.
 
 request(Socket, Body) ->
   case gen_tcp:recv(Socket, 0, ?IDLE_TIMEOUT) of
