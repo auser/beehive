@@ -39,15 +39,21 @@ find_by_name(Hostname) ->
     _ -> []
   end.
 
-find_all_by_name(Hostname) -> db:read({backend, Hostname}).
+find_all_by_name(Hostname) -> 
+  db:match(#backend{app_name=Hostname, _='_'}).
 
-create(Backend) when is_record(Backend, backend) -> db:write(Backend);
-create(NewProps) -> db:write(new(NewProps)).
+create(Backend) when is_record(Backend, backend) -> 
+  db:write(Backend);
+create(NewProps) ->
+  create(new(NewProps)).
 
-update(Backend) -> create(Backend).
+% Grrr update!
+update(Backend) -> 
+  db:write(Backend).
 
-delete(Key) ->
-  db:delete(backend, Key).
+delete(Backend) when is_record(Backend, backend) -> db:delete_object(Backend);
+delete(Name) ->
+  db:delete_object(#backend{app_name=Name, _='_'}).
 
 all() ->
   db:find(qlc:q([ B || B <- mnesia:table(backend) ])).
@@ -56,8 +62,18 @@ all() ->
 new(NewProps) ->
   PropList = ?rec_info(backend, #backend{}),
   FilteredProplist1 = misc_utils:filter_proplist(PropList, NewProps, []),
-  FilteredProplist = new_or_previous_value(FilteredProplist1, PropList, []),
+  FilteredProplist2 = new_or_previous_value(FilteredProplist1, PropList, []),
+  Id = make_id_from_proplists(NewProps),
+  FilteredProplist  = [{id, Id}|FilteredProplist2],
   list_to_tuple([backend|[proplists:get_value(X, FilteredProplist) || X <- record_info(fields, backend)]]).
+
+% Make an id
+make_id_from_proplists(PropList) ->
+  Name = proplists:get_value(app_name, PropList, proplists:get_value(name, PropList)),
+  Host = proplists:get_value(host, PropList),
+  Port = proplists:get_value(port, PropList),
+  {Name, Host, Port}.
+
 
 new_or_previous_value(_NewProplist, [], Acc) -> Acc;
 new_or_previous_value(NewProplist, [{K,V}|Rest], Acc) ->
@@ -68,7 +84,6 @@ new_or_previous_value(NewProplist, [{K,V}|Rest], Acc) ->
     false ->
       new_or_previous_value(NewProplist, Rest, [{K, V}|Acc])
   end.
-
 
 % TESTS
 test() ->
@@ -86,28 +101,28 @@ test() ->
   end.
 
 create_test() ->
-  Be1 = #backend{app_name = "test_app"},
+  Be1 = #backend{id={"test_app", {127,0,0,1}, 8090}, app_name = "test_app"},
   create(Be1),
   {atomic,Results1} = mnesia:transaction(fun() -> mnesia:match_object(#backend{_='_'}) end),
+  % Results1 = mnesia:dirty_read({backend, "test_app"}),
   ?assertEqual([Be1], Results1),
   % create via proplists
-  Props = [{app_name, "another_app"}],
+  Props = [{app_name, "another_app"}, {host, {127,0,0,1}}, {port, 8091}],
   Be2 = new(Props),
   create(Props),
   {atomic,Results2} = mnesia:transaction(fun() -> mnesia:match_object(#backend{_='_'}) end),
-  ?assertEqual([Be1, Be2], Results2).
+  ?assertEqual([Be2, Be1], Results2).
 
 find_by_name_test() ->
-  Be1 = #backend{app_name = "test_app"},
+  Be1 = #backend{app_name = "test_app", id={"test_app", {127,0,0,1}, 8090}},
   Results1 = find_by_name("test_app"),
   ?assertEqual(Be1, Results1).
   
 all_test() ->
-  Be1 = #backend{app_name = "test_app"},
-  Be2 = #backend{app_name = "another_app"},
-  ?assertEqual([Be1, Be2], all()).
+  All = all(),
+  ?assertEqual(2, length(All)).
   
 delete_test() ->
-  Be1 = #backend{app_name = "test_app"},
+  Be1 = #backend{app_name = "test_app", id={"test_app", {127,0,0,1}, 8090}},
   delete("another_app"),
   ?assertEqual([Be1], all()).

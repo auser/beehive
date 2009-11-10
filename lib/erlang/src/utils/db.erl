@@ -14,11 +14,13 @@
   init/0,
   write/1,
   delete/2,
+  delete_object/1,
   read/1,
   index_read/3,
   find/1,
   clear_table/1,
   new_id/1,
+  match/1,
   transaction/1
 ]).
 
@@ -35,6 +37,12 @@ delete(Table, Key) ->
   {_Time, Value} = timer:tc(mnesia, dirty_delete, [Table, Key]),
   Value.
 
+delete_object(Pattern) ->
+  delete_objects(match(Pattern)).
+  
+delete_objects(Objects) ->
+  transaction(fun() -> lists:foreach(fun mnesia:delete_object/1, Objects) end).
+
 find(F) when is_function(F) ->
   {_Time, Value} = timer:tc(?MODULE, transaction, [F]),
   Value;
@@ -46,6 +54,10 @@ find(Q) ->
 
 read(Tuple) ->
   {_Time, Value} = timer:tc(mnesia, dirty_read, [Tuple]),
+  Value.
+  
+match(Pattern) ->
+  {_Time, Value} = timer:tc(mnesia, dirty_match_object, [Pattern]),
   Value.
 
 index_read(Table, Value, Key) ->

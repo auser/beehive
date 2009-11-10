@@ -88,7 +88,7 @@ add_backend(NewBE) when is_record(NewBE, backend) ->
 
 % Add a backend by name, host and port
 add_backend({Name, Host, Port}) ->
-  add_backend(#backend{app_name = Name, host = Host, port = Port});
+  add_backend(#backend{id = {Name, Host, Port}, app_name = Name, host = Host, port = Port});
 
 % Add a backend by proplists
 add_backend(Proplist) ->
@@ -149,9 +149,14 @@ handle_call({Pid, get_backend, Hostname}, From, State) ->
   % and app_srv. 
   case Hostname of
     base ->
+      Port = apps:search_for_application_value(beehive_app_port, 4999, router), 
+      Host = {127,0,0,1},
+      Id = {Hostname, Host, Port},
+      
       Backend = #backend{
+        id = Id,
         port = apps:search_for_application_value(beehive_app_port, 4999, router), 
-        host = {127,0,0,1}, 
+        host = {127,0,0,1},
         app_name = Hostname
       },
       {reply, {ok, Backend}, State};
@@ -172,26 +177,8 @@ handle_call({get_proxy_state}, _From, State) ->
 handle_call({get_host, Hostname}, _From, State) ->
   Reply = apps:lookup(backends, Hostname),
   {reply, Reply, State};
-handle_call({reset_host, Hostname}, _From, State) ->
-  {reply, reset_backend_host(Hostname, ready), State};
-handle_call({reset_host, Hostname, ready}, _From, State) ->
-  Reply = reset_backend_host(Hostname, ready),
-  %% This is a dirty trick.  :-) Since we know that a backend is now
-  %% up and available, we'll send a process exit message to ourself.
-  %% Receipt of such a message will trigger the first waiter, if
-  %% any, to be assigned a backend.
-  self() ! {'EXIT', no_such_pid, another_host_is_up_now},
-  {reply, Reply, State};
-handle_call({reset_host, Hostname, down}, _From, State) ->
-  Reply = reset_backend_host(Hostname, down),
-  {reply, Reply, State};
-handle_call({reset_backend, Backend, Status}, _From, State) ->
-  reset_backend(Backend, Status),
-  {reply, ok, State};
 handle_call({add_backend, NewBE}, _From, State) ->
   {reply, handle_add_backend(NewBE), State};
-handle_call({del_backend, Backend}, _From, State) ->
-  {reply, delete_backend(Backend), State};
 handle_call(Request, From, State) ->
   error_logger:format("~s:handle_call: got ~w from ~w\n", [?MODULE, Request, From]),
   Reply = error,
@@ -203,9 +190,6 @@ handle_call(Request, From, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %%----------------------------------------------------------------------
-handle_cast({update_backend_status, Backend, Status}, State) ->
-  save_backend(Backend#backend{status = Status}),
-  {noreply, State};
 handle_cast(Msg, State) ->
   error_logger:format("~s:handle_cast: got ~w\n", [?MODULE, Msg]),
   {noreply, State}.
@@ -267,6 +251,7 @@ choose_backend(Hostname, From, FromPid) ->
 %% Find the first available back-end host
 
 choose_backend(Hostname, FromPid) ->
+  ?LOG(info, "choose_backend: ~p", [backend:find_all_by_name(Hostname)]),
   case backend:find_all_by_name(Hostname) of
     [] -> {error, unknown_app};
     Backends ->
@@ -282,18 +267,6 @@ choose_from_backends([#backend{app_name = Name} = Backend|Rest], Hostname, FromP
       timer:sleep(200),
       choose_from_backends(Rest, Hostname, FromPid)
   end.
-
-reset_backend_host(Hostname, Status) ->
-  case backend:find_by_name(Hostname) of
-    error -> {error, unknown_app};
-    [] -> {error, unknown_app};
-    Backends -> 
-      lists:map(fun(B) -> reset_backend(B, Status) end, Backends),
-      {ok, reset}
-  end.
-
-reset_backend(Backend, Status) ->
-  save_backend(Backend#backend{status = Status, lasterr = reset, lasterr_time = date_util:now_to_seconds()}).
   
 handle_add_backend(NewBE) when is_record(NewBE, backend) ->
   backend:create_or_update(NewBE).
@@ -355,7 +328,7 @@ add_backends_from_config() ->
             case V of
               {Name, Host, Port} ->
                 ?LOG(info, "Adding app: ~p, ~p:~p", [Name, Host, Port]),
-                backend:create(#backend{app_name = Name, host = Host, port = Port, status = ready})
+                backend:create(#backend{id={Name, Host, Port}, app_name = Name, host = Host, port = Port, status = ready})
             end
           end,
           lists:map(F, List);
@@ -364,114 +337,23 @@ add_backends_from_config() ->
       end
   end.
 
-% Mark the backend instance as pending
-mark_backend_pending(Pid, Backend) ->
-  link(Pid),
-  save_pid({pending, Pid, date_util:now_to_seconds()}, Backend),
-  save_backend(Backend#backend{status = ready}).
-  
-% Mark this instance as busy
-mark_backend_busy(Pid, #backend{app_name = Name, maxconn = MaxConn} = Backend)   -> 
-  OrigPidlist = apps:lookup(backend2pid, Name),
-  Status = if 
-    length(OrigPidlist) > MaxConn -> busy;
-    true -> ready
-  end,
-  save_pid({active, Pid, date_util:now_to_seconds()}, Backend),
-  save_backend(Backend#backend{status = Status}).
-  
-% Mark this instance as ready
-mark_backend_ready(Pid, #backend{app_name=Name, act_time = CurrActTime, act_count = ActCount} = Backend)  -> 
-  CurrentPids = apps:lookup(backend2pid, Name),
-  ActTime = case lists:keysearch(Pid, 2, CurrentPids) of
-    {value, {_, _, T}} -> CurrActTime + erlang:abs(date_util:now_to_seconds() - T);
-    false -> CurrActTime
-  end,
-  NewBackend = Backend#backend{
-    status = ready,
-    act_time = ActTime,
-    act_count = ActCount + 1
-  },
-  ?NOTIFY({backend, ready, NewBackend}),
-  save_pid({down, Pid, date_util:now_to_seconds()}, NewBackend),
-  save_backend(NewBackend).
-  
-% Mark an instance as broken
-mark_backend_broken(Pid, ErrorStatus, #backend{app_name = Name} = Backend) ->
-  PidList = apps:lookup(backend2pid, Name),
-  ?LOG(error, "update_backend: Pid ~w for host ~s ~w, error status ~w\n", [Pid, Backend#backend.app_name, Backend#backend.port, ErrorStatus]),
-  NewPidlist = lists:keydelete(Pid, 2, PidList),
-  apps:store(backend2pid, Backend, NewPidlist),
-  save_backend(Backend#backend{
-    status = down, 
-    lasterr = ErrorStatus,
-    lasterr_time = date_util:now_to_seconds()
-	}).
-
-% Save pid tuple {status, Pid, StartTime}
-save_pid({pending, Pid, _} = PidTuple, Backend) ->
-  PidList = apps:lookup(backend2pid, Backend#backend.app_name),
-  apps:store(backend2pid, Backend, lists:flatten([PidTuple|PidList])),
-  apps:store(pid, Pid, Backend);
-  
-save_pid({down, Pid, _} = _PidTuple, Backend) ->
-  CurrentPidList = apps:lookup(backend2pid, Backend#backend.app_name),
-  NewPidlist = lists:keydelete(Pid, 2, CurrentPidList),
-  apps:store(backend2pid, Backend, NewPidlist);
-
-save_pid({active, Pid, _} = _PidTuple, Backend) ->
-  OrigPidlist = apps:lookup(backend2pid, Backend#backend.app_name),
-  PidTuple = case lists:keysearch(Pid, 2, OrigPidlist) of
-    {value, {_, Pid, T}} -> 
-      apps:store(pid, Pid, Backend),
-      {active, Pid, T};
-    _ ->
-      {active, Pid, date_util:now_to_seconds()}
-  end,
-  Pidlist = lists:keyreplace(Pid, 2, OrigPidlist, PidTuple),
-  apps:store(backend2pid, Backend, Pidlist).
-  
-% Save the backend into the backends lookup
-save_backend(#backend{app_name = Hostname} = Backend) ->
-  NewBackend = Backend#backend{lastresp_time = date_util:now_to_seconds()},
-  F = fun() ->
-    CurrentBackends = apps:lookup(backends, Hostname),
-    OtherBackends = delete_backend_from_list(Backend, CurrentBackends),
-    apps:store(backend, Hostname, [NewBackend|OtherBackends])
-  end,
-  F(),
-  NewBackend.
-
-% Delete a backend from the backends lookup
-delete_backend(#backend{app_name = Hostname} = Backend) ->
-  CurrentBackends = apps:lookup(backends, Hostname),
-  OtherBackends = delete_backend_from_list(Backend, CurrentBackends),
-  apps:store(backend, Hostname, OtherBackends).
-
-% Delete a backend from the a list
-delete_backend_from_list(Backend, CurrentBackends) ->
-  lists:filter(fun(B) -> backend_is_same_as(B, Backend) == false end, CurrentBackends).
-    
-% There must be a better way to do this, but... this checks to see if the name, host and port
-% of the two backends are equal
-backend_is_same_as(#backend{app_name = Name, port = Port, host = Host} = _Backend, 
-                    #backend{app_name = OtherName, port = OtherPort, host = OtherHost} = _OtherBackend) ->
-  case Name == OtherName of
-    false -> false;
-    true ->
-      case Port == OtherPort of
-        false -> false;
-        true ->
-          Host == OtherHost
-      end
-  end.
-
 % Create a new backend from proplists
 create_backend_from_proplist(Backend, NewProps) ->
   PropList = ?rec_info(backend, Backend),
   FilteredProplist1 = filter_backend_proplist(PropList, NewProps, []),
-  FilteredProplist = new_or_previous_value(FilteredProplist1, PropList, []),
-  list_to_tuple([backend|[proplists:get_value(X, FilteredProplist) || X <- record_info(fields, backend)]]).
+  FilteredProplist2 = new_or_previous_value(FilteredProplist1, PropList, []),
+  Id = make_id_from_proplists(NewProps),
+  FilteredProplist  = [{id, Id}|FilteredProplist2],
+  list_to_tuple([
+    backend|[proplists:get_value(X, FilteredProplist) || X <- record_info(fields, backend)]
+  ]).
+
+% Make an id
+make_id_from_proplists(PropList) ->
+  Name = proplists:get_value(name, PropList),
+  Host = proplists:get_value(host, PropList),
+  Port = proplists:get_value(port, PropList),
+  {Name, Host, Port}.
 
 % Choose the new value if the value doesn't exist in a proplist given already,
 % otherwise, choose the old value (default)

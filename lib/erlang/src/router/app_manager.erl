@@ -259,6 +259,7 @@ start_new_instance(App, State) ->
   Pid = port_handler:start(RealCmd, App#app.path),
   
   Backend  = #backend{
+    id                      = {App#app.name, Host, Port},
     app_name                = App#app.name,
     host                    = Host,
     port                    = Port,

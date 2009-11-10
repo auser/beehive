@@ -46,7 +46,10 @@
 -define (QSTORE, queue_store).
 
 % Application backend
+% Yes, the id is redundant, optimization of this might be ideal... i.e. remove the host/port/app_name
+% fields
 -record (backend, {
+  id,                       % tuple id of the app_name, host and port {app_name, host, port}
   app_name,                 % name of the app this backend supports
   host,
   port,

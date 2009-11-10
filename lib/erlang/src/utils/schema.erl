@@ -24,7 +24,6 @@ install(Nodes) when is_list(Nodes) ->
   mnesia:start(),
   install_app(Nodes),
   install_backend(Nodes),
-  install_backend_pid(Nodes),
   ok.
 
 install_app(Nodes) ->
@@ -34,7 +33,9 @@ install_app(Nodes) ->
     exit:_Why ->
       io:format("Creating table app\n"),
       mnesia:create_table(app,[
-        {attributes, record_info(fields, app)},{type, set},{disc_copies, Nodes}
+        {attributes, record_info(fields, app)},
+        {type, set},
+        {disc_copies, Nodes}
       ]);
     Error ->
       io:format("Error creating mnesia table: ~p\n", [Error]),
@@ -48,24 +49,11 @@ install_backend(Nodes) ->
     exit:_Why ->
       io:format("Creating table backend\n"),
       mnesia:create_table(backend,[
-        {attributes, record_info(fields, backend)},{type, set},{disc_copies, Nodes}
+        {attributes, record_info(fields, backend)},
+        {type, set},
+        {disc_copies, Nodes}
       ]);
     Error ->
       io:format("Error creating mnesia table: ~p", [Error]),
       throw(Error)
   end.
-
-install_backend_pid(Nodes) ->
-  try 
-    mnesia:table_info(backend_pid, type)
-  catch
-    exit:_Why ->
-      io:format("Creating table backend_pid\n"),
-      mnesia:create_table(backend_pid,[
-        {attributes, record_info(fields, backend_pid)},{type, set},{disc_copies, Nodes}
-      ]);
-    Error ->
-      io:format("Error creating mnesia table: ~p", [Error]),
-      throw(Error)
-  end.
-  
