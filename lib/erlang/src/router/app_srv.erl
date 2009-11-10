@@ -251,23 +251,26 @@ choose_backend(Hostname, From, FromPid) ->
 %% Find the first available back-end host
 
 choose_backend(Hostname, FromPid) ->
-  ?LOG(info, "choose_backend: ~p", [backend:find_all_by_name(Hostname)]),
   case backend:find_all_by_name(Hostname) of
     [] -> {error, unknown_app};
     Backends ->
-      choose_from_backends(Backends, Hostname, FromPid)
+      AvailableBackends = lists:filter(fun(B) -> B#backend.status =:= ready end, Backends),
+      choose_from_backends(AvailableBackends, FromPid)
   end.
 
-choose_from_backends([], _Hostname, _FromPid) -> ?MUST_WAIT_MSG;
-choose_from_backends([#backend{app_name = Name} = Backend|Rest], Hostname, FromPid) ->
-  if
-    Backend#backend.status =:= ready andalso Name =:= Hostname ->
-        {ok, Backend};
-    true ->
-      timer:sleep(200),
-      choose_from_backends(Rest, Hostname, FromPid)
-  end.
+% Choose from the list of backends
+% Here is the logic to choose a backend from the list of backends
+% For now, we'll just be using the random strategy
+choose_from_backends([], _FromPid) -> ?MUST_WAIT_MSG;
+choose_from_backends(Backends, FromPid) ->
+  Backend = strategically_choose_from_backends(random, Backends, FromPid),
+  {ok, Backend}.
   
+strategically_choose_from_backends(random, Backends, _FromPid) ->
+  RandNum = random:uniform(length(Backends)),
+  lists:nth(RandNum, Backends).
+
+% Handle adding a new backend
 handle_add_backend(NewBE) when is_record(NewBE, backend) ->
   backend:create_or_update(NewBE).
 

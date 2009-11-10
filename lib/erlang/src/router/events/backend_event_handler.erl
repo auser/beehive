@@ -37,28 +37,27 @@ init([]) ->
 %% each installed event handler to handle the event.
 %%--------------------------------------------------------------------  
 handle_event({backend, used, Backend}, State) ->
-  stats_srv:backend_stat({request_begin, Backend#backend.app_name}),
+  stats_srv:backend_stat({request_begin, Backend#backend.id}),
   {ok, State};
   
 handle_event({backend, ready, _NewBackend}, State) ->
   {ok, State};
 
 handle_event({backend, cannot_connect, Backend}, State) ->
-  ?LOG(backend_event, "Cannot connect to backend: ~p", [Backend]),
   backend:update(Backend#backend{status = down}),
   {ok, State};
 
-handle_event({backend, closing_stats, Name, StatsProplist}, State) ->
+handle_event({backend, closing_stats, #backend{id = Id} = _Backend, StatsProplist}, State) ->
   % When the backend socket connection closes, let's save this data
   case proplists:get_value(socket, StatsProplist) of
     undefined -> ok;
-    Val -> stats_srv:backend_stat({socket, Name, Val})
+    Val -> stats_srv:backend_stat({socket, Id, Val})
   end,
   case proplists:get_value(elapsed_time, StatsProplist) of
     undefined -> ok;
-    Time -> stats_srv:backend_stat({elapsed_time, Name, Time})
+    Time -> stats_srv:backend_stat({elapsed_time, Id, Time})
   end,
-  stats_srv:backend_stat({request_complete, Name}),
+  stats_srv:backend_stat({request_complete, Id}),
   {ok, State};
   
 handle_event(_Event, State) ->

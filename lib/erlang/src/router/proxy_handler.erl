@@ -131,14 +131,14 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
   end.
 
 % Close the connection.
-terminate(Reason, #state{server_socket = SSock, client_socket = CSock, start_time = STime, subdomain = Name} = _State) ->
+terminate(Reason, #state{server_socket = SSock, client_socket = CSock, start_time = STime, backend = Backend} = _State) ->
   StatsProplist1 = [{elapsed_time, date_util:now_to_seconds() - STime}],
   StatsProplist = case inet:getstat(SSock, [recv_cnt]) of
     {ok, D} -> [{socket, D}|StatsProplist1];
     _ -> StatsProplist1
   end,
 
-  ?NOTIFY({backend, closing_stats, Name, StatsProplist}),
+  ?NOTIFY({backend, closing_stats, Backend, StatsProplist}),
   gen_tcp:close(SSock), gen_tcp:close(CSock),
   exit(Reason).
 

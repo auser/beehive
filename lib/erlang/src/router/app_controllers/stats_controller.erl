@@ -136,7 +136,7 @@ format_backend_list([B|Bs], Acc) ->
     average_req_time = AvgTime,
     packet_count = PacketCount
   } = 
-    _BackendStat = case stats_srv:backend_dump(B#backend.app_name) of
+    _BackendStat = case stats_srv:backend_dump(B#backend.id) of
     [{_Name, Q}|_] -> Q;
     _ -> stats_srv:new_backend_stat()
   end,
