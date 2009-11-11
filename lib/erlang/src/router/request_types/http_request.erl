@@ -23,9 +23,16 @@
 % routing key and the full request to the calling process
 handle_request(ClientSock) ->
   inet:setopts(ClientSock, [{packet, http}]),
-  Req = request(ClientSock, []),
+  Req = request(ClientSock, 
+    fun(MochiReq) ->
+      MochiReq
+    end
+  ),
+  
   RoutingParameter = misc_utils:to_atom(apps:search_for_application_value(routing_parameter, "Host", router)),
-  Subdomain = parse_subdomain(proplists:get_value(RoutingParameter, Req#http_request.headers)),
+  
+  HeaderVal = mochiweb_headers:get_value(RoutingParameter, Req:get(headers)),
+  Subdomain = parse_subdomain(HeaderVal),
   {ok, Subdomain, Req}.
   
 handle_forward(ServerSock, Req) ->
@@ -35,26 +42,29 @@ handle_forward(ServerSock, Req) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-build_request_headers(ServerSock,
-    #http_request{length = Length, headers = Headers, path = Path, method = Method, version = Version} = Req
-  ) ->  
+build_request_headers(ServerSock, Req) ->  
   {ok, Hostname} = inet:gethostname(),
+    
+  Headers = mochiweb_headers:to_list(Req:get(headers)),
+  Method = Req:get(method),
+  Path = Req:get(raw_path),
+  Version = Req:get(version),
   
   NewHeaders = replace_values_in_prolists(
       [
-        {'Content-Length', Length},
         {'X-Forwarded-For', Hostname}
       ],
       Headers),
 
-  End = headers_to_list(NewHeaders),
-  
-  case body_length(Req) of
-    chunked -> 
-      Body = receive_body(ServerSock, []),
-      iolist_to_binary([misc_utils:to_list(Method), " ", Path, " HTTP/", version(Version), <<"\r\n">>, End, Body]);
-    _ -> 
-      [misc_utils:to_list(Method), " ", Path, " HTTP/", version(Version), <<"\r\n">> | End]
+  case Req:recv_body() of
+    undefined -> 
+      [misc_utils:to_list(Method), " ", Path, " HTTP/", version(Version), <<"\r\n">> | headers_to_list(NewHeaders)];
+    BElse ->
+      ([
+        misc_utils:to_list(Method), " ", Path, " HTTP/", version(Version), <<"\r\n">>,
+        headers_to_list(NewHeaders),
+        BElse
+      ])
   end.
 
 % Replace values in a proplist
@@ -86,61 +96,36 @@ parse_subdomain(HostName) ->
     true -> base
   end.
 
+% FROM MOCHIWEB
 request(Socket, Body) ->
-  case gen_tcp:recv(Socket, 0, ?IDLE_TIMEOUT) of
-    {ok, {http_request, Method, {abs_path, Path}, Version}} ->
-      Req = #http_request{method = Method, path = Path, version = Version, client_socket = Socket},
-      headers(Socket, Req, 0);
-    {error, {http_error, "\r\n"}} ->
-      request(Socket, Body);
-    {error, {http_error, "\n"}} ->
-      request(Socket, Body);
-    Other ->
-      ?LOG(info, "request received something else: ~p", [Other]),
-      gen_tcp:close(Socket),
-      exit(normal)
-  end.
+    case gen_tcp:recv(Socket, 0, ?IDLE_TIMEOUT) of
+        {ok, {http_request, Method, Path, Version}} ->
+            headers(Socket, {Method, Path, Version}, [], Body, 0);
+        {error, {http_error, "\r\n"}} ->
+            request(Socket, Body);
+        {error, {http_error, "\n"}} ->
+            request(Socket, Body);
+        _Other ->
+            gen_tcp:close(Socket),
+            exit(normal)
+    end.
 
-headers(Socket, _Request, Headers) when Headers > ?MAX_HEADERS ->
+headers(Socket, Request, Headers, _Body, ?MAX_HEADERS) ->
   %% Too many headers sent, bad request.
   inet:setopts(Socket, [{packet, raw}]),
-  gen_tcp:send(Socket, ?ERROR_HTML("Uh oh... too many headers")),
+  Req = mochiweb:new_request({Socket, Request,lists:reverse(Headers)}),
+  Req:respond({400, [], []}),
   gen_tcp:close(Socket),
   exit(normal);
-
-headers(Socket, #http_request{headers = Headers} = Request, HeaderCount) ->
-  case gen_tcp:recv(Socket, 0) of
+headers(Socket, Request, Headers, Body, HeaderCount) ->
+  case gen_tcp:recv(Socket, 0, ?IDLE_TIMEOUT) of
     {ok, http_eoh} ->
-      inet:setopts(Socket, [binary, {packet, 0}, {active, false}]),
-      Request;
+      inet:setopts(Socket, [{packet, raw}]),
+      Req = mochiweb:new_request({Socket, Request, lists:reverse(Headers)}),
+      Body(Req);
     {ok, {http_header, _, Name, _, Value}} ->
-      headers(Socket, Request#http_request{headers = [{Name, Value} | Headers]}, 1 + HeaderCount);
-    Other ->
-      ?LOG(info, "headers received something else: ~p", [Other]),
+      headers(Socket, Request, [{Name, Value} | Headers], Body, 1 + HeaderCount);
+    _Other ->
       gen_tcp:close(Socket),
       exit(normal)
-  end.
-
-body_length(#http_request{headers = Headers} = Request) ->
-  case proplists:get_value('Transfer-Encoding', Headers) of
-    undefined ->
-        case proplists:get_value('Content-Length', Headers) of
-          undefined -> undefined;
-          L -> erlang:list_to_integer(L)
-        end;
-    Value ->
-      case Value of
-        "Chunked" -> chunked;
-        "chunked" -> chunked;
-        Else -> {error, Else}
-      end
-  end.
-  
-receive_body(Socket, BodyAcc) ->
-  case gen_tcp:recv(Socket, 1024, 3000) of
-      {ok, Data} ->
-        receive_body(Socket, [Data|BodyAcc]);
-      Else ->
-        io:format("Else: ~p~n", [Else]),
-        iolist_to_binary(lists:reverse(BodyAcc))
   end.

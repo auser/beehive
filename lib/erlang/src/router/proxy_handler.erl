@@ -52,11 +52,14 @@ engage_backend(ClientSock, RequestPid, Hostname, Req, {ok, #backend{host = Host,
   SockOpts = [binary, {nodelay, true},
 				              {active, true}, 
 				              {recbuf, ?BUFSIZ},
-			                {sndbuf, ?BUFSIZ}],
+			                {sndbuf, ?BUFSIZ},
+			                {send_timeout, 5000}
+			                ],
   case gen_tcp:connect(Host, Port, SockOpts) of
     {ok, ServerSock} ->
       ?NOTIFY({backend, used, Backend}),
       http_request:handle_forward(ServerSock, Req),
+      inet:setopts(ServerSock, [{packet, raw}, {active, once}]),
       proxy_loop(#state{
                   start_time = date_util:now_to_seconds(),
                   client_socket = ClientSock, 
@@ -97,29 +100,28 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
 	    proxy_loop(State);
   	{tcp, SSock, Data} ->
       % Received info from the server
-      % ?LOG(info, "Received info from the server: ~p", [Data]),
+      ?LOG(info, "Received info from the server: ~p", [Data]),
       send(CSock, Data),
       case re:run(Data, "100 [Cc]ontinue", []) of
         {match, _} ->
           inet:setopts(SSock, [{active, once}]),
           proxy_loop(State);
         nomatch -> 
-          terminate(normal, State)
+          inet:setopts(SSock, [{active, false}, {packet, raw}]),
+          case gen_tcp:recv(SSock, 0, 200) of
+            {ok, D} ->
+              send(CSock, D),
+              inet:setopts(SSock, [{active, once}]),
+              proxy_loop(State);
+            {error, E} -> 
+              terminate(E, State)
+          end
       end;
-      % inet:setopts(SSock, [{active, false}, {packet, raw}]),
-      % case gen_tcp:recv(SSock, 0, 200) of
-      %   {ok, D} ->
-      %     send(CSock, D),
-      %     inet:setopts(SSock, [{active, once}]),
-      %     proxy_loop(State);
-      %   {error, E} -> 
-      %     terminate(E, State)
-      % end;
   	{tcp_closed, CSock} ->
-      % ?LOG(info, "Client closed connection", []),
+      ?LOG(info, "Client closed connection", []),
   	  terminate(normal, State);
 		{tcp_closed, SSock} ->
-      % ?LOG(info, "Server closed connection", []),
+      ?LOG(info, "Server closed connection", []),
   	  terminate(normal, State);
   	{tcp_error, SSock} ->
   	  ?LOG(error, "tcp_error on server: ~p", [SSock]),

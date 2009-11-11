@@ -18,6 +18,10 @@ class Beehive < Sinatra::Base
     "<pre>#{request.to_yaml}</pre>"
   end
 
+  post "/asr" do
+    "#{request.to_yaml}"
+  end
+
   post "/hi" do
     "<pre>#{request.body.read}</pre>"
   end
