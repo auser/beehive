@@ -30,7 +30,6 @@ handle_request(ClientSock) ->
   ),
   
   RoutingParameter = misc_utils:to_atom(apps:search_for_application_value(routing_parameter, "Host", router)),
-  
   HeaderVal = mochiweb_headers:get_value(RoutingParameter, Req:get(headers)),
   Subdomain = parse_subdomain(HeaderVal),
   {ok, Subdomain, Req}.
@@ -57,7 +56,7 @@ build_request_headers(ServerSock, Req) ->
       Headers),
 
   case Req:recv_body() of
-    undefined -> 
+    undefined ->
       [misc_utils:to_list(Method), " ", Path, " HTTP/", version(Version), <<"\r\n">> | headers_to_list(NewHeaders)];
     BElse ->
       ([
@@ -129,3 +128,4 @@ headers(Socket, Request, Headers, Body, HeaderCount) ->
       gen_tcp:close(Socket),
       exit(normal)
   end.
+  

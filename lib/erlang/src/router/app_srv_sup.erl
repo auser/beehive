@@ -11,7 +11,6 @@
 -behaviour(supervisor).
 
 %% API
--export ([start_client/1]).
 -export([start_link/1]).
 
 %% Supervisor callbacks
@@ -26,7 +25,6 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the supervisor
 %%--------------------------------------------------------------------
-start_client(Mod) -> supervisor:start_child(the_kv_store, [Mod]).
 start_link(Module) -> supervisor:start_link({local, ?SERVER}, ?MODULE, [Module]).
 
 %%====================================================================
@@ -41,14 +39,14 @@ start_link(Module) -> supervisor:start_link({local, ?SERVER}, ?MODULE, [Module])
 %% to find out about restart strategy, maximum restart frequency and child
 %% specifications.
 %%--------------------------------------------------------------------
-init([Module]) ->
+init([_Module]) ->
   AppSrv  = {the_app_srv,{app_srv, start_link,[]}, permanent,2000,worker,dynamic},
-  KVStore = {the_kv_store,{supervisor,start_link,[{local, the_kv_store}, ?MODULE, [start_module, Module]]},permanent,infinity,supervisor,[]},
+  % KVStore = {the_kv_store,{supervisor,start_link,[{local, the_kv_store}, ?MODULE, [start_module, Module]]},permanent,infinity,supervisor,[]},
   AppManagerSrv  = {the_app_manager,{app_manager, start_link,[]}, permanent, 2000, worker, dynamic},
   BHApps  = {the_beehive,{rest_server, start_link,[]}, permanent,2000,worker,dynamic},
   
   {ok,{{one_for_one,5,10}, [
-      KVStore,
+      % KVStore,
       AppSrv,
       AppManagerSrv,
       BHApps
