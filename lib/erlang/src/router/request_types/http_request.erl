@@ -15,7 +15,7 @@
 %% API
 -export([
   handle_request/1,
-  handle_forward/2
+  handle_forward/4
 ]).
 
 % Take the connecting socket and handle the request. Get the request up until the end of the headers
@@ -34,14 +34,15 @@ handle_request(ClientSock) ->
   Subdomain = parse_subdomain(HeaderVal),
   {ok, Subdomain, Req}.
   
-handle_forward(ServerSock, Req) ->
+handle_forward(ServerSock, ClientSock, Req, From) ->
   ReqHeaders = build_request_headers(ServerSock, Req),
+  spawn_link(fun() -> handle_streaming_data(ServerSock, ClientSock, Req, From) end),
   gen_tcp:send(ServerSock, ReqHeaders).
   
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-build_request_headers(ServerSock, Req) ->  
+build_request_headers(_ServerSock, Req) ->  
   {ok, Hostname} = inet:gethostname(),
     
   Headers = mochiweb_headers:to_list(Req:get(headers)),
@@ -55,17 +56,11 @@ build_request_headers(ServerSock, Req) ->
       ],
       Headers),
 
-  case Req:recv_body() of
-    undefined ->
-      [misc_utils:to_list(Method), " ", Path, " HTTP/", version(Version), <<"\r\n">> | headers_to_list(NewHeaders)];
-    BElse ->
-      ([
-        misc_utils:to_list(Method), " ", Path, " HTTP/", version(Version), <<"\r\n">>,
-        headers_to_list(NewHeaders),
-        BElse
-      ])
-  end.
-
+  [
+    misc_utils:to_list(Method), " ", Path, " HTTP/", version(Version), <<"\r\n">> |
+    headers_to_list(NewHeaders)
+  ].
+      
 % Replace values in a proplist
 replace_values_in_prolists(PropList, OriginalHeaders) ->
   lists:flatten(lists:map(fun({K,V}) ->
@@ -96,36 +91,46 @@ parse_subdomain(HostName) ->
   end.
 
 % FROM MOCHIWEB
-request(Socket, Body) ->
+request(Socket, Callback) ->
     case gen_tcp:recv(Socket, 0, ?IDLE_TIMEOUT) of
         {ok, {http_request, Method, Path, Version}} ->
-            headers(Socket, {Method, Path, Version}, [], Body, 0);
+            headers(Socket, {Method, Path, Version}, [], Callback, 0);
         {error, {http_error, "\r\n"}} ->
-            request(Socket, Body);
+            request(Socket, Callback);
         {error, {http_error, "\n"}} ->
-            request(Socket, Body);
+            request(Socket, Callback);
         _Other ->
             gen_tcp:close(Socket),
             exit(normal)
     end.
 
-headers(Socket, Request, Headers, _Body, ?MAX_HEADERS) ->
+headers(Socket, Request, Headers, _Callback, ?MAX_HEADERS) ->
   %% Too many headers sent, bad request.
   inet:setopts(Socket, [{packet, raw}]),
   Req = mochiweb:new_request({Socket, Request,lists:reverse(Headers)}),
   Req:respond({400, [], []}),
   gen_tcp:close(Socket),
   exit(normal);
-headers(Socket, Request, Headers, Body, HeaderCount) ->
+headers(Socket, Request, Headers, Callback, HeaderCount) ->
   case gen_tcp:recv(Socket, 0, ?IDLE_TIMEOUT) of
     {ok, http_eoh} ->
       inet:setopts(Socket, [{packet, raw}]),
       Req = mochiweb:new_request({Socket, Request, lists:reverse(Headers)}),
-      Body(Req);
+      Callback(Req);
     {ok, {http_header, _, Name, _, Value}} ->
-      headers(Socket, Request, [{Name, Value} | Headers], Body, 1 + HeaderCount);
+      headers(Socket, Request, [{Name, Value} | Headers], Callback, 1 + HeaderCount);
     _Other ->
       gen_tcp:close(Socket),
       exit(normal)
   end.
   
+handle_streaming_data(_ServerSock, ClientSock, Req, From) ->
+  case Req:get(body_length) of
+    undefined -> ok;
+    chunked ->
+      From ! {tcp, ClientSock, Req:recv_body()};
+    L when is_integer(L) ->
+      From ! {tcp, ClientSock, Req:recv_body()};
+    L ->
+      exit(error, unknown_body_type)
+  end.
