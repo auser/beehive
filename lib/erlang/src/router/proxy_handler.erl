@@ -35,12 +35,13 @@ start_link(ClientSock) ->
 
 proxy_init(ClientSock) ->
   receive
-    {start, ClientSock, RequestPid, Key, Req} ->
-      engage_backend(ClientSock, RequestPid, Key, Req, app_srv:get_backend(self(), Key));
-    _E ->
+    {start, ClientSock, RequestPid} ->
+      {ok, RoutingKey, Req} = http_request:handle_request(ClientSock),
+      engage_backend(ClientSock, RequestPid, RoutingKey, Req, app_srv:get_backend(self(), RoutingKey));
+    E ->
       proxy_init(ClientSock)
-  after 10000 ->
-    % We only give 10 seconds to the proxy pid to be given control of the socket
+  after ?IDLE_TIMEOUT ->
+    % We only give 30 seconds to the proxy pid to be given control of the socket
     % this is MORE than enough time for the socket to be given a chance to prepare
     % to be handled by the proxy accept request.
     ?LOG(error, "Proxy is b0rked because of timeout", []),
@@ -51,8 +52,7 @@ engage_backend(ClientSock, RequestPid, Hostname, Req, {ok, #backend{host = Host,
   SockOpts = [binary, {nodelay, true},
 				              {active, true}, 
 				              {recbuf, ?BUFSIZ},
-			                {sndbuf, ?BUFSIZ},
-			                {send_timeout, 5000}],
+			                {sndbuf, ?BUFSIZ}],
   case gen_tcp:connect(Host, Port, SockOpts) of
     {ok, ServerSock} ->
       ?NOTIFY({backend, used, Backend}),
@@ -91,7 +91,7 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
   receive
 	  {tcp, CSock, Data} ->
       % Received data from the client
-      % ?LOG(info, "Received info from the client: ~p", [Data]),
+      ?LOG(info, "Received info from the client: ~p", [Data]),
 	    gen_tcp:send(SSock, Data),
 	    inet:setopts(CSock, [{active, once}]),
 	    proxy_loop(State);
@@ -99,21 +99,27 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
       % Received info from the server
       % ?LOG(info, "Received info from the server: ~p", [Data]),
       send(CSock, Data),
-      inet:setopts(SSock, [{active, false}, {packet, raw}]),
-      case gen_tcp:recv(SSock, 0, 200) of
-        {ok, D} ->
-          send(CSock, D),
+      case re:run(Data, "100 [Cc]ontinue", []) of
+        {match, _} ->
           inet:setopts(SSock, [{active, once}]),
           proxy_loop(State);
-        {error, _E} -> terminate(normal, State)
+        nomatch -> 
+          terminate(normal, State)
       end;
+      % inet:setopts(SSock, [{active, false}, {packet, raw}]),
+      % case gen_tcp:recv(SSock, 0, 200) of
+      %   {ok, D} ->
+      %     send(CSock, D),
+      %     inet:setopts(SSock, [{active, once}]),
+      %     proxy_loop(State);
+      %   {error, E} -> 
+      %     terminate(E, State)
+      % end;
   	{tcp_closed, CSock} ->
       % ?LOG(info, "Client closed connection", []),
-  	  gen_tcp:close(SSock),
   	  terminate(normal, State);
 		{tcp_closed, SSock} ->
       % ?LOG(info, "Server closed connection", []),
-  	  gen_tcp:close(CSock),
   	  terminate(normal, State);
   	{tcp_error, SSock} ->
   	  ?LOG(error, "tcp_error on server: ~p", [SSock]),
@@ -125,7 +131,7 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
   	Msg ->
 	    ?LOG(info, "~s:proxy_loop: unexpectedly recieved ~w\n", [?MODULE, Msg]),
 	    proxy_loop(State)
-  after 60000 ->
+  after 120000 ->
     ?LOG(info, "Terminating open proxy connection because of timeout", []),
     terminate(normal, State)
   end.

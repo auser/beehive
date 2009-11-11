@@ -29,14 +29,15 @@ handle_request(ClientSock) ->
   {ok, Subdomain, Req}.
   
 handle_forward(ServerSock, Req) ->
-  ReqHeaders = build_request_headers(Req),
+  ReqHeaders = build_request_headers(ServerSock, Req),
   gen_tcp:send(ServerSock, ReqHeaders).
   
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-build_request_headers(#http_request{headers = Headers, path = Path, method = Method, version = Version} = _Req) ->  
-  Length = length([]), % maybe?!?!
+build_request_headers(ServerSock,
+    #http_request{length = Length, headers = Headers, path = Path, method = Method, version = Version} = Req
+  ) ->  
   {ok, Hostname} = inet:gethostname(),
   
   NewHeaders = replace_values_in_prolists(
@@ -47,8 +48,14 @@ build_request_headers(#http_request{headers = Headers, path = Path, method = Met
       Headers),
 
   End = headers_to_list(NewHeaders),
-
-  [misc_utils:to_list(Method), " ", Path, " HTTP/", version(Version), <<"\r\n">> | End].
+  
+  case body_length(Req) of
+    chunked -> 
+      Body = receive_body(ServerSock, []),
+      iolist_to_binary([misc_utils:to_list(Method), " ", Path, " HTTP/", version(Version), <<"\r\n">>, End, Body]);
+    _ -> 
+      [misc_utils:to_list(Method), " ", Path, " HTTP/", version(Version), <<"\r\n">> | End]
+  end.
 
 % Replace values in a proplist
 replace_values_in_prolists(PropList, OriginalHeaders) ->
@@ -102,9 +109,9 @@ headers(Socket, _Request, Headers) when Headers > ?MAX_HEADERS ->
   exit(normal);
 
 headers(Socket, #http_request{headers = Headers} = Request, HeaderCount) ->
-  case gen_tcp:recv(Socket, 0, ?IDLE_TIMEOUT) of
+  case gen_tcp:recv(Socket, 0) of
     {ok, http_eoh} ->
-      inet:setopts(Socket, [{packet, raw}]),
+      inet:setopts(Socket, [binary, {packet, 0}, {active, false}]),
       Request;
     {ok, {http_header, _, Name, _, Value}} ->
       headers(Socket, Request#http_request{headers = [{Name, Value} | Headers]}, 1 + HeaderCount);
@@ -112,4 +119,28 @@ headers(Socket, #http_request{headers = Headers} = Request, HeaderCount) ->
       ?LOG(info, "headers received something else: ~p", [Other]),
       gen_tcp:close(Socket),
       exit(normal)
+  end.
+
+body_length(#http_request{headers = Headers} = Request) ->
+  case proplists:get_value('Transfer-Encoding', Headers) of
+    undefined ->
+        case proplists:get_value('Content-Length', Headers) of
+          undefined -> undefined;
+          L -> erlang:list_to_integer(L)
+        end;
+    Value ->
+      case Value of
+        "Chunked" -> chunked;
+        "chunked" -> chunked;
+        Else -> {error, Else}
+      end
+  end.
+  
+receive_body(Socket, BodyAcc) ->
+  case gen_tcp:recv(Socket, 1024, 3000) of
+      {ok, Data} ->
+        receive_body(Socket, [Data|BodyAcc]);
+      Else ->
+        io:format("Else: ~p~n", [Else]),
+        iolist_to_binary(lists:reverse(BodyAcc))
   end.

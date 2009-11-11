@@ -98,8 +98,8 @@ handle_call(_Request, _From, State) ->
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
 handle_cast({backend_stat, request_begin, Key}, #state{backend_stats = Dict} = State) ->
-  {#backend_stat{total_requests = TotReq, current = CurrCount} = NewBackendStat, ADict} = dict_with_backend_stat(Key, Dict),
-  NewBackendStat2 = NewBackendStat#backend_stat{total_requests = TotReq + 1, current = CurrCount + 1},
+  {#backend_stat{current = CurrCount} = NewBackendStat, ADict} = dict_with_backend_stat(Key, Dict),
+  NewBackendStat2 = NewBackendStat#backend_stat{current = CurrCount + 1},
   NewDict = dict:store(Key, NewBackendStat2, ADict),
   {noreply, State#state{backend_stats = NewDict}};
     

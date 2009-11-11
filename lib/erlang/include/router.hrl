@@ -109,6 +109,8 @@
   client_socket,
   version = {1,1},
   headers = [],
+  body = [],
   method,
-  path
+  path,
+  length = 0
 }).

@@ -63,7 +63,6 @@ accept(LSock) ->
 % then starting a proxy handler proxy process and finally passing the socket to the proxy handler process
 decode_and_pass_on(ClientSock) ->
   % Chose here the type of response... for now, it'll just be http, but in the future... maybe tcp/udp?
-  {ok, RoutingKey, Req} = http_request:handle_request(ClientSock),
   {ok, ProxyPid} = ?SUP:start_client(ClientSock),
   gen_tcp:controlling_process(ClientSock, ProxyPid),
-  ProxyPid ! {start, ClientSock, ProxyPid, RoutingKey, Req}.
+  ProxyPid ! {start, ClientSock, ProxyPid}.
