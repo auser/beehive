@@ -38,10 +38,8 @@ DEVELOPER DATA
 ===
 
 Each request goes through the following process:
+<img src="http://www.websequencediagrams.com/cgi-bin/cdraw?lz=Q2xpZW50LT5Tb2NrZXRTZXJ2ZXI6IEluaXRpYWwgcmVxdWVzdAoAEgwtPlByb3h5SGFuZGwAIgp0ZSAACwwKABgMLT5SAEIGRGVjb2RlcjogAAMGAFYJABEOLT5BcHBTcnY6IENob3NlIGFuIGF2YWlsYWJsZSBiYWNrZW5kCgAdBgB8EEVuZ2FnZSBhbmQgY29ubmVjdCB0bwArCQB2HlNlbmQgaQCBaw5cbiB0aHJvdWdoIHRvIACCGAYAgR0RAII9BjogU3Bhd24gbGlzdGVuZXIgZm9yIGMAglkFIGRhdGEAgVQRAIJkCAAkE3MAgwIFADIF&s=rose" />
 
-<pre><code>
-  client     tcp_socket_server      proxy_handler       request_decoder     server
-</code></pre>
 
 TODO
 ===
