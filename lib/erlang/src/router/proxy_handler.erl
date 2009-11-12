@@ -16,9 +16,6 @@
   start_link/1
 ]).
 
-% Internal API
-% -export ([terminate/2]).
-
 -record(state, {
   subdomain,        % subdomain of the app to look for
   backend,          % Backend
@@ -29,10 +26,15 @@
   timeout           % timeout
 }).
 
+% Start the proxy by spawning off an init with the socket.
+% Compatible with the supervisor behaviour
 start_link(ClientSock) ->
   Pid = spawn_link(fun() -> proxy_init(ClientSock) end),
   {ok, Pid}.
 
+% Receive the initial request and socket. Use the packet_decoder (http for now) to decode the
+% routing key required. If this can be found, then start engaging the backend.
+% If this takes more than IDLE_TIMEOUT seconds, then exit with an error.
 proxy_init(ClientSock) ->
   receive
     {start, ClientSock, RequestPid} ->
@@ -48,7 +50,12 @@ proxy_init(ClientSock) ->
     exit(error)
   end.
 
-
+% Initiate and engage the chosen backend.
+% First, we try to connect to the backend. If this succeeds, then let the rest of the app know that the
+% backend has been engaged (nonblocking, through the event handler).
+% Let the packet_decoder address the forwarding of the packet to the server and start the proxy loop
+% If the backend cannot be reached, send an alert through the event handler that we could not reach
+% the backend and try to find a new backend
 engage_backend(ClientSock, RequestPid, Hostname, Req, {ok, #backend{host = Host, port = Port} = Backend}) ->
   SockOpts = [  binary, 
                 {nodelay, true},
