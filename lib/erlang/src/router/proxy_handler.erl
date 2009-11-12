@@ -49,14 +49,16 @@ proxy_init(ClientSock) ->
   end.
 
 engage_backend(ClientSock, RequestPid, Hostname, Req, {ok, #backend{host = Host, port = Port} = Backend}) ->
-  SockOpts = [binary, {nodelay, true},
-				              {active, once}
-			                ],
+  SockOpts = [  binary, 
+                {nodelay, true},
+				        {active, once},
+				        {packet, 0},
+				        {reuseaddr, true}
+			       ],
   case gen_tcp:connect(Host, Port, SockOpts) of
     {ok, ServerSock} ->
       ?NOTIFY({backend, used, Backend}),
-      http_request:handle_forward(ServerSock, ClientSock, Req, self()),
-      
+      http_request:handle_forward(ServerSock, ClientSock, Req, self()),      
       inet:setopts(ServerSock, [{active, once}]),
       proxy_loop(#state{
                   start_time = date_util:now_to_seconds(),
@@ -113,28 +115,29 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
       % end;
       send(CSock, Data),
       inet:setopts(SSock, [{active, once}]),
-      case re:run(Data, "100 [Cc]ontinue", []) of
-        {match, _} ->
-          proxy_loop(State);
-        nomatch -> 
-          inet:setopts(SSock, [{active, false}]),
-          case gen_tcp:recv(SSock, 0, 500) of
-            {ok, D} ->
-              send(CSock, D),
-              inet:setopts(SSock, [{active, once}]),
-              proxy_loop(State);
-            {error, timeout} -> terminate(normal, State);
-            {error, closed} -> terminate(normal, State);
-            {error, E} -> 
-              ?LOG(info, "Error with SSock: ~p",[E]),
-              terminate(E, State)
-          end
-      end;
+      proxy_loop(State);
+      % case re:run(Data, "100 [Cc]ontinue", []) of
+      %   {match, _} ->
+      %     proxy_loop(State);
+      %   nomatch -> 
+      %     inet:setopts(SSock, [{active, false}]),
+      %     case gen_tcp:recv(SSock, 0, 500) of
+      %       {ok, D} ->
+      %         send(CSock, D),
+      %         inet:setopts(SSock, [{active, once}]),
+      %         proxy_loop(State);
+      %       {error, timeout} -> terminate(normal, State);
+      %       {error, closed} -> terminate(normal, State);
+      %       {error, E} -> 
+      %         ?LOG(info, "Error with SSock: ~p",[E]),
+      %         terminate(E, State)
+      %     end
+      % end;
   	{tcp_closed, CSock} ->
-      ?LOG(info, "Client closed connection", []),
+      % ?LOG(info, "Client closed connection", []),
   	  terminate(normal, State);
 		{tcp_closed, SSock} ->
-      ?LOG(info, "Server closed connection", []),
+      % ?LOG(info, "Server closed connection", []),
   	  terminate(normal, State);
   	{tcp_error, SSock} ->
   	  ?LOG(error, "tcp_error on server: ~p", [SSock]),
@@ -154,7 +157,7 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
 % Close the connection.
 terminate(Reason, #state{server_socket = SSock, client_socket = CSock, start_time = STime, backend = Backend} = _State) ->
   StatsProplist1 = [{elapsed_time, date_util:now_to_seconds() - STime}],
-  StatsProplist = case inet:getstat(SSock, [recv_cnt]) of
+  StatsProplist = case inet:getstat(CSock, [recv_cnt]) of
     {ok, D} -> [{socket, D}|StatsProplist1];
     _ -> StatsProplist1
   end,

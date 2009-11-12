@@ -36,7 +36,7 @@ handle_request(ClientSock) ->
   
 handle_forward(ServerSock, ClientSock, Req, From) ->
   ReqHeaders = build_request_headers(ServerSock, Req),
-  spawn_link(fun() -> handle_streaming_data(ServerSock, ClientSock, Req, From) end),
+  spawn_link(fun() -> handle_streaming_data(ClientSock, Req, From) end),
   gen_tcp:send(ServerSock, ReqHeaders).
   
 %%--------------------------------------------------------------------
@@ -124,13 +124,18 @@ headers(Socket, Request, Headers, Callback, HeaderCount) ->
       exit(normal)
   end.
   
-handle_streaming_data(_ServerSock, ClientSock, Req, From) ->
-  case Req:get(body_length) of
-    undefined -> ok;
-    chunked ->
-      From ! {tcp, ClientSock, Req:recv_body()};
-    L when is_integer(L) ->
-      From ! {tcp, ClientSock, Req:recv_body()};
-    L ->
-      exit(error, unknown_body_type)
+handle_streaming_data(ClientSock, Req, From) ->
+  case gen_tcp:recv(ClientSock, 0) of
+    {ok, D} ->
+      From ! {tcp, ClientSock, D},
+      handle_streaming_data(ClientSock, Req, From);
+    {error, _Error} ->
+      From ! {tcp_closed, ClientSock}
   end.
+  % Body1 = Req:recv_body(),
+  % Body = Body1,
+  % case Body of
+  %   undefined -> ok;
+  %   _E ->
+  %     From ! {tcp, ClientSock, Body}
+  % end.
