@@ -48,6 +48,7 @@ proxy_init(ClientSock) ->
     exit(error)
   end.
 
+
 engage_backend(ClientSock, RequestPid, Hostname, Req, {ok, #backend{host = Host, port = Port} = Backend}) ->
   SockOpts = [  binary, 
                 {nodelay, true},
@@ -89,7 +90,7 @@ engage_backend(ClientSock, _RequestPid, Hostname, _Req, Else) ->
   gen_tcp:close(ClientSock),
   exit(error).
 
-% Handle all the proxy here
+% Handle all the proxy functions here
 proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
   receive
 	  {tcp, CSock, Data} ->
@@ -100,29 +101,26 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
   	{tcp, SSock, Data} ->
       % Received info from the server
       send(CSock, Data),
-      case re:run(Data, "100 [Cc]ontinue", []) of
-        {match, _} ->
+      % Don't see much of a way around this... but there has got to be a better way
+      % Try for a half of a second to passivly receive more data on the server socket
+      % if there is more data, then we'll assume there is a lot more data, so send
+      % it and then continue the proxy, otherwise we'll assume that the proxy is dead
+      % and we should terminate the proxy
+      inet:setopts(SSock, [{active, false}]),
+      case gen_tcp:recv(SSock, 0, 500) of
+        {ok, D} ->
+          send(CSock, D),
           inet:setopts(SSock, [{active, once}]),
           proxy_loop(State);
-        nomatch -> 
-          inet:setopts(SSock, [{active, false}]),
-          case gen_tcp:recv(SSock, 0, 500) of
-            {ok, D} ->
-              send(CSock, D),
-              inet:setopts(SSock, [{active, once}]),
-              proxy_loop(State);
-            {error, timeout} -> terminate(normal, State);
-            {error, closed} -> terminate(normal, State);
-            {error, E} -> 
-              ?LOG(info, "Error with SSock: ~p",[E]),
-              terminate(E, State)
-          end
+        {error, timeout} -> terminate(normal, State);
+        {error, closed} -> terminate(normal, State);
+        {error, E} -> 
+          ?LOG(info, "Error with SSock: ~p",[E]),
+          terminate(E, State)
       end;
   	{tcp_closed, CSock} ->
-      % ?LOG(info, "Client closed connection", []),
   	  terminate(normal, State);
 		{tcp_closed, SSock} ->
-      % ?LOG(info, "Server closed connection", []),
   	  terminate(normal, State);
   	{tcp_error, SSock} ->
   	  ?LOG(error, "tcp_error on server: ~p", [SSock]),
@@ -134,12 +132,18 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
   	Msg ->
 	    ?LOG(info, "~s:proxy_loop: unexpectedly recieved ~w\n", [?MODULE, Msg]),
 	    proxy_loop(State)
+  % If there is no activity for 2 minutes and the socket has not already closed, 
+  % we'll assume that the connection is tired and should close, so we'll close it
   after 120000 ->
     ?LOG(info, "Terminating open proxy connection because of timeout", []),
     terminate(normal, State)
   end.
 
 % Close the connection.
+% First, fetch the stats on the sockets and the elapsed_time for the bckend activity
+% and notify the event chains of the closing stats. This also closes the stats activity for 
+% this backend. Finally, close the two sockets and leave the process. This way we can be assured
+% that the process closes itself.
 terminate(Reason, #state{server_socket = SSock, client_socket = CSock, start_time = STime, backend = Backend} = _State) ->
   StatsProplist1 = [{elapsed_time, date_util:now_to_seconds() - STime}],
   StatsProplist = case inet:getstat(CSock) of
@@ -152,5 +156,4 @@ terminate(Reason, #state{server_socket = SSock, client_socket = CSock, start_tim
   exit(Reason).
 
 % Send data across a socket
-send(Sock, Data) ->
-  gen_tcp:send(Sock, Data).
+send(Sock, Data) -> gen_tcp:send(Sock, Data).
