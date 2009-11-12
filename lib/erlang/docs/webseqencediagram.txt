@@ -1,8 +1,9 @@
 Client->SocketServer: Initial request
-SocketServer->ProxyHandler: Proxy handler is initiated in a new process
+SocketServer->ProxyHandler: Spawn new\n ProxyHandler
 ProxyHandler->RequestDecoder: Request is decoded
-RequestDecoder->AppSrv: Chose an available backend (through strategy)
-AppSrv->ProxyHandler: Engage and connect to backend
-ProxyHandler->RequestDecoder: Send initial request through to Server
-RequestDecoder->Client: Spawn listener for client data
-RequestDecoder->Server: Spawn listener for server data
+RequestDecoder->AppSrv: Choose an\n available backend
+AppSrv->ProxyHandler: Connect and engage backend
+ProxyHandler->RequestDecoder: Initiate
+RequestDecoder->Server: Send initial request to Server
+RequestDecoder->Client: Spawn listener \nfor client data
+RequestDecoder->Server: Spawn listener \nfor server data
