@@ -34,6 +34,15 @@ Viewing the list of supported apps:
 
   curl -i beehive.com:8080/status
 
+DEVELOPER DATA
+===
+
+Each request goes through the following process:
+
+<pre><code>
+  client     tcp_socket_server      proxy_handler       request_decoder     server
+</code></pre>
+
 TODO
 ===
   * Add ets/mnesia storage to the front-end servers

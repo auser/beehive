@@ -124,6 +124,8 @@ headers(Socket, Request, Headers, Callback, HeaderCount) ->
       exit(normal)
   end.
   
+% Because we want to treat the proxy as a tcp proxy, we are just going to 
+% try to receive data on the client socket and pass it onto the proxy
 handle_streaming_data(ClientSock, Req, From) ->
   case gen_tcp:recv(ClientSock, 0) of
     {ok, D} ->
@@ -132,10 +134,3 @@ handle_streaming_data(ClientSock, Req, From) ->
     {error, _Error} ->
       From ! {tcp_closed, ClientSock}
   end.
-  % Body1 = Req:recv_body(),
-  % Body = Body1,
-  % case Body of
-  %   undefined -> ok;
-  %   _E ->
-  %     From ! {tcp, ClientSock, Body}
-  % end.
