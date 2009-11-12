@@ -99,40 +99,25 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
 	    proxy_loop(State);
   	{tcp, SSock, Data} ->
       % Received info from the server
-      % case re:run(Data, "HTTP/1.1 100 [Cc]ontinue", []) of
-      %   nomatch ->
-      %     send(CSock, Data),
-      %     inet:setopts(SSock, [{active, once}]);
-      %   {match, _} ->
-      %     inet:setopts(SSock, [{active, once}])
-      % end,
-      % case re:run(Data, "[Cc]onnection: [Cc]lose", []) of
-      %   nomatch ->
-      %     inet:setopts(SSock, [{active, once}]),
-      %     proxy_loop(State);
-      %   {match, _} ->
-      %     terminate(normal, State)
-      % end;
       send(CSock, Data),
-      inet:setopts(SSock, [{active, once}]),
-      proxy_loop(State);
-      % case re:run(Data, "100 [Cc]ontinue", []) of
-      %   {match, _} ->
-      %     proxy_loop(State);
-      %   nomatch -> 
-      %     inet:setopts(SSock, [{active, false}]),
-      %     case gen_tcp:recv(SSock, 0, 500) of
-      %       {ok, D} ->
-      %         send(CSock, D),
-      %         inet:setopts(SSock, [{active, once}]),
-      %         proxy_loop(State);
-      %       {error, timeout} -> terminate(normal, State);
-      %       {error, closed} -> terminate(normal, State);
-      %       {error, E} -> 
-      %         ?LOG(info, "Error with SSock: ~p",[E]),
-      %         terminate(E, State)
-      %     end
-      % end;
+      case re:run(Data, "100 [Cc]ontinue", []) of
+        {match, _} ->
+          inet:setopts(SSock, [{active, once}]),
+          proxy_loop(State);
+        nomatch -> 
+          inet:setopts(SSock, [{active, false}]),
+          case gen_tcp:recv(SSock, 0, 500) of
+            {ok, D} ->
+              send(CSock, D),
+              inet:setopts(SSock, [{active, once}]),
+              proxy_loop(State);
+            {error, timeout} -> terminate(normal, State);
+            {error, closed} -> terminate(normal, State);
+            {error, E} -> 
+              ?LOG(info, "Error with SSock: ~p",[E]),
+              terminate(E, State)
+          end
+      end;
   	{tcp_closed, CSock} ->
       % ?LOG(info, "Client closed connection", []),
   	  terminate(normal, State);
@@ -157,7 +142,7 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
 % Close the connection.
 terminate(Reason, #state{server_socket = SSock, client_socket = CSock, start_time = STime, backend = Backend} = _State) ->
   StatsProplist1 = [{elapsed_time, date_util:now_to_seconds() - STime}],
-  StatsProplist = case inet:getstat(CSock, [recv_cnt]) of
+  StatsProplist = case inet:getstat(CSock) of
     {ok, D} -> [{socket, D}|StatsProplist1];
     _ -> StatsProplist1
   end,

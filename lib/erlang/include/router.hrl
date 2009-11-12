@@ -101,7 +101,8 @@
   total_time,       % total active time
   average_req_time, % average request time
   % packets
-  packet_count      % total packet counts
+  packet_count,     % total packet counts
+  bytes_received    % total bytes received by packet
 }).
 
 

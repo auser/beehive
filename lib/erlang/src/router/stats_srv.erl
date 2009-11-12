@@ -122,12 +122,17 @@ handle_cast({backend_stat, elapsed_time, Key, Time}, #state{backend_stats = Dict
   {noreply, State#state{backend_stats = NewDict}};
   
 handle_cast({backend_stat, socket, Key, SocketVals}, #state{backend_stats = Dict} = State) ->
-  {#backend_stat{packet_count = CurrentPacketCount} = BackendStat, 
+  {#backend_stat{packet_count = CurrentPacketCount, bytes_received = BytesReceived} = BackendStat, 
     ADict} = dict_with_backend_stat(Key, Dict),
   
-  NewBackendStat = case proplists:get_value(recv_cnt, SocketVals) of
-    undefined -> ok;
-    Val -> BackendStat#backend_stat{packet_count = CurrentPacketCount + Val}
+  NewBackendStat1 = case proplists:get_value(send_cnt, SocketVals) of
+    undefined -> BackendStat;
+    Count -> BackendStat#backend_stat{packet_count = CurrentPacketCount + Count}
+  end,
+  
+  NewBackendStat = case proplists:get_value(send_oct, SocketVals) of
+    undefined -> NewBackendStat1;
+    Bytes -> NewBackendStat1#backend_stat{bytes_received = BytesReceived + Bytes}
   end,
   
   NewDict = dict:store(Key, NewBackendStat, ADict),
@@ -172,7 +177,8 @@ new_backend_stat() ->
     current           = 0,
     total_time        = 0,
     average_req_time  = 0,
-    packet_count      = 0
+    packet_count      = 0,
+    bytes_received    = 0
   }.
   
 dict_with_backend_stat(Key, Dict) ->

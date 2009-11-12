@@ -110,7 +110,7 @@ format_proxy_state() ->
    "<tr> ",
    [["<td><b>", X, "</b></td>"] || X <- ["Name", "Host", "Port", "Status",
       "TotalReq", "CurrentReq", "LastErr", "LastErrTime", "TotalTime", "AvgRespTime", 
-      "PendingCount", "PacketCount"
+      "PendingCount", "PacketCount", "RecvBytes"
     ]],
    "\n",
    format_backend_list(Backends),
@@ -134,7 +134,8 @@ format_backend_list([B|Bs], Acc) ->
     current = CurrentReq,
     total_time = TotalTime,
     average_req_time = AvgTime,
-    packet_count = PacketCount
+    packet_count = PacketCount,
+    bytes_received = RecvBytes
   } = 
     _BackendStat = case stats_srv:backend_dump(B#backend.id) of
     [{_Name, Q}|_] -> Q;
@@ -157,6 +158,7 @@ format_backend_list([B|Bs], Acc) ->
      io_lib:format("<td> ~w </td>", [AvgTime]),
      io_lib:format("<td> ~w </td>", [length(L1) + length(L2)]),
      io_lib:format("<td> ~w </td>", [PacketCount]),
+     io_lib:format("<td> ~w </td>", [RecvBytes]),
      "</tr>\n"
     ]|Acc]).
       
