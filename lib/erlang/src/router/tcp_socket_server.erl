@@ -33,7 +33,7 @@ init(LocalPort) ->
   Pid = spawn_link(?MODULE, init_accept, [LocalPort]),
   {ok, Pid}.
 
-% accept responses on the port given by the 
+% accept responses on the port given by the application configuration
 init_accept(LPort) ->
   SockOpts = [binary, {backlog, 256}, {nodelay, true},{reuseaddr, true}, {active, false}],
 	case gen_tcp:listen(LPort, SockOpts) of

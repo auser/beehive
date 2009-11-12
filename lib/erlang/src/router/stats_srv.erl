@@ -26,7 +26,8 @@
          terminate/2, code_change/3]).
 
 -record(state, {
-  backend_stats     % dict of the backends and their stats
+  timer,            % timeout 
+  backend_stats,    % dict of the backends and their stats
 }).
 
 -define(SERVER, ?MODULE).

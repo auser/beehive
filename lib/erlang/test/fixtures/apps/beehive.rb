@@ -8,7 +8,7 @@ class Beehive < Sinatra::Base
   end
 
   get '/status' do
-    O = `curl http://beehive.com:8080/status`
+    O = `curl http://beehive.com:8080/stats`
   end
 
   get "/keepalive" do

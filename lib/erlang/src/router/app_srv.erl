@@ -248,8 +248,8 @@ choose_backend(Hostname, From, FromPid) ->
       ?MUST_WAIT_MSG
   end.
 
-%% Find the first available back-end host
-
+% Find a backend host that is ready and choose it based on the strategy
+% given for the backend
 choose_backend(Hostname, FromPid) ->
   case backend:find_all_by_name(Hostname) of
     [] -> {error, unknown_app};
@@ -265,7 +265,8 @@ choose_from_backends([], _FromPid) -> ?MUST_WAIT_MSG;
 choose_from_backends(Backends, FromPid) ->
   Backend = strategically_choose_from_backends(random, Backends, FromPid),
   {ok, Backend}.
-  
+
+% Randomly choose a backend from the backend list given
 strategically_choose_from_backends(random, Backends, _FromPid) ->
   RandNum = random:uniform(length(Backends)),
   lists:nth(RandNum, Backends).
