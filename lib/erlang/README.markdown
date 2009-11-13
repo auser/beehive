@@ -25,7 +25,8 @@ These can also be added at the erlang command-line by:
 
 <pre><code>
   backend_srv:add_backend({"streaming",{127,0,0,1}, 5001}).
-  backend_srv:add_backend({"search", "google.com", 80}).
+  % or
+  backend_srv:add_backend([{app_name, "streaming"}, {host, "127.0.0.1"}, {port, 5001}]).
 </code></pre>
 
 ## Apps
