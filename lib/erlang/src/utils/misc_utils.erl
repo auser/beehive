@@ -31,3 +31,13 @@ filter_proplist(Proplist, [{K,V}|Rest], Acc) ->
     false -> filter_proplist(Proplist, Rest, Acc);
     true -> filter_proplist(Proplist, Rest, [{K,V}|Acc])
   end.
+
+new_or_previous_value(_NewProplist, [], Acc) -> Acc;
+new_or_previous_value(NewProplist, [{K,V}|Rest], Acc) ->
+  case proplists:is_defined(K,NewProplist) of
+    true -> 
+      NewV = proplists:get_value(K, NewProplist),
+      new_or_previous_value(NewProplist, Rest, [{K, NewV}|Acc]);
+    false ->
+      new_or_previous_value(NewProplist, Rest, [{K, V}|Acc])
+  end.

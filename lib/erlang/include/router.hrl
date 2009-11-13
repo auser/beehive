@@ -67,7 +67,6 @@
 % Application configuration
 -record (app, {
   name,
-  cmd,
   path,
   url,
   concurrency,

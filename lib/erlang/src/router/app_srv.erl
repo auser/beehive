@@ -157,11 +157,8 @@ handle_call({Pid, get_backend, Hostname}, From, State) ->
       Host = {127,0,0,1},
       Id = {Hostname, Host, Port},
       
-      Backend = #backend{
-        id = Id,
-        port = Port,
-        host = Host,
-        app_name = Hostname
+      Backend = #backend{ 
+        id = Id, port = Port, host = Host, app_name = Hostname
       },
       {reply, {ok, Backend}, State};
     _ ->

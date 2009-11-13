@@ -31,6 +31,7 @@
   all/0
 ]).
 
+% Test
 -export ([test/0]).
 
 find_by_name(Hostname) ->
@@ -62,7 +63,7 @@ all() ->
 new(NewProps) ->
   PropList = ?rec_info(backend, #backend{}),
   FilteredProplist1 = misc_utils:filter_proplist(PropList, NewProps, []),
-  FilteredProplist2 = new_or_previous_value(FilteredProplist1, PropList, []),
+  FilteredProplist2 = misc_utils:new_or_previous_value(FilteredProplist1, PropList, []),
   Id = make_id_from_proplists(NewProps),
   FilteredProplist  = [{id, Id}|FilteredProplist2],
   list_to_tuple([backend|[proplists:get_value(X, FilteredProplist) || X <- record_info(fields, backend)]]).
@@ -74,21 +75,10 @@ make_id_from_proplists(PropList) ->
   Port = proplists:get_value(port, PropList),
   {Name, Host, Port}.
 
-
-new_or_previous_value(_NewProplist, [], Acc) -> Acc;
-new_or_previous_value(NewProplist, [{K,V}|Rest], Acc) ->
-  case proplists:is_defined(K,NewProplist) of
-    true -> 
-      NewV = proplists:get_value(K, NewProplist),
-      new_or_previous_value(NewProplist, Rest, [{K, NewV}|Acc]);
-    false ->
-      new_or_previous_value(NewProplist, Rest, [{K, V}|Acc])
-  end.
-
 % TESTS
 test() ->
   try
-    mnesia:clear_table(backend),
+    db:clear_table(backend),
     schema:install(),
     create_test(),
     find_by_name_test(),
