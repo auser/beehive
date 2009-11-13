@@ -16,9 +16,9 @@ There are 3 mnesia tables setup by the beehive router:
 </code></pre>
 
 ## Proxy
-app_srv:add_backend({"streaming",{127,0,0,1}, 5001}).
-app_srv:add_backend({"srdves3", "services.speak4it.com", 80}).
-app_srv:get_state().
+backend_srv:add_backend({"streaming",{127,0,0,1}, 5001}).
+backend_srv:add_backend({"srdves3", "services.speak4it.com", 80}).
+backend_srv:get_state().
 
 
 event_manager:notify({info, "hi"}).

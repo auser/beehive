@@ -39,7 +39,7 @@ proxy_init(ClientSock) ->
   receive
     {start, ClientSock, RequestPid} ->
       {ok, RoutingKey, Req} = http_request:handle_request(ClientSock),
-      engage_backend(ClientSock, RequestPid, RoutingKey, Req, app_srv:get_backend(self(), RoutingKey));
+      engage_backend(ClientSock, RequestPid, RoutingKey, Req, backend_srv:get_backend(self(), RoutingKey));
     _E ->
       proxy_init(ClientSock)
   after ?IDLE_TIMEOUT ->
@@ -80,7 +80,7 @@ engage_backend(ClientSock, RequestPid, Hostname, Req, {ok, #backend{host = Host,
       ?LOG(error, "Connection to remote TCP server: ~p:~p ~p", [Host, Port, Error]),
       ?NOTIFY({backend, cannot_connect, Backend}),
       timer:sleep(200),
-      engage_backend(ClientSock, RequestPid, Hostname, Req, app_srv:get_backend(RequestPid, Hostname))
+      engage_backend(ClientSock, RequestPid, Hostname, Req, backend_srv:get_backend(RequestPid, Hostname))
   end;
 engage_backend(ClientSock, _RequestPid, Hostname, _Req, ?BACKEND_TIMEOUT_MSG) ->
   ?LOG(error, "Error getting backend because of timeout: ~p", [Hostname]),

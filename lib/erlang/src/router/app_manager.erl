@@ -129,14 +129,14 @@ handle_cast({terminate_all}, State) ->
   ?LOG(info, "Terminating all apps", []),
   lists:map(fun(_Name, Backends) ->
     lists:map(fun(Backend) -> stop_instance(Backend, State) end, Backends)
-    end, app_srv:all(instances)),
+    end, backend_srv:all(instances)),
   {reply, ok, State};
   
 % Terminate all the instances of a certain application
 handle_cast({terminate_app_instances, AppName}, State) ->
-  Backends = app_srv:lookup(instances, AppName),
+  Backends = backend_srv:lookup(instances, AppName),
   lists:map(fun(Backend) -> stop_instance(Backend, State) end, Backends),
-  app_srv:store(instances, AppName, []),
+  backend_srv:store(instances, AppName, []),
   {noreply, State};
 
 handle_cast({proxy_terminated, Pid}, #state{active_apps = ActiveApps} = State) ->
@@ -164,7 +164,7 @@ handle_info({clean_up}, State) ->
 handle_info({ensure_minimum_backends_running}, State) ->
   lists:map(fun(App) ->
     MinBackends = App#app.min_instances,
-    RunningBackends = app_srv:get_host(App#app.name),
+    RunningBackends = backend_srv:get_host(App#app.name),
     if
       MinBackends > length(RunningBackends) ->
         ensure_minimum_backends_running1(length(RunningBackends), App, State),
@@ -179,7 +179,7 @@ handle_info({manage_pending_backends}, State) ->
   lists:map(fun(B) ->
       BackendStatus = try_to_connect_to_new_instance(B, 10),
       ?LOG(info, "Marking ~p instance ~p", [B#backend.app_name, BackendStatus]),
-      app_srv:update_backend_status(B, BackendStatus)
+      backend_srv:update_backend_status(B, BackendStatus)
     % lists:map(fun(B) ->
       % ?LOG(info, "Garbage cleaning up on: ~p", [Backends#backend.app_name])
     % end, Backends)
@@ -203,7 +203,7 @@ handle_info({'EXIT',_Pid,normal}, State) ->
   {noreply, State};
 
 handle_info(Info, State) ->
-  ?LOG(info, "Got info in app_srv: ~p", [Info]),
+  ?LOG(info, "Got info in backend_srv: ~p", [Info]),
   {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -265,13 +265,13 @@ start_new_instance(App, State) ->
   },
   
   % apps:store(backend, App#app.name, Backend),
-  app_srv:add_backend(Backend),
+  backend_srv:add_backend(Backend),
   
   % Let the instance know it's ready after it connects
   spawn(fun() ->
     BackendStatus = try_to_connect_to_new_instance(Backend, 10),
     ?LOG(info, "Marking ~p instance ~p", [Backend#backend.app_name, BackendStatus]),
-    app_srv:update_backend_status(Backend, BackendStatus)
+    backend_srv:update_backend_status(Backend, BackendStatus)
   end),
   
   ?LOG(info, "Spawned a new instance", []),
@@ -371,7 +371,7 @@ add_application_by_configuration(ConfigProplist, State) ->
 
 % kill the instance of the application
 stop_instance(Backend, #state{dead_apps = DeadApps} = State) ->
-  App = app_srv:lookup(app, Backend#backend.app_name),
+  App = backend_srv:lookup(app, Backend#backend.app_name),
   RealCmd = template_command_string(App#app.stop_command, [
                                                         {"[[PORT]]", erlang:integer_to_list(Backend#backend.port)},
                                                         {"[[GROUP]]", App#app.group},
@@ -381,7 +381,7 @@ stop_instance(Backend, #state{dead_apps = DeadApps} = State) ->
   Backend#backend.pid ! {stop, RealCmd},
   NewDeadApps = [App|DeadApps],
   
-  RunningBackends1 = app_srv:lookup(instances, Backend#backend.app_name),
+  RunningBackends1 = backend_srv:lookup(instances, Backend#backend.app_name),
   RunningBackends = lists:delete(Backend, RunningBackends1),
   
   apps:store(backend, Backend#backend.app_name, RunningBackends),
@@ -389,9 +389,9 @@ stop_instance(Backend, #state{dead_apps = DeadApps} = State) ->
 
 % Clean up applications
 clean_up(State) ->
-  Backends = app_srv:all(instances),
+  Backends = backend_srv:all(instances),
   lists:map(fun(Name, AppBackends) -> 
-    App = app_srv:lookup(app, Name),
+    App = backend_srv:lookup(app, Name),
     clean_up_instances(AppBackends, App, State) 
   end, Backends).
   
@@ -409,7 +409,7 @@ clean_up_instance(Backend, App, State) ->
   
 % If the instance is not busy, the timeout has been exceeded and there are other application instances running
 clean_up_on_app_timeout(#backend{status=Status,lastresp_time=LastReq} = Backend, #app{name=Name,timeout=Timeout,min_instances=Min} = App, State) ->
-	NumBackends = length(app_srv:lookup(instance, Name)),
+	NumBackends = length(backend_srv:lookup(instance, Name)),
 	TimeDiff = date_util:time_difference_from_now(LastReq),
   % ?LOG(info, "clean_up_on_app_timeout: ~p > ~p, ~p > ~p", [NumBackends, App#app.min_instances, TimeDiff, Timeout]),
   if

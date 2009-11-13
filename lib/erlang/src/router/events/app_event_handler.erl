@@ -40,7 +40,7 @@ handle_event({app, request_to_start_new_backend, Hostname}, State) ->
   ?LOG(info, "request_to_start_new_backend: ~p", [Hostname]),
   {ok, State};
   
-handle_event({app_srv, init}, State) ->
+handle_event({backend_srv, init}, State) ->
   % ?KVSTORE:start_link(?BACKEND_DB),
   % ?KVSTORE:start_link(?BACKEND2PID_DB),
   % ?KVSTORE:start_link(?PID2BACKEND_DB),

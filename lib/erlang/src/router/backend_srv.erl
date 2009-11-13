@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% File    : app_srv.erl
+%%% File    : backend_srv.erl
 %%% Author  : Ari Lerner
 %%% Description : 
 %%%
 %%% Created :  Wed Oct  7 22:37:21 PDT 2009
 %%%-------------------------------------------------------------------
 
--module (app_srv).
+-module (backend_srv).
 
 -include ("router.hrl").
 -include ("common.hrl").
@@ -148,7 +148,7 @@ init([LocalPort, ConnTimeout, ActTimeout]) ->
 handle_call({Pid, get_backend, Hostname}, From, State) ->
   % If this is a request for an internal application, then serve that first
   % These are abnormal applications because they MUST be running for every router
-  % and app_srv. 
+  % and backend_srv. 
   case Hostname of
     base ->
       Port = apps:search_for_application_value(beehive_app_port, 4999, router), 

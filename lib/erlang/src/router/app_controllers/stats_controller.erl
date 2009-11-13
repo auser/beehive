@@ -19,7 +19,7 @@ get([]) ->
   ?CONTENT_HTML(format_proxy_state());
 
 % get("/status", _Data) ->
-%   StatusProplist = app_srv:status(),
+%   StatusProplist = backend_srv:status(),
 %   Apps = proplists:get_value(apps, StatusProplist),
 %   _Hostnames = proplists:get_value(hostnames, StatusProplist),
 %   
@@ -62,7 +62,7 @@ post("/new", Data) ->
     {stop_command, StopCmd}
   ],
   
-  app_srv:add_application(ConfigProplist),
+  backend_srv:add_application(ConfigProplist),
   
   Out = {added, misc_utils:to_bin(Name)},
   {json, 200, [], Out};
@@ -95,7 +95,7 @@ jsonify(JsonifiableBody) ->
 
 format_proxy_state() ->
   Backends = backend:all(),
-  State = app_srv:get_proxy_state(),
+  State = backend_srv:get_proxy_state(),
   [
    "<pre>\n",
    %% From README: insert line here!

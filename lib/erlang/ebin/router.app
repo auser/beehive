@@ -3,8 +3,8 @@
   {description, "Router app"},
   {vsn, "0.1"},
   {id, "router_srv"},
-  {modules,      [tcp_socket_server, app_srv]},
-  {registered,   [tcp_socket_server, app_srv]},
+  {modules,      [tcp_socket_server, backend_srv]},
+  {registered,   [tcp_socket_server, backend_srv]},
   {applications, [kernel, stdlib, sasl]},
   {mod, {router, []}},
   {env, [

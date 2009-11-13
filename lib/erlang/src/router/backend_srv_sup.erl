@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% File    : app_srv_sup.erl
+%%% File    : backend_srv_sup.erl
 %%% Author  : Ari Lerner
 %%% Description : 
 %%%
 %%% Created :  Thu Oct  8 02:09:02 PDT 2009
 %%%-------------------------------------------------------------------
 
--module (app_srv_sup).
+-module (backend_srv_sup).
 -include ("router.hrl").
 -behaviour(supervisor).
 
@@ -40,7 +40,7 @@ start_link(Module) -> supervisor:start_link({local, ?SERVER}, ?MODULE, [Module])
 %% specifications.
 %%--------------------------------------------------------------------
 init([_Module]) ->
-  AppSrv  = {the_app_srv,{app_srv, start_link,[]}, permanent,2000,worker,dynamic},
+  AppSrv  = {the_backend_srv,{backend_srv, start_link,[]}, permanent,2000,worker,dynamic},
   % KVStore = {the_kv_store,{supervisor,start_link,[{local, the_kv_store}, ?MODULE, [start_module, Module]]},permanent,infinity,supervisor,[]},
   AppManagerSrv  = {the_app_manager,{app_manager, start_link,[]}, permanent, 2000, worker, dynamic},
   BHApps  = {the_beehive,{rest_server, start_link,[]}, permanent,2000,worker,dynamic},
