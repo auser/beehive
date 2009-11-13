@@ -127,21 +127,23 @@ handle(Path, Req) ->
     ControllerAtom -> 
     Meth = clean_method(Req:get(method)),
     case Meth of
-      get ->
-        case (catch erlang:apply(ControllerAtom, Meth, [ControllerPath])) of
-          {'EXIT', E} -> 
-            io:format("Error: ~p~n", [E]),
-            Req:not_found();
-          Body -> Req:ok({"text/html", Body})
-        end;
-      _ ->
-        case (catch erlang:apply(ControllerAtom, Meth, [ControllerPath, decode_data_from_request(Req)])) of
-          {'EXIT', _} -> Req:not_found();
-          Body -> Req:ok({"text/html", Body})
-        end
+      get -> run_controller(Req, ControllerAtom, Meth, [ControllerPath]);
+      _ -> run_controller(Req, ControllerAtom, Meth, [ControllerPath, decode_data_from_request(Req)])
     end
   end.
 
+% Call the controller action here
+run_controller(Req, ControllerAtom, Meth, Args) ->
+  case (catch erlang:apply(ControllerAtom, Meth, Args)) of
+    {'EXIT', {undef, _}} ->
+      Req:ok({"text/html", "Unimplemented controller. There is nothing to see here, go back from where you came"});
+    {'EXIT', _E} -> 
+      Req:not_found();
+    Body -> Req:ok({"text/html", Body})
+  end.
+
+% Find the method used as a request. 
+% This turns 'GET' into get
 clean_method(M) ->
   erlang:list_to_atom(string:to_lower(erlang:atom_to_list(M))).
 
@@ -160,12 +162,15 @@ clean_path(Path) ->
     N -> string:substr(Path, 1, string:len(Path) - (N+1))
   end.
 
+% Query about the top level request path is
 top_level_request(Path) ->
   case string:tokens(Path, "/") of
     [CleanPath|_Others] -> CleanPath;
     [] -> "home"
   end.
 
+% Convert each of the binary data proplists into a valid proplist
+% from {<<name>>, <<value>>} to {name, value}
 convert_to_struct(RawData) ->
   lists:map(fun({BinKey, BinVal}) ->
       Key = misc_utils:to_atom(BinKey),
