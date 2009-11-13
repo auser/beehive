@@ -159,8 +159,8 @@ handle_call({Pid, get_backend, Hostname}, From, State) ->
       
       Backend = #backend{
         id = Id,
-        port = apps:search_for_application_value(beehive_app_port, 4999, router), 
-        host = {127,0,0,1},
+        port = Port,
+        host = Host,
         app_name = Hostname
       },
       {reply, {ok, Backend}, State};
