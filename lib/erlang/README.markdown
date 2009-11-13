@@ -5,6 +5,8 @@ How it works
 ===
 There are 2 mnesia tables setup by the beehive router:
 
+<img src="http://i36.tinypic.com/t023xw.png" alt="table" />
+
 <pre><code>
   |----------|  |-------------|
   | backends |  | apps        |
