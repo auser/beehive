@@ -93,9 +93,7 @@ add_backend({Name, Host, Port}) ->
 
 % Add a backend by proplists
 add_backend(Proplist) ->
-  NewBackend = create_backend_from_proplist(#backend{}, Proplist),
-  ?LOG(info, "Trying to add backend with proplists: ~p", [NewBackend]),
-  add_backend(NewBackend).
+  add_backend(Proplist).
 
 %% Delete a back-end host from the balancer's list.
 del_backend(Host) ->
@@ -274,7 +272,7 @@ strategically_choose_from_backends(random, Backends, _FromPid) ->
   lists:nth(RandNum, Backends).
 
 % Handle adding a new backend
-handle_add_backend(NewBE) when is_record(NewBE, backend) ->
+handle_add_backend(NewBE) ->
   backend:create_or_update(NewBE).
 
 % Handle the *next* pending client only. 
@@ -321,42 +319,4 @@ add_backends_from_config() ->
         _E -> 
           ok
       end
-  end.
-
-% Create a new backend from proplists
-create_backend_from_proplist(Backend, NewProps) ->
-  PropList = ?rec_info(backend, Backend),
-  FilteredProplist1 = filter_backend_proplist(PropList, NewProps, []),
-  FilteredProplist2 = new_or_previous_value(FilteredProplist1, PropList, []),
-  Id = make_id_from_proplists(NewProps),
-  FilteredProplist  = [{id, Id}|FilteredProplist2],
-  list_to_tuple([
-    backend|[proplists:get_value(X, FilteredProplist) || X <- record_info(fields, backend)]
-  ]).
-
-% Make an id
-make_id_from_proplists(PropList) ->
-  Name = proplists:get_value(name, PropList),
-  Host = proplists:get_value(host, PropList),
-  Port = proplists:get_value(port, PropList),
-  {Name, Host, Port}.
-
-% Choose the new value if the value doesn't exist in a proplist given already,
-% otherwise, choose the old value (default)
-new_or_previous_value(_NewProplist, [], Acc) -> Acc;
-new_or_previous_value(NewProplist, [{K,V}|Rest], Acc) ->
-  case proplists:is_defined(K,NewProplist) of
-    true -> 
-      NewV = proplists:get_value(K, NewProplist),
-      new_or_previous_value(NewProplist, Rest, [{K, NewV}|Acc]);
-    false ->
-      new_or_previous_value(NewProplist, Rest, [{K, V}|Acc])
-  end.
-
-% Only choose values that are actually in the proplist
-filter_backend_proplist(_BackendProplist, [], Acc) -> Acc;
-filter_backend_proplist(BackendProplist, [{K,V}|Rest], Acc) ->
-  case proplists:is_defined(K, BackendProplist) of
-    false -> filter_backend_proplist(BackendProplist, Rest, Acc);
-    true -> filter_backend_proplist(BackendProplist, Rest, [{K,V}|Acc])
   end.

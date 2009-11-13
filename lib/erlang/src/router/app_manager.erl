@@ -354,7 +354,6 @@ update_app_configuration(ConfigProplist, App, State) ->
     user = User, 
     group = Group
   },
-  ?LOG(info, "New app: ~p", [NewApp]),
   
   app:create(NewApp),
   State.
