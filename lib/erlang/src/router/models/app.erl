@@ -15,8 +15,8 @@
 -export ([
   find_by_name/1,
   find_all_by_name/1,
-  get/1,
   all/0,
+  exist/1,
   create/1,
   update/1,
   delete/1
@@ -34,12 +34,13 @@ find_by_name(Hostname) ->
 find_all_by_name(Name) -> 
   db:read({app, Name}).
 
-get(Name) ->
-  case db:read({app, Name}) of
-    [App] -> App;
-    [] -> []
+% Does this app exist?
+exist(Name) ->
+  case find_by_name(Name) of
+    [] -> false;
+    _ -> true
   end.
-  
+
 % Insert a new app
 create(App) when is_record(App, app) ->
   db:write(App);

@@ -36,6 +36,10 @@ init([]) ->
 %% gen_event:notify/2 or gen_event:sync_notify/2, this function is called for
 %% each installed event handler to handle the event.
 %%--------------------------------------------------------------------
+handle_event({app, request_to_start_new_backend, Hostname}, State) ->
+  ?LOG(info, "request_to_start_new_backend: ~p", [Hostname]),
+  {ok, State};
+  
 handle_event({app_srv, init}, State) ->
   % ?KVSTORE:start_link(?BACKEND_DB),
   % ?KVSTORE:start_link(?BACKEND2PID_DB),

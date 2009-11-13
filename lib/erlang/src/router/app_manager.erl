@@ -20,7 +20,6 @@
   terminate_all/0,
   terminate_app_instances/1,
   add_application/1,
-  get_app_instance/1,
   handle_forwarding/3,
   proxy_terminated/1,
   ensure_minimum_backends_running/2
@@ -59,9 +58,6 @@ terminate_app_instances(Appname) ->
   
 add_application(ConfigProplist) ->
   gen_server:call(?SERVER, {add_application_by_configuration, ConfigProplist}).
-
-get_app_instance(Hostname) ->
-  gen_server:call(?SERVER, {get_next_available_instance_of_app, Hostname}).
 
 proxy_terminated(Pid) -> 
   gen_server:cast(?SERVER, {proxy_terminated, Pid}).

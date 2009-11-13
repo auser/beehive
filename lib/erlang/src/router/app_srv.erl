@@ -252,7 +252,14 @@ choose_backend(Hostname, From, FromPid) ->
 % given for the backend
 choose_backend(Hostname, FromPid) ->
   case backend:find_all_by_name(Hostname) of
-    [] -> {error, unknown_app};
+    [] -> 
+      case app:exist(Hostname) of
+        false ->
+          {error, unknown_app};
+        true ->
+          ?NOTIFY({app, request_to_start_new_backend, Hostname}),
+          ?MUST_WAIT_MSG
+      end;
     Backends ->
       AvailableBackends = lists:filter(fun(B) -> B#backend.status =:= ready end, Backends),
       choose_from_backends(AvailableBackends, FromPid)
