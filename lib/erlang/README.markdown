@@ -7,13 +7,14 @@ There are 2 mnesia tables setup by the beehive router:
 
 <img src="http://i36.tinypic.com/t023xw.png" alt="table" />
 
+The app table stores the applications associated with Beehive.
+
+The backend table stores the backend data, and their state.
+
 ## Proxy
 backend_srv:add_backend({"streaming",{127,0,0,1}, 5001}).
-backend_srv:add_backend({"srdves3", "services.speak4it.com", 80}).
+backend_srv:add_backend({"search", "google.com", 80}).
 backend_srv:get_state().
-
-
-event_manager:notify({info, "hi"}).
 
 ## Add an application
 
