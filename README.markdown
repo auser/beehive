@@ -11,6 +11,7 @@ How it works
 The incredibly basic architecture diagram of beehive looks like:
 
     Distributed Routing layer
+    -------------------------
       |         |       |
     Backend   Backend Backend
 
