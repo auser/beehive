@@ -125,14 +125,19 @@ handle(Path, Req) ->
       IndexContents = ?ERROR_HTML("Uh oh"),
       Req:ok({"text/html", IndexContents});
     ControllerAtom -> 
-      Body = case Req:get(method) of
-        'GET' -> ControllerAtom:get(ControllerPath);
-        'POST' -> ControllerAtom:post(ControllerPath, decode_data_from_request(Req));
-        'PUT' -> ControllerAtom:put(ControllerPath, decode_data_from_request(Req));
-        'DELETE' -> ControllerAtom:delete(ControllerPath, decode_data_from_request(Req));
-        Other -> subst("Other ~p on: ~s~n", [users, Other])
-      end,
-      Req:ok({"text/html", Body})
+    case erlang:module_loaded(ControllerAtom) of
+      true ->
+        Body = case Req:get(method) of
+          'GET' -> ControllerAtom:get(ControllerPath);
+          'POST' -> ControllerAtom:post(ControllerPath, decode_data_from_request(Req));
+          'PUT' -> ControllerAtom:put(ControllerPath, decode_data_from_request(Req));
+          'DELETE' -> ControllerAtom:delete(ControllerPath, decode_data_from_request(Req));
+          Other -> subst("Other ~p on: ~s~n", [users, Other])
+        end,
+        Req:ok({"text/html", Body});
+      false ->
+        Req:not_found()
+    end
   end.
   
 % parse the controller path

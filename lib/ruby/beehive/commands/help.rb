@@ -10,6 +10,7 @@ module Beehive
 <line>
 Commands
 
+start_router          Start a development version of the router
 Help                  Display this screen
 "
       end

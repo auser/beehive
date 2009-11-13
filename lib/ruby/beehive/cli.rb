@@ -9,7 +9,7 @@ module Beehive
       require 'commands/base'
       
       begin
-        command_klass = Beehive::Command.const_get(command.capitalize).new(argv)
+        command_klass = Beehive::Command.const_get(command.camelcase).new(argv)
         command_klass.send(:run)
       rescue Beehive::CommandError => e
         Beehive::Command::Help.new.run(:msg => "<red>Error with #{command}: #{e}</red>\n")

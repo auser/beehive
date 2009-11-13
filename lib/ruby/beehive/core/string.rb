@@ -10,4 +10,9 @@ class String
     File.join(self, o.to_s)
   end
   
+  # foo_bar => FooBar
+  def camelcase
+    gsub(/(^|_|-)(.)/) { $2.upcase }
+  end
+  
 end
