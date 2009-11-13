@@ -126,14 +126,14 @@ init([LocalPort, ConnTimeout, ActTimeout]) ->
   db:init(),
   add_backends_from_config(),
 
-  {ok, TOTimer} = timer:send_interval(1000, {check_waiter_timeouts}),
+  % {ok, TOTimer} = timer:send_interval(1000, {check_waiter_timeouts}),
   {ok, #proxy_state{
     local_port = LocalPort, 
     local_host = LocalHost,
     conn_timeout = ConnTimeout,
     act_timeout = ActTimeout,
     start_time = date_util:now_to_seconds(), 
-    to_timer = TOTimer, 
+    % to_timer = TOTimer, 
     acceptor = Pid
     }
   }.
@@ -220,9 +220,6 @@ handle_info({'EXIT', Pid, Reason}, State) ->
 	  _ ->
       {noreply, State}
   end;
-handle_info({check_waiter_timeouts}, State) ->
-    check_waiter_timeouts(State),
-    {noreply, State};
 handle_info(Info, State) ->
     error_logger:format("~s:handle_info: got ~w\n", [?MODULE, Info]),
     {noreply, State}.
@@ -303,28 +300,6 @@ maybe_handle_next_waiting_client(#backend{app_name = Name} = Backend, State) ->
         {ok, B} -> gen_server:reply(From, {ok, B})
       end
   end.
-  
-check_waiter_timeouts(State) ->
-  % TOTime = date_util:now_to_seconds() - (State#proxy_state.conn_timeout / 1000),
-  % AllBackends = apps:all(backends),
-  % lists:map(fun(B) ->
-  %   NewQ = handle_timeout_queue(B#backend.app_name, TOTime, queue:new()),
-  %   ?QSTORE:replace(?WAIT_DB, B#backend.app_name, NewQ)
-  % end, AllBackends),
-  State.
-
-% handle_timeout_queue(Name, TOTime, NewQ) ->
-%   case ?QSTORE:pop(?WAIT_DB, Name) of
-%     {value, Item} ->
-%       case Item of
-%         {_Hostname, From, _FromPid, Time} when Time < TOTime ->
-%           gen_server:reply(From, ?BACKEND_TIMEOUT_MSG),
-%           NewQ;
-%         _ ->
-%           handle_timeout_queue(Name, TOTime, queue:in(Item, NewQ))
-%       end;
-%     empty -> NewQ
-%   end.
   
 % Basic configuration stuff
 % Add apps from a configuration file
