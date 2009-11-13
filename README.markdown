@@ -21,5 +21,7 @@ It handles pending connections seamlessly and allows for streaming connections. 
 
 Beehive keeps track of the available backends for the known applications. 
 
+Beehive has an event system that allows for notifications along the system in a nonblocking manner. This way system events, statistic gathering log events can all be handled without affecting the performance of the router, which is tuned for speed. 
+
 ---
 For more information about each particular part of the project, there are READMEs in each of the appropriate directories.
