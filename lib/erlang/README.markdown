@@ -16,8 +16,7 @@ The backend table stores the backend data, and their state.
 The proxy can be hot-loaded with new routes simply with a RESTful interface. The name (the routing key), the endpoint host and the port of the backend need to be included. For instance:
 
 <pre><code>
-  curl -i -XPOST -d"{\"app_name\":\"beehive\", \"host\":\"endpoint.com\", \"port\":\"8090\"}" beehive.com:8080/backend/new
-  curl -i -XPOST -d"{\"app_name\":\"target\", \"host\":\"another_endpoint.com\", \"port\":\"80\"}" beehive.com:8080/backend/new
+  curl -i -XPOST -d"{\"app_name\":\"test\", \"host\":\"google.com\", \"port\":\"80\"}" beehive.com:8080/backend/new
 </code></pre>
 
 The parameters that must be included are the app_name (the routing key), the host and the port. You can check to make sure that they were added by visiting the page: http://beehive.com:8080/backend/all
