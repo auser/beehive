@@ -10,6 +10,11 @@ module Beehive
         
         @app_name ||= @args[0]
         
+        puts <<-EOM
+Starting the router...
+Note, this should only be called in development mode as the system will start
+the router without user intervention.
+        EOM
         start_router
       end
       

@@ -116,30 +116,35 @@ dispatch_requests(Req) ->
 handle("/favicon.ico", Req) -> Req:respond({200, [{"Content-Type", "text/html"}], ""});
 
 handle(Path, Req) ->
-  CleanPath = lists:concat([top_level_request(clean_path(Path)), "_controller"]),
-  CAtom = list_to_atom(CleanPath),
-  ControllerPath = parse_controller_path(CleanPath),
+  BaseController = lists:concat([top_level_request(clean_path(Path)), "_controller"]),
+  CAtom = list_to_atom(BaseController),
+  ControllerPath = parse_controller_path(clean_path(Path)),
   
   case CAtom of
     home ->
       IndexContents = ?ERROR_HTML("Uh oh"),
       Req:ok({"text/html", IndexContents});
     ControllerAtom -> 
-    case erlang:module_loaded(ControllerAtom) of
-      true ->
-        Body = case Req:get(method) of
-          'GET' -> ControllerAtom:get(ControllerPath);
-          'POST' -> ControllerAtom:post(ControllerPath, decode_data_from_request(Req));
-          'PUT' -> ControllerAtom:put(ControllerPath, decode_data_from_request(Req));
-          'DELETE' -> ControllerAtom:delete(ControllerPath, decode_data_from_request(Req));
-          Other -> subst("Other ~p on: ~s~n", [users, Other])
-        end,
-        Req:ok({"text/html", Body});
-      false ->
-        Req:not_found()
+    Meth = clean_method(Req:get(method)),
+    case Meth of
+      get ->
+        case (catch erlang:apply(ControllerAtom, Meth, [ControllerPath])) of
+          {'EXIT', E} -> 
+            io:format("Error: ~p~n", [E]),
+            Req:not_found();
+          Body -> Req:ok({"text/html", Body})
+        end;
+      _ ->
+        case (catch erlang:apply(ControllerAtom, Meth, [ControllerPath, decode_data_from_request(Req)])) of
+          {'EXIT', _} -> Req:not_found();
+          Body -> Req:ok({"text/html", Body})
+        end
     end
   end.
-  
+
+clean_method(M) ->
+  erlang:list_to_atom(string:to_lower(erlang:atom_to_list(M))).
+
 % parse the controller path
 parse_controller_path(CleanPath) ->
   case string:tokens(CleanPath, "/") of
@@ -161,6 +166,13 @@ top_level_request(Path) ->
     [] -> "home"
   end.
 
+convert_to_struct(RawData) ->
+  lists:map(fun({BinKey, BinVal}) ->
+      Key = misc_utils:to_atom(BinKey),
+      Val = misc_utils:to_list(BinVal),
+      {Key, Val}
+    end, RawData).
+
 % Get the data off the request
 decode_data_from_request(Req) ->
   RecvBody = Req:recv_body(),
@@ -170,7 +182,4 @@ decode_data_from_request(Req) ->
     Bin -> Bin
   end,
   {struct, Struct} = mochijson2:decode(Data),
-  Struct.
-
-subst(Template, Values) when is_list(Values) ->
-  list_to_binary(lists:flatten(io_lib:fwrite(Template, Values))).
+  convert_to_struct(Struct).

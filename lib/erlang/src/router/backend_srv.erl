@@ -294,6 +294,7 @@ maybe_handle_next_waiting_client(#backend{app_name = Name} = Backend, State) ->
       gen_server:reply(From, ?BACKEND_TIMEOUT_MSG),
       maybe_handle_next_waiting_client(Backend, State);
     {value, {Hostname, From, Pid, _InsertTime}} ->
+      ?LOG(info, "Handling Q: ~p", [Hostname]),
       case choose_backend(Hostname, From, Pid) of
         % Clearly we are not ready for another backend connection request. :(
         % choose_backend puts the request in the pending queue, so we don't have

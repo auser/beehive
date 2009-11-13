@@ -65,7 +65,8 @@ new(NewProps) ->
   FilteredProplist1 = misc_utils:filter_proplist(PropList, NewProps, []),
   FilteredProplist2 = misc_utils:new_or_previous_value(FilteredProplist1, PropList, []),
   Id = make_id_from_proplists(NewProps),
-  FilteredProplist  = [{id, Id}|FilteredProplist2],
+  FilteredProplist3 = validate_backend_proplists(FilteredProplist2),
+  FilteredProplist  = [{id, Id}|FilteredProplist3],
   list_to_tuple([backend|[proplists:get_value(X, FilteredProplist) || X <- record_info(fields, backend)]]).
 
 % Make an id
@@ -74,6 +75,14 @@ make_id_from_proplists(PropList) ->
   Host = proplists:get_value(host, PropList),
   Port = proplists:get_value(port, PropList),
   {Name, Host, Port}.
+
+validate_backend_proplists(PropList) ->
+  lists:map(fun({Key, Val}) ->
+    case Key of
+      port -> {Key, misc_utils:to_integer(Val)};
+      _ -> {Key, Val}
+    end
+  end, PropList).
 
 % TESTS
 test() ->

@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% File    : home_controller.erl
+%%% File    : app_controller.erl
 %%% Author  : Ari Lerner
 %%% Description : 
 %%%
-%%% Created :  Fri Nov 13 11:43:49 PST 2009
+%%% Created :  Fri Nov 13 11:43:43 PST 2009
 %%%-------------------------------------------------------------------
 
--module (home_controller).
+-module (app_controller).
 
 -export ([get/1, post/2, put/2, delete/2]).
 
