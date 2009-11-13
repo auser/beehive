@@ -3,16 +3,16 @@ Router
 
 How it works
 ===
-There are 3 mnesia tables setup by the beehive router:
+There are 2 mnesia tables setup by the beehive router:
 
 <pre><code>
-  |----------|  |-------------|  |-------------|
-  | backends |  | backend_pid |  | apps        |
-  |----------|  |-------------|  |-------------|
-  | app_name |  | backend_key |  | name        |
-  | host     |  | pid         |  | pwd         |
-  | ...      |  |-------------|  | ...         |
-  |----------|                   |-------------|               
+  |----------|  |-------------|
+  | backends |  | apps        |
+  |----------|  |-------------|
+  | app_name |  | name        |
+  | host     |  | pwd         |
+  | ...      |  | ...         |
+  |----------|  |-------------|               
 </code></pre>
 
 ## Proxy
