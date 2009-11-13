@@ -1,5 +1,5 @@
 Beehive
-=======
+===
 
 ### What is Beehive?
 
