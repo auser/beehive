@@ -28,7 +28,8 @@
           reset_all/0,
           update_backend_status/2,
           add_backend/1,
-          del_backend/1
+          del_backend/1,
+          maybe_handle_next_waiting_client/1
         ]). 
 
 -define (BEEHIVE_APPS, ["beehive"]).
@@ -99,6 +100,9 @@ add_backend(Proplist) ->
 %% Delete a back-end host from the balancer's list.
 del_backend(Host) ->
   gen_server:call(?MODULE, {del_backend, Host}).
+  
+maybe_handle_next_waiting_client(Backend) ->
+  gen_server:cast(?MODULE, {maybe_handle_next_waiting_client, Backend}).
 
 %%%----------------------------------------------------------------------
 %%% Callback functions from gen_server
@@ -190,6 +194,10 @@ handle_call(Request, From, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %%----------------------------------------------------------------------
+handle_cast({maybe_handle_next_waiting_client, Backend}, State) ->
+  maybe_handle_next_waiting_client(Backend, State),
+  {noreply, State};
+  
 handle_cast(Msg, State) ->
   error_logger:format("~s:handle_cast: got ~w\n", [?MODULE, Msg]),
   {noreply, State}.
@@ -276,6 +284,8 @@ handle_add_backend(NewBE) when is_record(NewBE, backend) ->
   backend:create_or_update(NewBE).
 
 % Handle the *next* pending client only. 
+% Perhaps this should go somewhere else in the stack, but for the time being
+% we'll leave it in here for relativity purposes
 maybe_handle_next_waiting_client(#backend{app_name = Name} = Backend, State) ->
   TOTime = date_util:now_to_seconds() - (State#proxy_state.conn_timeout / 1000),
   case ?QSTORE:pop(?WAIT_DB, Name) of

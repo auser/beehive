@@ -113,19 +113,25 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
       % if there is more data, then we'll assume there is a lot more data, so send
       % it and then continue the proxy, otherwise we'll assume that the proxy is dead
       % and we should terminate the proxy
-      inet:setopts(SSock, [{active, false}]),
-      case gen_tcp:recv(SSock, 0, 500) of
-        {ok, D} ->
-          send(CSock, D),
+      case re:run(Data, "100 [Cc]ontinue", []) of
+        {match, _} ->
           inet:setopts(SSock, [{active, once}]),
           proxy_loop(State);
-        {error, timeout} -> terminate(normal, State);
-        {error, closed} -> terminate(normal, State);
-        {error, E} -> 
-          ?LOG(info, "Error with SSock: ~p",[E]),
-          terminate(E, State)
+        nomatch -> 
+          inet:setopts(SSock, [{active, false}]),
+          case gen_tcp:recv(SSock, 0, 500) of
+            {ok, D} ->
+              send(CSock, D),
+              inet:setopts(SSock, [{active, once}]),
+              proxy_loop(State);
+            {error, timeout} -> terminate(normal, State);
+            {error, closed} -> terminate(normal, State);
+            {error, E} -> 
+              ?LOG(info, "Error with SSock: ~p",[E]),
+              terminate(E, State)
+          end
       end;
-  	{tcp_closed, CSock} ->
+    {tcp_closed, CSock} ->
   	  terminate(normal, State);
 		{tcp_closed, SSock} ->
   	  terminate(normal, State);

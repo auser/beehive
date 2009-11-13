@@ -40,14 +40,15 @@ handle_event({backend, used, Backend}, State) ->
   stats_srv:backend_stat({request_begin, Backend#backend.id}),
   {ok, State};
   
-handle_event({backend, ready, _NewBackend}, State) ->
+handle_event({backend, ready, Backend}, State) ->
+  app_srv:maybe_handle_next_waiting_client(Backend),
   {ok, State};
 
 handle_event({backend, cannot_connect, Backend}, State) ->
   backend:update(Backend#backend{status = down}),
   {ok, State};
 
-handle_event({backend, closing_stats, #backend{id = Id} = _Backend, StatsProplist}, State) ->
+handle_event({backend, closing_stats, #backend{id = Id} = Backend, StatsProplist}, State) ->
   % When the backend socket connection closes, let's save this data
   case proplists:get_value(socket, StatsProplist) of
     undefined -> ok;
@@ -58,6 +59,8 @@ handle_event({backend, closing_stats, #backend{id = Id} = _Backend, StatsProplis
     Time -> stats_srv:backend_stat({elapsed_time, Id, Time})
   end,
   stats_srv:backend_stat({request_complete, Id}),
+  
+  app_srv:maybe_handle_next_waiting_client(Backend),
   {ok, State};
   
 handle_event(_Event, State) ->
