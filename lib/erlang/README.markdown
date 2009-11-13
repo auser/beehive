@@ -7,16 +7,6 @@ There are 2 mnesia tables setup by the beehive router:
 
 <img src="http://i36.tinypic.com/t023xw.png" alt="table" />
 
-<pre><code>
-  |----------|  |-------------|
-  | backends |  | apps        |
-  |----------|  |-------------|
-  | app_name |  | name        |
-  | host     |  | pwd         |
-  | ...      |  | ...         |
-  |----------|  |-------------|               
-</code></pre>
-
 ## Proxy
 backend_srv:add_backend({"streaming",{127,0,0,1}, 5001}).
 backend_srv:add_backend({"srdves3", "services.speak4it.com", 80}).
