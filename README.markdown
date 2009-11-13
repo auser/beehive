@@ -10,9 +10,9 @@ How it works
 
 The incredibly basic architecture diagram of beehive looks like:
 
-  Distributed Routing layer
-    |         |       |
-  Backend   Backend Backend
+    Distributed Routing layer
+      |         |       |
+    Backend   Backend Backend
 
 The distributed routing layer, written in erlang uses [Mnesia](http://ftp.sunet.se/pub//lang/erlang/doc/apps/mnesia/index.html), the distributed database management system intelligently routes requests across the backends. The router currently can handle http requests. Because Beehive was written with the intention of being extensible it can be extensible to other protocols. 
 
