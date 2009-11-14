@@ -55,6 +55,7 @@
   port,
   start_time,               % started
   pid,                      % pid of os port process
+  sticky        = false,    % keep this backend around, don't remove it from the backend list if it dies
   lastresp_time = 0,
   lasterr       = 0,
   lasterr_time  = 0,

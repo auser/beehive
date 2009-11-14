@@ -21,14 +21,7 @@
   terminate_app_instances/1,
   add_application/1,
   handle_forwarding/3,
-  proxy_terminated/1,
   ensure_minimum_backends_running/2
-]).
-        
--export ([
-  mark_instance_ready/1,
-  mark_instance_broken/1,
-  mark_instance_busy/1
 ]).
 
 %% gen_server callbacks
@@ -58,9 +51,6 @@ terminate_app_instances(Appname) ->
   
 add_application(ConfigProplist) ->
   gen_server:call(?SERVER, {add_application_by_configuration, ConfigProplist}).
-
-proxy_terminated(Pid) -> 
-  gen_server:cast(?SERVER, {proxy_terminated, Pid}).
 
 handle_forwarding(Hostname, Req, Body) ->
   gen_server:cast(?SERVER, {route_forward_request, Hostname, Req, Body}).
@@ -138,16 +128,6 @@ handle_cast({terminate_app_instances, AppName}, State) ->
   lists:map(fun(Backend) -> stop_instance(Backend, State) end, Backends),
   backend_srv:store(instances, AppName, []),
   {noreply, State};
-
-handle_cast({proxy_terminated, Pid}, #state{active_apps = ActiveApps} = State) ->
-  case proplists:is_defined(Pid, ActiveApps) of
-    false -> 
-      {noreply, State}; % not sure how it could get here... but just in case
-    true ->
-      Backend = proplists:get_value(Pid, ActiveApps),
-      mark_instance_ready(Backend),
-      {noreply, State}
-  end;
 
 handle_cast(_Msg, State) ->
   {noreply, State}.
@@ -460,13 +440,15 @@ load_app_config_from_yaml_file(Filepath, Ext) ->
   
 % GARBAGE COLLECTION
 handle_non_ready_backends() ->
-  DownBackends = lists:filter(fun(B) -> B#backend.status =/= ready end, backend:all()),
+  DownBackends = lists:filter(fun(B) -> B#backend.status =/= ready andalso B#backend.sticky =:= false end, backend:all()),
   lists:map(fun(B) ->
     spawn(fun() -> try_to_reconnect_to_backend(B, 5) end)
   end, DownBackends),
   ok.
 
 % Spawned off process to try to "save" the backend
+% If not, clean up the instance and delete it from the backends.
+% These are throw-aways, so they can come and they can go
 try_to_reconnect_to_backend(B, 0) ->
   ?QSTORE:delete_queue(?WAIT_DB, B#backend.app_name),
   backend:delete(B),
@@ -492,16 +474,3 @@ template_command_string(OriginalCommand, [{Str, Replace}|T]) ->
 % Turn the priplists into atoms
 atomize([], Acc) -> Acc;
 atomize([{K,V}|Rest], Acc) -> atomize(Rest, [{misc_utils:to_atom(K), V}|Acc]).
-
-% Mark this instance as busy
-mark_instance_busy(Backend)   -> mark_instance_status(Backend, busy).
-% Mark instance as broken
-mark_instance_broken(Backend) -> mark_instance_status(Backend, broken).
-% Mark this instance as ready
-mark_instance_ready(Backend)  -> mark_instance_status(Backend, ready).
-    
-% Mark an instance of an app as the denoted status
-mark_instance_status(Backend, Status) ->
-  NewBackend = Backend#backend{status = Status, lastresp_time = date_util:now_to_seconds()},
-  apps:store(backend, Backend#backend.app_name, [NewBackend]),
-  NewBackend.
