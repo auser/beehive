@@ -39,7 +39,9 @@ Adding an application can also be added via the RESTful interface. For example:
 
 Viewing the list of supported apps:
 
-  curl -i beehive.com:8080/status
+<pre><code>
+  curl -i beehive.com:8080/apps
+</code></pre>
 
 Note: The documentation assumes that the router is sitting at a network accessible location. The documentation uses the CNAME "beehive.com" to illustrate.
 
