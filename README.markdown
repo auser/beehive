@@ -26,6 +26,7 @@ Beehive has an event system that allows for notifications along the system in a 
 ---
 
 For more information about each particular part of the project, there are READMEs in each of the appropriate directories.
+
   * [Erlang](http://github.com/auser/beehive/tree/master/lib/erlang/)
   * [Ruby](http://github.com/auser/beehive/tree/master/lib/ruby/)
   * [Shell](http://github.com/auser/beehive/tree/master/lib/shell)
