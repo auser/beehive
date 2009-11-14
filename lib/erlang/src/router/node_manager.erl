@@ -22,9 +22,6 @@
   stop/0
 ]).
 
--record (node, {
-  hostname
-}).
 -record (state, {
   host      % local host
 }).
@@ -71,7 +68,8 @@ init([]) ->
   % Add all nodes this router knows about
   lists:map(fun(N) -> add_node_to_node_list(N) end, nodes()),
   
-  timer:send_interval(timer:minutes(1), {check_for_new_known_nodes}),
+  timer:send_interval(timer:seconds(20), {check_for_new_known_nodes}),
+  timer:send_interval(timer:minutes(1), {update_node_pings}),
   
   {ok, #state{
     host = LocalHost
@@ -113,6 +111,13 @@ handle_cast(Msg, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %%----------------------------------------------------------------------
+handle_info({update_node_pings}, State) ->
+  AllNodes = ets:match(nodes, '$1'),
+  lists:map(fun([{Key, Node}]) ->
+    {Time, _Value} = timer:tc(net_adm, ping, [Node#node.hostname]),
+    ets:insert(nodes, {Key, Node#node{ping_distance = Time}})
+  end, AllNodes),
+  {noreply, State};
 handle_info({check_for_new_known_nodes}, State) ->
   {noreply, State};
 handle_info({'EXIT', _Pid, _Reason}, State) ->
@@ -141,5 +146,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%----------------------------------------------------------------------
 add_node_to_node_list(Hostname) ->
-  Node = #node{hostname = Hostname},
-  ets:insert(nodes, {Hostname, Node}).
+  case net_adm:ping(Hostname) of
+    pong ->
+      Node = #node{hostname = Hostname},
+      ets:insert(nodes, {Hostname, Node});
+    pang ->
+      error
+  end.

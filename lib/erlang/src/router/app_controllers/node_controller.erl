@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 
 -module (node_controller).
-
+-include ("router.hrl").
 -export ([get/1, post/2, put/2, delete/2]).
 
 get(_) -> 
@@ -16,11 +16,12 @@ get(_) ->
     "<h1>Nodes</h1>",
     "<table>\n",
     "<tr> ",
-    [["<td><b>", X, "</b></td>"] || X <- ["Name"]],
-    lists:map(fun([{Name, _Node}]) ->
+    [["<td><b>", X, "</b></td>"] || X <- ["Name", "Ping latency"]],
+    lists:map(fun([{Name, Node}]) ->
       [
         "<tr>",
         io_lib:format("<td> ~s </td>", [Name]),
+        io_lib:format("<td> ~w </td>", [Node#node.ping_distance]),
         "</tr>"
       ]
     end, Nodes),

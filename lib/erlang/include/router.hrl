@@ -105,6 +105,10 @@
   bytes_received    % total bytes received by packet
 }).
 
+-record (node, {
+  hostname,
+  ping_distance
+}).
 
 -record (http_request, {
   client_socket,
