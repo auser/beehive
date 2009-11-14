@@ -11,6 +11,7 @@ convert_to_struct(RawData) ->
       {Key, Val}
     end, RawData).
     
+% jsonify the struct
 jsonify(JsonifiableBody) ->
   [ ?JSON_ENCODE({
         struct, [

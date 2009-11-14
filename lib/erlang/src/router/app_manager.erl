@@ -450,8 +450,7 @@ handle_non_ready_backends() ->
 % If not, clean up the instance and delete it from the backends.
 % These are throw-aways, so they can come and they can go
 try_to_reconnect_to_backend(B, 0) ->
-  ?QSTORE:delete_queue(?WAIT_DB, B#backend.app_name),
-  backend:delete(B),
+  cleanup_backend(B),
   ok;
 try_to_reconnect_to_backend(B, Num) ->
   case try_to_connect_to_new_instance(B, 10) of
@@ -461,6 +460,11 @@ try_to_reconnect_to_backend(B, Num) ->
     NewStatus ->
       backend:update(B#backend{status = NewStatus})
   end.
+
+% Cleanup the backend. Remove traces of the backend from the system
+cleanup_backend(B) ->
+  ?QSTORE:delete_queue(?WAIT_DB, B#backend.app_name),
+  backend:delete(B).
 
 % turn the command string from the comand string with the values
 % of [[KEY]] replaced by the corresponding proplist element of
