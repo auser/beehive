@@ -15,7 +15,8 @@
   pop/2,
   push/3,
   replace/3,
-  get_queue/2
+  get_queue/2,
+  delete_queue/2
 ]).
 
 %% gen_server callbacks
@@ -36,6 +37,7 @@ pop (Name, QName) -> gen_server:call(Name, {next, QName}).
 push(Name, QName, Item) -> gen_server:call(Name, {push, QName, Item}).
 replace(Name, QName, NewQ) -> gen_server:call(Name, {replace, QName, NewQ}).
 get_queue(Name, QName) -> gen_server:call(Name, {get_queue, QName}).
+delete_queue(Name, QName) -> gen_server:call(Name, {delete_queue, QName}).
 
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
@@ -93,6 +95,8 @@ handle_call({get_queue, Name}, _From, #state{queues = QDict} = State) ->
     Q ->
       {reply, Q, State}
   end;
+handle_call({delete_queue, Name}, _From, State) ->
+  {reply, delete_q(Name, State), State};
   
 handle_call(_Request, _From, State) ->
   Reply = ok,
@@ -144,4 +148,8 @@ fetch_q(Name, QDict) ->
 
 store_q(Name, NewQ, #state{queues = QDict} = State) ->
   NewDict = ?DICT:store(Name, NewQ, QDict),
+  State#state{queues = NewDict}.
+
+delete_q(Name, #state{queues = QDict} = State) ->
+  NewDict = ?DICT:erase(Name, QDict),
   State#state{queues = NewDict}.

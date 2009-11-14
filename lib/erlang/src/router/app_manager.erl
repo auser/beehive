@@ -90,7 +90,7 @@ init([]) ->
   % Try to make sure the pending backends are taken care of by either turning them broken for ready
   % timer:send_interval(timer:seconds(5), {manage_pending_backends}),
   % Run maintenance
-  % timer:send_interval(timer:minutes(1), {garbage_collection}),
+  timer:send_interval(timer:minutes(1), {garbage_collection}),
   % timer:send_interval(timer:seconds(10), {clean_up}),
   {ok, #state{}}.
 
@@ -187,13 +187,7 @@ handle_info({manage_pending_backends}, State) ->
   {noreply, State};
 
 handle_info({garbage_collection}, State) ->
-  lists:map(fun(_Backends) ->
-    ok
-    % lists:map(fun(B) ->
-      % ?LOG(info, "Garbage cleaning up on: ~p", [Backends#backend.app_name])
-    % end, Backends)
-  end, apps:all(backends)),
-  
+  handle_non_ready_backends(),
   {noreply, State};
   
 handle_info({check_for_apps}, State) ->
@@ -463,6 +457,28 @@ load_app_config_from_yaml_file(Filepath, Ext) ->
   end,
   update_app_configuration(O, #app{name = Name}, #state{}),
   ok.
+  
+% GARBAGE COLLECTION
+handle_non_ready_backends() ->
+  DownBackends = lists:filter(fun(B) -> B#backend.status =/= ready end, backend:all()),
+  lists:map(fun(B) ->
+    spawn(fun() -> try_to_reconnect_to_backend(B, 5) end)
+  end, DownBackends),
+  ok.
+
+% Spawned off process to try to "save" the backend
+try_to_reconnect_to_backend(B, 0) ->
+  ?QSTORE:delete_queue(?WAIT_DB, B#backend.app_name),
+  backend:delete(B),
+  ok;
+try_to_reconnect_to_backend(B, Num) ->
+  case try_to_connect_to_new_instance(B, 10) of
+    broken -> 
+      timer:sleep(200),
+      try_to_reconnect_to_backend(B, Num - 1);
+    NewStatus ->
+      backend:update(B#backend{status = NewStatus})
+  end.
 
 % turn the command string from the comand string with the values
 % of [[KEY]] replaced by the corresponding proplist element of
