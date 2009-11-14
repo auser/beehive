@@ -124,11 +124,7 @@ handle_cast(Msg, State) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %%----------------------------------------------------------------------
 handle_info({update_node_pings}, State) ->
-  AllNodes = ets:match(nodes, '$1'),
-  lists:map(fun([{Key, Node}]) ->
-    {Time, _Value} = timer:tc(net_adm, ping, [Node#node.host]),
-    ets:insert(nodes, {Key, Node#node{ping_distance = Time}})
-  end, AllNodes),
+  update_node_pings(),
   {noreply, State};
 handle_info({check_for_new_known_nodes}, State) ->
   check_for_new_known_nodes(),
@@ -160,12 +156,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%%----------------------------------------------------------------------
 % Add a node to the node list. 
 add_node_to_node_list(Name) ->
-  case net_adm:ping(Name) of
-    pong ->
+  case timer:tc(net_adm, ping, [Name]) of
+    {Time, pong} ->
       Host = rpc:call(Name, ?MODULE, get_host, []),
-      Node = #node{name = Name, host = Host},
+      Node = #node{name = Name, host = Host, ping_distance = Time},
       ets:insert(nodes, {Name, Node});
-    pang ->
+    {_, pang} ->
       error
   end.
 
@@ -175,11 +171,19 @@ all_nodes() ->
 
 % Checking for new node pings
 check_for_new_known_nodes() ->
-  CurrentNodeNames = lists:map(fun([{Name, _Node}]) ->
-    Name
-  end, all_nodes()),
+  CurrentNodeNames = lists:map(fun([{Name, _Node}]) -> Name end, all_nodes()),
   NewNodes = lists:filter(fun(N) -> lists:member(N, CurrentNodeNames) =:= false end, nodes()),
   lists:map(fun(N) -> add_node_to_node_list(N) end, NewNodes).
+
+% Update node pings
+update_node_pings() ->
+  AllNodes = ets:match(nodes, '$1'),
+  lists:map(fun([{Key, Node}]) ->
+    case timer:tc(net_adm, ping, [Node#node.name]) of
+      {Time, pong} -> ets:insert(nodes, {Key, Node#node{ping_distance = Time}});
+      {_Time, pang} -> ets:delete(nodes, Key)
+    end
+  end, AllNodes).
 
 % RPC call to everyone to find their host
 get_available_hosts() ->
