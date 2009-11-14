@@ -73,22 +73,6 @@ post(_UnsupportedPath, _Data) ->
 put(_Path, _Data) -> "unhandled".
 delete(_Path, _Data) -> "unhandled".
 
-% Private
-convert_to_struct(RawData) ->
-  lists:map(fun({BinKey, BinVal}) ->
-      Key = misc_utils:to_atom(BinKey),
-      Val = misc_utils:to_list(BinVal),
-      {Key, Val}
-    end, RawData).
-
-jsonify(JsonifiableBody) ->
-  [ ?JSON_ENCODE({
-        struct, [
-          JsonifiableBody
-        ]
-    })
-  ].
-
 %%%
 %%% HTTP server stuff
 %%%
@@ -162,7 +146,3 @@ format_backend_list([B|Bs], Acc) ->
      "</tr>\n"
     ]|Acc]).
       
-count_reqs(Pidlist) ->
-  Active = lists:filter(fun({Status, _, _} = _Item) -> Status == active end, Pidlist),
-  Pending = lists:filter(fun({Status, _, _} = _Item) -> Status == pending end, Pidlist),
-  {Active, Pending}.

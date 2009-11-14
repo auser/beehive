@@ -1,5 +1,6 @@
 -module(web_utils).
 -include ("router.hrl").
+-include ("http.hrl").
 -compile (export_all).
     
 % Private
@@ -9,3 +10,11 @@ convert_to_struct(RawData) ->
       Val = misc_utils:to_list(BinVal),
       {Key, Val}
     end, RawData).
+    
+jsonify(JsonifiableBody) ->
+  [ ?JSON_ENCODE({
+        struct, [
+          JsonifiableBody
+        ]
+    })
+  ].
