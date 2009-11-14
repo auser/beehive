@@ -17,6 +17,7 @@
 %% External exports
 -export([
   start_link/0,
+  start_link/1,
   list_nodes/0,
   add_node/1,
   stop/0,
@@ -37,8 +38,8 @@
 %%% API
 %%%----------------------------------------------------------------------
 
-start_link() ->  
-  gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+start_link() -> start_link(node()).
+start_link(Seed) -> gen_server:start_link({local, ?MODULE}, ?MODULE, [Seed], []).
 
 stop() ->
   gen_server:cast(?SERVER, {stop}).
@@ -66,13 +67,15 @@ available_hosts() ->
 %%          ignore               |
 %%          {stop, Reason}
 %%----------------------------------------------------------------------
-init([]) ->
+init([Seed]) ->
   process_flag(trap_exit, true),  
   LocalHost = host:myip(),
   
   Opts = [named_table, set],
   ets:new(nodes, Opts),
-
+  
+  net_adm:ping(Seed),
+  
   % Add all nodes this router knows about
   lists:map(fun(N) -> add_node_to_node_list(N) end, nodes()),
   
@@ -129,7 +132,8 @@ handle_info({update_node_pings}, State) ->
 handle_info({check_for_new_known_nodes}, State) ->
   check_for_new_known_nodes(),
   {noreply, State};
-handle_info({'EXIT', _Pid, _Reason}, State) ->
+handle_info({'EXIT', Pid, Reason}, State) ->
+  io:format("Something died: ~p : ~p~n", [Pid, Reason]),
   {noreply, State};
 handle_info(Info, State) ->
   error_logger:format("~s:handle_info: got ~w\n", [?MODULE, Info]),
@@ -179,9 +183,12 @@ check_for_new_known_nodes() ->
 update_node_pings() ->
   AllNodes = ets:match(nodes, '$1'),
   lists:map(fun([{Key, Node}]) ->
-    case timer:tc(net_adm, ping, [Node#node.name]) of
+    case (catch timer:tc(net_adm, ping, [Node#node.name])) of
       {Time, pong} -> ets:insert(nodes, {Key, Node#node{ping_distance = Time}});
-      {_Time, pang} -> ets:delete(nodes, Key)
+      {_Time, pang} -> ets:delete(nodes, Key);
+      E -> 
+        io:format("Error: ~p~n", [E]),
+        ok
     end
   end, AllNodes).
 
