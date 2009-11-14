@@ -16,12 +16,13 @@ get(_) ->
     "<h1>Nodes</h1>",
     "<table>\n",
     "<tr> ",
-    [["<td><b>", X, "</b></td>"] || X <- ["Name", "Ping latency"]],
+    [["<td><b>", X, "</b></td>"] || X <- ["Name", "Ping latency", "Host"]],
     lists:map(fun([{Name, Node}]) ->
       [
         "<tr>",
         io_lib:format("<td> ~s </td>", [Name]),
         io_lib:format("<td> ~w </td>", [Node#node.ping_distance]),
+        io_lib:format("<td> ~s </td>", [Node#node.host]),
         "</tr>"
       ]
     end, Nodes),

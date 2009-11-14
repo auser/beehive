@@ -19,7 +19,9 @@
   start_link/0,
   list_nodes/0,
   add_node/1,
-  stop/0
+  stop/0,
+  get_host/0,
+  available_hosts/0
 ]).
 
 -record (state, {
@@ -41,11 +43,17 @@ start_link() ->
 stop() ->
   gen_server:cast(?SERVER, {stop}).
 
-add_node(Hostname) ->
-  gen_server:call(?SERVER, {add_node, Hostname}).
+add_node(Host) ->
+  gen_server:call(?SERVER, {add_node, Host}).
 
 list_nodes() ->
   gen_server:call(?SERVER, {list_nodes}).
+  
+get_host() ->
+  gen_server:call(?SERVER, {get_host}).
+  
+available_hosts() ->
+  gen_server:call(?SERVER, {available_hosts}).
 
 %%%----------------------------------------------------------------------
 %%% Callback functions from gen_server
@@ -84,10 +92,14 @@ init([]) ->
 %%          {stop, Reason, Reply, State}   | (terminate/2 is called)
 %%          {stop, Reason, State}            (terminate/2 is called)
 %%----------------------------------------------------------------------
-handle_call({add_node, Hostname}, _From, State) ->
-  {reply, add_node_to_node_list(Hostname), State};
+handle_call({get_host}, _From, #state{host = Host} = State) ->
+  {reply, Host, State};
+handle_call({available_hosts}, _From, State) ->
+  {reply, get_available_hosts(), State};
+handle_call({add_node, Host}, _From, State) ->
+  {reply, add_node_to_node_list(Host), State};
 handle_call({list_nodes}, _From, State) ->
-  Reply = ets:match(nodes, '$1'),
+  Reply = all_nodes(),
   {reply, Reply, State};
 handle_call(_Call, _From, State) ->
   Reply = ok,
@@ -114,11 +126,12 @@ handle_cast(Msg, State) ->
 handle_info({update_node_pings}, State) ->
   AllNodes = ets:match(nodes, '$1'),
   lists:map(fun([{Key, Node}]) ->
-    {Time, _Value} = timer:tc(net_adm, ping, [Node#node.hostname]),
+    {Time, _Value} = timer:tc(net_adm, ping, [Node#node.host]),
     ets:insert(nodes, {Key, Node#node{ping_distance = Time}})
   end, AllNodes),
   {noreply, State};
 handle_info({check_for_new_known_nodes}, State) ->
+  check_for_new_known_nodes(),
   {noreply, State};
 handle_info({'EXIT', _Pid, _Reason}, State) ->
   {noreply, State};
@@ -145,11 +158,31 @@ code_change(_OldVsn, State, _Extra) ->
 %%%----------------------------------------------------------------------
 %%% Internal functions
 %%%----------------------------------------------------------------------
-add_node_to_node_list(Hostname) ->
-  case net_adm:ping(Hostname) of
+% Add a node to the node list. 
+add_node_to_node_list(Name) ->
+  case net_adm:ping(Name) of
     pong ->
-      Node = #node{hostname = Hostname},
-      ets:insert(nodes, {Hostname, Node});
+      Host = rpc:call(Name, ?MODULE, get_host, []),
+      Node = #node{name = Name, host = Host},
+      ets:insert(nodes, {Name, Node});
     pang ->
       error
   end.
+
+% Get all the nodes
+all_nodes() ->
+  ets:match(nodes, '$1').
+
+% Checking for new node pings
+check_for_new_known_nodes() ->
+  CurrentNodeNames = lists:map(fun([{Name, _Node}]) ->
+    Name
+  end, all_nodes()),
+  NewNodes = lists:filter(fun(N) -> lists:member(N, CurrentNodeNames) =:= false end, nodes()),
+  lists:map(fun(N) -> add_node_to_node_list(N) end, NewNodes).
+
+% RPC call to everyone to find their host
+get_available_hosts() ->
+  lists:map(fun([{_N, #node{name = Name} = _Node}]) ->
+    rpc:call(Name, ?MODULE, get_host, [])
+  end, all_nodes()).

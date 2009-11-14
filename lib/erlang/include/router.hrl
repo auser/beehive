@@ -106,7 +106,8 @@
 }).
 
 -record (node, {
-  hostname,
+  name,
+  host,
   ping_distance
 }).
 
