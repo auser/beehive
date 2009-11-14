@@ -20,7 +20,10 @@
   terminate_all/0,
   terminate_app_instances/1,
   add_application/1,
-  handle_forwarding/3
+  handle_forwarding/3,
+  start_new_instance/2,
+  next_available_port/1,
+  next_available_host/1
 ]).
 
 %% gen_server callbacks

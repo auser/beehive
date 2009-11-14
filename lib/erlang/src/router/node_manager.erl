@@ -18,6 +18,7 @@
 -export([
   start_link/0,
   list_nodes/0,
+  add_node/1,
   stop/0
 ]).
 
@@ -43,6 +44,9 @@ start_link() ->
 stop() ->
   gen_server:cast(?SERVER, {stop}).
 
+add_node(Hostname) ->
+  gen_server:call(?SERVER, {add_node, Hostname}).
+
 list_nodes() ->
   gen_server:call(?SERVER, {list_nodes}).
 
@@ -65,7 +69,9 @@ init([]) ->
   ets:new(nodes, Opts),
 
   % Add all nodes this router knows about
-  lists:map(fun(N) -> add_node(N) end, nodes()),
+  lists:map(fun(N) -> add_node_to_node_list(N) end, nodes()),
+  
+  timer:send_interval(timer:minutes(1), {check_for_new_known_nodes}),
   
   {ok, #state{
     host = LocalHost
@@ -80,6 +86,8 @@ init([]) ->
 %%          {stop, Reason, Reply, State}   | (terminate/2 is called)
 %%          {stop, Reason, State}            (terminate/2 is called)
 %%----------------------------------------------------------------------
+handle_call({add_node, Hostname}, _From, State) ->
+  {reply, add_node_to_node_list(Hostname), State};
 handle_call({list_nodes}, _From, State) ->
   Reply = ets:match(nodes, '$1'),
   {reply, Reply, State};
@@ -105,6 +113,8 @@ handle_cast(Msg, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %%----------------------------------------------------------------------
+handle_info({check_for_new_known_nodes}, State) ->
+  {noreply, State};
 handle_info({'EXIT', _Pid, _Reason}, State) ->
   {noreply, State};
 handle_info(Info, State) ->
@@ -130,6 +140,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%----------------------------------------------------------------------
 %%% Internal functions
 %%%----------------------------------------------------------------------
-add_node(Hostname) ->
+add_node_to_node_list(Hostname) ->
   Node = #node{hostname = Hostname},
   ets:insert(nodes, {Hostname, Node}).

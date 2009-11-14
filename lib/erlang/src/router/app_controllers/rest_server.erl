@@ -137,7 +137,8 @@ run_controller(Req, ControllerAtom, Meth, Args) ->
   case (catch erlang:apply(ControllerAtom, Meth, Args)) of
     {'EXIT', {undef, _}} ->
       Req:ok({"text/html", "Unimplemented controller. There is nothing to see here, go back from where you came"});
-    {'EXIT', _E} -> 
+    {'EXIT', E} -> 
+      io:format("ERROR: ~p~n", [E]),
       Req:not_found();
     Body -> Req:ok({"text/html", Body})
   end.
