@@ -20,8 +20,7 @@
   terminate_all/0,
   terminate_app_instances/1,
   add_application/1,
-  handle_forwarding/3,
-  ensure_minimum_backends_running/2
+  handle_forwarding/3
 ]).
 
 %% gen_server callbacks
@@ -80,7 +79,8 @@ init([]) ->
   % Try to make sure the pending backends are taken care of by either turning them broken for ready
   % timer:send_interval(timer:seconds(5), {manage_pending_backends}),
   % Run maintenance
-  timer:send_interval(timer:minutes(1), {garbage_collection}),
+  timer:send_interval(timer:minutes(1), {ping_backends}),
+  timer:send_interval(timer:minutes(10), {garbage_collection}),
   % timer:send_interval(timer:seconds(10), {clean_up}),
   {ok, #state{}}.
 
@@ -141,29 +141,19 @@ handle_cast(_Msg, State) ->
 handle_info({clean_up}, State) ->
   {noreply, clean_up(State)};
 
-handle_info({ensure_minimum_backends_running}, State) ->
-  lists:map(fun(App) ->
-    MinBackends = App#app.min_instances,
-    RunningBackends = backend_srv:get_host(App#app.name),
-    if
-      MinBackends > length(RunningBackends) ->
-        ensure_minimum_backends_running1(length(RunningBackends), App, State),
-        ?LOG(info, "Have to start a new instance for: ~p", [App#app.name]);
-        true -> ok
-    end
-  end, apps:all(apps)),
-  {noreply, State};
-
 handle_info({manage_pending_backends}, State) ->
   PendingBackends = lists:filter(fun(B) -> B#backend.status == pending end, apps:all(backends)),
   lists:map(fun(B) ->
       BackendStatus = try_to_connect_to_new_instance(B, 10),
-      ?LOG(info, "Marking ~p instance ~p", [B#backend.app_name, BackendStatus]),
       backend_srv:update_backend_status(B, BackendStatus)
     % lists:map(fun(B) ->
       % ?LOG(info, "Garbage cleaning up on: ~p", [Backends#backend.app_name])
     % end, Backends)
   end, PendingBackends),
+  {noreply, State};
+
+handle_info({ping_backends}, State) ->
+  ping_backends(),
   {noreply, State};
 
 handle_info({garbage_collection}, State) ->
@@ -201,14 +191,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-
-% Start the minimum number of instances for the instances
-ensure_minimum_backends_running(App, State) ->
-  Backends = apps:all(backends),
-  ensure_minimum_backends_running1(length(Backends), App, State).
-ensure_minimum_backends_running1(Count, #app{min_instances = MinBackends}, State) when Count >= MinBackends -> State;
-ensure_minimum_backends_running1(Count, App, State) -> 
-  ensure_minimum_backends_running1(Count + 1, start_new_instance(App, State), State).
     
 % Start a new instance of the application
 start_new_instance(App, State) ->
@@ -242,14 +224,17 @@ start_new_instance(App, State) ->
   backend_srv:add_backend(Backend),
   
   % Let the instance know it's ready after it connects
-  spawn(fun() ->
-    BackendStatus = try_to_connect_to_new_instance(Backend, 10),
-    ?LOG(info, "Marking ~p instance ~p", [Backend#backend.app_name, BackendStatus]),
-    backend_srv:update_backend_status(Backend, BackendStatus)
-  end),
-  
+  spawn_update_backend_status(Backend),
+    
   ?LOG(info, "Spawned a new instance", []),
   App.
+
+% Spawn a process to try to connect to the instance
+spawn_update_backend_status(Backend) ->
+  spawn(fun() ->
+    BackendStatus = try_to_connect_to_new_instance(Backend, 5),
+    backend:update(Backend#backend{status = BackendStatus})
+  end).
 
 % Try to connect to the application instance while it's booting up
 try_to_connect_to_new_instance(_Backend, 0) -> broken;
@@ -345,7 +330,7 @@ add_application_by_configuration(ConfigProplist, State) ->
 
 % kill the instance of the application
 stop_instance(Backend, #state{dead_apps = DeadApps} = State) ->
-  App = backend_srv:lookup(app, Backend#backend.app_name),
+  App = app:find_by_name(Backend#backend.app_name),
   RealCmd = template_command_string(App#app.stop_command, [
                                                         {"[[PORT]]", erlang:integer_to_list(Backend#backend.port)},
                                                         {"[[GROUP]]", App#app.group},
@@ -437,7 +422,15 @@ load_app_config_from_yaml_file(Filepath, Ext) ->
   end,
   update_app_configuration(O, #app{name = Name}, #state{}),
   ok.
-  
+
+% MAINTENANCE
+ping_backends() ->
+  ReadyBackends = lists:filter(fun(B) -> B#backend.status =:= ready end, backend:all()),
+  lists:map(fun(B) ->
+    spawn_update_backend_status(B)
+  end, ReadyBackends),
+  ok.
+
 % GARBAGE COLLECTION
 handle_non_ready_backends() ->
   DownBackends = lists:filter(fun(B) -> B#backend.status =/= ready andalso B#backend.sticky =:= false end, backend:all()),

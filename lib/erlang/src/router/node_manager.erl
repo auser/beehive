@@ -64,10 +64,8 @@ init([]) ->
   Opts = [named_table, set],
   ets:new(nodes, Opts),
 
-  io:format("Nodes: ~p~n", [nodes()]),
-  lists:map(fun(N) ->
-    add_node(N)
-  end, nodes()),
+  % Add all nodes this router knows about
+  lists:map(fun(N) -> add_node(N) end, nodes()),
   
   {ok, #state{
     host = LocalHost
