@@ -109,8 +109,7 @@
 -record (node, {
   name,               % name of the node
   host,               % host of the node (ip)
-  ping_distance,      % latency of ping
-  instance_count = 0  % number of backend instances on this app
+  ping_distance       % latency of ping
 }).
 
 -record (http_request, {
