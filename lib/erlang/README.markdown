@@ -43,6 +43,9 @@ Viewing the list of supported apps:
   curl -i beehive.com:8080/app
 </code></pre>
 
+## Nodes
+Beehive is a distributed system. You can add multiple nodes in the router. The node_manager handles the node connections.
+
 Note: The documentation assumes that the router is sitting at a network accessible location. The documentation uses the CNAME "beehive.com" to illustrate.
 
 
