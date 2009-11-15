@@ -40,6 +40,7 @@
 -define (MAX_HEADERS, 100).
 % Maximum recv_body() length of 1MB
 -define(MAX_RECV_BODY, (1024*1024)).
+-define (MAX_INSTANCES_PER_NODE, 20).
 
 % Default KV store
 -define (KVSTORE, dict_store).
@@ -106,9 +107,10 @@
 }).
 
 -record (node, {
-  name,
-  host,
-  ping_distance
+  name,               % name of the node
+  host,               % host of the node (ip)
+  ping_distance,      % latency of ping
+  instance_count = 0  % number of backend instances on this app
 }).
 
 -record (http_request, {

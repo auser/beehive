@@ -20,7 +20,6 @@
   terminate_all/0,
   terminate_app_instances/1,
   add_application/1,
-  handle_forwarding/3,
   start_new_instance/2,
   next_available_port/1,
   next_available_host/1
@@ -53,9 +52,6 @@ terminate_app_instances(Appname) ->
   
 add_application(ConfigProplist) ->
   gen_server:call(?SERVER, {add_application_by_configuration, ConfigProplist}).
-
-handle_forwarding(Hostname, Req, Body) ->
-  gen_server:cast(?SERVER, {route_forward_request, Hostname, Req, Body}).
   
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
@@ -82,9 +78,8 @@ init([]) ->
   % Try to make sure the pending backends are taken care of by either turning them broken for ready
   % timer:send_interval(timer:seconds(5), {manage_pending_backends}),
   % Run maintenance
-  timer:send_interval(timer:minutes(1), {ping_backends}),
+  timer:send_interval(timer:seconds(20), {ping_backends}),
   timer:send_interval(timer:minutes(10), {garbage_collection}),
-  % timer:send_interval(timer:seconds(10), {clean_up}),
   {ok, #state{}}.
 
 %%--------------------------------------------------------------------
