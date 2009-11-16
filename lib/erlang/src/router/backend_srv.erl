@@ -310,21 +310,21 @@ add_backends_from_config() ->
   case apps:search_for_application_value(backends, undefined, router) of
     undefined -> ok;
     RawPath -> 
-      Path = case filelib:is_file(RawPath) of
-        true -> RawPath;
-        false -> filename:join([filename:absname(""), RawPath])
-      end,
-      case file:consult(Path) of
-        {ok, List} ->
-          F = fun(V) ->
-            case V of
-              {Name, Host, Port} ->
-                ?LOG(info, "Adding app: ~p, ~p:~p", [Name, Host, Port]),
-                backend:create(#backend{id={Name, Host, Port}, app_name = Name, host = Host, port = Port, status = ready})
-            end
-          end,
-          lists:map(F, List);
-        _E -> 
-          ok
+      case (catch file_utils:abs_or_relative_filepath(RawPath)) of
+        {error, _} -> "router.log";
+        Path -> 
+          case file:consult(Path) of
+            {ok, List} ->
+              F = fun(V) ->
+                case V of
+                  {Name, Host, Port} ->
+                    ?LOG(info, "Adding app: ~p, ~p:~p", [Name, Host, Port]),
+                    backend:create(#backend{id={Name, Host, Port}, app_name = Name, host = Host, port = Port, status = ready})
+                end
+              end,
+              lists:map(F, List);
+            _E -> 
+              ok
+          end
       end
   end.

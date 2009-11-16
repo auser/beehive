@@ -27,11 +27,15 @@
 %%--------------------------------------------------------------------
 init([]) ->
   FileName = apps:search_for_application_value(log_path, "/tmp/router.log", router),
-  LogHandle = case disk_log:open([{name, ?MODULE},{file, FileName}]) of
-        {ok, LH} -> LH;
-        {repaired, LH, _, _} -> LH
-      end,
-  {ok, #state{filename = FileName, log_handle = LogHandle}}.
+  % Get the full path for the file
+  FullFilepath = case (catch file_utils:abs_or_relative_filepath(FileName)) of
+    {error, _} -> "router.log";
+    P -> P
+  end,
+  
+  {ok, Fd} = file:open(FullFilepath, [append]),
+  
+  {ok, #state{filename = FullFilepath, log_handle = Fd}}.
 
 %%--------------------------------------------------------------------
 %% Function:
@@ -42,8 +46,8 @@ init([]) ->
 %% gen_event:notify/2 or gen_event:sync_notify/2, this function is called for
 %% each installed event handler to handle the event.
 %%--------------------------------------------------------------------
-handle_event({log, info, Log_Format, Log_Args}, State) ->
-  write("[INFO][~s] ~s~n", [formatted_now(), io_lib:format(Log_Format, Log_Args)]),
+handle_event({log, LogLevel, LogFormat, LogArgs}, State) ->
+  write(LogLevel, io_lib:format(LogFormat, LogArgs), State),
   {ok, State};
 handle_event(_Event, State) ->
   {ok, State}.
@@ -80,9 +84,8 @@ handle_info(_Info, State) ->
 %% this function is called. It should be the opposite of Module:init/1 and
 %% do any necessary cleaning up.
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{filename = FileName, log_handle = LH} = _State) ->
-  io:format("Closing logs: ~p~n", [FileName]),
-  disk_log:close(LH),
+terminate(_Reason, #state{log_handle = LH} = _State) ->
+  file:close(LH),
   ok.
 
 %%--------------------------------------------------------------------
@@ -93,12 +96,7 @@ code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
   
 % INTERNAL FUNCTIONS
-write(Fmt, Args) ->
-  Message = lists:flatten(io_lib:format(Fmt, Args)),
-  io:format("Writing: ~p~n", [Message]),
-  disk_log:alog(?MODULE, {now(), Message}).
-  
-formatted_now() ->
-  {{Log_Y,Log_M,Log_D},{Log_Hr,Log_Min,Log_Sec}} = erlang:localtime(),
-  lists:flatten(io_lib:format("~w/~w/~w ~w:~w:~w", [Log_Y, Log_M, Log_D, Log_Hr, Log_Min, Log_Sec])).
+write(Level, Message, #state{log_handle = Fd} = _State) ->
+  % Check levels here, eventually
+  ok = io:format(Fd, "[~s] [~s] ~s\r~n\r", [httpd_util:rfc1123_date(), Level, Message]).
   

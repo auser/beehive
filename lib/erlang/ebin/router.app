@@ -13,7 +13,7 @@
     {beehive_app_port, 4999},
     {backends, "config/sample.cfg"},
     {kvstore, dict_store},
-    {log_path, "/tmp/logs/router.log"}
+    {log_path, "/var/logs/router.log"}
   ]}
  ]
 }.

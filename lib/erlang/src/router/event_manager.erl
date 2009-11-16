@@ -9,6 +9,7 @@
 -module (event_manager).
 
 -include ("router.hrl").
+-include ("common.hrl").
 
 %% API
 -export([start_link/0, add_handler/1, notify/1]).
@@ -29,10 +30,17 @@ start_link() ->
 %% Function: add_handler(Module) -> ok | {'EXIT',Reason} | term()
 %% Description: Adds an event handler
 %%--------------------------------------------------------------------
-add_handler(Module) -> gen_event:add_handler(?SERVER, Module, []).
+add_handler(Module) -> 
+  case (catch gen_event:add_handler(?SERVER, Module, [])) of
+    ok -> ok;
+    {'EXIT', E} ->
+      io:format("Couldn't add handler: ~p~n", [E]),
+      exit(E)
+  end.
 
 %%--------------------------------------------------------------------
 %% Function: notify(Event) -> ok | {error, Reason}
 %% Description: Sends the Event through the event manager.
 %%--------------------------------------------------------------------
-notify(Event) -> gen_event:notify(?SERVER, Event).
+notify(Event) -> 
+  gen_event:notify(?SERVER, Event).

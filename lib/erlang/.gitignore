@@ -2,3 +2,4 @@ db
 ebin/*.boot
 ebin/*.rel
 ebin/*.script
+router.log

@@ -19,4 +19,5 @@ erl -pa $PWD/ebin \
     -name "router@$HOSTNAME" \
     -s reloader \
 		-mnesia dir $MNESIA_DIR \
-    -boot router-0.1 $*
+    -boot router-0.1 \
+		$*

@@ -21,4 +21,5 @@ erl -pa $PWD/ebin \
 		-mnesia dir $MNESIA_DIR \
 		-detached \
 		-heart \
-    -boot router-0.1 $*
+    -boot router-0.1 \
+		$*
