@@ -23,7 +23,7 @@
 ]).
 
 % Test
--export ([test/0]).
+-export ([run_tests/0]).
 
 find_by_name(Hostname) ->
   case find_all_by_name(Hostname) of
@@ -60,12 +60,20 @@ all() ->
 new(NewProps) ->
   PropList = ?rec_info(app, #app{}),
   FilteredProplist1 = misc_utils:filter_proplist(PropList, NewProps, []),
-  FilteredProplist = misc_utils:new_or_previous_value(FilteredProplist1, PropList, []),
+  FilteredProplist2 = misc_utils:new_or_previous_value(FilteredProplist1, PropList, []),
+  FilteredProplist = validate_app_proplists(FilteredProplist2),
   list_to_tuple([app|[proplists:get_value(X, FilteredProplist) || X <- record_info(fields, app)]]).
 
-  
+validate_app_proplists(PropList) ->
+  lists:map(fun({Key, Val}) ->
+    case Key of
+      updated_at -> {Key, date_util:now_to_seconds()};
+      _ -> {Key, Val}
+    end
+  end, PropList).
+
 % TESTS
-test() ->
+run_tests() ->
   try
     db:clear_table(app),
     schema:install(),

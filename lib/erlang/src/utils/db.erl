@@ -21,7 +21,8 @@
   clear_table/1,
   new_id/1,
   match/1,
-  transaction/1
+  transaction/1,
+  table/1
 ]).
 
 init() -> schema:install().
@@ -63,6 +64,8 @@ match(Pattern) ->
 index_read(Table, Value, Key) ->
   {_Time, Value} = timer:tc(mnesia, dirty_index_read, [Table, Value, Key]),
   Value.
+
+table(Table) -> mnesia:table(Table).
 
 clear_table(Table) ->
   mnesia:clear_table(Table).

@@ -34,6 +34,12 @@ get(["all"]) ->
 
 get(_) -> "hello world".
 
+post(["new"], Data) ->
+  case app:create(Data) of
+    ok -> "Added new app";
+    _ -> "There was an error adding backend\n"
+  end;
+  
 post(_Path, _Data) -> "unhandled".
 put(_Path, _Data) -> "unhandled".
 delete(_Path, _Data) -> "unhandled".

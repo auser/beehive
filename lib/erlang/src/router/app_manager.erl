@@ -248,34 +248,9 @@ try_to_connect_to_new_instance(Backend, Attempts) ->
   
 % Get the next available port
 next_available_port(_State) ->
-  Backends = apps:all(backends),
-  MyIp = host:myip(),
-  
-  LocalBackends = lists:filter(fun(AppBackends) ->
-    AppBackends#backend.host =:= MyIp
-  end, Backends),
-  
-  AllAppProplistsOfPorts = lists:map(fun({_AppName, AppBackends}) ->
-    lists:flatten(lists:map(fun(Backend) -> Backend#backend.port end, AppBackends))
-  end, LocalBackends),
-  UsedPorts1 = lists:flatten(lists:map(fun({_Name, Ports}) -> Ports end, AllAppProplistsOfPorts)),
-  UsedPorts = lists:filter(fun(Port) ->
-    ?LOG(info, "Filtering port: ~p", [Port]),
-    case Port of
-      undefined -> false;
-      P when is_integer(P) -> true;
-      _ -> false
-    end
-  end, UsedPorts1),
-  
-  ?LOG(info, "UsedPorts: ~p", [UsedPorts]),
-  NewPort = case misc_utils:max(UsedPorts) of
-    0 -> ?STARTING_PORT;
-    E -> E + 1
-  end,
-  NewPort.
-
-next_available_host(_State) -> {127,0,0,1}.
+  ?STARTING_PORT.
+next_available_host(_State) -> 
+  {127,0,0,1}.
 
 % Update configuration for an application from a proplist of configuration details
 update_app_configuration(ConfigProplist, App, State) ->

@@ -54,7 +54,7 @@
   app_name,                 % name of the app this backend supports
   host,
   port,
-  start_time,               % started
+  start_time,               % starting time
   pid,                      % pid of os port process
   sticky        = false,    % keep this backend around, don't remove it from the backend list if it dies
   lastresp_time = 0,

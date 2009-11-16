@@ -38,6 +38,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_event({app, request_to_start_new_backend, Hostname}, State) ->
   ?LOG(info, "request_to_start_new_backend: ~p", [Hostname]),
+  node_manager:request_to_start_new_backend(Hostname),
   {ok, State};
   
 handle_event({backend_srv, init}, State) ->

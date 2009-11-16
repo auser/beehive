@@ -33,8 +33,8 @@ These can also be added at the erlang command-line by:
 Adding an application can also be added via the RESTful interface. For example:
 
 <pre><code>
-  curl -i -XPOST -d"{\"name\":\"beehive.com\"}" beehive.com:8080/apps/new
-  curl -i -XPOST -d"{\"name\":\"applebees.com\"}" beehive.com:8080/apps/new
+  curl -i -XPOST -d"{\"name\":\"beehive.com\"}" beehive.com:8080/app/new
+  curl -i -XPOST -d"{\"name\":\"test\"}" beehive.com:8080/app/new
 </code></pre>
 
 Viewing the list of supported apps:
@@ -63,4 +63,5 @@ Glossary
 TODO
 ===
   * Add ets/mnesia storage to the front-end servers
+  * Add backend dets file for recovery when the router dies
   * Add more than just http servers (abstract the proxying protocols)

@@ -25,6 +25,8 @@
 -export ([
   find_by_name/1,
   find_all_by_name/1,
+  find_all_by_host/1,
+  find_all_grouped_by_host/0,
   create/1,
   update/1,
   delete/1,
@@ -32,7 +34,7 @@
 ]).
 
 % Test
--export ([test/0]).
+-export ([run_tests/0]).
 
 find_by_name(Hostname) ->
   case find_all_by_name(Hostname) of
@@ -42,6 +44,20 @@ find_by_name(Hostname) ->
 
 find_all_by_name(Hostname) -> 
   db:match(#backend{app_name=Hostname, _='_'}).
+
+find_all_by_host(Host) ->
+  db:match(#backend{host=Host,_='_'}).
+  
+find_all_grouped_by_host() ->
+  Q = qlc:keysort(#backend.host, db:table(backend)),
+  db:transaction(
+    fun() -> qlc:fold(fun find_all_grouped_by_host1/2, [], Q) end
+  ).
+
+find_all_grouped_by_host1(#backend{host=Host} = B, [{Host, Backends, Sum} | Acc]) ->
+  [{Host, [B|Backends], Sum + 1} | Acc];
+find_all_grouped_by_host1(#backend{host=Host} = B, Acc) ->
+  [{Host, [B], 1}|Acc].
 
 create(Backend) when is_record(Backend, backend) -> 
   db:write(Backend);
@@ -85,13 +101,14 @@ validate_backend_proplists(PropList) ->
   end, PropList).
 
 % TESTS
-test() ->
+run_tests() -> 
   try
     db:clear_table(backend),
     schema:install(),
     create_test(),
     find_by_name_test(),
     all_test(),
+    find_all_grouped_by_host_test(),
     delete_test()
   catch
     throw:Thrown ->
@@ -100,6 +117,8 @@ test() ->
   end.
 
 create_test() ->
+  db:clear_table(backend),
+  schema:install(),
   Be1 = #backend{id={"test_app", {127,0,0,1}, 8090}, app_name = "test_app"},
   create(Be1),
   {atomic,Results1} = mnesia:transaction(fun() -> mnesia:match_object(#backend{_='_'}) end),
@@ -120,6 +139,21 @@ find_by_name_test() ->
 all_test() ->
   All = all(),
   ?assertEqual(2, length(All)).
+
+find_all_grouped_by_host_test() ->
+  create(#backend{id={"test_app", {127,0,0,1}, 8090}, app_name = "test_app", host={127,0,0,1}}),
+  create([{app_name, "another_app"}, {host, {127,0,0,1}}, {port, 8091}]),
+  create([{app_name, "yarrrrn pirates"}, {host, {127,0,0,2}}, {port, 8091}]),
+  AllBackends = find_all_grouped_by_host(),
+  All = lists:map(fun({Host, _Backends, Count}) ->
+    {Host, Count}
+  end, AllBackends),
+  io:format("---- All stuffs: ~p~n", [All]),
+  ?assertEqual([
+    {{127,0,0,2}, 1},
+    {{127,0,0,1}, 2}
+  ], All),
+  delete("yarrrrn pirates").
   
 delete_test() ->
   Be1 = #backend{app_name = "test_app", id={"test_app", {127,0,0,1}, 8090}},

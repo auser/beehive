@@ -22,7 +22,8 @@
   add_node/1,
   stop/0,
   get_host/0,
-  available_hosts/0
+  available_hosts/0,
+  request_to_start_new_backend/1
 ]).
 
 -record (state, {
@@ -40,21 +41,13 @@
 
 start_link() -> start_link(node()).
 start_link(Seed) -> gen_server:start_link({local, ?MODULE}, ?MODULE, [Seed], []).
+stop() -> gen_server:cast(?SERVER, {stop}).
+add_node(Host) -> gen_server:call(?SERVER, {add_node, Host}).
+list_nodes() -> gen_server:call(?SERVER, {list_nodes}).
+get_host() -> gen_server:call(?SERVER, {get_host}).
+available_hosts() -> gen_server:call(?SERVER, {available_hosts}).
+request_to_start_new_backend(Name) -> gen_server:cast(?SERVER, {request_to_start_new_backend, Name}).
 
-stop() ->
-  gen_server:cast(?SERVER, {stop}).
-
-add_node(Host) ->
-  gen_server:call(?SERVER, {add_node, Host}).
-
-list_nodes() ->
-  gen_server:call(?SERVER, {list_nodes}).
-  
-get_host() ->
-  gen_server:call(?SERVER, {get_host}).
-  
-available_hosts() ->
-  gen_server:call(?SERVER, {available_hosts}).
 
 %%%----------------------------------------------------------------------
 %%% Callback functions from gen_server
@@ -76,7 +69,7 @@ init([Seed]) ->
   
   net_adm:ping(Seed),
   
-  % Add all nodes this router knows about
+  % Add all nodes this router knows about, through ping :)
   lists:map(fun(N) -> add_node_to_node_list(N) end, nodes()),
   
   timer:send_interval(timer:seconds(20), {check_for_new_known_nodes}),
@@ -98,9 +91,11 @@ init([Seed]) ->
 handle_call({get_host}, _From, #state{host = Host} = State) ->
   {reply, Host, State};
 handle_call({available_hosts}, _From, State) ->
-  {reply, get_available_hosts(), State};
+  Reply = get_available_hosts(),
+  {reply, Reply, State};
 handle_call({add_node, Host}, _From, State) ->
-  {reply, add_node_to_node_list(Host), State};
+  Reply = add_node_to_node_list(Host),
+  {reply, Reply, State};
 handle_call({list_nodes}, _From, State) ->
   Reply = all_nodes(),
   {reply, Reply, State};
@@ -114,6 +109,14 @@ handle_call(_Call, _From, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %%----------------------------------------------------------------------
+handle_cast({request_to_start_new_backend, Name}, State) ->
+  App = app:find_by_name(Name),
+  % Comes back in the format:
+  % [{Host, [Backend list], Count}|Rest]
+  AllBackends = backend:find_all_grouped_by_host(),
+  Hosts = get_available_hosts(),
+  io:format("request_to_start_new_backend in ~p: ~p => ~p~n", [?MODULE, Name, Hosts]),
+  {noreply, State};
 handle_cast({stop}, State) ->
   {stop, normal, State};
 handle_cast(Msg, State) ->

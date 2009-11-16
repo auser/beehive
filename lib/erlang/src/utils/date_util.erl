@@ -108,8 +108,12 @@ pad_zero(L) when length(L) == 1 -> "0" ++ L;
 pad_zero(L) -> L.
 
 fmt_date(TimeStamp) ->
-  % calendar:now_to_local_time
-  {{Y, M, D}, {Hr, Min, Sec}} = seconds_to_timestamp(TimeStamp),
+  {{Y, M, D}, {Hr, Min, Sec}} = try
+    seconds_to_timestamp(TimeStamp)
+  catch
+    error:_Why -> 
+      calendar:now_to_datetime(now())
+  end,
   MinStr = pad_zero(lists:flatten(io_lib:format("~w", [Min]))),
   SecStr = pad_zero(lists:flatten(io_lib:format("~w", [Sec]))),
   io_lib:format("~w/~w/~w ~w:~s:~s", [M, D, Y, Hr, MinStr, SecStr]).
