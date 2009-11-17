@@ -12,6 +12,6 @@
 
 -export([start/2, stop/1]).
 
-start(_Type, _Args) -> router_sup:start_link([]).
+start(_Type, Args) -> router_sup:start_link(Args).
 
 stop(_State) -> ok.

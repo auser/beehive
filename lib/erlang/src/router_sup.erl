@@ -41,9 +41,7 @@ start_link(Args) ->
 %% to find out about restart strategy, maximum restart frequency and child
 %% specifications.
 %%--------------------------------------------------------------------
-init(_Args) ->
-  % spawn(fun() -> fs_srv:start() end),
-  % backend_srv_sup:start_link(?KVSTORE).
+init(Args) ->
   AppEventManager = {the_app_event_manager, {?EVENT_MANAGER, start_link, []}, permanent, 2000, worker, dynamic},
   NodeManager = {the_node_manager, {node_manager, start_link, []}, permanent, 2000, worker, dynamic},
   AppSrv = {the_backend_srv_sup, {backend_srv_sup, start_link, []}, permanent,2000,worker,dynamic},
