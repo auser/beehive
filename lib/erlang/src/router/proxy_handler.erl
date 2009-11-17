@@ -84,18 +84,20 @@ engage_backend(ClientSock, RequestPid, Hostname, Req, {ok, #backend{host = Host,
   end;
 engage_backend(ClientSock, _RequestPid, Hostname, _Req, ?BACKEND_TIMEOUT_MSG) ->
   ?LOG(error, "Error getting backend because of timeout: ~p", [Hostname]),
-  gen_tcp:send(ClientSock, ?APP_ERROR("Something went wrong: Timeout on backend")),
-  gen_tcp:close(ClientSock),
-  exit(error);
+  send_and_terminate(
+    ClientSock, ?BACKEND_TIMEOUT_MSG, 
+    ?APP_ERROR(io_lib:format("Error: ~p", [?BACKEND_TIMEOUT_MSG]))
+  );
 engage_backend(ClientSock, _RequestPid, Hostname, _Req, {error, Reason}) ->
-  ?LOG(error, "Backend for ~p was not found: ~p", [Hostname, Reason]),
-  gen_tcp:send(ClientSock, ?APP_ERROR(io_lib:format("Error: ~p", [Reason]))),
-  gen_tcp:close(ClientSock),
-  exit(error);
+  send_and_terminate(
+    ClientSock, Reason, 
+    ?APP_ERROR(io_lib:format("Error on ~p: ~p", [Hostname, Reason]))
+  );
 engage_backend(ClientSock, _RequestPid, Hostname, _Req, Else) ->
-  ?LOG(info, "proxy_handler received other message for ~p: ~p", [Hostname, Else]),
-  gen_tcp:close(ClientSock),
-  exit(error).
+  send_and_terminate(
+    ClientSock,  Else, 
+    ?APP_ERROR(io_lib:format("Error on ~p: ~p", [Hostname, Else]))
+  ).
 
 % Handle all the proxy functions here
 proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
@@ -133,6 +135,12 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
     ?LOG(info, "Terminating open proxy connection because of timeout", []),
     terminate(normal, State)
   end.
+
+% Close the engage_backend client socket, but send client data first
+send_and_terminate(ClientSock, Reason, Data) ->
+  gen_tcp:send(ClientSock, Data),
+  gen_tcp:close(ClientSock),
+  exit(Reason).
 
 % Close the connection.
 % First, fetch the stats on the sockets and the elapsed_time for the bckend activity
