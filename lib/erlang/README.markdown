@@ -59,6 +59,8 @@ Glossary
 ===
   * Backend - A backend service to forward and route requests
   * App - An application with multiple backends
+  * Node - A machine that is capable of hosting applications
+  * Routing Node - A router node that is a part of the routing mesh
 
 TODO
 ===
