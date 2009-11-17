@@ -10,10 +10,10 @@ To start the router:
   ./scripts/start_beehive.sh
 </code></pre>
 
-This will start the basic router with the default options. The default node type that gets started is the router type. You can start a node (see glossary below) with
+This will start the basic router with the default options. The default node type that gets started is the router type. You can start a node (see glossary below) with the following command. Node that the -s argument refers to a seed node. This is any node already in the mesh.
 
 <pre><code>
-  ./scripts/start_beehive.sh -t node
+  ./scripts/start_beehive.sh -t node -n bob@mymac.local -s 'router@mymac.local'
 </code></pre>
 
 There are many options to starting the router, for more information and options, type:

@@ -50,7 +50,7 @@ start_link() ->
   end.
   
 start_link(router, Seed) -> 
-  case gen_server:start_link({local, ?MODULE}, ?MODULE, [Seed], []) of
+  case gen_server:start_link({local, ?MODULE}, ?MODULE, [router, Seed], []) of
     {ok, Pid} ->
       pg2:create(?ROUTER_SERVERS),
       ok = pg2:join(?ROUTER_SERVERS, Pid),
@@ -60,7 +60,7 @@ start_link(router, Seed) ->
   end;
   
 start_link(node, Seed) -> 
-  case gen_server:start_link({local, ?MODULE}, ?MODULE, [Seed], []) of
+  case gen_server:start_link({local, ?MODULE}, ?MODULE, [node, Seed], []) of
     {ok, Pid} ->
       pg2:create(?NODE_SERVERS),
       ok = pg2:join(?NODE_SERVERS, Pid),
@@ -101,19 +101,24 @@ dump(Pid) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([Seed]) ->
+init([Type, Seed]) ->
   process_flag(trap_exit, true),  
   LocalHost = host:myip(),
   
-  case Seed of
-    [] -> db:init();
-    _ -> 
-      ?LOG(info, "Initializing slave db: ~p", [Seed]),
-      mesh_util:init_db_slave(Seed)
+  case Type of
+    router ->
+      case Seed of
+        [] -> db:init();
+        _ -> 
+          ?LOG(info, "Initializing slave db: ~p", [Seed]),
+          mesh_util:init_db_slave(Seed)
+      end;
+    node ->
+      % Node initialization stuff
+      ok
   end,
-  
   join(Seed),
-  timer:send_interval(timer:seconds(20), {stay_connected_to_seed, Seed}),
+  timer:send_interval(timer:seconds(10), {stay_connected_to_seed, Seed}),
   % timer:send_interval(timer:minutes(1), {update_node_pings}),
   
   {ok, #state{
