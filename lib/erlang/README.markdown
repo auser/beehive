@@ -1,6 +1,17 @@
 Beehive Router
 ===
 
+Getting started
+===
+
+To start the router:
+<pre><code>
+  make
+  ./scripts/start_router.sh
+</code></pre>
+
+This will start the basic router with the default options. 
+
 How it works
 ===
 There are 2 mnesia tables setup by the beehive router:
@@ -45,6 +56,8 @@ Viewing the list of supported apps:
 
 ## Nodes
 Beehive is a distributed system. You can add multiple nodes in the router. The node_manager handles the node connections.
+
+To start a new
 
 Note: The documentation assumes that the router is sitting at a network accessible location. The documentation uses the CNAME "beehive.com" to illustrate.
 
