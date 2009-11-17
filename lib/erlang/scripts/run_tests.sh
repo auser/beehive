@@ -13,7 +13,7 @@ MNESIA_DIR=$1
 
 # Default to the ./db directory
 if [ -z $MNESIA_DIR ]; then
-	MNESIA_DIR='"./db"'
+	MNESIA_DIR='"./test_db"'
 fi
 
 erl -pa $PWD/ebin \
@@ -21,6 +21,6 @@ erl -pa $PWD/ebin \
     -name "router@$HOSTNAME" \
     -s reloader \
 		-mnesia dir $MNESIA_DIR \
-		-s backend_pid test \
-		-s backend test \
+		-s app run_tests \
+		-s backend run_tests \
 		-s init stop
