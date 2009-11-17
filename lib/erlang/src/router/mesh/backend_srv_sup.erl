@@ -41,16 +41,19 @@ start_link() -> supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 %%--------------------------------------------------------------------
 init([]) ->
   AppSrv  = {the_backend_srv,{backend_srv, start_link,[]}, permanent,2000,worker,dynamic},
-  % KVStore = {the_kv_store,{supervisor,start_link,[{local, the_kv_store}, ?MODULE, [start_module, Module]]},permanent,infinity,supervisor,[]},
   AppManagerSrv  = {the_app_manager,{app_manager, start_link,[]}, permanent, 2000, worker, dynamic},
   BHApps  = {the_beehive,{rest_server, start_link,[]}, permanent,2000,worker,dynamic},
   
-  {ok,{{one_for_one,5,10}, [
-      % KVStore,
-      AppSrv,
-      AppManagerSrv,
-      BHApps
-    ]}};
+  AppsToStart = [AppSrv, AppManagerSrv],
+  
+  RunBH = apps:search_for_application_value(run_beehive, true, router),
+  io:format("Running beehive: ~p (~p)~n", [RunBH, application:get_all_env()]),
+  AppsToStart2 = case apps:search_for_application_value(run_beehive, true, router) of
+    true -> [BHApps|AppsToStart];
+    false -> AppsToStart
+  end,
+  
+  {ok,{{one_for_one,5,10}, AppsToStart2}};
   
 init([start_module, Module]) ->
   ModSrv = {undefined,{Module,start_link,[]},temporary,2000,worker,[]},

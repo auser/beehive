@@ -81,6 +81,13 @@ engage_backend(ClientSock, RequestPid, Hostname, ForwardReq, Req, {ok, #backend{
                   subdomain = Hostname,
                   backend = Backend}
                 );
+    {error, emfile} ->
+      ?LOG(error, "Maximum number of sockets open. Die instead", []),
+      ?NOTIFY({backend, cannot_connect, Backend}),
+      send_and_terminate(
+        ClientSock, 503,
+        ?APP_ERROR("503 Service Unavailable")
+      );
     Error ->
       ?LOG(error, "Connection to remote TCP server: ~p:~p ~p", [Host, Port, Error]),
       ?NOTIFY({backend, cannot_connect, Backend}),
