@@ -11,7 +11,7 @@
 -include ("router.hrl").
 
 -export ([
-  init/0,
+  init/0, start/0,
   write/1,
   delete/2,
   delete_object/1,
@@ -26,6 +26,7 @@
 ]).
 
 init() -> schema:install().
+start() -> mnesia:start().
 
 new_id(Key) ->
 	mnesia:dirty_update_counter({counter, Key}, 1).
