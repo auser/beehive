@@ -12,7 +12,6 @@
     {routing_parameter, 'Host'},
     {beehive_app_port, 4999},
     {backends, "config/sample.cfg"},
-    {kvstore, dict_store},
     {log_path, "/var/logs/router.log"}
   ]}
  ]

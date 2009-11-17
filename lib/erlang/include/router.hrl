@@ -43,7 +43,6 @@
 -define (MAX_INSTANCES_PER_NODE, 20).
 
 % Default KV store
--define (KVSTORE, dict_store).
 -define (QSTORE, queue_store).
 
 % Application backend

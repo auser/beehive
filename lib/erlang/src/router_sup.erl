@@ -46,7 +46,7 @@ init(_Args) ->
   % backend_srv_sup:start_link(?KVSTORE).
   AppEventManager = {the_app_event_manager, {?EVENT_MANAGER, start_link, []}, permanent, 2000, worker, dynamic},
   NodeManager = {the_node_manager, {node_manager, start_link, []}, permanent, 2000, worker, dynamic},
-  AppSrv = {the_backend_srv_sup, {backend_srv_sup, start_link, [dict_store]}, permanent,2000,worker,dynamic},
+  AppSrv = {the_backend_srv_sup, {backend_srv_sup, start_link, []}, permanent,2000,worker,dynamic},
   HttpCl = {the_socket_server, {socket_server_sup, start_link, []}, permanent,2000,worker,dynamic},
   StatSrv = {the_stats_srv, {stats_srv, start_link, []}, permanent,2000,worker,dynamic},
   
