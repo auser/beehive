@@ -1,4 +1,4 @@
-#!/bin/sh -x
+#!/bin/sh
 
 cd `dirname ../$0`
 DEP_EBINS=`find deps -type d | grep -v \/test\/ | grep ebin | grep -v .svn | grep -v .git`
@@ -16,8 +16,10 @@ cat <<'EOF'
 OPTIONS
 	-m		Mnesia directory (defaults to ./db)
 	-n 		Name of the erlang process (useful for multiple nodes on the same instance)
-	-s, --slim	Do not run the rest server
+	-r, --rest	Run the rest server (boolean)
+	-s, --seed	Pass in the seed node
 	-p, --port	Port to run the router
+	-t, --type	Type of node to start (default: router)
 	-d		Daemonize the process
 	-h, --help	Show this screen
 EOF
@@ -32,14 +34,16 @@ EOF
 }
 
 # Defaults
-HOSTNAME='hostname'
+HOSTNAME=`hostname`
 MNESIA_DIR='"./db"'
 DAEMONIZE_ARGS=""
 NAME="router@$HOSTNAME"
 ROUTER_OPTS="-router"
+TYPE="router"
+REST="true"
 
-SHORTOPTS="hm:n:dsp:"
-LONGOPTS="help,version,port"
+SHORTOPTS="hm:n:dp:t:r:s:"
+LONGOPTS="help,version,port,type,rest,seed"
 
 if $(getopt -T >/dev/null 2>&1) ; [ $? = 4 ] ; then # New longopts getopt.
     OPTS=$(getopt -o $SHORTOPTS --long $LONGOPTS -n "$progname" -- "$@")
@@ -66,11 +70,17 @@ while [ $# -gt 0 ]; do
 		-n|--name)
 			NAME=$2
 			shift 2;;
-		-s|--slim)
-			ROUTER_OPTS="$ROUTER_OPTS run_beehive false"
-			shift;;
+		-r|--rest)
+			ROUTER_OPTS="$ROUTER_OPTS run_rest_server $2"
+			shift 2;;
 		-p|--port)
 			ROUTER_OPTS="$ROUTER_OPTS client_port $2"
+			shift 2;;
+		-s|--seed)
+			ROUTER_OPTS="$ROUTER_OPTS seed $2"
+			shift 2;;
+		-t|--type)
+			TYPE=$2
 			shift 2;;
 		--)
 			shift
@@ -82,7 +92,7 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
-echo $MNESIA_DIR
+ROUTER_OPTS="$ROUTER_OPTS node_type $TYPE "
 
 erl -pa $PWD/ebin \
     -pz $PWD/deps/*/ebin \

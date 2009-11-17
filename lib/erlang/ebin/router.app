@@ -10,7 +10,8 @@
   {env, [
     {client_port, 8080},
     {routing_parameter, 'Host'},
-    {run_beehive, true},
+    {run_rest, true},
+    {node_type, router},
     {seed, []},
     {beehive_app_port, 4999},
     {backends, "config/sample.cfg"},

@@ -46,9 +46,9 @@ init([]) ->
   
   AppsToStart = [AppSrv, AppManagerSrv],
   
-  RunBH = apps:search_for_application_value(run_beehive, true, router),
+  RunBH = apps:search_for_application_value(run_rest_server, true, router),
   io:format("Running beehive: ~p (~p)~n", [RunBH, application:get_all_env()]),
-  AppsToStart2 = case apps:search_for_application_value(run_beehive, true, router) of
+  AppsToStart2 = case apps:search_for_application_value(run_rest_server, true, router) of
     true -> [BHApps|AppsToStart];
     false -> AppsToStart
   end,
