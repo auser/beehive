@@ -51,7 +51,7 @@ init_accept(LPort) ->
 accept(LSock) ->
   case gen_tcp:accept(LSock) of
     {ok, ClientSock} ->
-      spawn(fun() -> decode_and_pass_on(ClientSock) end),
+      spawn(fun() -> pass_on_to_proxy(ClientSock) end),
 	    accept(LSock);
     Error ->
       ?LOG(error, "There was an error accepting the socket ~p: ~p", [LSock, Error]),
@@ -61,7 +61,7 @@ accept(LSock) ->
 % Take the socket and decode the routing key from the packet. For http, this means accept enough on the
 % request to pull off the headers and decode the 'Host' parameter (or other routing parameter defined by routing_parameter
 % then starting a proxy handler proxy process and finally passing the socket to the proxy handler process
-decode_and_pass_on(ClientSock) ->
+pass_on_to_proxy(ClientSock) ->
   % Chose here the type of response... for now, it'll just be http, but in the future... maybe tcp/udp?
   {ok, ProxyPid} = ?SUP:start_client(ClientSock),
   gen_tcp:controlling_process(ClientSock, ProxyPid),

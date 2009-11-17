@@ -95,7 +95,7 @@ engage_backend(ClientSock, _RequestPid, Hostname, _Req, {error, Reason}) ->
   );
 engage_backend(ClientSock, _RequestPid, Hostname, _Req, Else) ->
   send_and_terminate(
-    ClientSock,  Else, 
+    ClientSock, Else, 
     ?APP_ERROR(io_lib:format("Error on ~p: ~p", [Hostname, Else]))
   ).
 
