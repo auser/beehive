@@ -33,11 +33,13 @@ handle_request(ClientSock) ->
   HeaderVal = mochiweb_headers:get_value(RoutingParameter, Req:get(headers)),
   Subdomain = parse_subdomain(HeaderVal),
   {ok, Subdomain, Req}.
-  
+
+% Send the original client request data to the server
 handle_forward(ServerSock, ClientSock, Req, From) ->
   ReqHeaders = build_request_headers(ServerSock, Req),
-  spawn_link(fun() -> handle_streaming_data(ClientSock, Req, From) end),
-  gen_tcp:send(ServerSock, ReqHeaders).
+  gen_tcp:send(ServerSock, ReqHeaders),
+  inet:setopts(ClientSock, [{active, false}]),
+  spawn(fun() -> handle_streaming_data(ClientSock, Req, From) end).
   
 %%--------------------------------------------------------------------
 %%% Internal functions
@@ -132,5 +134,6 @@ handle_streaming_data(ClientSock, Req, From) ->
       From ! {tcp, ClientSock, D},
       handle_streaming_data(ClientSock, Req, From);
     {error, _Error} ->
+      % ?LOG(error, "Got error in handle_streaming_data: ~p", [Error]),
       From ! {tcp_closed, ClientSock}
   end.
