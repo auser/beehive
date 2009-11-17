@@ -98,5 +98,7 @@ code_change(_OldVsn, State, _Extra) ->
 % INTERNAL FUNCTIONS
 write(Level, Message, #state{log_handle = Fd} = _State) ->
   % Check levels here, eventually
-  ok = io:format(Fd, "[~s] [~s] ~s\r~n\r", [httpd_util:rfc1123_date(), Level, Message]).
+  Msg = io_lib:format("[~s] [~s] ~s\r~n\r", [httpd_util:rfc1123_date(), Level, Message]),
+  io:format("~s", [Msg]),     % write to console 
+  io:format(Fd, "~s", [Msg]). % write to file
   
