@@ -21,6 +21,7 @@ OPTIONS
 	-p, --port	Port to run the router
 	-t, --type	Type of node to start (default: router)
 	-d		Daemonize the process
+	-v		Verbose
 	-h, --help	Show this screen
 EOF
 }
@@ -35,15 +36,16 @@ EOF
 
 # Defaults
 HOSTNAME=`hostname`
-MNESIA_DIR='"./db"'
+MNESIA_DIR="./db"
 DAEMONIZE_ARGS=""
 NAME="router@$HOSTNAME"
 ROUTER_OPTS="-router"
 TYPE="router"
 REST="true"
+VERBOSE=false
 
-SHORTOPTS="hm:n:dp:t:r:s:"
-LONGOPTS="help,version,port,type,rest,seed"
+SHORTOPTS="hm:n:dp:t:r:s:v"
+LONGOPTS="help,version,port,type,rest,seed,mnesia_dir"
 
 if $(getopt -T >/dev/null 2>&1) ; [ $? = 4 ] ; then # New longopts getopt.
     OPTS=$(getopt -o $SHORTOPTS --long $LONGOPTS -n "$progname" -- "$@")
@@ -70,6 +72,9 @@ while [ $# -gt 0 ]; do
 		-n|--name)
 			NAME=$2
 			shift 2;;
+		-m|--mnesia_dir)
+			MNESIA_DIR=$2
+			shift 2;;
 		-r|--rest)
 			ROUTER_OPTS="$ROUTER_OPTS run_rest_server $2"
 			shift 2;;
@@ -82,6 +87,9 @@ while [ $# -gt 0 ]; do
 		-t|--type)
 			TYPE=$2
 			shift 2;;
+		-v)
+			VERBOSE=true
+			shift;;
 		--)
 			shift
 			break;;
@@ -94,10 +102,11 @@ done
 
 ROUTER_OPTS="$ROUTER_OPTS node_type $TYPE "
 
+
 erl -pa $PWD/ebin \
     -pz $PWD/deps/*/ebin \
     -s reloader \
-		-mnesia dir $MNESIA_DIR \
+		-mnesia dir \'$MNESIA_DIR\' \
 		-name $NAME \
 		$ROUTER_OPTS \
     -boot router-0.1

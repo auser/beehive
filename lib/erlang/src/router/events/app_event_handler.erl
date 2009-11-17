@@ -42,9 +42,6 @@ handle_event({app, request_to_start_new_backend, Hostname}, State) ->
   {ok, State};
   
 handle_event({backend_srv, init}, State) ->
-  % ?KVSTORE:start_link(?BACKEND_DB),
-  % ?KVSTORE:start_link(?BACKEND2PID_DB),
-  % ?KVSTORE:start_link(?PID2BACKEND_DB),
   ?QSTORE:start_link(?WAIT_DB),
   {ok, State};
   
