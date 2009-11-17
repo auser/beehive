@@ -6,11 +6,21 @@ Getting started
 
 To start the router:
 <pre><code>
-  make
-  ./scripts/start_router.sh
+  make && make boot
+  ./scripts/start_beehive.sh
 </code></pre>
 
-This will start the basic router with the default options. 
+This will start the basic router with the default options. The default node type that gets started is the router type. You can start a node (see glossary below) with
+
+<pre><code>
+  ./scripts/start_beehive.sh -t node
+</code></pre>
+
+There are many options to starting the router, for more information and options, type:
+
+<pre><code>
+  ./scripts/start_beehive.sh -h
+</code></pre>
 
 How it works
 ===

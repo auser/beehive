@@ -1,16 +1,9 @@
 #!/bin/sh
-
-cd `dirname ../$0`
-DEP_EBINS=`find deps -type d | grep -v \/test\/ | grep ebin | grep -v .svn | grep -v .git`
-if [ ! -f ebin/router.boot ]; then
-	make boot
-fi
-
 progname=$(basename $0)
 version="0.1"
 
 print_usage() {
-cat <<'EOF'
+cat <<EOF
 	Usage: $progname options
 
 OPTIONS
