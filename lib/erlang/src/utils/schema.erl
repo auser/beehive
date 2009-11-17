@@ -11,17 +11,20 @@
 -include ("router.hrl").
 
 -export ([
-  install/0,
-  install/1
+  install/0, install/1,
+  remove/1
 ]).
 
 install() -> install([node()]).
+remove(Node) ->
+  (catch mnesia:stop()),
+  mnesia:del_table_copy(app, Node).
 
 install(Nodes) when is_list(Nodes) ->
   (catch mnesia:stop()),
   mnesia:delete_schema(Nodes),
   (catch mnesia:create_schema(Nodes)),
-  mnesia:start(),
+  db:start(),
   install_app(Nodes),
   install_backend(Nodes),
   ok.
