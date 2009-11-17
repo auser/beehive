@@ -43,14 +43,17 @@
 %% Description: Starts the server
 %%--------------------------------------------------------------------
 start_link() -> 
-  start_link(router, node()).
+  Seed = apps:search_for_application_value(seed, node(), router),
+  case apps:search_for_application_value(node_type, router, router) of
+    router -> start_link(router, Seed);
+    node -> start_link(node, Seed)
+  end.
   
 start_link(router, Seed) -> 
   case gen_server:start_link({local, ?MODULE}, ?MODULE, [Seed], []) of
     {ok, Pid} ->
       pg2:create(?ROUTER_SERVERS),
       ok = pg2:join(?ROUTER_SERVERS, Pid),
-      join(Seed),
       {ok, Pid};
     Else ->
       ?LOG(error, "Could not start router link: ~p~n", [Else])
@@ -61,18 +64,20 @@ start_link(node, Seed) ->
     {ok, Pid} ->
       pg2:create(?NODE_SERVERS),
       ok = pg2:join(?NODE_SERVERS, Pid),
-      join(Seed),
       {ok, Pid};
     Else ->
       ?LOG(error, "Could not start router link: ~p~n", [Else])
   end.
   
 get_host() -> gen_server:call(?SERVER, {get_host}).
+
+join([]) -> ok;
 join(SeedNode) ->
   case net_adm:ping(SeedNode) of
     pong -> ok;
     pang -> error
   end.
+
 get_routers() -> 
   pg2:create(?ROUTER_SERVERS),
   pg2:get_members(?ROUTER_SERVERS).
@@ -97,10 +102,9 @@ dump(Pid) ->
 init([Seed]) ->
   process_flag(trap_exit, true),  
   LocalHost = host:myip(),
-    
-  net_adm:ping(Seed),
   
-  % timer:send_interval(timer:seconds(20), {check_for_new_known_nodes}),
+  join(Seed),
+  timer:send_interval(timer:seconds(20), {stay_connected_to_seed, Seed}),
   % timer:send_interval(timer:minutes(1), {update_node_pings}),
   
   {ok, #state{
@@ -147,6 +151,9 @@ handle_cast(_Msg, State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
+handle_info({stay_connected_to_seed, Seed}, State) ->
+  join(Seed),
+  {noreply, State};
 handle_info(_Info, State) ->
   {noreply, State}.
 
