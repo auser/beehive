@@ -301,7 +301,7 @@ add_application_by_configuration(ConfigProplist, State) ->
   ?LOG(info, "Adding an application: ~p~n", [ConfigProplist]),
   update_app_configuration(ConfigProplist, #app{}, State).
 
-% kill the instance of the application
+% kill the instance of the application  
 stop_instance(Backend, #state{dead_apps = DeadApps} = State) ->
   App = app:find_by_name(Backend#backend.app_name),
   RealCmd = template_command_string(App#app.stop_command, [

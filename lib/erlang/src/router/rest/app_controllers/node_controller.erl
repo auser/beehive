@@ -11,24 +11,28 @@
 -export ([get/1, post/2, put/2, delete/2]).
 
 get(_) -> 
-  Nodes = node_manager:list_nodes(),
   [
     "<h1>Nodes</h1>",
     "<table>\n",
-    "<tr> ",
-    [["<td><b>", X, "</b></td>"] || X <- ["Name", "Ping latency", "Host", "Type"]],
-    lists:map(fun([{Name, Node}]) ->
+    "<tr><th>Router Nodes</th></tr>",
+    format_nodes(fun node_manager:get_routers/0),
+    "<tr><th>Nodes</th></tr>",
+    format_nodes(fun node_manager:get_nodes/0),
+    "</table>\n"
+  ].
+  
+format_nodes(F) ->
+  lists:append(
+    [["<td><b>", X, "</b></td>"] || X <- ["Name", "Host"]],
+    lists:map(fun(#node{name = Name, host = Host} = _Node) ->
       [
         "<tr>",
         io_lib:format("<td> ~s </td>", [Name]),
-        io_lib:format("<td> ~w </td>", [Node#node.ping_distance]),
-        io_lib:format("<td> ~s </td>", [Node#node.host]),
-        io_lib:format("<td> ~s </td>", [Node#node.type]),
+        io_lib:format("<td> ~s </td>", [Host]),
         "</tr>"
       ]
-    end, Nodes),
-    "</table>\n"
-  ].
+    end, lists:map(fun(N) -> node_manager:dump(N) end, F())
+  )).
 
 post(_Path, _Data) -> "unhandled".
 put(_Path, _Data) -> "unhandled".
