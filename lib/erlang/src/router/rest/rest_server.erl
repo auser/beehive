@@ -135,7 +135,8 @@ handle(Path, Req) ->
 % Call the controller action here
 run_controller(Req, ControllerAtom, Meth, Args) ->
   case (catch erlang:apply(ControllerAtom, Meth, Args)) of
-    {'EXIT', {undef, _}} ->
+    {'EXIT', {undef, _}} = E ->
+      ?LOG(error, "(~p:~p) Error in rest server: ~p~n", [?MODULE, ?LINE,E]),
       Req:ok({"text/html", "Unimplemented controller. There is nothing to see here, go back from where you came"});
     {'EXIT', E} -> 
       io:format("ERROR: ~p~n", [E]),
