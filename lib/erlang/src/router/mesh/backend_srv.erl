@@ -121,7 +121,6 @@ init([LocalPort, ConnTimeout, ActTimeout]) ->
   
   LocalHost = host:myip(),
 
-  db:init(),
   add_backends_from_config(),
 
   % {ok, TOTimer} = timer:send_interval(1000, {check_waiter_timeouts}),

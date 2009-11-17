@@ -81,9 +81,11 @@ join(SeedNode) ->
 get_routers() -> 
   pg2:create(?ROUTER_SERVERS),
   pg2:get_members(?ROUTER_SERVERS).
+  
 get_nodes() -> 
   pg2:create(?NODE_SERVERS),
   pg2:get_members(?NODE_SERVERS).
+  
 request_to_start_new_backend(Name) -> gen_server:cast(?SERVER, {request_to_start_new_backend, Name}).
 dump(Pid) ->
   gen_server:call(?SERVER, {dump, Pid}).
@@ -102,6 +104,13 @@ dump(Pid) ->
 init([Seed]) ->
   process_flag(trap_exit, true),  
   LocalHost = host:myip(),
+  
+  case Seed of
+    [] -> db:init();
+    _ -> 
+      ?LOG(info, "Initializing slave db: ~p", [Seed]),
+      mesh_util:init_db_slave(Seed)
+  end,
   
   join(Seed),
   timer:send_interval(timer:seconds(20), {stay_connected_to_seed, Seed}),
@@ -154,7 +163,8 @@ handle_cast(_Msg, State) ->
 handle_info({stay_connected_to_seed, Seed}, State) ->
   join(Seed),
   {noreply, State};
-handle_info(_Info, State) ->
+handle_info(Info, State) ->
+  ?LOG(info, "handle_info: ~p ~p", [?MODULE, Info]),
   {noreply, State}.
 
 %%--------------------------------------------------------------------
