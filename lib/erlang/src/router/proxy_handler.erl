@@ -38,16 +38,15 @@ start_link(ClientSock) ->
 proxy_init(ClientSock) ->
   receive
     {start, ClientSock, RequestPid} ->
-      {ok, RoutingKey, Req} = http_request:handle_request(ClientSock),
-      engage_backend(ClientSock, RequestPid, RoutingKey, Req, backend_srv:get_backend(self(), RoutingKey));
+      {ok, RoutingKey, ForwardReq, Req} = http_request:handle_request(ClientSock),
+      engage_backend(ClientSock, RequestPid, RoutingKey, ForwardReq, Req, backend_srv:get_backend(self(), RoutingKey));
     _E ->
       proxy_init(ClientSock)
   after ?IDLE_TIMEOUT ->
     % We only give 30 seconds to the proxy pid to be given control of the socket
     % this is MORE than enough time for the socket to be given a chance to prepare
     % to be handled by the proxy accept request.
-    ?LOG(error, "Proxy is b0rked because of timeout", []),
-    exit(error)
+    send_and_terminate(ClientSock, error, ?APP_ERROR("Proxy is b0rked because of backend selection timeout in init"))
   end.
 
 % Initiate and engage the chosen backend.
@@ -56,7 +55,7 @@ proxy_init(ClientSock) ->
 % Let the packet_decoder address the forwarding of the packet to the server and start the proxy loop
 % If the backend cannot be reached, send an alert through the event handler that we could not reach
 % the backend and try to find a new backend
-engage_backend(ClientSock, RequestPid, Hostname, Req, {ok, #backend{host = Host, port = Port} = Backend}) ->
+engage_backend(ClientSock, RequestPid, Hostname, ForwardReq, Req, {ok, #backend{host = Host, port = Port} = Backend}) ->
   SockOpts = [  binary, 
                 {nodelay, true},
 				        {active, once},
@@ -66,7 +65,13 @@ engage_backend(ClientSock, RequestPid, Hostname, Req, {ok, #backend{host = Host,
   case gen_tcp:connect(Host, Port, SockOpts) of
     {ok, ServerSock} ->
       ?NOTIFY({backend, used, Backend}),
-      http_request:handle_forward(ServerSock, ClientSock, Req, self()),      
+      % Sending raw request to backend server
+      gen_tcp:send(ServerSock, ForwardReq),
+      
+      inet:setopts(ClientSock, [{active, false}]),
+      ProxyPid = self(),
+      spawn(fun() -> handle_streaming_data(ClientSock, Req, ProxyPid) end),
+      
       inet:setopts(ServerSock, [{active, once}]),
       proxy_loop(#state{
                   start_time = date_util:now_to_seconds(),
@@ -80,20 +85,20 @@ engage_backend(ClientSock, RequestPid, Hostname, Req, {ok, #backend{host = Host,
       ?LOG(error, "Connection to remote TCP server: ~p:~p ~p", [Host, Port, Error]),
       ?NOTIFY({backend, cannot_connect, Backend}),
       timer:sleep(200),
-      engage_backend(ClientSock, RequestPid, Hostname, Req, backend_srv:get_backend(RequestPid, Hostname))
+      engage_backend(ClientSock, RequestPid, Hostname, ForwardReq, Req, backend_srv:get_backend(RequestPid, Hostname))
   end;
-engage_backend(ClientSock, _RequestPid, Hostname, _Req, ?BACKEND_TIMEOUT_MSG) ->
+engage_backend(ClientSock, _RequestPid, Hostname, _ForwardReq, _Req, ?BACKEND_TIMEOUT_MSG) ->
   ?LOG(error, "Error getting backend because of timeout: ~p", [Hostname]),
   send_and_terminate(
     ClientSock, ?BACKEND_TIMEOUT_MSG, 
     ?APP_ERROR(io_lib:format("Error: ~p", [?BACKEND_TIMEOUT_MSG]))
   );
-engage_backend(ClientSock, _RequestPid, Hostname, _Req, {error, Reason}) ->
+engage_backend(ClientSock, _RequestPid, Hostname, _ForwardReq, _Req, {error, Reason}) ->
   send_and_terminate(
     ClientSock, Reason, 
     ?APP_ERROR(io_lib:format("Error on ~p: ~p", [Hostname, Reason]))
   );
-engage_backend(ClientSock, _RequestPid, Hostname, _Req, Else) ->
+engage_backend(ClientSock, _RequestPid, Hostname, _ForwardReq, _Req, Else) ->
   send_and_terminate(
     ClientSock, Else, 
     ?APP_ERROR(io_lib:format("Error on ~p: ~p", [Hostname, Else]))
@@ -157,3 +162,14 @@ terminate(Reason, #state{server_socket = SSock, client_socket = CSock, start_tim
   ?NOTIFY({backend, closing_stats, Backend, StatsProplist}),
   gen_tcp:close(SSock), gen_tcp:close(CSock),
   exit(Reason).
+
+% Because we want to treat the proxy as a tcp proxy, we are just going to 
+% try to receive data on the client socket and pass it onto the proxy
+handle_streaming_data(ClientSock, Req, From) ->
+  case gen_tcp:recv(ClientSock, 0) of
+    {ok, D} ->
+      From ! {tcp, ClientSock, D},
+      handle_streaming_data(ClientSock, Req, From);
+    {error, _Error} ->
+      From ! {tcp_closed, ClientSock}
+  end.

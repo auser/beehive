@@ -14,8 +14,7 @@
 
 %% API
 -export([
-  handle_request/1,
-  handle_forward/4
+  handle_request/1
 ]).
 
 % Take the connecting socket and handle the request. Get the request up until the end of the headers
@@ -32,19 +31,13 @@ handle_request(ClientSock) ->
   RoutingParameter = misc_utils:to_atom(apps:search_for_application_value(routing_parameter, "Host", router)),
   HeaderVal = mochiweb_headers:get_value(RoutingParameter, Req:get(headers)),
   Subdomain = parse_subdomain(HeaderVal),
-  {ok, Subdomain, Req}.
-
-% Send the original client request data to the server
-handle_forward(ServerSock, ClientSock, Req, From) ->
-  ReqHeaders = build_request_headers(ServerSock, Req),
-  gen_tcp:send(ServerSock, ReqHeaders),
-  inet:setopts(ClientSock, [{active, false}]),
-  spawn(fun() -> handle_streaming_data(ClientSock, Req, From) end).
+  ForwardReq = build_request_headers(Req),
+  {ok, Subdomain, ForwardReq, Req}.
   
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-build_request_headers(_ServerSock, Req) ->  
+build_request_headers(Req) ->  
   {ok, Hostname} = inet:gethostname(),
     
   Headers = mochiweb_headers:to_list(Req:get(headers)),
@@ -126,14 +119,3 @@ headers(Socket, Request, Headers, Callback, HeaderCount) ->
       exit(normal)
   end.
   
-% Because we want to treat the proxy as a tcp proxy, we are just going to 
-% try to receive data on the client socket and pass it onto the proxy
-handle_streaming_data(ClientSock, Req, From) ->
-  case gen_tcp:recv(ClientSock, 0) of
-    {ok, D} ->
-      From ! {tcp, ClientSock, D},
-      handle_streaming_data(ClientSock, Req, From);
-    {error, _Error} ->
-      % ?LOG(error, "Got error in handle_streaming_data: ~p", [Error]),
-      From ! {tcp_closed, ClientSock}
-  end.

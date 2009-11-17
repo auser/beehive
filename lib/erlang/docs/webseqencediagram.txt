@@ -1,9 +1,9 @@
 Client->ClientRequestHandler: Initial request
 ClientRequestHandler->ProxyHandler: Spawn new\n ProxyHandler
-ProxyHandler->HTTPRequestDecoder: Decode request
-HTTPRequestDecoder->ServerSelector: Choose an\n available backend
+ProxyHandler->HTTPRequestDecoder: Hand over \nclient request
+HTTPRequestDecoder->ProxyHandler: Return parsed request
+ProxyHandler->ServerSelector: Choose an\n available backend
 ServerSelector->ProxyHandler: Connect and \nengage backend
-ProxyHandler->HTTPRequestDecoder: Initiate
-HTTPRequestDecoder->Server: Send initial request to Server
-HTTPRequestDecoder->Client: Spawn listener \nfor client data
-HTTPRequestDecoder->Server: Spawn listener \nfor server data
+ProxyHandler->Server: Send initial request to Server
+ProxyHandler->Client: Spawn listener \nfor client data
+ProxyHandler->Server: Spawn listener \nfor server data
