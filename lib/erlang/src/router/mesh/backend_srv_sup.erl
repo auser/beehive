@@ -39,7 +39,7 @@ start_link() -> supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 %% to find out about restart strategy, maximum restart frequency and child
 %% specifications.
 %%--------------------------------------------------------------------
-init([_Module]) ->
+init([]) ->
   AppSrv  = {the_backend_srv,{backend_srv, start_link,[]}, permanent,2000,worker,dynamic},
   % KVStore = {the_kv_store,{supervisor,start_link,[{local, the_kv_store}, ?MODULE, [start_module, Module]]},permanent,infinity,supervisor,[]},
   AppManagerSrv  = {the_app_manager,{app_manager, start_link,[]}, permanent, 2000, worker, dynamic},

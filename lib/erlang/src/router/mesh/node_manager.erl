@@ -17,9 +17,10 @@
 %% External exports
 -export([
   start_link/0,
-  start_link/1,
+  start_link/2,
   list_nodes/0,
   add_node/1,
+  add_router/1,
   stop/0,
   get_host/0,
   available_hosts/0,
@@ -39,9 +40,16 @@
 %%% API
 %%%----------------------------------------------------------------------
 
-start_link() -> start_link(node()).
-start_link(Seed) -> gen_server:start_link({local, ?MODULE}, ?MODULE, [Seed], []).
+start_link() -> 
+  start_link(router, node()).
+  
+start_link(router, Seed) -> 
+  gen_server:start_link({local, ?MODULE}, ?MODULE, [router, Seed], []);
+start_link(node, Seed) -> 
+  gen_server:start_link({local, ?MODULE}, ?MODULE, [node, Seed], []).
+  
 stop() -> gen_server:cast(?SERVER, {stop}).
+add_router(Host) -> gen_server:call(?SERVER, {add_router, Host}).
 add_node(Host) -> gen_server:call(?SERVER, {add_node, Host}).
 list_nodes() -> gen_server:call(?SERVER, {list_nodes}).
 get_host() -> gen_server:call(?SERVER, {get_host}).
@@ -60,7 +68,7 @@ request_to_start_new_backend(Name) -> gen_server:cast(?SERVER, {request_to_start
 %%          ignore               |
 %%          {stop, Reason}
 %%----------------------------------------------------------------------
-init([Seed]) ->
+init([Type, Seed]) ->
   process_flag(trap_exit, true),  
   LocalHost = host:myip(),
   
@@ -70,7 +78,7 @@ init([Seed]) ->
   net_adm:ping(Seed),
   
   % Add all nodes this router knows about, through ping :)
-  lists:map(fun(N) -> add_node_to_node_list(N) end, nodes()),
+  lists:map(fun(N) -> add_node_to_node_list(Type, N) end, nodes()),
   
   timer:send_interval(timer:seconds(20), {check_for_new_known_nodes}),
   timer:send_interval(timer:minutes(1), {update_node_pings}),
@@ -93,8 +101,11 @@ handle_call({get_host}, _From, #state{host = Host} = State) ->
 handle_call({available_hosts}, _From, State) ->
   Reply = get_available_hosts(),
   {reply, Reply, State};
+handle_call({add_router, Host}, _From, State) ->
+  Reply = add_node_to_node_list(router, Host),
+  {reply, Reply, State};
 handle_call({add_node, Host}, _From, State) ->
-  Reply = add_node_to_node_list(Host),
+  Reply = add_node_to_node_list(node, Host),
   {reply, Reply, State};
 handle_call({list_nodes}, _From, State) ->
   Reply = all_nodes(),
@@ -162,11 +173,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%----------------------------------------------------------------------
 % Add a node to the node list. 
-add_node_to_node_list(Name) ->
+add_node_to_node_list(Type, Name) ->
   case timer:tc(net_adm, ping, [Name]) of
     {Time, pong} ->
       Host = rpc:call(Name, ?MODULE, get_host, []),
-      Node = #node{name = Name, host = Host, ping_distance = Time},
+      Node = #node{name = Name, host = Host, ping_distance = Time, type = Type},
       ets:insert(nodes, {Name, Node});
     {_, pang} ->
       error
@@ -180,7 +191,7 @@ all_nodes() ->
 check_for_new_known_nodes() ->
   CurrentNodeNames = lists:map(fun([{Name, _Node}]) -> Name end, all_nodes()),
   NewNodes = lists:filter(fun(N) -> lists:member(N, CurrentNodeNames) =:= false end, nodes()),
-  lists:map(fun(N) -> add_node_to_node_list(N) end, NewNodes).
+  lists:map(fun(N) -> add_node_to_node_list(node, N) end, NewNodes).
 
 % Update node pings
 update_node_pings() ->

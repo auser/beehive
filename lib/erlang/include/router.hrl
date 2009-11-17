@@ -108,6 +108,7 @@
 -record (node, {
   name,               % name of the node
   host,               % host of the node (ip)
+  type = node,        % type of node [router|node]
   ping_distance       % latency of ping
 }).
 
