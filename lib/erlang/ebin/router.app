@@ -10,6 +10,8 @@
   {env, [
     {client_port, 8080},
     {routing_parameter, 'Host'},
+    {run_beehive, true},
+    {seed, []},
     {beehive_app_port, 4999},
     {backends, "config/sample.cfg"},
     {log_path, "/var/logs/router.log"}
