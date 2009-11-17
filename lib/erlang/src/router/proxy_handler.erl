@@ -84,12 +84,12 @@ engage_backend(ClientSock, RequestPid, Hostname, Req, {ok, #backend{host = Host,
   end;
 engage_backend(ClientSock, _RequestPid, Hostname, _Req, ?BACKEND_TIMEOUT_MSG) ->
   ?LOG(error, "Error getting backend because of timeout: ~p", [Hostname]),
-  send(ClientSock, ?APP_ERROR("Something went wrong: Timeout on backend")),
+  gen_tcp:send(ClientSock, ?APP_ERROR("Something went wrong: Timeout on backend")),
   gen_tcp:close(ClientSock),
   exit(error);
 engage_backend(ClientSock, _RequestPid, Hostname, _Req, {error, Reason}) ->
   ?LOG(error, "Backend for ~p was not found: ~p", [Hostname, Reason]),
-  send(ClientSock, ?APP_ERROR(io_lib:format("Error: ~p", [Reason]))),
+  gen_tcp:send(ClientSock, ?APP_ERROR(io_lib:format("Error: ~p", [Reason]))),
   gen_tcp:close(ClientSock),
   exit(error);
 engage_backend(ClientSock, _RequestPid, Hostname, _Req, Else) ->
@@ -103,41 +103,23 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
 	  {tcp, CSock, Data} ->
       % Received data from the client
 	    gen_tcp:send(SSock, Data),
-	    inet:setopts(CSock, [{active, once}]),
 	    proxy_loop(State);
   	{tcp, SSock, Data} ->
       % Received info from the server
-      send(CSock, Data),
+      gen_tcp:send(CSock, Data),
       % Don't see much of a way around this... but there has got to be a better way
       % Try for a half of a second to passivly receive more data on the server socket
       % if there is more data, then we'll assume there is a lot more data, so send
       % it and then continue the proxy, otherwise we'll assume that the proxy is dead
       % and we should terminate the proxy
-      case re:run(Data, "100 [Cc]ontinue", []) of
-        {match, _} ->
-          inet:setopts(SSock, [{active, once}]),
-          proxy_loop(State);
-        nomatch -> 
-          inet:setopts(SSock, [{active, false}]),
-          case gen_tcp:recv(SSock, 0, 500) of
-            {ok, D} ->
-              send(CSock, D),
-              inet:setopts(SSock, [{active, once}]),
-              proxy_loop(State);
-            {error, timeout} -> terminate(normal, State);
-            {error, closed} -> terminate(normal, State);
-            {error, E} -> 
-              ?LOG(info, "Error with SSock: ~p",[E]),
-              terminate(E, State)
-          end
-      end;
+      inet:setopts(SSock, [{active, once}]),
+      proxy_loop(State);
     {tcp_closed, CSock} ->
   	  terminate(normal, State);
 		{tcp_closed, SSock} ->
   	  terminate(normal, State);
   	{tcp_error, SSock} ->
   	  ?LOG(error, "tcp_error on server: ~p", [SSock]),
-      gen_tcp:close(CSock),
       terminate(normal, State);
     ?BACKEND_TIMEOUT_MSG ->
       % ?LOG(info, "Backend timeout message", []),
@@ -167,6 +149,3 @@ terminate(Reason, #state{server_socket = SSock, client_socket = CSock, start_tim
   ?NOTIFY({backend, closing_stats, Backend, StatsProplist}),
   gen_tcp:close(SSock), gen_tcp:close(CSock),
   exit(Reason).
-
-% Send data across a socket
-send(Sock, Data) -> gen_tcp:send(Sock, Data).
