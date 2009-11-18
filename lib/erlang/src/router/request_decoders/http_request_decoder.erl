@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% File    : http_request.erl
+%%% File    : http_request_decoder.erl
 %%% Author  : Ari Lerner
 %%% Description : 
 %%%
-%%% Created :  Fri Nov  6 10:46:44 PST 2009
+%%% Created :  Tue Nov 17 17:52:40 PST 2009
 %%%-------------------------------------------------------------------
 
--module (http_request).
+-module (http_request_decoder).
 
 -include ("router.hrl").
 -include ("http.hrl").
