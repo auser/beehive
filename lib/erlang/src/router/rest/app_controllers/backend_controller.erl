@@ -8,30 +8,43 @@
 
 -module (backend_controller).
 -include ("router.hrl").
+-include ("http.hrl").
+
 -export ([get/1, post/2, put/2, delete/2]).
 
 get(["all"]) -> 
   All = backend:all(),
-  [
-    "<h2>All Backends</h2>",
-    "<table>\n",
-    "<tr> ",
-    [["<td><b>", X, "</b></td>"] || X <- [
-      "Name", "Host", "Port", "Status"
-    ]],
-    "\n",
-    lists:map(fun(Backend) ->
-      [
-        "<tr>",
-        io_lib:format("<td> ~s </td>", [Backend#backend.app_name]),
-        io_lib:format("<td> ~s </td>", [Backend#backend.host]),
-        io_lib:format("<td> ~w </td>", [Backend#backend.port]),
-        io_lib:format("<td> ~s </td>", [Backend#backend.status]),
-        "</tr>"
-      ]
-    end, All),
-    "</table>\n"
-  ];
+  ?JSONIFY({
+    "backends",
+    lists:map(fun(B) ->
+      {struct, [
+        {"name", misc_utils:to_bin(B#backend.app_name)},
+        {"host", misc_utils:to_bin(B#backend.host)},
+        {"port", misc_utils:to_bin(B#backend.port)},
+        {"status", misc_utils:to_bin(B#backend.status)}]
+      }
+    end, All)
+  });
+  % [
+  %   "<h2>All Backends</h2>",
+  %   "<table>\n",
+  %   "<tr> ",
+  %   [["<td><b>", X, "</b></td>"] || X <- [
+  %     "Name", "Host", "Port", "Status"
+  %   ]],
+  %   "\n",
+  %   lists:map(fun(Backend) ->
+  %     [
+  %       "<tr>",
+  %       io_lib:format("<td> ~s </td>", [Backend#backend.app_name]),
+  %       io_lib:format("<td> ~s </td>", [Backend#backend.host]),
+  %       io_lib:format("<td> ~w </td>", [Backend#backend.port]),
+  %       io_lib:format("<td> ~s </td>", [Backend#backend.status]),
+  %       "</tr>"
+  %     ]
+  %   end, All),
+  %   "</table>\n"
+  % ];
 get(_Path) ->
   "Backends".
 

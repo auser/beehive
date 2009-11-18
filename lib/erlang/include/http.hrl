@@ -1,4 +1,5 @@
--define(JSON_ENCODE(V), mochijson2:encode(V)).
+-define (JSON_ENCODE(V), mochijson2:encode(V)).
+-define (JSONIFY (V), ?JSON_ENCODE({struct, [V]})).
 
 % Base page
 -define (HOME_HTML, "<html>
