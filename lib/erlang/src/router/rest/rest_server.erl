@@ -141,7 +141,7 @@ run_controller(Req, ControllerAtom, Meth, Args) ->
     {'EXIT', E} -> 
       io:format("ERROR: ~p~n", [E]),
       Req:not_found();
-    Body -> Req:ok({"text/html", Body})
+    Body -> Req:ok({"text/json", Body})
   end.
 
 % Find the method used as a request. 

@@ -25,26 +25,6 @@ get(["all"]) ->
       }
     end, All)
   });
-  % [
-  %   "<h2>All Backends</h2>",
-  %   "<table>\n",
-  %   "<tr> ",
-  %   [["<td><b>", X, "</b></td>"] || X <- [
-  %     "Name", "Host", "Port", "Status"
-  %   ]],
-  %   "\n",
-  %   lists:map(fun(Backend) ->
-  %     [
-  %       "<tr>",
-  %       io_lib:format("<td> ~s </td>", [Backend#backend.app_name]),
-  %       io_lib:format("<td> ~s </td>", [Backend#backend.host]),
-  %       io_lib:format("<td> ~w </td>", [Backend#backend.port]),
-  %       io_lib:format("<td> ~s </td>", [Backend#backend.status]),
-  %       "</tr>"
-  %     ]
-  %   end, All),
-  %   "</table>\n"
-  % ];
 get(_Path) ->
   "Backends".
 
