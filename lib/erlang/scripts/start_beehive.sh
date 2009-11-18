@@ -75,7 +75,7 @@ while [ $# -gt 0 ]; do
 			ROUTER_OPTS="$ROUTER_OPTS client_port $2"
 			shift 2;;
 		-s|--seed)
-			ROUTER_OPTS="$ROUTER_OPTS seed $2"
+			ROUTER_OPTS="$ROUTER_OPTS seed '$2'"
 			shift 2;;
 		-t|--type)
 			TYPE=$2
@@ -95,6 +95,14 @@ done
 
 ROUTER_OPTS="$ROUTER_OPTS node_type $TYPE "
 
+if $VERBOSE; then
+cat <<EOF
+	Running with:
+		Mnesia dir: \'$MNESIA_DIR\'
+		Name: 		\'$NAME\'
+		Router opts:	$ROUTER_OPTS
+EOF
+fi
 
 erl -pa $PWD/ebin \
     -pz $PWD/deps/*/ebin \

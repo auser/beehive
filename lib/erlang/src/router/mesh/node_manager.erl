@@ -16,7 +16,7 @@
   start_link/0,
   start_link/2,
   request_to_start_new_backend/1,
-  get_host/0,
+  get_host/0, get_seed/0,
   get_routers/0, get_nodes/0,
   dump/1,
   join/1
@@ -27,6 +27,7 @@
          terminate/2, code_change/3]).
 
 -record (state, {
+  seed,             % seed host
   host,             % local host
   used_ports = []   % used ports
 }).
@@ -90,6 +91,9 @@ request_to_start_new_backend(Name) -> gen_server:cast(?SERVER, {request_to_start
 dump(Pid) ->
   gen_server:call(?SERVER, {dump, Pid}).
 
+get_seed() ->
+  gen_server:call(?SERVER, {get_seed}).
+
 %%====================================================================
 %% gen_server callbacks
 %%====================================================================
@@ -122,6 +126,7 @@ init([Type, Seed]) ->
   % timer:send_interval(timer:minutes(1), {update_node_pings}),
   
   {ok, #state{
+    seed = Seed,
     host = LocalHost,
     used_ports = []
   }}.
@@ -135,6 +140,8 @@ init([Type, Seed]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
+handle_call({get_seed}, _From, #state{seed = Seed} = State) ->
+  {reply, Seed, State};
 handle_call({get_host}, _From, #state{host = Host} = State) ->
   {reply, Host, State};
 handle_call({dump, Pid}, _From, #state{host = Host} = State) ->
