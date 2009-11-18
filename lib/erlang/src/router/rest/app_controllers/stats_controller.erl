@@ -90,38 +90,7 @@ format_proxy_state() ->
   [
     {struct, StateHeaders},
     {struct, [{"backends", format_backend_list(Backends)}]}
-  ]
-  .
-  %   ?BINIFY([
-  %         
-  %         % {"backends", {struct, 
-  %         %     [{hi, "guys"}]
-  %         %   }
-  %         % }
-  %     ])
-  %   ]
-  % }.
-  % end, All)}.
-  % [
-  %  "<pre>\n",
-  %  %% From README: insert line here!
-  %  io_lib:format("Proxy start time: ~s\n", [date_util:fmt_date(State#proxy_state.start_time)]),
-  %  io_lib:format("Current time:     ~s\n", [date_util:fmt_date(date_util:now_to_seconds())]),
-  %  io_lib:format("Local TCP port number: ~w\n", [State#proxy_state.local_port]),
-  %  io_lib:format("Connection timeout (seconds): ~w\n", [State#proxy_state.conn_timeout / 1000]),
-  %  io_lib:format("Activity timeout (seconds): ~w\n", [State#proxy_state.act_timeout / 1000]),
-  %  
-  %  "</pre>\n",
-  %  "<table>\n",
-  %  "<tr> ",
-  %  [["<td><b>", X, "</b></td>"] || X <- ["Name", "Host", "Port", "Status",
-  %     "TotalReq", "CurrentReq", "LastErr", "LastErrTime", "TotalTime", "AvgRespTime", 
-  %     "PendingCount", "PacketCount", "RecvBytes"
-  %   ]],
-  %  "\n",
-  %  format_backend_list(Backends),
-  %  "</table>\n"
-  % ].
+  ].
 
 format_backend_list(List) -> format_backend_list(List, []).
 format_backend_list([], Acc) -> lists:reverse(Acc);
@@ -154,6 +123,7 @@ format_backend_list([B|Bs], Acc) ->
     {"app_name", B#backend.app_name},
     {"host", B#backend.host},
     {"port", B#backend.port},
+    {"status", B#backend.status},
     {"last_err_time", LastErrTime},
     {"average_req_time", AvgTime},
     {"pending_requests", (length(L1) + length(L2))},
