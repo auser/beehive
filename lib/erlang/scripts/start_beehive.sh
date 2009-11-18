@@ -38,7 +38,7 @@ REST="true"
 VERBOSE=false
 
 SHORTOPTS="hm:n:dp:t:r:s:v"
-LONGOPTS="help,version,port,type,rest,seed,mnesia_dir"
+LONGOPTS="help,version,port,type,rest,seed,mnesia_dir,daemonize"
 
 if $(getopt -T >/dev/null 2>&1) ; [ $? = 4 ] ; then # New longopts getopt.
     OPTS=$(getopt -o $SHORTOPTS --long $LONGOPTS -n "$progname" -- "$@")
@@ -80,6 +80,9 @@ while [ $# -gt 0 ]; do
 		-t|--type)
 			TYPE=$2
 			shift 2;;
+		-d|daemonize)
+			DAEMONIZE_ARGS="-detached -heart"
+			shift;;
 		-v)
 			VERBOSE=true
 			shift;;
@@ -110,4 +113,5 @@ erl -pa $PWD/ebin \
 		-mnesia dir \'$MNESIA_DIR\' \
 		-name $NAME \
 		$ROUTER_OPTS \
+		$DAEMONIZE_ARGS \
     -boot router-0.1
