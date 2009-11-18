@@ -37,6 +37,7 @@
 % Time (in seconds) to check the directory for new apps
 -define (CHECK_FOR_NEW_APPS_TIME, 5*1000).
 -define (IDLE_TIMEOUT, timer:seconds(30)).
+-define (CONNECT_TIMEOUT, timer:seconds(5)).
 -define (MAX_HEADERS, 100).
 % Maximum recv_body() length of 1MB
 -define(MAX_RECV_BODY, (1024*1024)).
