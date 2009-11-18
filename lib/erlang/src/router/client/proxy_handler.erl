@@ -38,7 +38,7 @@ start_link(ClientSock) ->
 proxy_init(ClientSock) ->
   receive
     {start, ClientSock, RequestPid} ->
-      {ok, RoutingKey, ForwardReq, Req} = http_request:handle_request(ClientSock),
+      {ok, RoutingKey, ForwardReq, Req} = http_request_decoder:handle_request(ClientSock),
       engage_backend(ClientSock, RequestPid, RoutingKey, ForwardReq, Req, backend_srv:get_backend(self(), RoutingKey));
     _E ->
       proxy_init(ClientSock)
@@ -62,7 +62,7 @@ engage_backend(ClientSock, RequestPid, Hostname, ForwardReq, Req, {ok, #backend{
 				        {packet, 0},
 				        {reuseaddr, true}
 			       ],
-  case gen_tcp:connect(Host, Port, SockOpts) of
+  case gen_tcp:connect(Host, Port, SockOpts, ?CONNECT_TIMEOUT) of
     {ok, ServerSock} ->
       ?NOTIFY({backend, used, Backend}),
       % Sending raw request to backend server
