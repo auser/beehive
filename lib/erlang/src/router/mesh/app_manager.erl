@@ -419,7 +419,7 @@ try_to_reconnect_to_backend(B, 0) ->
   cleanup_backend(B),
   ok;
 try_to_reconnect_to_backend(B, Num) ->
-  case try_to_connect_to_new_instance(B, 10) of
+  case try_to_connect_to_new_instance(B, 1) of
     broken -> 
       timer:sleep(200),
       try_to_reconnect_to_backend(B, Num - 1);
