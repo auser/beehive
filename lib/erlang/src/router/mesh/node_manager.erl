@@ -107,7 +107,6 @@ get_seed() ->
 %%--------------------------------------------------------------------
 init([Type, Seed]) ->
   process_flag(trap_exit, true),  
-  LocalHost = host:myip(),
   
   case Type of
     router ->
@@ -121,9 +120,12 @@ init([Type, Seed]) ->
       % Node initialization stuff
       ok
   end,
+  
   join(Seed),
   timer:send_interval(timer:seconds(10), {stay_connected_to_seed, Seed}),
   % timer:send_interval(timer:minutes(1), {update_node_pings}),
+  
+  LocalHost = host:myip(),
   
   {ok, #state{
     seed = Seed,
@@ -144,8 +146,9 @@ handle_call({get_seed}, _From, #state{seed = Seed} = State) ->
   {reply, Seed, State};
 handle_call({get_host}, _From, #state{host = Host} = State) ->
   {reply, Host, State};
-handle_call({dump, Pid}, _From, #state{host = Host} = State) ->
+handle_call({dump, Pid}, _From, State) ->
   Name = node(Pid),
+  Host = rpc:call(Name, host, myip, []),
   Node = #node{ name = Name, host = Host },
   {reply, Node, State};
 handle_call(_Request, _From, State) ->
