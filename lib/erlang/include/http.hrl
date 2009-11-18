@@ -1,5 +1,9 @@
 -define (JSON_ENCODE(V), mochijson2:encode(V)).
--define (JSONIFY (V), ?JSON_ENCODE({struct, [V]})).
+-define (BINIFY (PropList), 
+  lists:map(fun({K, V}) ->
+    {K, misc_utils:to_bin(V)}
+  end, PropList)).
+-define (JSONIFY (V), ?JSON_ENCODE(V)).
 
 % Base page
 -define (HOME_HTML, "<html>

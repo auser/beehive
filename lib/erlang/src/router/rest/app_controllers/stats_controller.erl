@@ -16,7 +16,7 @@
     
 % PATH HANDLING
 get([]) ->
-  ?CONTENT_HTML(format_proxy_state());
+  format_proxy_state();
 
 % get("/status", _Data) ->
 %   StatusProplist = backend_srv:status(),
@@ -80,26 +80,48 @@ delete(_Path, _Data) -> "unhandled".
 format_proxy_state() ->
   Backends = backend:all(),
   State = backend_srv:get_proxy_state(),
+  StateHeaders = ?BINIFY([
+    {"proxy_start_time", date_util:fmt_date(State#proxy_state.start_time)},
+    {"current_time", date_util:fmt_date(date_util:now_to_seconds())},
+    {"local_port", State#proxy_state.local_port},
+    {"connection_timeout", (State#proxy_state.conn_timeout / 1000)},
+    {"activity_timeout", (State#proxy_state.act_timeout / 1000)}
+  ]),
   [
-   "<pre>\n",
-   %% From README: insert line here!
-   io_lib:format("Proxy start time: ~s\n", [date_util:fmt_date(State#proxy_state.start_time)]),
-   io_lib:format("Current time:     ~s\n", [date_util:fmt_date(date_util:now_to_seconds())]),
-   io_lib:format("Local TCP port number: ~w\n", [State#proxy_state.local_port]),
-   io_lib:format("Connection timeout (seconds): ~w\n", [State#proxy_state.conn_timeout / 1000]),
-   io_lib:format("Activity timeout (seconds): ~w\n", [State#proxy_state.act_timeout / 1000]),
-   
-   "</pre>\n",
-   "<table>\n",
-   "<tr> ",
-   [["<td><b>", X, "</b></td>"] || X <- ["Name", "Host", "Port", "Status",
-      "TotalReq", "CurrentReq", "LastErr", "LastErrTime", "TotalTime", "AvgRespTime", 
-      "PendingCount", "PacketCount", "RecvBytes"
-    ]],
-   "\n",
-   format_backend_list(Backends),
-   "</table>\n"
-  ].
+    {struct, StateHeaders},
+    {struct, [{"backends", format_backend_list(Backends)}]}
+  ]
+  .
+  %   ?BINIFY([
+  %         
+  %         % {"backends", {struct, 
+  %         %     [{hi, "guys"}]
+  %         %   }
+  %         % }
+  %     ])
+  %   ]
+  % }.
+  % end, All)}.
+  % [
+  %  "<pre>\n",
+  %  %% From README: insert line here!
+  %  io_lib:format("Proxy start time: ~s\n", [date_util:fmt_date(State#proxy_state.start_time)]),
+  %  io_lib:format("Current time:     ~s\n", [date_util:fmt_date(date_util:now_to_seconds())]),
+  %  io_lib:format("Local TCP port number: ~w\n", [State#proxy_state.local_port]),
+  %  io_lib:format("Connection timeout (seconds): ~w\n", [State#proxy_state.conn_timeout / 1000]),
+  %  io_lib:format("Activity timeout (seconds): ~w\n", [State#proxy_state.act_timeout / 1000]),
+  %  
+  %  "</pre>\n",
+  %  "<table>\n",
+  %  "<tr> ",
+  %  [["<td><b>", X, "</b></td>"] || X <- ["Name", "Host", "Port", "Status",
+  %     "TotalReq", "CurrentReq", "LastErr", "LastErrTime", "TotalTime", "AvgRespTime", 
+  %     "PendingCount", "PacketCount", "RecvBytes"
+  %   ]],
+  %  "\n",
+  %  format_backend_list(Backends),
+  %  "</table>\n"
+  % ].
 
 format_backend_list(List) -> format_backend_list(List, []).
 format_backend_list([], Acc) -> lists:reverse(Acc);
@@ -128,21 +150,17 @@ format_backend_list([B|Bs], Acc) ->
 
   % PidList = backend_pids:lookup(B#backend.app_name),
   % {Active, Pending} = count_reqs(PidList),
-  format_backend_list(Bs, [[
-     "<tr> ",
-     io_lib:format("<td> ~s </td>", [B#backend.app_name]),
-     io_lib:format("<td> ~p </td>", [B#backend.host]),
-     io_lib:format("<td> ~w </td>", [B#backend.port]),
-     io_lib:format("<td> ~w </td>", [B#backend.status]),
-     io_lib:format("<td> ~w </td>", [TotalReq]),
-     io_lib:format("<td> ~w </td>", [CurrentReq]),
-     io_lib:format("<td> ~w </td>", [B#backend.lasterr]),
-     io_lib:format("<td> ~s </td>", [date_util:fmt_date(LastErrTime)]),
-     io_lib:format("<td> ~w </td>", [TotalTime]),
-     io_lib:format("<td> ~w </td>", [AvgTime]),
-     io_lib:format("<td> ~w </td>", [length(L1) + length(L2)]),
-     io_lib:format("<td> ~w </td>", [PacketCount]),
-     io_lib:format("<td> ~w </td>", [RecvBytes]),
-     "</tr>\n"
-    ]|Acc]).
+  format_backend_list(Bs, [{struct, ?BINIFY([
+    {"app_name", B#backend.app_name},
+    {"host", B#backend.host},
+    {"port", B#backend.port},
+    {"last_err_time", LastErrTime},
+    {"average_req_time", AvgTime},
+    {"pending_requests", (length(L1) + length(L2))},
+    {"total_requests", TotalReq},
+    {"current_requests", CurrentReq},
+    {"total_time", TotalTime},
+    {"packet_count", PacketCount},
+    {"bytes_received", RecvBytes}
+  ])}|Acc]).
       

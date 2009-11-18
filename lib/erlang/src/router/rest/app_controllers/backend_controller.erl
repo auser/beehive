@@ -14,17 +14,17 @@
 
 get(["all"]) -> 
   All = backend:all(),
-  ?JSONIFY({
+  {struct, [{
     "backends",
     lists:map(fun(B) ->
-      {struct, [
-        {"name", misc_utils:to_bin(B#backend.app_name)},
-        {"host", misc_utils:to_bin(B#backend.host)},
-        {"port", misc_utils:to_bin(B#backend.port)},
-        {"status", misc_utils:to_bin(B#backend.status)}]
-      }
+      {struct, ?BINIFY([
+        {"name", B#backend.app_name},
+        {"host", B#backend.host},
+        {"port", B#backend.port},
+        {"status", B#backend.status}]
+      )}
     end, All)
-  });
+  }]};
 get(_Path) ->
   "Backends".
 
