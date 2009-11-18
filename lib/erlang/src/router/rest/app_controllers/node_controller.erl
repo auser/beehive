@@ -8,29 +8,23 @@
 
 -module (node_controller).
 -include ("router.hrl").
+-include ("http.hrl").
 -export ([get/1, post/2, put/2, delete/2]).
 
 get(_) -> 
-  [
-    "<h1>Nodes</h1>",
-    "<table>\n",
-    "<tr><th>Router Nodes</th></tr>",
-    format_nodes(fun node_manager:get_routers/0),
-    "<tr><th>Nodes</th></tr>",
-    format_nodes(fun node_manager:get_nodes/0),
-    "</table>\n"
-  ].
+  {struct, [
+    {"routers", format_nodes(fun node_manager:get_routers/0)},
+    {"nodes", format_nodes(fun node_manager:get_nodes/0)}
+    ]
+  }.
   
 format_nodes(F) ->
   lists:append(
-    [["<td><b>", X, "</b></td>"] || X <- ["Name", "Host"]],
     lists:map(fun(#node{name = Name, host = Host} = _Node) ->
-      [
-        "<tr>",
-        io_lib:format("<td> ~s </td>", [Name]),
-        io_lib:format("<td> ~s </td>", [Host]),
-        "</tr>"
-      ]
+      {struct, ?BINIFY([
+        {"name", Name},
+        {"host", Host}
+      ])}
     end, lists:map(fun(N) -> node_manager:dump(N) end, F())
   )).
 

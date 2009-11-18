@@ -26,7 +26,7 @@ get(["all"]) ->
     end, All)
   }]};
 get(_Path) ->
-  "Backends".
+  {struct, [{"path", <<"Backends">>}]}.
 
 post(_Path, Data) ->
   case backend:create(Data) of

@@ -16,15 +16,7 @@ to_bin(Tuple) when is_tuple(Tuple) -> to_bin(erlang:term_to_binary(Tuple));
 to_bin(Atom) when is_atom(Atom) -> to_bin(erlang:atom_to_list(Atom));
 to_bin(Int) when is_integer(Int) -> to_bin(erlang:integer_to_list(Int));
 to_bin(Float) when is_float(Float) -> to_bin(erlang:float_to_list(Float));
-to_bin(List) when is_list(List) -> 
-  case hd(List) of
-    {struct, L} ->
-      lists:map(fun({K, V}) -> {K, misc_utils:to_bin(V)} end, L);
-    Tuple when is_tuple(Tuple) ->
-      lists:map(fun({K, V}) -> {K, misc_utils:to_bin(V)} end, List);
-    _E ->
-      erlang:list_to_binary(List)
-  end;
+to_bin(List) when is_list(List) -> erlang:list_to_binary(List);
 to_bin(Bin) -> Bin.
 
 to_integer(Str) when is_list(Str) -> erlang:list_to_integer(Str);
