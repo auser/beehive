@@ -43,4 +43,15 @@ post(_Path, Data) ->
   
 % post(_Path, _Data) -> "unhandled".
 put(_Path, _Data) -> "unhandled".
+
+delete([Name], _Data) ->
+  case backend:delete(Name) of
+    ok -> "Deleted backend";
+    _ -> "There was an error deleting backend\n"
+  end;
+delete([Name, Host, Port], _Data) ->
+  case backend:delete(Name, Host, misc_utils:to_integer(Port)) of
+    ok -> "Deleted backend";
+    _ -> "There was an error deleting backend\n"
+  end;
 delete(_Path, _Data) -> "unhandled".

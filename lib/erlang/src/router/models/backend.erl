@@ -29,7 +29,7 @@
   find_all_grouped_by_host/0,
   create/1,
   update/1,
-  delete/1,
+  delete/1, delete/3,
   all/0
 ]).
 
@@ -69,8 +69,9 @@ update(Backend) ->
   db:write(Backend).
 
 delete(Backend) when is_record(Backend, backend) -> db:delete_object(Backend);
-delete(Name) ->
-  db:delete_object(#backend{app_name=Name, _='_'}).
+delete(Name) -> db:delete_object(#backend{app_name=Name, _='_'}).
+delete(Name, Host, Port) ->
+  db:delete_object(#backend{app_name=Name, host=Host, port=Port, _='_'}).
 
 all() ->
   db:find(qlc:q([ B || B <- mnesia:table(backend) ])).
