@@ -31,7 +31,6 @@ EOF
 HOSTNAME=`hostname`
 MNESIA_DIR="./db"
 DAEMONIZE_ARGS=""
-NAME="router@$HOSTNAME"
 ROUTER_OPTS="-router"
 TYPE="router"
 REST="true"
@@ -95,6 +94,14 @@ while [ $# -gt 0 ]; do
 			;;
 	esac
 done
+
+if [ -z $NAME ]; then
+	NAME="$TYPE@$HOSTNAME"
+fi
+
+if [ $TYPE != 'router' ]; then
+	ROUTER_OPTS="$ROUTER_OPTS run_rest_server false"
+fi
 
 ROUTER_OPTS="$ROUTER_OPTS node_type $TYPE "
 
