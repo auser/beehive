@@ -12,15 +12,28 @@
 
 -export ([
   start_link/0,
+  stop/0,
   start_new_instance/3,
   stop_instance/3
 ]).
 
 start_link() ->  
-  Opts = [named_table, set, public],
+  Opts = [named_table, set],
   ets:new(?MODULE, Opts),
-  ets:insert(?MODULE, {hi, "guys"}),
-  {ok, self()}.
+  Pid = spawn(fun() -> loop() end),
+  register(?MODULE, Pid),
+  {ok, Pid}.
+  
+stop() ->
+  ?MODULE ! {stop}.
+  
+loop() ->
+  receive
+    {stop} ->
+      ok;
+    _X -> 
+      loop()
+  end.
 
 % Start a new instance of the application
 start_new_instance(App, Port, From) ->
