@@ -47,10 +47,11 @@ init(_Args) ->
   AppSrv = {the_backend_srv_sup, {backend_srv_sup, start_link, []}, permanent,2000,worker,dynamic},
   HttpCl = {the_socket_server, {socket_server_sup, start_link, []}, permanent,2000,worker,dynamic},
   StatSrv = {the_stats_srv, {stats_srv, start_link, []}, permanent,2000,worker,dynamic},
+  AppManagerSrv  = {the_app_manager,{app_manager, start_link,[]}, permanent, 2000, worker, dynamic},
   
   AppsToStart = case apps:search_for_application_value(node_type, node, router) of
     node -> [EventManager,NodeManager];
-    router -> [EventManager,NodeManager,AppSrv,HttpCl, StatSrv]
+    router -> [EventManager,NodeManager,AppManagerSrv,AppSrv,HttpCl, StatSrv]
   end,
   
   {ok,{{one_for_one,5,10}, AppsToStart}}.

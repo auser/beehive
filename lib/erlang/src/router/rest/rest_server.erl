@@ -147,7 +147,11 @@ run_controller(Req, ControllerAtom, Meth, Args) ->
 % Find the method used as a request. 
 % This turns 'GET' into get
 clean_method(M) ->
-  erlang:list_to_atom(string:to_lower(erlang:atom_to_list(M))).
+  case M of
+    % This is a hack... FOR NOW
+    'OPTIONS' -> get;
+    _ -> erlang:list_to_atom(string:to_lower(erlang:atom_to_list(M)))
+  end.
 
 % parse the controller path
 parse_controller_path(CleanPath) ->
