@@ -41,10 +41,9 @@ start_link() -> supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 %%--------------------------------------------------------------------
 init([]) ->
   AppSrv  = {the_backend_srv,{backend_srv, start_link,[]}, permanent,2000,worker,dynamic},
-  AppManagerSrv  = {the_app_manager,{app_manager, start_link,[]}, permanent, 2000, worker, dynamic},
   BHApps  = {the_beehive,{rest_server, start_link,[]}, permanent,2000,worker,dynamic},
   
-  AppsToStart = [AppSrv, AppManagerSrv],
+  AppsToStart = [AppSrv],
   
   AppsToStart2 = case apps:search_for_application_value(run_rest_server, true, router) of
     true -> [BHApps|AppsToStart];
