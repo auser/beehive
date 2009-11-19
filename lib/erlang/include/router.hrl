@@ -8,6 +8,9 @@
 % Time period to kill an instance after: defaults to an hour
 -define (RUN_INSTANCE_TIME_PERIOD, 3600).
 
+% Max backends available on every host
+-define (MAX_BACKENDS_PER_HOST, 20).
+
 % Get the fields of a record into a proplist
 -define(rec_info(T,R),lists:zip(record_info(fields,T),tl(tuple_to_list(R)))). 
 
@@ -35,7 +38,6 @@
 -define (EXPAND_WHEN_PENDING_REQUESTS, 3).
 
 % Time (in seconds) to check the directory for new apps
--define (CHECK_FOR_NEW_APPS_TIME, 5*1000).
 -define (IDLE_TIMEOUT, timer:seconds(30)).
 -define (CONNECT_TIMEOUT, timer:seconds(5)).
 -define (MAX_HEADERS, 100).
