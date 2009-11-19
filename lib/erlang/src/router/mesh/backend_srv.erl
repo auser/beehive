@@ -89,18 +89,14 @@ add_backend(NewBE) when is_record(NewBE, backend) ->
 
 % Add a backend by name, host and port
 add_backend({Name, Host, Port}) ->
-  add_backend(#backend{id = {Name, Host, Port}, app_name = Name, host = Host, port = Port});
-
-% Add a backend by proplists
-add_backend(Proplist) ->
-  add_backend(Proplist).
+  add_backend(#backend{id = {Name, Host, Port}, app_name = Name, host = Host, port = Port}).
 
 %% Delete a back-end host from the balancer's list.
 del_backend(Host) ->
   gen_server:call(?MODULE, {del_backend, Host}).
   
-maybe_handle_next_waiting_client(Backend) ->
-  gen_server:cast(?MODULE, {maybe_handle_next_waiting_client, Backend}).
+maybe_handle_next_waiting_client(Name) ->
+  gen_server:cast(?MODULE, {maybe_handle_next_waiting_client, Name}).
 
 %%%----------------------------------------------------------------------
 %%% Callback functions from gen_server
@@ -160,7 +156,9 @@ handle_call({Pid, get_backend, Hostname}, From, State) ->
       {reply, {ok, Backend}, State};
     _ ->
       case choose_backend(Hostname, From, Pid) of
-    	  ?MUST_WAIT_MSG -> {noreply, State};
+    	  ?MUST_WAIT_MSG -> 
+    	    timer:apply_after(3000, ?MODULE, maybe_handle_next_waiting_client, [Hostname]),
+    	    {noreply, State};
     	  {ok, Backend} -> 
     	    {reply, {ok, Backend}, State};
     	  {error, Reason} -> {reply, {error, Reason}, State};
@@ -188,8 +186,8 @@ handle_call(Request, From, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %%----------------------------------------------------------------------
-handle_cast({maybe_handle_next_waiting_client, Backend}, State) ->
-  maybe_handle_next_waiting_client(Backend, State),
+handle_cast({maybe_handle_next_waiting_client, Hostname}, State) ->
+  maybe_handle_next_waiting_client(Hostname, State),
   {noreply, State};
   
 handle_cast(Msg, State) ->
@@ -260,7 +258,15 @@ choose_backend(Hostname, FromPid) ->
           ?MUST_WAIT_MSG
       end;
     Backends ->
+      % We should move this out of here so that it doesn't slow down the proxy
+      % as it is right now, this will slow down the proxy quite a bit
       AvailableBackends = lists:filter(fun(B) -> B#backend.status =:= ready end, Backends),
+      case length(AvailableBackends) =/= length(Backends) of
+        true ->
+          ?NOTIFY({app, request_to_start_new_backend, Hostname}),
+          ok;
+        false -> ok
+      end,
       choose_from_backends(AvailableBackends, FromPid)
   end.
 
@@ -279,19 +285,20 @@ strategically_choose_from_backends(random, Backends, _FromPid) ->
 
 % Handle adding a new backend
 handle_add_backend(NewBE) ->
-  backend:create_or_update(NewBE).
+  ?LOG(info, "Adding backend: ~p", [NewBE]),
+  backend:create(NewBE).
 
 % Handle the *next* pending client only. 
 % Perhaps this should go somewhere else in the stack, but for the time being
 % we'll leave it in here for relativity purposes
-maybe_handle_next_waiting_client(#backend{app_name = Name} = Backend, State) ->
+maybe_handle_next_waiting_client(Name, State) ->
   TOTime = date_util:now_to_seconds() - (State#proxy_state.conn_timeout / 1000),
   case ?QSTORE:pop(?WAIT_DB, Name) of
     empty -> ok;
     % If the request was made at conn_timeout seconds ago
     {value, {_Hostname, From, _Pid, InsertTime}} when InsertTime < TOTime ->
       gen_server:reply(From, ?BACKEND_TIMEOUT_MSG),
-      maybe_handle_next_waiting_client(Backend, State);
+      maybe_handle_next_waiting_client(Name, State);
     {value, {Hostname, From, Pid, _InsertTime}} ->
       ?LOG(info, "Handling Q: ~p", [Hostname]),
       case choose_backend(Hostname, From, Pid) of

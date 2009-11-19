@@ -41,7 +41,7 @@ handle_event({backend, used, Backend}, State) ->
   {ok, State};
   
 handle_event({backend, ready, Backend}, State) ->
-  backend_srv:maybe_handle_next_waiting_client(Backend),
+  backend_srv:maybe_handle_next_waiting_client(Backend#backend.app_name),
   {ok, State};
 
 handle_event({backend, cannot_connect, Backend}, State) ->
@@ -60,7 +60,7 @@ handle_event({backend, closing_stats, #backend{id = Id} = Backend, StatsProplist
   end,
   stats_srv:backend_stat({request_complete, Id}),
   
-  backend_srv:maybe_handle_next_waiting_client(Backend),
+  backend_srv:maybe_handle_next_waiting_client(Backend#backend.app_name),
   {ok, State};
   
 handle_event(_Event, State) ->
