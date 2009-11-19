@@ -285,7 +285,6 @@ strategically_choose_from_backends(random, Backends, _FromPid) ->
 
 % Handle adding a new backend
 handle_add_backend(NewBE) ->
-  ?LOG(info, "Adding backend: ~p", [NewBE]),
   backend:create(NewBE).
 
 % Handle the *next* pending client only. 

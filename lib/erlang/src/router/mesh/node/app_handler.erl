@@ -11,9 +11,16 @@
 -include ("common.hrl").
 
 -export ([
+  start_link/0,
   start_new_instance/3,
   stop_instance/3
 ]).
+
+start_link() ->  
+  Opts = [named_table, set, public],
+  ets:new(?MODULE, Opts),
+  ets:insert(?MODULE, {hi, "guys"}),
+  {ok, self()}.
 
 % Start a new instance of the application
 start_new_instance(App, Port, From) ->
@@ -33,9 +40,10 @@ start_new_instance(App, Port, From) ->
   ?LOG(info, "Starting on port ~p as ~p:~p with ~p", [Port, App#app.group, App#app.user, RealCmd]),
   Pid = port_handler:start(RealCmd, App#app.path),
   Host = host:myip(),
+  Id = {App#app.name, Host, Port},
   
   Backend  = #backend{
-    id                      = {App#app.name, Host, Port},
+    id                      = Id,
     app_name                = App#app.name,
     host                    = Host,
     port                    = Port,
@@ -45,6 +53,8 @@ start_new_instance(App, Port, From) ->
   },
   
   From ! {started_backend, Backend},
+  ?LOG(info, "Inserting: ~p into ~p ets table", [{Id, Backend}, ?MODULE]),
+  ets:insert(?MODULE, {Id, Backend}),
   Backend.
 
 % kill the instance of the application  
@@ -57,6 +67,11 @@ stop_instance(Backend, App, From) ->
 
   Backend#backend.pid ! {stop, RealCmd},
   os:cmd(RealCmd),
+  case ets:lookup(?MODULE, {App#app.name, Backend#backend.host, Backend#backend.port}) of
+    [{Key, _B}] ->
+      ets:delete(?MODULE, Key);
+    _ -> true
+  end,
   From ! {stopped_backend, Backend}.
 
 % turn the command string from the comand string with the values

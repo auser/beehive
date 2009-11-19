@@ -20,7 +20,7 @@
   terminate_all/0,
   terminate_app_instances/1,
   add_application/1,
-  spawn_update_backend_status/1
+  spawn_update_backend_status/2
 ]).
 
 %% gen_server callbacks
@@ -73,7 +73,7 @@ init([]) ->
   % Load the applications 
   load_static_configs(),
   
-  % Try to make sure the pending backends are taken care of by either turning them broken for ready
+  % Try to make sure the pending backends are taken care of by either turning them broken or ready
   % timer:send_interval(timer:seconds(5), {manage_pending_backends}),
   % Run maintenance
   timer:send_interval(timer:seconds(20), {ping_backends}),
@@ -155,15 +155,11 @@ handle_info({ping_backends}, State) ->
 handle_info({garbage_collection}, State) ->
   handle_non_ready_backends(),
   {noreply, State};
-  
-handle_info({check_for_apps}, State) ->
-  {noreply, State};
-  
+    
 handle_info({'EXIT',_Pid,normal}, State) ->
   {noreply, State};
 
-handle_info(Info, State) ->
-  ?LOG(info, "Got info in backend_srv: ~p", [Info]),
+handle_info(_Info, State) ->
   {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -189,10 +185,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 
 % Spawn a process to try to connect to the instance
-spawn_update_backend_status(Backend) ->
+spawn_update_backend_status(Backend, From) ->
   spawn(fun() ->
     BackendStatus = try_to_connect_to_new_instance(Backend, 5),
-    backend:update(Backend#backend{status = BackendStatus})
+    backend:update(Backend#backend{status = BackendStatus}),
+    From ! {updated_backend_status, BackendStatus}
   end).
 
 % Try to connect to the application instance while it's booting up
@@ -252,8 +249,7 @@ update_app_configuration_param(Param, Default, ConfigProplist, App) ->
   end.
 
 % Add an application based on it's proplist
-add_application_by_configuration(ConfigProplist, State) -> 
-  ?LOG(info, "Adding an application: ~p~n", [ConfigProplist]),
+add_application_by_configuration(ConfigProplist, State) ->
   update_app_configuration(ConfigProplist, #app{}, State).
 
 % Clean up applications
@@ -338,7 +334,7 @@ load_app_config_from_yaml_file(Filepath, Ext) ->
 ping_backends() ->
   ReadyBackends = lists:filter(fun(B) -> B#backend.status =:= ready end, backend:all()),
   lists:map(fun(B) ->
-    spawn_update_backend_status(B)
+    spawn_update_backend_status(B, self())
   end, ReadyBackends),
   ok.
 

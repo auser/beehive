@@ -119,7 +119,9 @@ init([Type, Seed]) ->
   case Type of
     router ->
       case Seed of
-        [] -> db:init();
+        [] -> 
+          % Initializing root router
+          db:init();
         _ -> 
           ?LOG(info, "Initializing slave db: ~p", [Seed]),
           mesh_util:init_db_slave(Seed)
@@ -172,7 +174,6 @@ handle_call(_Request, _From, State) ->
 handle_cast({request_to_start_new_backend, Name}, State) ->
   Host = get_next_available_host(),
   Port = get_next_available_port(Host),
-  ?LOG(info, "request_to_start_new_backend in ~p: ~p => ~p:~p~n", [?MODULE, Name, Host, Port]),
   App = app:find_by_name(Name),
   start_new_instance(App, Host, Port),
   {noreply, State};
@@ -188,11 +189,7 @@ handle_cast(_Msg, State) ->
 handle_info({stay_connected_to_seed, Seed}, State) ->
   join(Seed),
   {noreply, State};
-handle_info({started_backend, Be}, State) ->
-  ?LOG(info, "Started new backend: ~p", [Be]),
-  backend_srv:add_backend(Be),
-  app_manager:spawn_update_backend_status(Be),
-  {noreply, State};
+  
 handle_info(Info, State) ->
   ?LOG(info, "handle_info: ~p ~p", [?MODULE, Info]),
   {noreply, State}.
@@ -228,5 +225,5 @@ get_next_available_port(Host) ->
   rpc:call(Host, ?MODULE, get_next_available_port, []).
 
 start_new_instance(Name, Host, Port) ->
-  Self = self(),
-  rpc:call(Host, app_handler, start_new_instance, [Name, Port, Self]).
+  {ok, P} = app_launcher_fsm:start_link(Name, Host, Port),
+  app_launcher_fsm:launch(P).
