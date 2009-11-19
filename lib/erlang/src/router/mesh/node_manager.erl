@@ -20,8 +20,7 @@
   get_routers/0, get_nodes/0,
   dump/1,
   join/1,
-  can_deploy_new_app/0,
-  get_next_available_port/0
+  can_deploy_new_app/0
 ]).
 
 %% gen_server callbacks
@@ -30,13 +29,13 @@
 
 -record (state, {
   seed,             % seed host
-  host,             % local host
-  used_ports = []   % used ports
+  host              % local host
 }).
 
 -define(SERVER, ?MODULE).
 -define (ROUTER_SERVERS, 'ROUTER SERVERS').
 -define (NODE_SERVERS, 'NODE SERVERS').
+-define (APP_HANDLER, app_handler).
 
 %%====================================================================
 %% API
@@ -89,7 +88,9 @@ get_nodes() ->
   pg2:create(?NODE_SERVERS),
   pg2:get_members(?NODE_SERVERS).
   
-request_to_start_new_backend(Name) -> gen_server:cast(?SERVER, {request_to_start_new_backend, Name}).
+request_to_start_new_backend(Name) -> 
+  gen_server:cast(?SERVER, {request_to_start_new_backend, Name}).
+
 dump(Pid) ->
   gen_server:call(?SERVER, {dump, Pid}).
 
@@ -97,10 +98,7 @@ get_seed() ->
   gen_server:call(?SERVER, {get_seed}).
 
 can_deploy_new_app() ->
-  true.
-
-get_next_available_port() ->
-  ?STARTING_PORT.
+  gen_server:call(?SERVER, {can_deploy_new_app}).
     
 %%====================================================================
 %% gen_server callbacks
@@ -139,8 +137,7 @@ init([Type, Seed]) ->
   
   {ok, #state{
     seed = Seed,
-    host = LocalHost,
-    used_ports = []
+    host = LocalHost
   }}.
 
 %%--------------------------------------------------------------------
@@ -152,6 +149,11 @@ init([Type, Seed]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
+handle_call({can_deploy_new_app}, _From, State) ->
+  Nodes = lists:map(fun(N) -> node(N) end, get_nodes()),
+  {Responses, _} = rpc:multicall(Nodes, ?APP_HANDLER, can_deploy_new_app, [], timer:seconds(3)),
+  Reply = lists:member(true, Responses),
+  {reply, Reply, State};
 handle_call({get_seed}, _From, #state{seed = Seed} = State) ->
   {reply, Seed, State};
 handle_call({get_host}, _From, #state{host = Host} = State) ->
@@ -173,9 +175,8 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({request_to_start_new_backend, Name}, State) ->
   Host = get_next_available_host(),
-  Port = get_next_available_port(Host),
   App = app:find_by_name(Name),
-  start_new_instance(App, Host, Port),
+  spawn_to_start_new_instance(App, Host),
   {noreply, State};
 handle_cast(_Msg, State) ->
   {noreply, State}.
@@ -221,9 +222,7 @@ get_next_available_host() ->
     false -> get_next_available_host()
   end.
 
-get_next_available_port(Host) ->
-  rpc:call(Host, ?MODULE, get_next_available_port, []).
-
-start_new_instance(Name, Host, Port) ->
-  {ok, P} = app_launcher_fsm:start_link(Name, Host, Port),
+% Start with the app_launcher_fsm
+spawn_to_start_new_instance(Name, Host) ->
+  {ok, P} = app_launcher_fsm:start_link(Name, Host),
   app_launcher_fsm:launch(P).
