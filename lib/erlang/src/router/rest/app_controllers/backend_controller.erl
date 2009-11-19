@@ -18,7 +18,7 @@ get(["all"]) ->
     "backends",
     lists:map(fun(B) ->
       {struct, ?BINIFY([
-        {"name", B#backend.app_name},
+        {"app_name", B#backend.app_name},
         {"host", B#backend.host},
         {"port", B#backend.port},
         {"status", B#backend.status}]
