@@ -12,8 +12,19 @@
 
 -export ([
   install/0, install/1,
-  remove/1
+  remove/1, initialized/0
 ]).
+
+initialized() ->
+  try
+    mnesia:table_info(app, type)
+  catch _:_ -> false
+  end,
+  try
+    mnesia:table_info(backend, type)
+  catch _:_ -> false
+  end,
+  true.
 
 install() -> install([node()]).
 remove(Node) ->

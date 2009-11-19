@@ -22,11 +22,15 @@
   new_id/1,
   match/1,
   transaction/1,
-  table/1
+  table/1,
+  already_initialized/0
 ]).
 
 init() -> schema:install().
 start() -> mnesia:start().
+
+already_initialized() ->
+  schema:initialized().
 
 new_id(Key) ->
 	mnesia:dirty_update_counter({counter, Key}, 1).

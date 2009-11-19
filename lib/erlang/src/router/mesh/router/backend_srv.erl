@@ -116,8 +116,11 @@ init([LocalPort, ConnTimeout, ActTimeout]) ->
   Pid     = whereis(tcp_socket_server),
   
   LocalHost = host:myip(),
-
-  add_backends_from_config(),
+  
+  case db:already_initialized() of
+    true -> ok;
+    false -> add_backends_from_config()
+  end,
 
   % {ok, TOTimer} = timer:send_interval(1000, {check_waiter_timeouts}),
   {ok, #proxy_state{
@@ -157,7 +160,6 @@ handle_call({Pid, get_backend, Hostname}, From, State) ->
     _ ->
       case choose_backend(Hostname, From, Pid) of
     	  ?MUST_WAIT_MSG -> 
-    	    timer:apply_after(3000, ?MODULE, maybe_handle_next_waiting_client, [Hostname]),
     	    {noreply, State};
     	  {ok, Backend} -> 
     	    {reply, {ok, Backend}, State};
@@ -263,7 +265,7 @@ choose_backend(Hostname, FromPid) ->
       AvailableBackends = lists:filter(fun(B) -> B#backend.status =:= ready end, Backends),
       case length(AvailableBackends) =/= length(Backends) of
         true ->
-          ?NOTIFY({app, request_to_start_new_backend, Hostname}),
+          ?NOTIFY({app, not_enough_app_instances_running_to_serve_requests, Hostname}),
           ok;
         false -> ok
       end,
