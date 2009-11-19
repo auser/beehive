@@ -20,9 +20,7 @@
   terminate_all/0,
   terminate_app_instances/1,
   add_application/1,
-  start_new_instance/2,
-  next_available_port/1,
-  next_available_host/1
+  spawn_update_backend_status/1
 ]).
 
 %% gen_server callbacks
@@ -113,19 +111,19 @@ handle_call(_Request, _From, State) ->
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
 % Terminate all instances of every app
-handle_cast({terminate_all}, State) ->
-  ?LOG(info, "Terminating all apps", []),
-  lists:map(fun(_Name, Backends) ->
-    lists:map(fun(Backend) -> stop_instance(Backend, State) end, Backends)
-    end, backend_srv:all(instances)),
-  {reply, ok, State};
+% handle_cast({terminate_all}, State) ->
+%   ?LOG(info, "Terminating all apps", []),
+%   lists:map(fun(_Name, Backends) ->
+%     lists:map(fun(Backend) -> app_handler:stop_instance(Backend, State) end, Backends)
+%     end, backend_srv:all(instances)),
+%   {reply, ok, State};
   
 % Terminate all the instances of a certain application
-handle_cast({terminate_app_instances, AppName}, State) ->
-  Backends = backend_srv:lookup(instances, AppName),
-  lists:map(fun(Backend) -> stop_instance(Backend, State) end, Backends),
-  backend_srv:store(instances, AppName, []),
-  {noreply, State};
+% handle_cast({terminate_app_instances, AppName}, State) ->
+%   Backends = backend_srv:lookup(instances, AppName),
+%   lists:map(fun(Backend) -> app_handler:stop_instance(Backend, State) end, Backends),
+%   backend_srv:store(instances, AppName, []),
+%   {noreply, State};
 
 handle_cast(_Msg, State) ->
   {noreply, State}.
@@ -189,43 +187,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-    
-% Start a new instance of the application
-start_new_instance(App, State) ->
-  Host = next_available_host(State),
-  Port = next_available_port(State),
-  
-  TemplateCommand = App#app.start_command,
-  
-  RealCmd = template_command_string(TemplateCommand, [
-                                                        {"[[PORT]]", misc_utils:to_list(Port)},
-                                                        {"[[GROUP]]", App#app.group},
-                                                        {"[[USER]]", App#app.user}
-                                                      ]),
-  % START INSTANCE
-  % P = spawn(fun() -> os:cmd(NewCmd) end),
-  % port_handler:start("thin -R beehive.ru --port 5000 start", "/Users/auser/Development/erlang/mine/router/test/fixtures/apps").
-  ?LOG(info, "Starting on port ~p as ~p:~p with ~p", [Port, App#app.group, App#app.user, RealCmd]),
-  Pid = port_handler:start(RealCmd, App#app.path),
-  
-  Backend  = #backend{
-    id                      = {App#app.name, Host, Port},
-    app_name                = App#app.name,
-    host                    = Host,
-    port                    = Port,
-    status                  = pending,
-    pid                     = Pid,
-    start_time              = date_util:now_to_seconds()
-  },
-  
-  % apps:store(backend, App#app.name, Backend),
-  backend_srv:add_backend(Backend),
-  
-  % Let the instance know it's ready after it connects
-  spawn_update_backend_status(Backend),
-    
-  ?LOG(info, "Spawned a new instance", []),
-  App.
 
 % Spawn a process to try to connect to the instance
 spawn_update_backend_status(Backend) ->
@@ -246,12 +207,6 @@ try_to_connect_to_new_instance(Backend, Attempts) ->
       try_to_connect_to_new_instance(Backend, Attempts - 1)
   end.
   
-% Get the next available port
-next_available_port(_State) ->
-  ?STARTING_PORT.
-next_available_host(_State) -> 
-  {127,0,0,1}.
-
 % Update configuration for an application from a proplist of configuration details
 update_app_configuration(ConfigProplist, App, State) ->
   DefaultStartCmd = apps:search_for_application_value(default_app_command, "thin -p [[PORT]] -u [[USER]] -g [[GROUP]] -e production start", router),
@@ -301,24 +256,6 @@ add_application_by_configuration(ConfigProplist, State) ->
   ?LOG(info, "Adding an application: ~p~n", [ConfigProplist]),
   update_app_configuration(ConfigProplist, #app{}, State).
 
-% kill the instance of the application  
-stop_instance(Backend, #state{dead_apps = DeadApps} = State) ->
-  App = app:find_by_name(Backend#backend.app_name),
-  RealCmd = template_command_string(App#app.stop_command, [
-                                                        {"[[PORT]]", erlang:integer_to_list(Backend#backend.port)},
-                                                        {"[[GROUP]]", App#app.group},
-                                                        {"[[USER]]", App#app.user}
-                                                      ]),
-                                                      
-  Backend#backend.pid ! {stop, RealCmd},
-  NewDeadApps = [App|DeadApps],
-  
-  RunningBackends1 = backend_srv:lookup(instances, Backend#backend.app_name),
-  RunningBackends = lists:delete(Backend, RunningBackends1),
-  
-  apps:store(backend, Backend#backend.app_name, RunningBackends),
-  State#state{dead_apps = NewDeadApps}.
-
 % Clean up applications
 clean_up(State) ->
   Backends = backend_srv:all(instances),
@@ -345,7 +282,8 @@ clean_up_on_app_timeout(#backend{status=Status,lastresp_time=LastReq} = Backend,
 	TimeDiff = date_util:time_difference_from_now(LastReq),
   % ?LOG(info, "clean_up_on_app_timeout: ~p > ~p, ~p > ~p", [NumBackends, App#app.min_instances, TimeDiff, Timeout]),
   if
-    Status =/= busy andalso NumBackends > Min andalso TimeDiff > Timeout -> stop_instance(Backend, State);
+    % stop_instance(Backend, App, From)
+    Status =/= busy andalso NumBackends > Min andalso TimeDiff > Timeout -> app_handler:stop_instance(Backend, App, self());
     true -> clean_up_on_broken_status(Backend, App, State)
   end.
   
@@ -353,7 +291,7 @@ clean_up_on_app_timeout(#backend{status=Status,lastresp_time=LastReq} = Backend,
 clean_up_on_broken_status(Backend, App, State) ->
   % ?LOG(info, "clean_up_on_broken_status: ~p", [Backend#backend.status]),
   if
-    Backend#backend.status =:= broken -> stop_instance(Backend, State);
+    Backend#backend.status =:= broken -> app_handler:stop_instance(Backend, App, self());
     true -> clean_up_on_busy_and_stale_status(Backend, App, State)
   end.
   
@@ -363,16 +301,16 @@ clean_up_on_busy_and_stale_status(#backend{status = Status, lastresp_time = Last
   % ?LOG(info, "clean_up_on_busy_and_stale_status: ~p > ~p + ~p", [TimeDiff, Timeout, ?TIME_BUFFER]),
   if
     Status =:= busy andalso TimeDiff > Timeout + ?TIME_BUFFER -> 
-			stop_instance(Backend, State);
+			app_handler:stop_instance(Backend, App, self());
     true -> clean_up_on_long_running_instance(Backend, App, State)
   end.
 
 % If the application has been running for a while, kill it
-clean_up_on_long_running_instance(#backend{start_time = StartTime} = Backend, _App, State) ->
+clean_up_on_long_running_instance(#backend{start_time = StartTime} = Backend, App, State) ->
 	TimeDiff = date_util:time_difference_from_now(StartTime),
   % ?LOG(info, "clean_up_on_long_running_instance: ~p > ~p", [TimeDiff, ?RUN_INSTANCE_TIME_PERIOD]),
   if
-    TimeDiff > ?RUN_INSTANCE_TIME_PERIOD -> stop_instance(Backend, State);
+    TimeDiff > ?RUN_INSTANCE_TIME_PERIOD -> app_handler:stop_instance(Backend, App, self());
     true -> State
   end.
 
@@ -431,15 +369,6 @@ try_to_reconnect_to_backend(B, Num) ->
 cleanup_backend(B) ->
   ?QSTORE:delete_queue(?WAIT_DB, B#backend.app_name),
   backend:delete(B).
-
-% turn the command string from the comand string with the values
-% of [[KEY]] replaced by the corresponding proplist element of
-% the format:
-%   {[[PORT]], "80"}
-template_command_string(OriginalCommand, []) -> OriginalCommand;
-template_command_string(OriginalCommand, [{Str, Replace}|T]) ->
-  NewCommand = string_utils:gsub(OriginalCommand, Str, Replace),
-  template_command_string(NewCommand, T).
 
 % Turn the priplists into atoms
 atomize([], Acc) -> Acc;
