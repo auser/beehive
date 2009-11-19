@@ -12,7 +12,7 @@
 -behaviour(gen_fsm).
 
 %% API
--export([start_link/3]).
+-export([start_link/2]).
 
 % states
 -export ([
@@ -46,8 +46,8 @@ launch(Pid) ->
 %% initialize. To ensure a synchronized start-up procedure, this function
 %% does not return until Module:init/1 has returned.
 %%--------------------------------------------------------------------
-start_link(App, Host, Port) ->
-  gen_fsm:start_link(?MODULE, [App, Host, Port], []).
+start_link(App, Host) ->
+  gen_fsm:start_link(?MODULE, [App, Host], []).
 
 %%====================================================================
 %% gen_fsm callbacks
@@ -61,8 +61,8 @@ start_link(App, Host, Port) ->
 %% gen_fsm:start_link/3,4, this function is called by the new process to
 %% initialize.
 %%--------------------------------------------------------------------
-init([App, Host, Port]) ->
-  {ok, launching, #state{app = App, host = Host, port = Port}}.
+init([App, Host]) ->
+  {ok, launching, #state{app = App, host = Host}}.
 
 %%--------------------------------------------------------------------
 %% Function:
@@ -76,23 +76,24 @@ init([App, Host, Port]) ->
 %% the current state name StateName is called to handle the event. It is also
 %% called if a timeout occurs.
 %%--------------------------------------------------------------------
-launching({launch}, #state{app = App, host = Host, port = Port} = State) ->
+launching({launch}, #state{app = App, host = Host} = State) ->
   Self = self(),
   ?LOG(info, "launching app: ~p on ~p", [App#app.name, Host]),
-  rpc:call(Host, app_handler, start_new_instance, [App, Port, Self]),
+  rpc:call(Host, app_handler, start_new_instance, [App, Self]),
   {next_state, launching, State};
 
 launching({started_backend, Be}, State) ->
   backend_srv:add_backend(Be),
-  app_manager:spawn_update_backend_status(Be, self()),
+  Self = self(),
+  app_manager:spawn_update_backend_status(Be, Self),
   {next_state, pending, State#state{backend = Be}};
 
 launching(Event, State) ->
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, launching]),
   {next_state, launching, State}.
 
-pending({updated_backend_status, _BackendStatus}, State) ->
-  ?LOG(info, "Application started normally: ~p", [self()]),
+pending({updated_backend_status, _BackendStatus}, #state{app = App} = State) ->
+  ?LOG(info, "Application started normally: ~p", [App#app.name]),
   % App started normally
   {stop, normal, State};
   
