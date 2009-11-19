@@ -1,10 +1,18 @@
 #!/bin/sh
+
+progdir=$(dirname $0)
 progname=$(basename $0)
 version="0.1"
 
+if [ ! -f ebin/router-*.boot ]; then
+	make && make boot
+fi
+
 print_usage() {
 cat <<EOF
-	Usage: $progname options
+Usage: $progname options
+
+Start beehive
 
 OPTIONS
 	-m		Mnesia directory (defaults to ./db)
@@ -16,6 +24,7 @@ OPTIONS
 	-d		Daemonize the process
 	-v		Verbose
 	-h, --help	Show this screen
+	
 EOF
 }
 
@@ -89,7 +98,6 @@ while [ $# -gt 0 ]; do
 			shift
 			break;;
 		*)
-			echo "Uh oh!"
 			print_usage; exit 0
 			;;
 	esac
