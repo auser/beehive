@@ -57,3 +57,14 @@ namespace :erl do
     Kernel.system "cd lib/erlang/scripts && ./start_router.sh"
   end
 end
+
+namespace :deploy do
+  desc "Clean erlang"
+  task :clean do
+    Kernel.system "cd lib/erlang && make clean"
+  end
+  desc "Package erlang for deployment"
+  task :pkg => :clean do
+    Kernel.system "tar -cvzf pkg/router.tgz lib/erlang"
+  end
+end
