@@ -9,7 +9,6 @@
 -module (app).
 
 -include ("router.hrl").
--include_lib("eunit/include/eunit.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 
 -export ([
@@ -19,11 +18,8 @@
   exist/1,
   create/1,
   update/1,
-  delete/1
+  delete/1, new/1
 ]).
-
-% Test
--export ([run_tests/0]).
 
 find_by_name(Hostname) ->
   case find_all_by_name(Hostname) of
@@ -71,39 +67,3 @@ validate_app_proplists(PropList) ->
       _ -> {Key, Val}
     end
   end, PropList).
-
-% TESTS
-run_tests() ->
-  try
-    db:clear_table(app),
-    schema:install(),
-    create_test(),
-    find_by_name_test(),
-    delete_test()
-  catch
-    throw:Thrown ->
-      io:format("Test (~p) failed because ~p~n", [?MODULE, Thrown]),
-      throw(Thrown)
-  end.
-
-create_test() ->
-  App1 = #app{name="test_app"},
-  create(App1),
-  {atomic,Results1} = mnesia:transaction(fun() -> mnesia:match_object(#app{_='_'}) end),
-  ?assertEqual([App1], Results1),
-  % create via proplists
-  Props = [{name, "another_app"}, {min_instances, 1}, {max_instances, 10}],
-  App2 = new(Props),
-  create(Props),
-  {atomic,Results2} = mnesia:transaction(fun() -> mnesia:match_object(#app{_='_'}) end),
-  ?assertEqual([App1,App2], Results2).
-
-find_by_name_test() ->
-  App1 = #app{name="test_app"},
-  Results1 = find_by_name("test_app"),
-  ?assertEqual(App1, Results1).
-
-delete_test() ->
-  App1 = #app{name="test_app"},
-  delete("another_app"),
-  ?assertEqual([App1], all()).

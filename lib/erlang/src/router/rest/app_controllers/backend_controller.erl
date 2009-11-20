@@ -30,7 +30,7 @@ get(_Path) ->
 
 post(_Path, Data) ->
   case backend:create(Data) of
-    ok -> "Added backend";
+    {ok, Be} -> io_lib:format("Added backend: ~p on ~p:~p", [Be#backend.app_name, Be#backend.host, Be#backend.port]);
     _ -> "There was an error adding backend\n"
   end.
   

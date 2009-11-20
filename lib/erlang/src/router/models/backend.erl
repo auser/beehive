@@ -19,7 +19,6 @@
 % 
 
 -include ("router.hrl").
--include_lib("eunit/include/eunit.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 
 -export ([
@@ -30,11 +29,8 @@
   create/1,
   update/1,
   delete/1, delete/3,
-  all/0
+  all/0, new/1
 ]).
-
-% Test
--export ([run_tests/0]).
 
 find_by_name(Hostname) ->
   case find_all_by_name(Hostname) of
@@ -60,13 +56,16 @@ find_all_grouped_by_host1(#backend{host=Host} = B, Acc) ->
   [{Host, [B], 1}|Acc].
 
 create(Backend) when is_record(Backend, backend) -> 
-  db:write(Backend);
+  case db:write(Backend) of
+    ok -> {ok, Backend};
+    _ -> {error, did_not_write}
+  end;
 create(NewProps) ->
   create(new(NewProps)).
 
 % Grrr update!
 update(Backend) -> 
-  db:write(Backend).
+  create(Backend).
 
 delete(Backend) when is_record(Backend, backend) -> db:delete_object(Backend);
 delete(Name) -> db:delete_object(#backend{app_name=Name, _='_'}).
@@ -100,63 +99,3 @@ validate_backend_proplists(PropList) ->
       _ -> {Key, Val}
     end
   end, PropList).
-
-% TESTS
-run_tests() -> 
-  try
-    db:clear_table(backend),
-    schema:install(),
-    create_test(),
-    find_by_name_test(),
-    all_test(),
-    find_all_grouped_by_host_test(),
-    delete_test()
-  catch
-    throw:Thrown ->
-      io:format("Test (~p) failed because ~p~n", [?MODULE, Thrown]),
-      throw(Thrown)
-  end.
-
-create_test() ->
-  db:clear_table(backend),
-  schema:install(),
-  Be1 = #backend{id={"test_app", {127,0,0,1}, 8090}, app_name = "test_app"},
-  create(Be1),
-  {atomic,Results1} = mnesia:transaction(fun() -> mnesia:match_object(#backend{_='_'}) end),
-  % Results1 = mnesia:dirty_read({backend, "test_app"}),
-  ?assertEqual([Be1], Results1),
-  % create via proplists
-  Props = [{app_name, "another_app"}, {host, {127,0,0,1}}, {port, 8091}],
-  Be2 = new(Props),
-  create(Props),
-  {atomic,Results2} = mnesia:transaction(fun() -> mnesia:match_object(#backend{_='_'}) end),
-  ?assertEqual([Be2, Be1], Results2).
-
-find_by_name_test() ->
-  Be1 = #backend{app_name = "test_app", id={"test_app", {127,0,0,1}, 8090}},
-  Results1 = find_by_name("test_app"),
-  ?assertEqual(Be1, Results1).
-  
-all_test() ->
-  All = all(),
-  ?assertEqual(2, length(All)).
-
-find_all_grouped_by_host_test() ->
-  create(#backend{id={"test_app", {127,0,0,1}, 8090}, app_name = "test_app", host={127,0,0,1}}),
-  create([{app_name, "another_app"}, {host, {127,0,0,1}}, {port, 8091}]),
-  create([{app_name, "yarrrrn pirates"}, {host, {127,0,0,2}}, {port, 8091}]),
-  AllBackends = find_all_grouped_by_host(),
-  All = lists:map(fun({Host, _Backends, Count}) ->
-    {Host, Count}
-  end, AllBackends),
-  io:format("---- All stuffs: ~p~n", [All]),
-  ?assertEqual([
-    {{127,0,0,2}, 1},
-    {{127,0,0,1}, 2}
-  ], All),
-  delete("yarrrrn pirates").
-  
-delete_test() ->
-  Be1 = #backend{app_name = "test_app", id={"test_app", {127,0,0,1}, 8090}},
-  delete("another_app"),
-  ?assertEqual([Be1], all()).
