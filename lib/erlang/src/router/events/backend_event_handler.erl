@@ -44,6 +44,10 @@ handle_event({backend, ready, Backend}, State) ->
   backend_srv:maybe_handle_next_waiting_client(Backend#backend.app_name),
   {ok, State};
 
+handle_event({backend, backend_down, Backend}, State) ->
+  backend:update(Backend#backend{status = down}),
+  {ok, State};
+
 handle_event({backend, cannot_connect, Backend}, State) ->
   backend:update(Backend#backend{status = down}),
   {ok, State};
