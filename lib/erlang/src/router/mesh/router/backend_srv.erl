@@ -117,10 +117,7 @@ init([LocalPort, ConnTimeout, ActTimeout]) ->
   
   LocalHost = host:myip(),
   
-  case db:already_initialized() of
-    true -> ok;
-    false -> add_backends_from_config()
-  end,
+  add_backends_from_config(),
 
   % {ok, TOTimer} = timer:send_interval(1000, {check_waiter_timeouts}),
   {ok, #proxy_state{
@@ -160,6 +157,7 @@ handle_call({Pid, get_backend, Hostname}, From, State) ->
     _ ->
       case choose_backend(Hostname, From, Pid) of
     	  ?MUST_WAIT_MSG -> 
+    	    timer:apply_after(3000, ?MODULE, maybe_handle_next_waiting_client, [Hostname]),
     	    {noreply, State};
     	  {ok, Backend} -> 
     	    {reply, {ok, Backend}, State};
@@ -263,12 +261,6 @@ choose_backend(Hostname, FromPid) ->
       % We should move this out of here so that it doesn't slow down the proxy
       % as it is right now, this will slow down the proxy quite a bit
       AvailableBackends = lists:filter(fun(B) -> B#backend.status =:= ready end, Backends),
-      case length(AvailableBackends) =/= length(Backends) of
-        true ->
-          ?NOTIFY({app, not_enough_app_instances_running_to_serve_requests, Hostname}),
-          ok;
-        false -> ok
-      end,
       choose_from_backends(AvailableBackends, FromPid)
   end.
 
