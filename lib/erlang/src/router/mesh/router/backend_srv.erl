@@ -261,7 +261,13 @@ choose_backend(Hostname, FromPid) ->
       % We should move this out of here so that it doesn't slow down the proxy
       % as it is right now, this will slow down the proxy quite a bit
       AvailableBackends = lists:filter(fun(B) -> B#backend.status =:= ready end, Backends),
-      choose_from_backends(AvailableBackends, FromPid)
+      case choose_from_backends(AvailableBackends, FromPid) of
+        ?MUST_WAIT_MSG ->
+          % This might not be appropriate... not sure yet
+          ?NOTIFY({app, request_to_start_new_backend, Hostname}),
+          ?MUST_WAIT_MSG;
+        E -> E
+      end
   end.
 
 % Choose from the list of backends
