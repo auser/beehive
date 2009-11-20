@@ -175,6 +175,7 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({request_to_start_new_backend, Name}, State) ->
   Backends = backend:find_all_by_name(Name),
+  % Don't start a new backend if there is a pending one
   PendingBackends = lists:filter(fun(B) -> B#backend.status =:= pending end, Backends),
   case length(PendingBackends) > 0 of
     false -> start_new_instance_by_name(Name);
@@ -219,16 +220,30 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 get_next_available_host() ->
-  {ok, Node} = mesh_util:get_random_pid(?NODE_SERVERS),
-  case rpc:call(node(Node), ?MODULE, can_deploy_new_app, []) of
-    true -> node(Node);
-    false -> get_next_available_host()
+  case (catch mesh_util:get_random_pid(?NODE_SERVERS)) of
+    {ok, Pid} ->
+      Node = node(Pid),
+      case rpc:call(Node, ?MODULE, can_deploy_new_app, []) of
+        true ->
+          ?LOG(info, "Available host: ~p", [Node]),
+          Node;
+        false -> get_next_available_host()
+      end;
+    {'EXIT', _} ->
+      ?LOG(error, "Could not start a new backend because there are no nodes to start", []),
+      false;
+    {error, Reason} ->
+      ?LOG(error, "Could not start a new app because: ~p", [Reason]),
+      false
   end.
 
 start_new_instance_by_name(Name) ->
-  Host = get_next_available_host(),
-  App = app:find_by_name(Name),
-  spawn_to_start_new_instance(App, Host).
+  case get_next_available_host() of
+    false -> false;
+    Host ->
+      App = app:find_by_name(Name),
+      spawn_to_start_new_instance(App, Host)
+  end.
 % Start with the app_launcher_fsm
 spawn_to_start_new_instance(Name, Host) ->
   {ok, P} = app_launcher_fsm:start_link(Name, Host),
