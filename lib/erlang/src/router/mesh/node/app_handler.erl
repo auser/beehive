@@ -28,6 +28,7 @@
 -record(state, {
   max_backends,             % maximum number of backends on this host
   available_ports,          % available ports on this node
+  app_pids,                 % pids that are running the apps
   current_backends  = []    % backends hosted on this app_handler
 }).
 -define(SERVER, ?MODULE).
@@ -76,6 +77,7 @@ init([]) ->
   
   {ok, #state{
     max_backends = MaxBackends,
+    app_pids        = [],
     available_ports = AvailablePorts
   }}.
 
@@ -88,12 +90,19 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%-------------------------------------------------------------------- 
-handle_call({start_new_instance, App, From}, _From, #state{current_backends = CurrBackends, available_ports = AvailablePorts} = State) ->
+handle_call({start_new_instance, App, From}, _From, #state{
+                                      current_backends = CurrBackends,
+                                      app_pids = AppPids, 
+                                      available_ports = AvailablePorts} = State) ->
   Port = hd(AvailablePorts),
   ?LOG(info, "internal_start_new_instance(~p, ~p, ~p)", [App, Port, From]),
   Backend = internal_start_new_instance(App, Port, From),
   NewAvailablePorts = lists:delete(Port, AvailablePorts),
-  {reply, ok, State#state{current_backends = [Backend|CurrBackends], available_ports = NewAvailablePorts}};
+  {reply, ok, State#state{
+    current_backends = [Backend|CurrBackends], 
+    available_ports = NewAvailablePorts,
+    app_pids = [{Backend#backend.pid, Backend}|AppPids]}
+  };
   
 handle_call({stop_instance, Backend, App, From}, _From, #state{current_backends = CurrBackends, available_ports = AvailablePorts} = State) ->
   Port = Backend#backend.port,
@@ -124,6 +133,23 @@ handle_cast(_Msg, State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
+handle_info({'EXIT', Pid, _Reason}, #state{
+                                      app_pids = AppPids, 
+                                      current_backends = CurrBackends, 
+                                      available_ports = AvailablePorts} = State
+                                    ) ->
+  case lists:keymember(Pid, 1, AppPids) of
+    true ->
+      % This is an app port running
+      {value, {Pid, Backend}} = lists:keysearch(Pid, 1, AppPids),
+      NewAppPids = lists:keydelete(Pid, 1, AppPids),
+      NewPorts = lists:delete(Backend#backend.port, AvailablePorts),
+      NewBackends = lists:delete(Backend, CurrBackends),
+      ?NOTIFY({backend, backend_down, Backend}),
+      {noreply, State#state{app_pids = NewAppPids, available_ports = NewPorts, current_backends = NewBackends}};
+    false ->
+      {noreply, State}
+  end;
 handle_info(Info, State) ->
   ?LOG(info, "~p caught info: ~p", [?MODULE, Info]),
   {noreply, State}.
