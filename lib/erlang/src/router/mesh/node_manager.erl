@@ -177,10 +177,7 @@ handle_cast({request_to_start_new_backend, Name}, State) ->
   Backends = backend:find_all_by_name(Name),
   PendingBackends = lists:filter(fun(B) -> B#backend.status =:= pending end, Backends),
   case length(PendingBackends) > 0 of
-    false ->
-      Host = get_next_available_host(),
-      App = app:find_by_name(Name),
-      spawn_to_start_new_instance(App, Host);
+    false -> start_new_instance_by_name(Name);
     true -> ok
   end,
   {noreply, State};
@@ -228,6 +225,10 @@ get_next_available_host() ->
     false -> get_next_available_host()
   end.
 
+start_new_instance_by_name(Name) ->
+  Host = get_next_available_host(),
+  App = app:find_by_name(Name),
+  spawn_to_start_new_instance(App, Host).
 % Start with the app_launcher_fsm
 spawn_to_start_new_instance(Name, Host) ->
   {ok, P} = app_launcher_fsm:start_link(Name, Host),
