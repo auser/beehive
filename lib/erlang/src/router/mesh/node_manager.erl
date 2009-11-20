@@ -174,9 +174,15 @@ handle_call(_Request, _From, State) ->
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
 handle_cast({request_to_start_new_backend, Name}, State) ->
-  Host = get_next_available_host(),
-  App = app:find_by_name(Name),
-  spawn_to_start_new_instance(App, Host),
+  Backends = backend:find_all_by_name(Name),
+  PendingBackends = lists:filter(fun(B) -> B#backend.status =:= pending end, Backends),
+  case length(ReadyBackends) > 0 of
+    false ->
+      Host = get_next_available_host(),
+      App = app:find_by_name(Name),
+      spawn_to_start_new_instance(App, Host);
+    true -> ok
+  end,
   {noreply, State};
 handle_cast(_Msg, State) ->
   {noreply, State}.
