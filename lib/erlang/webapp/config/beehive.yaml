@@ -1,0 +1,6 @@
+name: webapp
+min_instances: 1
+max_instances: 2
+start_command:  thin -d -R beehive.ru --log /tmp/beehive.log --pid /tmp/beehive-[[PORT]].pid --port [[PORT]] start
+stop_command:   thin -d -R beehive.ru --log /tmp/beehive.log --pid /tmp/beehive-[[PORT]].pid stop
+path: webapp/
