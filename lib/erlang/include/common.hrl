@@ -12,4 +12,5 @@
 end).
 
 -define (FIXTURES_DIR, file_utils:relative_path("test/fixtures")).
--define (CONFIGS_DIR, "test/fixtures/configs").
+% Figure this out... Hm
+-define (CONFIGS_DIR, file_utils:relative_path("webapp/config")).
