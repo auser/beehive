@@ -176,7 +176,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({request_to_start_new_backend, Name}, State) ->
   Backends = backend:find_all_by_name(Name),
   PendingBackends = lists:filter(fun(B) -> B#backend.status =:= pending end, Backends),
-  case length(ReadyBackends) > 0 of
+  case length(PendingBackends) > 0 of
     false ->
       Host = get_next_available_host(),
       App = app:find_by_name(Name),
