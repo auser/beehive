@@ -37,7 +37,7 @@ EOF
 }
 
 # Defaults
-HOSTNAME=`hostname`
+HOSTNAME=`hostname -f`
 MNESIA_DIR="./db"
 DAEMONIZE_ARGS=""
 ROUTER_OPTS="-router"
