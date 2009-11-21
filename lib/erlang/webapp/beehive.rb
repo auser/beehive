@@ -1,13 +1,11 @@
-require "rubygems"
-require "yaml"
+# Stdlib
+require 'rubygems'
+require 'yaml'
+require 'haml'
+require 'sass'
+
+# Readily available
 require 'sinatra/base'
 
-class Beehive < Sinatra::Base
-  get "/" do
-   open("templates/index.html").read
-  end
-
-  get "/favicon.ico" do
-    ""
-  end
-end
+# Beehive
+require "app/base"

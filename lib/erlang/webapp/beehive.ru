@@ -1,3 +1,3 @@
-require 'beehive.rb'
-
-run Beehive
+$:.unshift(File.dirname(__FILE__))
+require 'beehive'
+run Beehive::Application
