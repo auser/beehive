@@ -1,0 +1,16 @@
+body {
+	text-align: center; /* For IE centering. */
+	font-family: "DejaVu Serif", Times, "Times New Roman", serif;
+	font-size: 62.5%; /* Resets UA 16px common default such that 1em = 10px. Kudos to Richard Rutter. */
+	line-height: 1.5; /* We can use unitless numbers here; they act as multiples of the font-size. */
+	color: #111;
+	}
+
+div#container {
+	margin: 0 auto 0 auto;
+	padding: 4.8em 0 4.8em 0;
+	text-align: left;
+	width: 86em; /* 960 minus the gutters (48 on each side). */
+	}
+
+a.internal, .sitesearch, p.vcard { display: none; }

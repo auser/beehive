@@ -1,0 +1,17 @@
+!!! Strict
+%html{ :xmlns => "http://www.w3.org/1999/xhtml", "xml:lang" => "en", :lang => "en" }
+  %head
+    %title Beehive
+    %link{ :href => "/stylesheets/screen.css", :media => "screen", :rel => "stylesheet", :type => "text/css" }/
+    /[if IE]
+      %link{ :href => "/stylesheets/ie.css", :media => "screen, projection", :rel => "stylesheet", :type => "text/css" }/
+  %body
+    #container
+      #header
+        = partial :_header
+      .bumper
+        #content
+          = yield
+      .bumper
+        #footer
+          = partial :_footer

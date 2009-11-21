@@ -1,0 +1,13 @@
+// the grid's total_width = 770 | 954 | 1138
+@import grid/blueprint_954.sass
+!total_width = !blueprint_grid_columns * (!blueprint_grid_width + !blueprint_grid_margin) - !blueprint_grid_margin
+
+@import blueprint/screen.sass
+@import blueprint/modules/debug.sass
+
++blueprint-typography
++blueprint-utilities
++blueprint-grid
++blueprint-debug("/images/grid.png")
++blueprint-interaction
++blueprint-form
