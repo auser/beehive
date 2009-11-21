@@ -12,9 +12,4 @@ require 'compass'
 # Beehive
 require 'beehive'
 
-# use Rack::Static,
-#   :root => "public",
-#   :urls => ["/images",
-#             "/javascripts"]
-
 run BeehiveApp

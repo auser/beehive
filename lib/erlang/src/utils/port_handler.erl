@@ -9,7 +9,8 @@
 start(Cmd, WorkingDir, From) ->
   process_flag(trap_exit, true),
   spawn_link(fun() ->
-    Port = open_port({spawn, Cmd}, [{packet, 4}, exit_status, nouse_stdio, {cd, WorkingDir}]),
+    ?LOG(info, "Starting in ~p", [file_utils:relative_path(WorkingDir)]),
+    Port = open_port({spawn, Cmd}, [{packet, 4}, exit_status, nouse_stdio, {cd, file_utils:relative_path(WorkingDir)}]),
     port_loop(Port, Cmd, WorkingDir, From)
   end).
 
@@ -27,7 +28,7 @@ port_loop(Port, Cmd, WorkingDir, From) ->
 	    From ! {port_closed, Port};
       % port_close(Port);
     {Port, {exit_status, Code}} ->
-	    io:format("Port decided to exit for some reason: ~p", [Code]);
+	    io:format("Port decided to exit for some reason: ~p~n", [Code]);
       % port_close(Port);
 	  Else ->
 	    io:format("Port received: ~p~n", [Else]),
