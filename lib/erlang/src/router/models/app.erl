@@ -17,7 +17,7 @@
   all/0,
   exist/1,
   create/1,
-  update/1,
+  update/1, update_by_name/1,
   delete/1, new/1
 ]).
 
@@ -39,12 +39,22 @@ exist(Name) ->
 
 % Insert a new app
 create(App) when is_record(App, app) ->
+  case exist(App#app.name) of
+    true -> ?NOTIFY({app, updated, App});
+    false -> ?NOTIFY({app, created, App})
+  end,
   db:write(App);
 create(NewProps) ->
   create(new(NewProps)).
 
-update(_) ->
-  ok.
+update_by_name(Name) ->
+  case find_by_name(Name) of
+    [] -> {error, "Cannot find app to update"};
+    App -> {ok, create(App#app{updated_at = date_util:now_to_seconds()})}
+  end.
+
+update(NewProps) ->
+  update(new(NewProps)).
 
 delete(App) when is_record(App, app) -> db:delete_object(App);
 delete(Name) ->

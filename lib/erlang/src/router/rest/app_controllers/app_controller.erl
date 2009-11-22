@@ -26,9 +26,15 @@ get(["all"]) ->
 
 get(_) -> "hello world".
 
+post([Name], _Data) ->
+  case app:update_by_name(Name) of
+    {ok, _} -> updated;
+    _ -> error
+  end;
+
 post(["new"], Data) ->
   case app:create(Data) of
-    ok -> "Added new app";
+    ok -> {"apps", Data};
     _ -> "There was an error adding backend\n"
   end;
   
