@@ -85,7 +85,7 @@ launching({launch}, #state{app = App, host = Host} = State) ->
 launching({started_backend, Be}, State) ->
   backend_srv:add_backend(Be),
   Self = self(),
-  app_manager:spawn_update_backend_status(Be, Self),
+  app_manager:spawn_update_backend_status(Be, Self, 20),
   {next_state, pending, State#state{backend = Be}};
 
 launching(Event, State) ->
