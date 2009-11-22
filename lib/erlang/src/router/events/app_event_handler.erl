@@ -39,7 +39,11 @@ init([]) ->
 handle_event({app, not_enough_app_instances_running_to_serve_requests, Hostname}, State) ->
   node_manager:request_to_start_new_backend(Hostname),
   {ok, State};
-  
+
+handle_event({app, updated, App}, State) ->
+  node_manager:request_to_terminate_all_backends(App#app.name),
+  {ok, State};
+
 handle_event({app, request_to_start_new_backend, Hostname}, State) ->
   node_manager:request_to_start_new_backend(Hostname),
   {ok, State};

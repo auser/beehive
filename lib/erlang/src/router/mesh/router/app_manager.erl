@@ -20,7 +20,7 @@
   terminate_all/0,
   terminate_app_instances/1,
   add_application/1,
-  spawn_update_backend_status/2
+  spawn_update_backend_status/3
 ]).
 
 %% gen_server callbacks
@@ -185,9 +185,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 
 % Spawn a process to try to connect to the instance
-spawn_update_backend_status(Backend, From) ->
+spawn_update_backend_status(Backend, From, Nums) ->
   spawn(fun() ->
-    BackendStatus = try_to_connect_to_new_instance(Backend, 5),
+    BackendStatus = try_to_connect_to_new_instance(Backend, Nums),
     backend:update(Backend#backend{status = BackendStatus}),
     From ! {updated_backend_status, BackendStatus}
   end).
@@ -334,7 +334,7 @@ load_app_config_from_yaml_file(Filepath, Ext) ->
 ping_backends() ->
   ReadyBackends = lists:filter(fun(B) -> B#backend.status =:= ready end, backend:all()),
   lists:map(fun(B) ->
-    spawn_update_backend_status(B, self())
+    spawn_update_backend_status(B, self(), 10)
   end, ReadyBackends),
   ok.
 
