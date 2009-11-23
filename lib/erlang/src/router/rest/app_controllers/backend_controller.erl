@@ -30,8 +30,8 @@ get(_Path) ->
 
 post(_Path, Data) ->
   case backend:create(Data) of
-    {ok, Be} -> io_lib:format("Added backend: ~p on ~p:~p", [Be#backend.app_name, Be#backend.host, Be#backend.port]);
-    _ -> "There was an error adding backend\n"
+    {ok, Be} -> misc_utils:to_bin(io_lib:format("Added backend: ~p on ~p:~p", [Be#backend.app_name, Be#backend.host, Be#backend.port]));
+    _ -> misc_utils:to_bin("There was an error adding backend\n")
   end.
   
 % post(_Path, _Data) -> "unhandled".
@@ -39,12 +39,12 @@ put(_Path, _Data) -> "unhandled".
 
 delete([Name], _Data) ->
   case backend:delete(Name) of
-    ok -> "Deleted backend";
-    _ -> "There was an error deleting backend\n"
+    ok -> misc_utils:to_bin("Deleted backend");
+    _ -> misc_utils:to_bin("There was an error deleting backend\n")
   end;
 delete([Name, Host, Port], _Data) ->
   case backend:delete(Name, Host, misc_utils:to_integer(Port)) of
-    ok -> "Deleted backend";
-    _ -> "There was an error deleting backend\n"
+    ok -> misc_utils:to_bin("Deleted backend");
+    _ -> misc_utils:to_bin("There was an error deleting backend\n")
   end;
 delete(_Path, _Data) -> "unhandled".
