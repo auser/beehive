@@ -18,20 +18,6 @@
 get([]) ->
   format_proxy_state();
 
-% get("/status", _Data) ->
-%   StatusProplist = backend_srv:status(),
-%   Apps = proplists:get_value(apps, StatusProplist),
-%   _Hostnames = proplists:get_value(hostnames, StatusProplist),
-%   
-%   Content = lists:map(fun({Name, _App}) -> 
-%       {struct, 
-%         [{Name, misc_utils:to_bin(length([]))}]
-%       }
-%     end, Apps),
-%   
-%   ?LOG(info, "Apps: ~p", [Content]),
-%   {json, 200, [], {?MODULE, Content}};
-  
 get(_UnsupportedPath) ->
   "GET".
 
@@ -95,10 +81,6 @@ format_proxy_state() ->
 format_backend_list(List) -> format_backend_list(List, []).
 format_backend_list([], Acc) -> lists:reverse(Acc);
 format_backend_list([B|Bs], Acc) ->
-    LastErrTime = if
-    B#backend.lasterr_time -> B#backend.lasterr_time;
-    true -> 62167219200
-  end,
   {L1, L2} = case ?QSTORE:get_queue(?WAIT_DB, B#backend.app_name) of
     empty -> {[], []};
     E -> E
@@ -124,7 +106,7 @@ format_backend_list([B|Bs], Acc) ->
     {"host", B#backend.host},
     {"port", B#backend.port},
     {"status", B#backend.status},
-    {"last_err_time", LastErrTime},
+    {"last_err_time", B#backend.lasterr_time},
     {"average_req_time", AvgTime},
     {"pending_requests", (length(L1) + length(L2))},
     {"total_requests", TotalReq},
