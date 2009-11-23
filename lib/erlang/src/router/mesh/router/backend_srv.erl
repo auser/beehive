@@ -274,14 +274,11 @@ choose_backend(Hostname, FromPid) ->
 % Here is the logic to choose a backend from the list of backends
 % For now, we'll just be using the random strategy
 choose_from_backends([], _FromPid) -> ?MUST_WAIT_MSG;
-choose_from_backends(Backends, FromPid) ->
-  Backend = strategically_choose_from_backends(random, Backends, FromPid),
+choose_from_backends(Backends, _FromPid) ->
+  Strategy = "random",
+  Fun = erlang:list_to_atom(Strategy),
+  Backend = backend_strategies:Fun(Backends),
   {ok, Backend}.
-
-% Randomly choose a backend from the backend list given
-strategically_choose_from_backends(random, Backends, _FromPid) ->
-  RandNum = random:uniform(length(Backends)),
-  lists:nth(RandNum, Backends).
 
 % Handle adding a new backend
 handle_add_backend(NewBE) ->
