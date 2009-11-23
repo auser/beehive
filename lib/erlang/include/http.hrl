@@ -1,5 +1,5 @@
 -define (JSON_ENCODE(V), mochijson2:encode(V)).
--define (BINIFY (PropList), 
+-define (BINIFY (PropList),
   lists:map(fun({K, V}) ->
     {K, misc_utils:to_bin(V)}
   end, PropList)).

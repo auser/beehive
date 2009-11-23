@@ -16,8 +16,9 @@
   start_link/0,
   stop/0,
   start_new_instance/2,
-  stop_instance/3,
-  can_deploy_new_app/0
+  stop_instance/3, stop_app/2,
+  can_deploy_new_app/0,
+  has_app_named/1
 ]).
 
 
@@ -55,6 +56,12 @@ start_new_instance(App, From) ->
 stop_instance(Backend, App, From) ->
   gen_server:call(?SERVER, {stop_instance, Backend, App, From}).
 
+has_app_named(Name) ->
+  gen_server:call(?SERVER, {has_app_named, Name}).
+  
+stop_app(App, From) ->
+  gen_server:cast(?SERVER, {stop_app, App, From}).
+
 %%====================================================================
 %% gen_server callbacks
 %%====================================================================
@@ -73,6 +80,7 @@ init([]) ->
   ets:new(?MODULE, Opts),
   
   MaxBackends     = ?MAX_BACKENDS_PER_HOST,
+  % set a list of ports that the node can use to deploy applications
   AvailablePorts  = lists:seq(?STARTING_PORT, ?STARTING_PORT + MaxBackends),
   
   {ok, #state{
@@ -103,14 +111,22 @@ handle_call({start_new_instance, App, From}, _From, #state{
     available_ports = NewAvailablePorts,
     app_pids = [{Backend#backend.pid, Backend}|AppPids]}
   };
-  
+
 handle_call({stop_instance, Backend, App, From}, _From, #state{current_backends = CurrBackends, available_ports = AvailablePorts} = State) ->
   Port = Backend#backend.port,
   internal_stop_instance(Backend, App, From),
   NewBackends = lists:keydelete(Backend#backend.id, 1, CurrBackends),
   NewAvailablePorts = [Port|AvailablePorts],
   {reply, ok, State#state{current_backends = NewBackends, available_ports = NewAvailablePorts}};
-  
+
+handle_call({has_app_named, Name}, _From, #state{current_backends = Curr} = State) ->
+  BackendsOfAppNamed = lists:takewhile(fun(Backend) ->
+      Backend#backend.app_name =:= Name
+    end, Curr),
+  Reply = length(BackendsOfAppNamed) =/= 0,
+  {reply, Reply, State};
+
+% Check if this node can deploy a new application or not
 handle_call({can_deploy_new_app}, _From, #state{current_backends = Curr, max_backends = Max} = State) ->
   Reply = (length(Curr) =< Max),
   {reply, Reply, State};
@@ -124,6 +140,18 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
+% Good spot for optimization
+handle_cast({stop_app, App, From}, #state{current_backends = CurrBackends} = State) ->
+  BackendOfApp = lists:filter(fun(Backend) -> Backend#backend.app_name =:= App#app.name end, CurrBackends),
+  
+  lists:map(fun(Backend) ->
+    internal_stop_instance(Backend, App, From)
+  end, BackendOfApp),
+  
+  NewBackends = lists:subtract(CurrBackends, BackendOfApp),
+  NewAvailablePorts = lists:map(fun(B) -> B#backend.port end, NewBackends),
+  {noreply, State#state{current_backends = NewBackends, available_ports = NewAvailablePorts}};
+  
 handle_cast(_Msg, State) ->
   {noreply, State}.
 
@@ -211,6 +239,7 @@ internal_start_new_instance(App, Port, From) ->
 
 % kill the instance of the application  
 internal_stop_instance(Backend, App, From) ->
+  From ! {stopped_backend, Backend},
   RealCmd = template_command_string(App#app.stop_command, [
                                                         {"[[PORT]]", erlang:integer_to_list(Backend#backend.port)},
                                                         {"[[GROUP]]", App#app.group},
@@ -223,8 +252,7 @@ internal_stop_instance(Backend, App, From) ->
     [{Key, _B}] ->
       ets:delete(?MODULE, Key);
     _ -> true
-  end,
-  From ! {stopped_backend, Backend}.
+  end.
 
 % turn the command string from the comand string with the values
 % of [[KEY]] replaced by the corresponding proplist element of

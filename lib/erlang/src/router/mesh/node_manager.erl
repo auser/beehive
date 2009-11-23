@@ -16,6 +16,7 @@
   start_link/0,
   start_link/2,
   request_to_start_new_backend/1,
+  request_to_terminate_all_backends/1,
   get_host/0, get_seed/0,
   get_routers/0, get_nodes/0,
   dump/1,
@@ -90,6 +91,9 @@ get_nodes() ->
   
 request_to_start_new_backend(Name) -> 
   gen_server:cast(?SERVER, {request_to_start_new_backend, Name}).
+
+request_to_terminate_all_backends(Name) ->
+  gen_server:cast(?SERVER, {request_to_terminate_all_backends, Name}).
 
 dump(Pid) ->
   gen_server:call(?SERVER, {dump, Pid}).
@@ -173,6 +177,25 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
+handle_cast({request_to_terminate_all_backends, Name}, State) ->
+  % backend:update(Backend#backend{status = down}),
+  % First, find all the backends and "unregister" them, or delete them from the backend list so we don't
+  % route any requests this way
+  Backends = app:find_by_name(Name),
+  lists:map(fun(Backend) -> backend:update(Backend#backend{status = unavailable}) end, Backends),
+  % Next, do this in an rpc call to shutdown the nodes
+  App = app:find_by_name(Name),
+  Nodes = lists:map(fun(N) -> node(N) end, get_nodes()),
+  % Can't do this in a multicall (or it would be an optimization), but want to get the node back
+  % so for now, we'll do it in an rpc:call, instead
+  lists:map(fun(Node) ->
+    case rpc:call(Node, ?APP_HANDLER, has_app_named, [Name]) of
+      true -> 
+        rpc:call(Node, ?APP_HANDLER, stop_app, [App, self()]);
+      false -> ok
+    end
+  end, Nodes),
+  {noreply, State};
 handle_cast({request_to_start_new_backend, Name}, State) ->
   Backends = backend:find_all_by_name(Name),
   % Don't start a new backend if there is a pending one
@@ -191,6 +214,10 @@ handle_cast(_Msg, State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
+handle_info({stopped_backend, Backend}, State) ->
+  backend:update(Backend#backend{status = down}),
+  {noreply, State};
+  
 handle_info({stay_connected_to_seed, Seed}, State) ->
   join(Seed),
   {noreply, State};

@@ -9,7 +9,7 @@
 -define (RUN_INSTANCE_TIME_PERIOD, 3600).
 
 % Max backends available on every host
--define (MAX_BACKENDS_PER_HOST, 20).
+-define (MAX_BACKENDS_PER_HOST, 3).
 
 % Get the fields of a record into a proplist
 -define(rec_info(T,R),lists:zip(record_info(fields,T),tl(tuple_to_list(R)))). 
@@ -20,11 +20,7 @@
 -define (MUST_WAIT_MSG, backend_must_wait).
 
 % STORES
--define (APP_DB, apps_db).
--define (BACKEND_DB, backend_db).
 -define (WAIT_DB, waiting_db).
--define (PID2BACKEND_DB, pid_to_backend_db).
--define (BACKEND2PID_DB, backend_to_pid_db).
 
 % EVENTS
 -define (EVENT_MANAGER, event_manager).
