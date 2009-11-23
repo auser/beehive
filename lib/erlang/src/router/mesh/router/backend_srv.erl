@@ -275,7 +275,7 @@ choose_backend(Hostname, FromPid) ->
 % For now, we'll just be using the random strategy
 choose_from_backends([], _FromPid) -> ?MUST_WAIT_MSG;
 choose_from_backends(Backends, _FromPid) ->
-  Strategy = "random",
+  Strategy = apps:search_for_application_value(backend_strategy, "random", router),
   Fun = erlang:list_to_atom(Strategy),
   Backend = backend_strategies:Fun(Backends),
   {ok, Backend}.

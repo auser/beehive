@@ -21,6 +21,7 @@ OPTIONS
 	-s, --seed	Pass in the seed node
 	-p, --port	Port to run the router
 	-t, --type	Type of node to start (default: router)
+	-g, --strategy	Strategy to choose a backend. (default: random)
 	-d		Daemonize the process
 	-v		Verbose
 	-h, --help	Show this screen
@@ -44,9 +45,10 @@ ROUTER_OPTS="-router"
 TYPE="router"
 REST="true"
 VERBOSE=false
+STRATEGY="random"
 
-SHORTOPTS="hm:n:dp:t:r:s:v"
-LONGOPTS="help,version,port,type,rest,seed,mnesia_dir,daemonize"
+SHORTOPTS="hm:n:dp:t:g:r:s:v"
+LONGOPTS="help,version,port,type,strategy,rest,seed,mnesia_dir,daemonize"
 
 if $(getopt -T >/dev/null 2>&1) ; [ $? = 4 ] ; then # New longopts getopt.
     OPTS=$(getopt -o $SHORTOPTS --long $LONGOPTS -n "$progname" -- "$@")
@@ -88,7 +90,10 @@ while [ $# -gt 0 ]; do
 		-t|--type)
 			TYPE=$2
 			shift 2;;
-		-d|daemonize)
+    -g|--strategy)
+			ROUTER_OPTS="$ROUTER_OPTS backend_strategy '$2'"
+      shift 2;;
+		-d|--daemonize)
 			DAEMONIZE_ARGS="-detached -heart"
 			shift;;
 		-v)

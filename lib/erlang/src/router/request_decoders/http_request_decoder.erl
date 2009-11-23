@@ -77,12 +77,14 @@ headers_to_list(Headers) ->
 
 % HTTP
 parse_subdomain(HostName) ->
-  NumberOfPeriods = length([X || X <- HostName, X =:= $.]),
+  parse_subdomain1(string:tokens(HostName, ".")).
+
+parse_subdomain1([H|_Rest] = List) ->
   if
-    NumberOfPeriods > 1 ->
-      StrippedHostname = lists:takewhile(fun (C) -> C =/= $: end, HostName),
-      lists:takewhile(fun (C) -> C =/= $. end, StrippedHostname);
-    true -> base
+    length(List) == 1 ->
+      base;
+    true ->
+      H
   end.
 
 % FROM MOCHIWEB
