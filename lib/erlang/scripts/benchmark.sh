@@ -15,7 +15,17 @@ OPTIONS
 	-p, --proxy Proxy url
 	-r, --raw Raw url
 	-P, --port Port
+	-c, --concurrent Concurrent number of connections to test (not used for comparison tests)
+	-T, --type Type of test (default: comparison)
 	-h, --help	Show this screen
+	
+TYPE OF TESTS
+comparison ->
+	Compares the response time of the raw and proxy against -c concurrent connections
+multi ->
+	Compares the response time of 1, 25 and 50 concurrent connections, this will graph the difference in response time of the proxy against the raw url
+proxy ->
+	Charts the connection times at -c concurrent connections
 	
 EOF
 }
@@ -28,7 +38,7 @@ Copyright (C) 2009 Ari Lerner
 EOF
 }
 
-run_comparison_graph() {
+run_multi_comparison_graph() {
 	echo "plot \
 	  '/tmp/graph-proxy.data1' using 10 with lines title 'Proxy ($TOTAL/1)', \
 	  '/tmp/graph-proxy.data2' using 10 with lines title 'Proxy ($TOTAL/25)', \
@@ -67,6 +77,24 @@ run_proxy_graph() {
 	REMOTE_URL="http://$PROXY_URL:$PORT$URL"
 	echo "---- PROXY : $REMOTE_URL ($TOTAL/$CONCURRENT) ----"
 	$AB -n $TOTAL -c $CONCURRENT -g /tmp/graph-proxy $REMOTE_URL > /dev/null
+}
+
+run_comparison_graph() {
+	echo "plot \
+	  '/tmp/graph-proxy.data' using 10 with lines title 'Proxy ($TOTAL/$CONCURRENT)', \
+	  '/tmp/graph-raw.data' using 10 with lines title 'Raw ($TOTAL/50)'
+	" >> $PLOT_OUTPUT_SCRIPT
+	
+	echo "Benchmarking..."
+	REMOTE_URL="http://$PROXY_URL:$PORT$URL"
+	echo "---- PROXY : $REMOTE_URL ----"
+	echo "$TOTAL HTTP requests";
+	$AB -n $TOTAL -c $CONCURRENT -g /tmp/graph-proxy.data1 $REMOTE_URL > /dev/null
+
+	REMOTE_URL="http://$RAW_URL:$PORT$URL"
+	echo "---- RAW : $REMOTE_URL ----"
+	echo "$TOTAL HTTP requests";
+	$AB -n $TOTAL -c $CONCURRENT -g /tmp/graph-raw.data1 $REMOTE_URL > /dev/null
 }
 
 # Defaults
@@ -179,15 +207,18 @@ echo "curl -i -XPOST -d\"{\"app_name\":\"$NAME\", \"host\":\"$RAW_URL\", \"port\
 curl -i -XPOST -d"{\"app_name\":\"$NAME\", \"host\":\"$RAW_URL\", \"port\":\"$PORT\"}" http://$PROXY_URL:$PORT/backend/new
 
 case $TYPE in
-	"comparison")
-		run_comparison_graph
+	"multi")
+		run_multi_comparison_graph
 		;;
 	"proxy")
 		run_proxy_graph
 		;;
+	"comparison")
+		run_comparison_graph
+		;;
 	*)
 		echo "
-			Current supported types are comparison and proxy
+			Current supported types are comparison, multi and proxy
 		"
 		exit 0
 		;;
