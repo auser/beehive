@@ -13,6 +13,7 @@ Run benchmarking against the proxy
 OPTIONS
 	-t, --total	Total number of connections for each request
 	-p, --proxy Proxy url
+	-R, --raw_port Raw port
 	-r, --raw Raw url
 	-P, --port Port
 	-c, --concurrent Concurrent number of connections to test (not used for comparison tests)
@@ -58,7 +59,7 @@ run_multi_comparison_graph() {
 	echo "$TOTAL HTTP requests 3/3 with 50 concurrent requests";
 	$AB -n $TOTAL -c 50 -g /tmp/graph-proxy.data3 $REMOTE_URL/$URL > /dev/null
 
-	REMOTE_URL="http://$RAW_URL:$PORT$URL"
+	REMOTE_URL="http://$RAW_URL:$RAW_PORT$URL"
 	echo "---- RAW : $REMOTE_URL ----"
 	echo "$TOTAL HTTP requests 1/3";
 	$AB -n $TOTAL -g /tmp/graph-raw.data1 $REMOTE_URL > /dev/null
@@ -82,19 +83,19 @@ run_proxy_graph() {
 run_comparison_graph() {
 	echo "plot \
 	  '/tmp/graph-proxy.data' using 10 with lines title 'Proxy ($TOTAL/$CONCURRENT)', \
-	  '/tmp/graph-raw.data' using 10 with lines title 'Raw ($TOTAL/50)'
+	  '/tmp/graph-raw.data' using 10 with lines title 'Raw ($TOTAL/$CONCURRENT)'
 	" >> $PLOT_OUTPUT_SCRIPT
 	
 	echo "Benchmarking..."
 	REMOTE_URL="http://$PROXY_URL:$PORT$URL"
 	echo "---- PROXY : $REMOTE_URL ----"
 	echo "$TOTAL HTTP requests";
-	$AB -n $TOTAL -c $CONCURRENT -g /tmp/graph-proxy.data1 $REMOTE_URL > /dev/null
+	$AB -n $TOTAL -c $CONCURRENT -g /tmp/graph-proxy.data $REMOTE_URL > /dev/null
 
-	REMOTE_URL="http://$RAW_URL:$PORT$URL"
+	REMOTE_URL="http://$RAW_URL:$RAW_PORT$URL"
 	echo "---- RAW : $REMOTE_URL ----"
 	echo "$TOTAL HTTP requests";
-	$AB -n $TOTAL -c $CONCURRENT -g /tmp/graph-raw.data1 $REMOTE_URL > /dev/null
+	$AB -n $TOTAL -c $CONCURRENT -g /tmp/graph-raw.data $REMOTE_URL > /dev/null
 }
 
 # Defaults
@@ -106,12 +107,13 @@ CONCURRENT=3
 OUTPUT="graph"
 VERBOSE=false
 PORT=8080
+RAW_PORT=$PORT
 NAME="test"
 TYPE="comparison"
 URL="/"
 
-SHORTOPTS="ht:o:p:r:P:n:u:c:T:"
-LONGOPTS="help,version,total,output,port,raw,proxy,name,url,concurrent,type"
+SHORTOPTS="ht:o:p:r:P:n:u:c:T:R:"
+LONGOPTS="help,version,total,output,port,raw,proxy,name,url,concurrent,type,raw_port"
 
 if $(getopt -T >/dev/null 2>&1) ; [ $? = 4 ] ; then # New longopts getopt.
     OPTS=$(getopt -o $SHORTOPTS --long $LONGOPTS -n "$progname" -- "$@")
@@ -144,6 +146,9 @@ while [ $# -gt 0 ]; do
 		-r|--raw)
 			RAW_URL=$2
 			shift 2;;
+		-R|--raw_port)
+			RAW_PORT=$2
+			shift 2;;
 		-P|--port)
 			PORT=$2
 			shift 2;;
@@ -174,7 +179,7 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
-OUTPUT="$OUTPUT.$TOTAL.$CONCURRENT"
+OUTPUT="$OUTPUT.$TYPE.$TOTAL.$CONCURRENT"
 
 if [ -z $PROXY_URL ]; then
 	echo "Proxy url is required"
@@ -187,24 +192,16 @@ if [ -z $RAW_URL ]; then
 	exit 1
 fi
 
-echo "set   autoscale                        # scale axes automatically
-unset log                              # remove any log-scaling
-unset label                            # remove any previous labels
-set xtic auto                          # set xtics automatically
-set ytic auto                          # set ytics automatically
-
-set terminal png
+echo "set terminal png
 set title 'Proxy vs. raw response times ($PROXY_URL)'
-set xlabel 'Request'
-set ylabel 'ms'
-set size 2,1
-set key left top
+set xlabel 'Request (count)'
+set ylabel 'Response time (ms)'
 set output '$OUTPUT.png'" > $PLOT_OUTPUT_SCRIPT
 
 echo "Testing proxy at url: http://$PROXY_URL"
 echo "Adding backend: "
-echo "curl -i -XPOST -d\"{\"app_name\":\"$NAME\", \"host\":\"$RAW_URL\", \"port\":\"$PORT\"}\" http://$PROXY_URL:$PORT/backend/new"
-curl -i -XPOST -d"{\"app_name\":\"$NAME\", \"host\":\"$RAW_URL\", \"port\":\"$PORT\"}" http://$PROXY_URL:$PORT/backend/new
+echo "curl -i -XPOST -d\"{\"app_name\":\"$NAME\", \"host\":\"$RAW_URL\", \"port\":\"$RAW_PORT\"}\" http://$PROXY_URL:$PORT/backend/new"
+curl -i -XPOST -d"{\"app_name\":\"$NAME\", \"host\":\"$RAW_URL\", \"port\":\"$RAW_PORT\"}" http://$PROXY_URL:$PORT/backend/new > /dev/null
 
 case $TYPE in
 	"multi")
@@ -229,5 +226,5 @@ $GNUPLOT $PLOT_OUTPUT_SCRIPT > /dev/null
 echo "The graph has been saved to $OUTPUT";
 
 echo "curl -i -XDELETE -d\"{}\" http://$PROXY_URL/backend/$NAME/$RAW_URL/$PORT"
-curl -i -XDELETE -d"{}" http://$PROXY_URL:$PORT/backend/$NAME/$RAW_URL/$PORT
+curl -i -XDELETE -d"{}" http://$PROXY_URL:$PORT/backend/$NAME/$RAW_URL/$PORT > /dev/null
 rm /tmp/graph-*
