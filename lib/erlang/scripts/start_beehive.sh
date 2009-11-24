@@ -20,6 +20,7 @@ OPTIONS
 	-r, --rest	Run the rest server (boolean)
 	-s, --seed	Pass in the seed node
 	-p, --port	Port to run the router
+	-i, --initial_backends Initial backends to start the backend_srv
 	-t, --type	Type of node to start (default: router)
 	-g, --strategy	Strategy to choose a backend. (default: random)
 	-d		Daemonize the process
@@ -47,8 +48,8 @@ REST="true"
 VERBOSE=false
 STRATEGY="random"
 
-SHORTOPTS="hm:n:dp:t:g:r:s:v"
-LONGOPTS="help,version,port,type,strategy,rest,seed,mnesia_dir,daemonize"
+SHORTOPTS="hm:n:dp:t:g:r:s:vi:"
+LONGOPTS="help,version,port,type,strategy,rest,seed,mnesia_dir,daemonize,initial_backends"
 
 if $(getopt -T >/dev/null 2>&1) ; [ $? = 4 ] ; then # New longopts getopt.
     OPTS=$(getopt -o $SHORTOPTS --long $LONGOPTS -n "$progname" -- "$@")
@@ -86,6 +87,9 @@ while [ $# -gt 0 ]; do
 			shift 2;;
 		-s|--seed)
 			ROUTER_OPTS="$ROUTER_OPTS seed '$2'"
+			shift 2;;
+		-i|--initial_backends)
+			ROUTER_OPTS="$ROUTER_OPTS backends '$2'"
 			shift 2;;
 		-t|--type)
 			TYPE=$2
