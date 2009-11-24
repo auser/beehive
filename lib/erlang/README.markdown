@@ -78,6 +78,12 @@ To add a new node, as mentioned above, start a node with the seed value from the
   ./start_beehive.sh -s 'router@my-other-machine.com'
 </code></pre>
 
+To add an existing node to a cluster, you can set the seed with:
+
+<pre><code>
+  node_manager:set_seed(OtherNodePid).
+</code></pre>
+
 Note: The documentation assumes that the router is sitting at a network accessible location. The documentation uses the CNAME "beehive.com" to illustrate.
 
 

@@ -18,6 +18,7 @@
   request_to_start_new_backend/1,
   request_to_terminate_all_backends/1,
   get_host/0, get_seed/0,
+  set_seed/1,
   get_routers/0, get_nodes/0,
   dump/1,
   join/1,
@@ -101,6 +102,9 @@ dump(Pid) ->
 
 get_seed() ->
   gen_server:call(?SERVER, {get_seed}).
+  
+set_seed(SeedPid) ->
+  gen_server:call(?SERVER, {set_seed, SeedPid}).
 
 can_deploy_new_app() ->
   gen_server:call(?SERVER, {can_deploy_new_app}).
@@ -162,6 +166,15 @@ handle_call({can_deploy_new_app}, _From, State) ->
   {reply, Reply, State};
 handle_call({get_seed}, _From, #state{seed = Seed} = State) ->
   {reply, Seed, State};
+handle_call({set_seed, SeedPid}, _From, #state{type = Type} = State) ->
+  ListType = case Type of
+    router -> ?ROUTER_SERVERS;
+    node -> ?NODE_SERVERS
+  end,
+  pg2:create(ListType),
+  ok = pg2:join(ListType, self()),
+  join(SeedPid),
+  {reply, ok, State#state{seed = SeedPid}};
 handle_call({get_host}, _From, #state{host = Host} = State) ->
   {reply, Host, State};
 handle_call({dump, Pid}, _From, State) ->
