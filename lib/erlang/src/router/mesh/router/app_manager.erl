@@ -70,7 +70,7 @@ start_link() ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->  
-  % Load the applications 
+  % Load the applications
   load_static_configs(),
   
   % Try to make sure the pending backends are taken care of by either turning them broken or ready

@@ -234,12 +234,17 @@ handle_info({stopped_backend, Backend}, State) ->
   {noreply, State};
   
 handle_info({stay_connected_to_seed}, #state{seed = SeedNode, type = Type} = State) ->
-  case net_adm:ping(SeedNode) of
-    pong -> 
+  case SeedNode of
+    [] ->
       {noreply, State};
-    pang -> 
-      RespondingSeed = ping_node(get_other_nodes(Type)),
-      {noreply, State#state{seed = RespondingSeed}}
+    _Else ->
+      case net_adm:ping(SeedNode) of
+        pong -> 
+          {noreply, State};
+        pang -> 
+          RespondingSeed = ping_node(get_other_nodes(Type)),
+          {noreply, State#state{seed = RespondingSeed}}
+      end
   end;
   
 handle_info(Info, State) ->

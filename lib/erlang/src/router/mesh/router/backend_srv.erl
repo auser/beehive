@@ -311,7 +311,7 @@ maybe_handle_next_waiting_client(Name, State) ->
 add_backends_from_config() ->
   case apps:search_for_application_value(backends, undefined, router) of
     undefined -> ok;
-    RawPath -> 
+    RawPath ->
       case (catch file_utils:abs_or_relative_filepath(RawPath)) of
         {error, _} -> "router.log";
         Path -> 
