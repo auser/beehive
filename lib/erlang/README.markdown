@@ -22,6 +22,17 @@ There are many options to starting the router, for more information and options,
   ./scripts/start_beehive.sh -h
 </code></pre>
 
+To start with a list of backends, use the -i option to point to a file that looks like:
+
+<pre><code>
+  {"app1", "ec2-67-202-21-173.compute-1.amazonaws.com", 8080}.
+  {"app2", "ec2-174-129-54-214.compute-1.amazonaws.com", 8080}.
+</code></pre>
+
+<pre><code>
+  ./scripts/start_beehive.sh -i /path/to/the/file/from/above
+</code></pre>
+
 How it works
 ===
 There are 2 mnesia tables setup by the beehive router:

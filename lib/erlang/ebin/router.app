@@ -14,7 +14,7 @@
     {node_type, router},
     {seed, []},
     {beehive_app_port, 4999},
-    {backends, "config/sample.cfg"},
+    {backends, undefined},
     {log_path, "/var/logs/router.log"}
   ]}
  ]
