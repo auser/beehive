@@ -82,7 +82,7 @@ run_proxy_graph() {
 
 run_comparison_graph() {
 	echo "plot \
-	  '/tmp/graph-proxy.data' using 10 with steps title 'Proxy ($TOTAL/$CONCURRENT)', \
+	  '/tmp/graph-proxy.data' using 10 with histeps title 'Proxy ($TOTAL/$CONCURRENT)', \
 	  '/tmp/graph-raw.data' using 10 with lines title 'Raw ($TOTAL/$CONCURRENT)'
 	" >> $PLOT_OUTPUT_SCRIPT
 	

@@ -54,8 +54,8 @@ These can also be added at the erlang command-line by:
 Adding an application can also be added via the RESTful interface. For example:
 
 <pre><code>
-  curl -i -XPOST -d"{\"name\":\"beehive.com\"}" beehive.com:8080/app/new
-  curl -i -XPOST -d"{\"name\":\"test\"}" beehive.com:8080/app/new
+  curl -i -XPOST -d"{\"name\":\"beehive\", \"host\":\"ec2-75-121-34-215-amazon.com\", \"port\":\"8080\"}" beehive.com:8080/app/new
+  curl -i -XPOST -d"{\"name\":\"test\", \"host\":\"ec2-75-121-34-210-amazon.com\", \"port\":\"8081\"}" beehive.com:8080/app/new
 </code></pre>
 
 Viewing the list of supported apps:
@@ -67,7 +67,16 @@ Viewing the list of supported apps:
 ## Nodes
 Beehive is a distributed system. You can add multiple nodes in the router. The node_manager handles the node connections.
 
-To start a new
+Viewing the nodes is as easy as a query as well:
+
+<pre><code>
+  curl -i beehive.com:8080/nodes
+</code></pre>
+
+To add a new node, as mentioned above, start a node with the seed value from the start script:
+<pre><code>
+  ./start_beehive.sh -s 'router@my-other-machine.com'
+</code></pre>
 
 Note: The documentation assumes that the router is sitting at a network accessible location. The documentation uses the CNAME "beehive.com" to illustrate.
 
