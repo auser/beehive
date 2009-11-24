@@ -52,23 +52,23 @@ SHORTOPTS="hm:n:dp:t:g:r:s:vi:"
 LONGOPTS="help,version,port,type,strategy,rest,seed,mnesia_dir,daemonize,initial_backends"
 
 if $(getopt -T >/dev/null 2>&1) ; [ $? = 4 ] ; then # New longopts getopt.
-    OPTS=$(getopt -o $SHORTOPTS --long $LONGOPTS -n "$progname" -- "$@")
+	OPTS=$(getopt -o "$SHORTOPTS" --longoptions "$LONGOPTS" -n "$progname" -- "$@")
 else # Old classic getopt.
-    # Special handling for --help and --version on old getopt.
-    case $1 in --help) print_usage ; exit 0 ;; esac
-    case $1 in --version) print_version ; exit 0 ;; esac
-    OPTS=$(getopt $SHORTOPTS "$@")
+  # Special handling for --help and --version on old getopt.
+	case $1 in --help) print_usage ; exit 0 ;; esac
+	case $1 in --version) print_version ; exit 0 ;; esac
+	OPTS=$(getopt $SHORTOPTS "$@")
 fi
 
 if [ $? -ne 0 ]; then
-    echo "'$progname --help' for more information" 1>&2
-    exit 1
+	echo "'$progname --help' for more information" 1>&2
+	exit 1
 fi
 
 eval set -- "$OPTS"
 while [ $# -gt 0 ]; do
    : debug: $1
-   case $1 in
+   case "$1" in
 		--help)
 			usage
 			exit 0
