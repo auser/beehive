@@ -30,6 +30,7 @@
 
 -record (state, {
   seed,             % seed host
+  type,             % type of node (router|node)
   host              % local host
 }).
 
@@ -134,13 +135,14 @@ init([Type, Seed]) ->
   end,
   
   join(Seed),
-  timer:send_interval(timer:seconds(10), {stay_connected_to_seed, Seed}),
+  timer:send_interval(timer:seconds(10), {stay_connected_to_seed}),
   % timer:send_interval(timer:minutes(1), {update_node_pings}),
   
   LocalHost = host:myip(),
   
   {ok, #state{
     seed = Seed,
+    type = Type,
     host = LocalHost
   }}.
 
@@ -218,9 +220,14 @@ handle_info({stopped_backend, Backend}, State) ->
   backend:update(Backend#backend{status = down}),
   {noreply, State};
   
-handle_info({stay_connected_to_seed, Seed}, State) ->
-  join(Seed),
-  {noreply, State};
+handle_info({stay_connected_to_seed}, #state{seed = SeedNode, type = Type} = State) ->
+  case net_adm:ping(SeedNode) of
+    pong -> 
+      {noreply, State};
+    pang -> 
+      RespondingSeed = ping_node(get_other_nodes(Type)),
+      {noreply, State#state{seed = RespondingSeed}}
+  end;
   
 handle_info(Info, State) ->
   ?LOG(info, "handle_info: ~p ~p", [?MODULE, Info]),
@@ -275,3 +282,18 @@ start_new_instance_by_name(Name) ->
 spawn_to_start_new_instance(Name, Host) ->
   {ok, P} = app_launcher_fsm:start_link(Name, Host),
   app_launcher_fsm:launch(P).
+
+% Get the next nodes of the same type
+get_other_nodes(Type) ->
+  case Type of
+    node -> get_nodes();
+    router -> get_routers()
+  end.
+
+% Go through a list of nodes, ping them and return the first one that responds
+ping_node([]) -> self();
+ping_node([H|Rest]) ->
+  case net_adm:ping(H) of
+    pong -> H;
+    pang -> ping_node(Rest)
+  end.
