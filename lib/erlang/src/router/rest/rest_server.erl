@@ -139,7 +139,7 @@ run_controller(Req, ControllerAtom, Meth, Args) ->
       ?LOG(error, "(~p:~p) Error in rest server: ~p~n", [?MODULE, ?LINE,E]),
       Req:ok({"text/html", "Unimplemented controller. There is nothing to see here, go back from where you came"});
     {'EXIT', E} -> 
-      io:format("ERROR: ~p~n", [E]),
+      ?LOG(error, "(~p:~p) Error in rest server: ~p~n", [?MODULE, ?LINE, E]),
       Req:not_found();
     Body -> Req:ok({"text/json", ?JSONIFY(Body)})
   end.
