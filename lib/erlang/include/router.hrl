@@ -24,7 +24,6 @@
 
 % EVENTS
 -define (EVENT_MANAGER, event_manager).
--define (EVENT_HANDLERS, [log_event_handler, app_event_handler, proxy_event_handler, bee_event_handler]).
 -define (NOTIFY (Event), ?EVENT_MANAGER:notify(Event)).
 
 % Port to start on
@@ -52,6 +51,8 @@
   app_name,                 % name of the app this bee supports
   host,
   port,
+  routing_param,            % meta data on the bee allows for more granualar abstract parameters
+                            % should be a tuple, e.g. {ports: 2}
   start_time,               % starting time
   pid,                      % pid of os port process
   sticky        = false,    % keep this bee around, don't remove it from the bee list if it dies
@@ -70,6 +71,7 @@
   path,
   url,
   concurrency,
+  routing_param = undefined,       % determine the method of choosing the backend
   timeout,
   min_instances,
   max_instances,
