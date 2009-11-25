@@ -102,8 +102,11 @@ handle_call({start_new_instance, App, From}, _From, #state{
                                       current_backends = CurrBackends,
                                       app_pids = AppPids, 
                                       available_ports = AvailablePorts} = State) ->
-  Port = hd(AvailablePorts),
-  ?LOG(info, "internal_start_new_instance(~p, ~p, ~p)", [App, Port, From]),
+  Port = case AvailablePorts of
+    [] -> ?STARTING_PORT;
+    [P|_] -> P
+  end,
+  % ?LOG(info, "internal_start_new_instance(~p, ~p, ~p)", [App, Port, From]),
   Backend = internal_start_new_instance(App, Port, From),
   NewAvailablePorts = lists:delete(Port, AvailablePorts),
   {reply, ok, State#state{
@@ -208,9 +211,7 @@ code_change(_OldVsn, State, _Extra) ->
 internal_start_new_instance(App, Port, From) ->
   ?LOG(info, "App ~p", [App]),
   
-  TemplateCommand = App#app.start_command,
-  ?LOG(info, "start command ~p", [TemplateCommand]),
-  
+  TemplateCommand = App#app.start_command,  
   RealCmd = template_command_string(TemplateCommand, [
                                                         {"[[PORT]]", misc_utils:to_list(Port)},
                                                         {"[[GROUP]]", App#app.group},
