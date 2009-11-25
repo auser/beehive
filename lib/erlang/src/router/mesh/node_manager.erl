@@ -242,7 +242,10 @@ handle_info({stay_connected_to_seed}, #state{seed = SeedNode, type = Type} = Sta
         pong -> 
           {noreply, State};
         pang -> 
-          RespondingSeed = ping_node(get_other_nodes(Type)),
+          RespondingSeed = case ping_node(get_other_nodes(Type)) of
+            [] -> SeedNode;
+            E -> E
+          end,
           {noreply, State#state{seed = RespondingSeed}}
       end
   end;
@@ -309,7 +312,7 @@ get_other_nodes(Type) ->
   end.
 
 % Go through a list of nodes, ping them and return the first one that responds
-ping_node([]) -> self();
+ping_node([]) -> [];
 ping_node([H|Rest]) ->
   case net_adm:ping(node(H)) of
     pong -> node(H);
