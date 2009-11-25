@@ -155,7 +155,9 @@ handle_call({Pid, get_bee, Hostname}, From, State) ->
       },
       {reply, {ok, Backend}, State};
     _ ->
-      case choose_bee(Hostname, From, Pid) of
+      App = app:find_by_name(Hostname),
+      MetaParam = App#app.routing_param,
+      case choose_bee({MetaParam, Hostname}, From, Pid) of
     	  ?MUST_WAIT_MSG -> 
     	    timer:apply_after(3000, ?MODULE, maybe_handle_next_waiting_client, [Hostname]),
     	    {noreply, State};
@@ -236,18 +238,19 @@ code_change(_OldVsn, State, _Extra) ->
 %%%----------------------------------------------------------------------
 %%% Internal functions
 %%%----------------------------------------------------------------------
-choose_bee(Hostname, From, FromPid) ->
-  case choose_bee(Hostname, FromPid) of
+choose_bee({_, Name} = Tuple, From, FromPid) ->
+  case choose_bee(Tuple) of
 	  {ok, Backend} -> {ok, Backend};
 	  {error, Reason} -> {error, Reason};
 	  ?MUST_WAIT_MSG ->
-	    ?QSTORE:push(?WAIT_DB, Hostname, {Hostname, From, FromPid, date_util:now_to_seconds()}),
+	    ?QSTORE:push(?WAIT_DB, Name, {Tuple, From, FromPid, date_util:now_to_seconds()}),
       ?MUST_WAIT_MSG
   end.
 
 % Find a bee host that is ready and choose it based on the strategy
 % given for the bee
-choose_bee(Hostname, FromPid) ->
+% Tuple = {name, Hostname}
+choose_bee({RoutingParameter, Hostname}) ->
   case bee:find_all_by_name(Hostname) of
     [] -> 
       case app:exist(Hostname) of
@@ -261,7 +264,7 @@ choose_bee(Hostname, FromPid) ->
       % We should move this out of here so that it doesn't slow down the proxy
       % as it is right now, this will slow down the proxy quite a bit
       AvailableBackends = lists:filter(fun(B) -> (catch B#bee.status =:= ready) end, Backends),
-      case choose_from_bees(AvailableBackends, FromPid) of
+      case choose_from_bees(AvailableBackends, RoutingParameter) of
         ?MUST_WAIT_MSG ->
           % This might not be appropriate... not sure yet
           ?NOTIFY({app, request_to_start_new_bee, Hostname}),
@@ -272,11 +275,19 @@ choose_bee(Hostname, FromPid) ->
 
 % Choose from the list of bees
 % Here is the logic to choose a bee from the list of bees
-% For now, we'll just be using the random strategy
-choose_from_bees([], _FromPid) -> ?MUST_WAIT_MSG;
-choose_from_bees(Backends, _FromPid) ->
-  Strategy = apps:search_for_application_value(bee_strategy, "random", beehive),
-  Fun = erlang:list_to_atom(Strategy),
+% The user defines the preferred strategy for choosing backends when starting
+% the router with the -g option
+% i.e. start_beehive.com -g random
+% If the application defines it's own routing mechanism with the routing_param
+% then that is used to choose the backend, otherwise the default router param will
+% be used
+choose_from_bees([], _RoutingParameter) -> ?MUST_WAIT_MSG;
+choose_from_bees(Backends, AppRoutingParam) ->
+  PreferredStrategy = apps:search_for_application_value(bee_strategy, random, beehive),
+  Fun = case AppRoutingParam of
+    undefined -> PreferredStrategy;
+    F -> F
+  end,
   Backend = bee_strategies:Fun(Backends),
   {ok, Backend}.
 
@@ -295,9 +306,9 @@ maybe_handle_next_waiting_client(Name, State) ->
     {value, {_Hostname, From, _Pid, InsertTime}} when InsertTime < TOTime ->
       gen_server:reply(From, ?BACKEND_TIMEOUT_MSG),
       maybe_handle_next_waiting_client(Name, State);
-    {value, {Hostname, From, Pid, _InsertTime}} ->
+    {value, {{_RoutingParam, Hostname} = Tuple, From, Pid, _InsertTime}} ->
       ?LOG(info, "Handling Q: ~p", [Hostname]),
-      case choose_bee(Hostname, From, Pid) of
+      case choose_bee(Tuple, From, Pid) of
         % Clearly we are not ready for another bee connection request. :(
         % choose_bee puts the request in the pending queue, so we don't have
         % to take care of that here

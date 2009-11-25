@@ -15,6 +15,7 @@
 -export([start_link/0, add_handler/1, notify/1]).
 
 -define(SERVER, ?MODULE).
+-define (EVENT_HANDLERS, [log_event_handler, app_event_handler, proxy_event_handler, bee_event_handler, user_defined_event_handler]).
 
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | {error,Error}
