@@ -19,14 +19,15 @@ get(_) ->
   }.
   
 format_nodes(F) ->
-  lists:append(
+  Nodes = lists:append(
     lists:map(fun(#node{name = Name, host = Host} = _Node) ->
-      {struct, ?BINIFY([
+      ?BINIFY([
         {"name", Name},
         {"host", Host}
-      ])}
+      ])
     end, lists:map(fun(N) -> node_manager:dump(N) end, F())
-  )).
+  )),
+  {struct, Nodes}.
 
 post(_Path, _Data) -> "unhandled".
 put(_Path, _Data) -> "unhandled".
