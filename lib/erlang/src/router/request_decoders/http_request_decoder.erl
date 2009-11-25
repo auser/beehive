@@ -76,9 +76,14 @@ headers_to_list(Headers) ->
   lists:foldl(F, [<<"\r\n">>], Headers).
 
 % HTTP
+% We strip off the port, just in case
 parse_subdomain(HostName) ->
-  parse_subdomain1(string:tokens(HostName, ".")).
+  [NoPortHostname|_] = string:tokens(HostName, ":"),
+  parse_subdomain1(string:tokens(NoPortHostname, ".")).
 
+parse_subdomain1([_Something,"com"]) -> base;
+parse_subdomain1([_Something,"org"]) -> base;
+parse_subdomain1([_Something,"net"]) -> base;
 parse_subdomain1([H|_Rest] = List) ->
   if
     length(List) == 1 ->

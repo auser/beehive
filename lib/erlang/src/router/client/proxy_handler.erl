@@ -56,11 +56,8 @@ proxy_init(ClientSock) ->
 % If the backend cannot be reached, send an alert through the event handler that we could not reach
 % the backend and try to find a new backend
 engage_backend(ClientSock, RequestPid, Hostname, ForwardReq, Req, {ok, #backend{host = Host, port = Port} = Backend}) ->
-  SockOpts = [  binary, 
-                {nodelay, true},
-				        {active, once},
-				        {packet, 0},
-				        {reuseaddr, true}
+  SockOpts = [  binary,
+				        {active, false}
 			       ],
   case gen_tcp:connect(Host, Port, SockOpts, ?CONNECT_TIMEOUT) of
     {ok, ServerSock} ->
@@ -68,9 +65,10 @@ engage_backend(ClientSock, RequestPid, Hostname, ForwardReq, Req, {ok, #backend{
       % Sending raw request to backend server
       gen_tcp:send(ServerSock, ForwardReq),
       
+      Timeout = timer:seconds(10),
       inet:setopts(ClientSock, [{active, false}]),
       ProxyPid = self(),
-      spawn(fun() -> handle_streaming_data(ClientSock, Req, ProxyPid) end),
+      spawn(fun() -> handle_streaming_data(ClientSock, Req, ProxyPid, Timeout) end),
       
       inet:setopts(ServerSock, [{active, once}]),
       proxy_loop(#state{
@@ -79,6 +77,7 @@ engage_backend(ClientSock, RequestPid, Hostname, ForwardReq, Req, {ok, #backend{
                   server_socket = ServerSock, 
                   request = Req,
                   subdomain = Hostname,
+                  timeout = Timeout,
                   backend = Backend}
                 );
     {error, emfile} ->
@@ -172,11 +171,11 @@ terminate(Reason, #state{server_socket = SSock, client_socket = CSock, start_tim
 
 % Because we want to treat the proxy as a tcp proxy, we are just going to 
 % try to receive data on the client socket and pass it onto the proxy
-handle_streaming_data(ClientSock, Req, From) ->
-  case gen_tcp:recv(ClientSock, 0) of
+handle_streaming_data(ClientSock, Req, From, Timeout) ->
+  case gen_tcp:recv(ClientSock, 0, Timeout) of
     {ok, D} ->
       From ! {tcp, ClientSock, D},
-      handle_streaming_data(ClientSock, Req, From);
+      handle_streaming_data(ClientSock, Req, From, Timeout);
     {error, _Error} ->
       From ! {tcp_closed, ClientSock}
   end.
