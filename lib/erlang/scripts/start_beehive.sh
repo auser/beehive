@@ -116,7 +116,7 @@ if [ -z $NAME ]; then
 	NAME="$TYPE@$HOSTNAME"
 fi
 
-if [ $TYPE != 'beehive' ]; then
+if [ $TYPE != 'router' ]; then
 	ROUTER_OPTS="$ROUTER_OPTS run_rest_server false"
 fi
 
