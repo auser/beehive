@@ -96,6 +96,7 @@ validate_bee_proplists(PropList) ->
   lists:map(fun({Key, Val}) ->
     case Key of
       port -> {Key, misc_utils:to_integer(Val)};
+      routing_param -> {Key, misc_utils:to_atom(Val)};
       _ -> {Key, Val}
     end
   end, PropList).

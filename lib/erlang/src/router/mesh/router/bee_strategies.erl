@@ -16,5 +16,3 @@ random([]) -> [] ; %% Come back and update this,
 random( Backends ) ->
   RandNum = random:uniform(length(Backends)),
   lists:nth(RandNum, Backends).
-
-
