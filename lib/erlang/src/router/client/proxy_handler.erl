@@ -164,7 +164,8 @@ terminate(Reason, #state{server_socket = SSock, client_socket = CSock, start_tim
     {ok, D} -> [{socket, D}|StatsProplist1];
     _ -> StatsProplist1
   end,
-
+  
+  ?NOTIFY({bee, ready, Backend}),
   ?NOTIFY({bee, closing_stats, Backend, StatsProplist}),
   gen_tcp:close(SSock), gen_tcp:close(CSock),
   exit(Reason).

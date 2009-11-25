@@ -18,6 +18,8 @@ OPTIONS
 	-m		Mnesia directory (defaults to ./db)
 	-n 		Name of the erlang process (useful for multiple nodes on the same instance)
 	-r, --rest	Run the rest server (boolean)
+	-a, --additional_path	Additional paths for the beehive runtime
+	-c, --callback_module	Module name of the callback module
 	-s, --seed	Pass in the seed node
 	-p, --port	Port to run the router
 	-i, --initial_bees Initial bees to start the bee_srv
@@ -47,9 +49,10 @@ TYPE="router"
 REST="true"
 VERBOSE=false
 STRATEGY="random"
+PATHS="-pa $PWD/ebin"
 
-SHORTOPTS="hm:n:dp:t:g:r:s:vi:"
-LONGOPTS="help,version,port,type,strategy,rest,seed,mnesia_dir,daemonize,initial_bees"
+SHORTOPTS="hm:n:dp:t:g:r:s:vi:a:c:"
+LONGOPTS="help,version,port,type,strategy,rest,seed,mnesia_dir,daemonize,initial_bees,additional_path,callback_module"
 
 if $(getopt -T >/dev/null 2>&1) ; [ $? = 4 ] ; then # New longopts getopt.
 	OPTS=$(getopt -o "$SHORTOPTS" --longoptions "$LONGOPTS" -n "$progname" -- "$@")
@@ -87,6 +90,12 @@ while [ $# -gt 0 ]; do
 			shift 2;;
 		-s|--seed)
 			ROUTER_OPTS="$ROUTER_OPTS seed '$2'"
+			shift 2;;
+		-a|--additional_path)
+			PATHS="$PATHS -pa $2"
+			shift 2;;
+		-c|--callback_module)
+			ROUTER_OPTS="$ROUTER_OPTS user_defined_event_handler $2"
 			shift 2;;
 		-i|--initial_bees)
 			ROUTER_OPTS="$ROUTER_OPTS bees '$2'"
@@ -128,10 +137,11 @@ cat <<EOF
 		Mnesia dir: \'$MNESIA_DIR\'
 		Name: 		\'$NAME\'
 		Router opts:	$ROUTER_OPTS
+		Paths: $PATHS
 EOF
 fi
 
-erl -pa $PWD/ebin \
+erl $PATHS \
     -pz $PWD/deps/*/ebin \
     -s reloader \
 		-mnesia dir \'$MNESIA_DIR\' \
