@@ -19,6 +19,7 @@ get(["all"]) ->
       {struct, ?BINIFY([
         {"name", A#app.name},
         {"url", A#app.url},
+        {"routing_param", A#app.routing_param},
         {"last_updated", A#app.updated_at}
       ])}
     end, All)
