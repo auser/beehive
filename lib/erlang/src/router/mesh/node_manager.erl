@@ -196,10 +196,11 @@ handle_cast({request_to_terminate_all_backends, Name}, State) ->
   % backend:update(Backend#backend{status = down}),
   % First, find all the backends and "unregister" them, or delete them from the backend list so we don't
   % route any requests this way
-  Backends = app:find_by_name(Name),
+  Backends = backend:find_all_by_name(Name),
+  io:format("Backends: ~p~n", [Backends]),
   lists:map(fun(Backend) -> backend:update(Backend#backend{status = unavailable}) end, Backends),
   % Next, do this in an rpc call to shutdown the nodes
-  App = app:find_by_name(Name),
+  App = app:find_all_by_name(Name),
   Nodes = lists:map(fun(N) -> node(N) end, get_nodes()),
   % Can't do this in a multicall (or it would be an optimization), but want to get the node back
   % so for now, we'll do it in an rpc:call, instead
@@ -311,7 +312,7 @@ get_other_nodes(Type) ->
 % Go through a list of nodes, ping them and return the first one that responds
 ping_node([]) -> self();
 ping_node([H|Rest]) ->
-  case net_adm:ping(H) of
+  case net_adm:ping(node(H)) of
     pong -> H;
     pang -> ping_node(Rest)
   end.
