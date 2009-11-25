@@ -22,5 +22,5 @@ erl -pa $PWD/ebin \
     -s reloader \
 		-mnesia dir $MNESIA_DIR \
 		-s app run_tests \
-		-s backend run_tests \
+		-s bee run_tests \
 		-s init stop

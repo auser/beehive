@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% File    : backend_srv_sup.erl
+%%% File    : bee_srv_sup.erl
 %%% Author  : Ari Lerner
 %%% Description : 
 %%%
 %%% Created :  Thu Oct  8 02:09:02 PDT 2009
 %%%-------------------------------------------------------------------
 
--module (backend_srv_sup).
+-module (bee_srv_sup).
 -include ("router.hrl").
 -behaviour(supervisor).
 
@@ -40,12 +40,12 @@ start_link() -> supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 %% specifications.
 %%--------------------------------------------------------------------
 init([]) ->
-  AppSrv  = {the_backend_srv,{backend_srv, start_link,[]}, permanent,2000,worker,dynamic},
+  AppSrv  = {the_bee_srv,{bee_srv, start_link,[]}, permanent,2000,worker,dynamic},
   BHApps  = {the_beehive,{rest_server, start_link,[]}, permanent,2000,worker,dynamic},
   
   AppsToStart = [AppSrv],
   
-  AppsToStart2 = case apps:search_for_application_value(run_rest_server, true, router) of
+  AppsToStart2 = case apps:search_for_application_value(run_rest_server, true, beehive) of
     true -> [BHApps|AppsToStart];
     false -> AppsToStart
   end,

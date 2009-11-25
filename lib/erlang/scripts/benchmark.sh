@@ -199,9 +199,9 @@ set ylabel 'Response time (ms)'
 set output '$OUTPUT.png'" > $PLOT_OUTPUT_SCRIPT
 
 echo "Testing proxy at url: http://$PROXY_URL"
-echo "Adding backend: "
-echo "curl -i -XPOST -d\"{\"app_name\":\"$NAME\", \"host\":\"$RAW_URL\", \"port\":\"$RAW_PORT\"}\" http://$PROXY_URL:$PORT/backend/new"
-curl -i -XPOST -d"{\"app_name\":\"$NAME\", \"host\":\"$RAW_URL\", \"port\":\"$RAW_PORT\"}" http://$PROXY_URL:$PORT/backend/new > /dev/null
+echo "Adding bee: "
+echo "curl -i -XPOST -d\"{\"app_name\":\"$NAME\", \"host\":\"$RAW_URL\", \"port\":\"$RAW_PORT\"}\" http://$PROXY_URL:$PORT/bees/new"
+curl -i -XPOST -d"{\"app_name\":\"$NAME\", \"host\":\"$RAW_URL\", \"port\":\"$RAW_PORT\"}" http://$PROXY_URL:$PORT/bees/new > /dev/null
 
 case $TYPE in
 	"multi")
@@ -225,6 +225,6 @@ $GNUPLOT $PLOT_OUTPUT_SCRIPT > /dev/null
 
 echo "The graph has been saved to $OUTPUT";
 
-echo "curl -i -XDELETE -d\"{}\" http://$PROXY_URL/backend/$NAME/$RAW_URL/$PORT"
-curl -i -XDELETE -d"{}" http://$PROXY_URL:$PORT/backend/$NAME/$RAW_URL/$PORT > /dev/null
+echo "curl -i -XDELETE -d\"{}\" http://$PROXY_URL/bees/$NAME/$RAW_URL/$PORT"
+curl -i -XDELETE -d"{}" http://$PROXY_URL:$PORT/bees/$NAME/$RAW_URL/$PORT > /dev/null
 rm /tmp/graph-*

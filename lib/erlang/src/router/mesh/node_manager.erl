@@ -15,8 +15,8 @@
 -export([
   start_link/0,
   start_link/2,
-  request_to_start_new_backend/1,
-  request_to_terminate_all_backends/1,
+  request_to_start_new_bee/1,
+  request_to_terminate_all_bees/1,
   get_host/0, get_seed/0,
   set_seed/1,
   get_routers/0, get_nodes/0,
@@ -48,8 +48,8 @@
 %% Description: Starts the server
 %%--------------------------------------------------------------------
 start_link() -> 
-  Seed = apps:search_for_application_value(seed, node(), router),
-  case apps:search_for_application_value(node_type, router, router) of
+  Seed = apps:search_for_application_value(seed, node(), beehive),
+  case apps:search_for_application_value(node_type, router, beehive) of
     router -> start_link(router, Seed);
     node -> start_link(node, Seed)
   end.
@@ -91,11 +91,11 @@ get_nodes() ->
   pg2:create(?NODE_SERVERS),
   pg2:get_members(?NODE_SERVERS).
   
-request_to_start_new_backend(Name) -> 
-  gen_server:cast(?SERVER, {request_to_start_new_backend, Name}).
+request_to_start_new_bee(Name) -> 
+  gen_server:cast(?SERVER, {request_to_start_new_bee, Name}).
 
-request_to_terminate_all_backends(Name) ->
-  gen_server:cast(?SERVER, {request_to_terminate_all_backends, Name}).
+request_to_terminate_all_bees(Name) ->
+  gen_server:cast(?SERVER, {request_to_terminate_all_bees, Name}).
 
 dump(Pid) ->
   gen_server:call(?SERVER, {dump, Pid}).
@@ -192,12 +192,12 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast({request_to_terminate_all_backends, Name}, State) ->
-  % backend:update(Backend#backend{status = down}),
-  % First, find all the backends and "unregister" them, or delete them from the backend list so we don't
+handle_cast({request_to_terminate_all_bees, Name}, State) ->
+  % bee:update(Backend#bee{status = down}),
+  % First, find all the bees and "unregister" them, or delete them from the bee list so we don't
   % route any requests this way
-  Backends = backend:find_all_by_name(Name),
-  lists:map(fun(Backend) -> backend:delete(Backend#backend{status = unavailable}) end, Backends),
+  Backends = bee:find_all_by_name(Name),
+  lists:map(fun(Backend) -> bee:delete(Backend#bee{status = unavailable}) end, Backends),
   % Next, do this in an rpc call to shutdown the nodes
   App = app:find_by_name(Name),
   Nodes = lists:map(fun(N) -> node(N) end, get_nodes()),
@@ -211,10 +211,10 @@ handle_cast({request_to_terminate_all_backends, Name}, State) ->
     end
   end, Nodes),
   {noreply, State};
-handle_cast({request_to_start_new_backend, Name}, State) ->
-  Backends = backend:find_all_by_name(Name),
-  % Don't start a new backend if there is a pending one
-  PendingBackends = lists:filter(fun(B) -> B#backend.status =:= pending end, Backends),
+handle_cast({request_to_start_new_bee, Name}, State) ->
+  Backends = bee:find_all_by_name(Name),
+  % Don't start a new bee if there is a pending one
+  PendingBackends = lists:filter(fun(B) -> B#bee.status =:= pending end, Backends),
   case length(PendingBackends) > 0 of
     false -> start_new_instance_by_name(Name);
     true -> ok
@@ -229,8 +229,8 @@ handle_cast(_Msg, State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
-handle_info({stopped_backend, Backend}, State) ->
-  backend:update(Backend#backend{status = down}),
+handle_info({stopped_bee, Backend}, State) ->
+  bee:update(Backend#bee{status = down}),
   {noreply, State};
   
 handle_info({stay_connected_to_seed}, #state{seed = SeedNode, type = Type} = State) ->
@@ -285,7 +285,7 @@ get_next_available_host() ->
         false -> get_next_available_host()
       end;
     {'EXIT', _} ->
-      ?LOG(error, "Could not start a new backend because there are no nodes to start", []),
+      ?LOG(error, "Could not start a new bee because there are no nodes to start", []),
       false;
     {error, Reason} ->
       ?LOG(error, "Could not start a new app because: ~p", [Reason]),

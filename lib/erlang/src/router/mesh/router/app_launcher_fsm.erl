@@ -31,7 +31,7 @@
   app,
   host,
   port,
-  backend
+  bee
 }).
 
 %%====================================================================
@@ -82,17 +82,17 @@ launching({launch}, #state{app = App, host = Host} = State) ->
   rpc:call(Host, app_handler, start_new_instance, [App, Self]),
   {next_state, launching, State};
 
-launching({started_backend, Be}, State) ->
-  backend_srv:add_backend(Be),
+launching({started_bee, Be}, State) ->
+  bee_srv:add_bee(Be),
   Self = self(),
-  app_manager:spawn_update_backend_status(Be, Self, 20),
-  {next_state, pending, State#state{backend = Be}};
+  app_manager:spawn_update_bee_status(Be, Self, 20),
+  {next_state, pending, State#state{bee = Be}};
 
 launching(Event, State) ->
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, launching]),
   {next_state, launching, State}.
 
-pending({updated_backend_status, _BackendStatus}, #state{app = App} = State) ->
+pending({updated_bee_status, _BackendStatus}, #state{app = App} = State) ->
   ?LOG(info, "Application started normally: ~p", [App#app.name]),
   % App started normally
   {stop, normal, State};

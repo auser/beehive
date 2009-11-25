@@ -22,7 +22,7 @@ There are many options to starting the router, for more information and options,
   ./scripts/start_beehive.sh -h
 </code></pre>
 
-To start with a list of backends, use the -i option to point to a file that looks like:
+To start with a list of bees, use the -i option to point to a file that looks like:
 
 <pre><code>
   {"app1", "ec2-67-202-21-173.compute-1.amazonaws.com", 8080}.
@@ -41,24 +41,24 @@ There are 2 mnesia tables setup by the beehive router:
 
 The app table stores the applications associated with Beehive.
 
-The backend table stores the backend data, and their state.
+The bee table stores the bee data, and their state.
 
 ## Proxy
 
-The proxy can be hot-loaded with new routes simply with a RESTful interface. The name (the routing key), the endpoint host and the port of the backend need to be included. For instance:
+The proxy can be hot-loaded with new routes simply with a RESTful interface. The name (the routing key), the endpoint host and the port of the bee need to be included. For instance:
 
 <pre><code>
-  curl -i -XPOST -d"{\"app_name\":\"test\", \"host\":\"google.com\", \"port\":\"80\"}" beehive.com:8080/backend/new
+  curl -i -XPOST -d"{\"app_name\":\"test\", \"host\":\"google.com\", \"port\":\"80\"}" beehive.com:8080/bee/new
 </code></pre>
 
-The parameters that must be included are the app_name (the routing key), the host and the port. You can check to make sure that they were added by visiting the page: http://beehive.com:8080/backend/all
+The parameters that must be included are the app_name (the routing key), the host and the port. You can check to make sure that they were added by visiting the page: http://beehive.com:8080/bee/all
 
 These can also be added at the erlang command-line by:
 
 <pre><code>
-  backend_srv:add_backend({"streaming",{127,0,0,1}, 5001}).
+  bee_srv:add_bee({"streaming",{127,0,0,1}, 5001}).
   % or
-  backend_srv:add_backend([{app_name, "streaming"}, {host, "127.0.0.1"}, {port, 5001}]).
+  bee_srv:add_bee([{app_name, "streaming"}, {host, "127.0.0.1"}, {port, 5001}]).
 </code></pre>
 
 ## Apps
@@ -106,13 +106,13 @@ Each request goes through the following process:
 
 Glossary
 ===
-  * Backend - A backend service to forward and route requests
-  * App - An application with multiple backends
+  * Bee - A bee end point service to forward and route requests
+  * App - An application with multiple bees
   * Node - A machine that is capable of hosting applications
   * Routing Node - A router node that is a part of the routing mesh
 
 TODO
 ===
   * Add ets/mnesia storage to the front-end servers
-  * Add backend dets file for recovery when the router dies
+  * Add bee dets file for recovery when the router dies
   * Add more than just http servers (abstract the proxying protocols)

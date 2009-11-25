@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% File    : backend_event_handler.erl
+%%% File    : bee_event_handler.erl
 %%% Author  : Ari Lerner
 %%% Description : 
 %%%
 %%% Created :  Sun Nov  8 17:02:19 PST 2009
 %%%-------------------------------------------------------------------
 
--module (backend_event_handler).
+-module (bee_event_handler).
 
 -include ("router.hrl").
 -include ("common.hrl").
@@ -36,35 +36,35 @@ init([]) ->
 %% gen_event:notify/2 or gen_event:sync_notify/2, this function is called for
 %% each installed event handler to handle the event.
 %%--------------------------------------------------------------------  
-handle_event({backend, used, Backend}, State) ->
-  stats_srv:backend_stat({request_begin, Backend#backend.id}),
+handle_event({bee, used, Backend}, State) ->
+  stats_srv:bee_stat({request_begin, Backend#bee.id}),
   {ok, State};
   
-handle_event({backend, ready, Backend}, State) ->
-  backend_srv:maybe_handle_next_waiting_client(Backend#backend.app_name),
+handle_event({bee, ready, Backend}, State) ->
+  bee_srv:maybe_handle_next_waiting_client(Backend#bee.app_name),
   {ok, State};
 
-handle_event({backend, backend_down, Backend}, State) ->
-  backend:update(Backend#backend{status = down}),
+handle_event({bee, bee_down, Backend}, State) ->
+  bee:update(Backend#bee{status = down}),
   {ok, State};
 
-handle_event({backend, cannot_connect, Backend}, State) ->
-  backend:update(Backend#backend{status = down}),
+handle_event({bee, cannot_connect, Backend}, State) ->
+  bee:update(Backend#bee{status = down}),
   {ok, State};
 
-handle_event({backend, closing_stats, #backend{id = Id} = Backend, StatsProplist}, State) ->
-  % When the backend socket connection closes, let's save this data
+handle_event({bee, closing_stats, #bee{id = Id} = Backend, StatsProplist}, State) ->
+  % When the bee socket connection closes, let's save this data
   case proplists:get_value(socket, StatsProplist) of
     undefined -> ok;
-    Val -> stats_srv:backend_stat({socket, Id, Val})
+    Val -> stats_srv:bee_stat({socket, Id, Val})
   end,
   case proplists:get_value(elapsed_time, StatsProplist) of
     undefined -> ok;
-    Time -> stats_srv:backend_stat({elapsed_time, Id, Time})
+    Time -> stats_srv:bee_stat({elapsed_time, Id, Time})
   end,
-  stats_srv:backend_stat({request_complete, Id}),
+  stats_srv:bee_stat({request_complete, Id}),
   
-  backend_srv:maybe_handle_next_waiting_client(Backend#backend.app_name),
+  bee_srv:maybe_handle_next_waiting_client(Backend#bee.app_name),
   {ok, State};
   
 handle_event(_Event, State) ->

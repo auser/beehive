@@ -15,10 +15,10 @@
 %% API
 -export([
   start_link/0,
-  backend_dump/0,
-  backend_dump/1,
-  backend_stat/1,
-  new_backend_stat/0
+  bee_dump/0,
+  bee_dump/1,
+  bee_stat/1,
+  new_bee_stat/0
 ]).
 
 %% gen_server callbacks
@@ -26,7 +26,7 @@
          terminate/2, code_change/3]).
 
 -record(state, {
-  backend_stats     % dict of the backends and their stats
+  bee_stats     % dict of the bees and their stats
 }).
 
 -define(SERVER, ?MODULE).
@@ -34,13 +34,13 @@
 %%====================================================================
 %% API
 %%====================================================================
-backend_stat({request_begin, Key})       -> gen_server:cast(?SERVER, {backend_stat, request_begin, Key});
-backend_stat({request_complete, Key})    -> gen_server:cast(?SERVER, {backend_stat, request_complete, Key});
-backend_stat({elapsed_time, Key, Time})  -> gen_server:cast(?SERVER, {backend_stat, elapsed_time, Key, Time});
-backend_stat({socket, Key, SocketVals})  -> gen_server:cast(?SERVER, {backend_stat, socket, Key, SocketVals}).
+bee_stat({request_begin, Key})       -> gen_server:cast(?SERVER, {bee_stat, request_begin, Key});
+bee_stat({request_complete, Key})    -> gen_server:cast(?SERVER, {bee_stat, request_complete, Key});
+bee_stat({elapsed_time, Key, Time})  -> gen_server:cast(?SERVER, {bee_stat, elapsed_time, Key, Time});
+bee_stat({socket, Key, SocketVals})  -> gen_server:cast(?SERVER, {bee_stat, socket, Key, SocketVals}).
 
-backend_dump(Key) -> gen_server:call(?SERVER, {backend_dump, Key}).
-backend_dump()    -> gen_server:call(?SERVER, {backend_dump}).
+bee_dump(Key) -> gen_server:call(?SERVER, {bee_dump, Key}).
+bee_dump()    -> gen_server:call(?SERVER, {bee_dump}).
 
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
@@ -64,9 +64,9 @@ init([]) ->
   process_flag(trap_exit, true),
   
   % Opts = [named_table, ordered_set],
-  % ets:new(backend_stat_total, Opts),
+  % ets:new(bee_stat_total, Opts),
   
-  State = #state{ backend_stats = dict:new() },
+  State = #state{ bee_stats = dict:new() },
   
   {ok, State}.
 
@@ -79,11 +79,11 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call({backend_dump, Name}, _From, #state{backend_stats = Dict} = State) ->
+handle_call({bee_dump, Name}, _From, #state{bee_stats = Dict} = State) ->
   Dict1 = dict:filter(fun(N,_) -> N =:= Name end, Dict),
   {reply, dict:to_list(Dict1), State};
   
-handle_call({backend_dump}, _From, #state{backend_stats = Dict} = State) ->
+handle_call({bee_dump}, _From, #state{bee_stats = Dict} = State) ->
   Dict1 = dict:filter(fun(_,_) -> true end, Dict),
   {reply, dict:to_list(Dict1), State};
   
@@ -97,46 +97,46 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast({backend_stat, request_begin, Key}, #state{backend_stats = Dict} = State) ->
-  {#backend_stat{current = CurrCount} = NewBackendStat, ADict} = dict_with_backend_stat(Key, Dict),
-  NewBackendStat2 = NewBackendStat#backend_stat{current = CurrCount + 1},
+handle_cast({bee_stat, request_begin, Key}, #state{bee_stats = Dict} = State) ->
+  {#bee_stat{current = CurrCount} = NewBackendStat, ADict} = dict_with_bee_stat(Key, Dict),
+  NewBackendStat2 = NewBackendStat#bee_stat{current = CurrCount + 1},
   NewDict = dict:store(Key, NewBackendStat2, ADict),
-  {noreply, State#state{backend_stats = NewDict}};
+  {noreply, State#state{bee_stats = NewDict}};
     
-handle_cast({backend_stat, request_complete, Key}, #state{backend_stats = Dict} = State) ->
-  {#backend_stat{total_requests = TotReq, current = CurrCount} = NewBackendStat, ADict} = dict_with_backend_stat(Key, Dict),
+handle_cast({bee_stat, request_complete, Key}, #state{bee_stats = Dict} = State) ->
+  {#bee_stat{total_requests = TotReq, current = CurrCount} = NewBackendStat, ADict} = dict_with_bee_stat(Key, Dict),
   
-  NewBackendStat2 = NewBackendStat#backend_stat{
+  NewBackendStat2 = NewBackendStat#bee_stat{
     current = CurrCount - 1,
     total_requests = TotReq + 1
   },
   NewDict = dict:store(Key, NewBackendStat2, ADict),
-  {noreply, State#state{backend_stats = NewDict}};
+  {noreply, State#state{bee_stats = NewDict}};
   
-handle_cast({backend_stat, elapsed_time, Key, Time}, #state{backend_stats = Dict} = State) ->
-  {#backend_stat{total_time = TTime, average_req_time = AvgTime} = BackendStat, ADict} = dict_with_backend_stat(Key, Dict),
+handle_cast({bee_stat, elapsed_time, Key, Time}, #state{bee_stats = Dict} = State) ->
+  {#bee_stat{total_time = TTime, average_req_time = AvgTime} = BackendStat, ADict} = dict_with_bee_stat(Key, Dict),
   Avg1 = (AvgTime + Time) / 2,
   Total1 = TTime + Time,
-  NewBackendStat = BackendStat#backend_stat{average_req_time = Avg1, total_time = Total1},
+  NewBackendStat = BackendStat#bee_stat{average_req_time = Avg1, total_time = Total1},
   NewDict = dict:store(Key, NewBackendStat, ADict),
-  {noreply, State#state{backend_stats = NewDict}};
+  {noreply, State#state{bee_stats = NewDict}};
   
-handle_cast({backend_stat, socket, Key, SocketVals}, #state{backend_stats = Dict} = State) ->
-  {#backend_stat{packet_count = CurrentPacketCount, bytes_received = BytesReceived} = BackendStat, 
-    ADict} = dict_with_backend_stat(Key, Dict),
+handle_cast({bee_stat, socket, Key, SocketVals}, #state{bee_stats = Dict} = State) ->
+  {#bee_stat{packet_count = CurrentPacketCount, bytes_received = BytesReceived} = BackendStat, 
+    ADict} = dict_with_bee_stat(Key, Dict),
   
   NewBackendStat1 = case proplists:get_value(send_cnt, SocketVals) of
     undefined -> BackendStat;
-    Count -> BackendStat#backend_stat{packet_count = CurrentPacketCount + Count}
+    Count -> BackendStat#bee_stat{packet_count = CurrentPacketCount + Count}
   end,
   
   NewBackendStat = case proplists:get_value(send_oct, SocketVals) of
     undefined -> NewBackendStat1;
-    Bytes -> NewBackendStat1#backend_stat{bytes_received = BytesReceived + Bytes}
+    Bytes -> NewBackendStat1#bee_stat{bytes_received = BytesReceived + Bytes}
   end,
   
   NewDict = dict:store(Key, NewBackendStat, ADict),
-  {noreply, State#state{backend_stats = NewDict}};
+  {noreply, State#state{bee_stats = NewDict}};
   
 handle_cast(_Msg, State) ->
   {noreply, State}.
@@ -171,8 +171,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 
-new_backend_stat() ->
-  #backend_stat{
+new_bee_stat() ->
+  #bee_stat{
     total_requests    = 0,
     current           = 0,
     total_time        = 0,
@@ -181,10 +181,10 @@ new_backend_stat() ->
     bytes_received    = 0
   }.
   
-dict_with_backend_stat(Key, Dict) ->
+dict_with_bee_stat(Key, Dict) ->
   case dict:find(Key, Dict) of
     {ok, Val} -> {Val, Dict};
     _ -> 
-      NewBackendStat = new_backend_stat(),
+      NewBackendStat = new_bee_stat(),
       {NewBackendStat, dict:store(Key, NewBackendStat, Dict)}
   end.

@@ -1,10 +1,10 @@
-{application, router,
+{application, beehive,
  [
-  {description, "Router app"},
+  {description, "Beehive app"},
   {vsn, "0.1"},
   {id, "router_srv"},
-  {modules,      [tcp_socket_server, backend_srv]},
-  {registered,   [tcp_socket_server, backend_srv]},
+  {modules,      []},
+  {registered,   [tcp_socket_server, bee_srv]},
   {applications, [kernel, stdlib, sasl]},
   {mod, {router, []}},
   {env, [
@@ -14,7 +14,7 @@
     {node_type, router},
     {seed, []},
     {beehive_app_port, 4999},
-    {backends, undefined},
+    {bees, undefined},
     {log_path, "/var/logs/router.log"}
   ]}
  ]

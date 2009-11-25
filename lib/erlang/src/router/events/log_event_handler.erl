@@ -26,7 +26,7 @@
 %% this function is called to initialize the event handler.
 %%--------------------------------------------------------------------
 init([]) ->
-  FileName = apps:search_for_application_value(log_path, "/tmp/router.log", router),
+  FileName = apps:search_for_application_value(log_path, "/tmp/router.log", beehive),
   % Get the full path for the file
   FullFilepath = case (catch file_utils:abs_or_relative_filepath(FileName)) of
     {error, _} -> "router.log";

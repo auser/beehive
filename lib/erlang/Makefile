@@ -22,7 +22,7 @@ mochi:
 	@(cd deps/mochiweb;$(MAKE))
 
 boot:
-	(cd ebin; $(ERL) -pa src -pa ebin -pz deps/*/ebin -noshell -run make_boot write_scripts router $(VERSION);)
+	(cd ebin; $(ERL) -pa src -pa ebin -pz deps/*/ebin -noshell -run make_boot write_scripts beehive $(VERSION);)
 
 compile:
 	@$(ERL) -pa $(EBIN_DIRS) -pa $(EBIN) -noinput +B -eval 'case make:all() of up_to_date -> halt(0); error -> halt(1) end.'

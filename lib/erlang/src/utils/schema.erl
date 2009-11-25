@@ -21,7 +21,7 @@ initialized() ->
   catch _:_ -> false
   end,
   try
-    mnesia:table_info(backend, type)
+    mnesia:table_info(bee, type)
   catch _:_ -> false
   end,
   true.
@@ -37,7 +37,7 @@ install(Nodes) when is_list(Nodes) ->
   (catch mnesia:create_schema(Nodes)),
   db:start(),
   install_app(Nodes),
-  install_backend(Nodes),
+  install_bee(Nodes),
   ok.
 
 install_app(Nodes) ->
@@ -56,14 +56,14 @@ install_app(Nodes) ->
       throw(Error)
   end.
   
-install_backend(Nodes) ->
+install_bee(Nodes) ->
   try 
-    mnesia:table_info(backend, type)
+    mnesia:table_info(bee, type)
   catch
     exit:_Why ->
-      io:format("Creating table backend\n"),
-      mnesia:create_table(backend,[
-        {attributes, record_info(fields, backend)},
+      io:format("Creating table bee\n"),
+      mnesia:create_table(bee,[
+        {attributes, record_info(fields, bee)},
         {type, set},
         {disc_copies, Nodes}
       ]);

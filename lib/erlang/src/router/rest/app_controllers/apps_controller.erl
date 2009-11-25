@@ -35,7 +35,7 @@ post([Name], _Data) ->
 post(["new"], Data) ->
   case app:create(Data) of
     ok -> {"apps", Data};
-    _ -> "There was an error adding backend\n"
+    _ -> "There was an error adding bee\n"
   end;
   
 post(_Path, _Data) -> "unhandled".

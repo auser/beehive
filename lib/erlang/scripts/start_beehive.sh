@@ -4,7 +4,7 @@ progdir=$(dirname $0)
 progname=$(basename $0)
 version="0.1"
 
-if [ ! -f ebin/router-*.boot ]; then
+if [ ! -f ebin/beehive-*.boot ]; then
 	make && make boot
 fi
 
@@ -20,9 +20,9 @@ OPTIONS
 	-r, --rest	Run the rest server (boolean)
 	-s, --seed	Pass in the seed node
 	-p, --port	Port to run the router
-	-i, --initial_backends Initial backends to start the backend_srv
+	-i, --initial_bees Initial bees to start the bee_srv
 	-t, --type	Type of node to start (default: router)
-	-g, --strategy	Strategy to choose a backend. (default: random)
+	-g, --strategy	Strategy to choose a bee. (default: random)
 	-d		Daemonize the process
 	-v		Verbose
 	-h, --help	Show this screen
@@ -42,14 +42,14 @@ EOF
 HOSTNAME=`hostname -f`
 MNESIA_DIR="./db"
 DAEMONIZE_ARGS=""
-ROUTER_OPTS="-router"
+ROUTER_OPTS="-beehive"
 TYPE="router"
 REST="true"
 VERBOSE=false
 STRATEGY="random"
 
 SHORTOPTS="hm:n:dp:t:g:r:s:vi:"
-LONGOPTS="help,version,port,type,strategy,rest,seed,mnesia_dir,daemonize,initial_backends"
+LONGOPTS="help,version,port,type,strategy,rest,seed,mnesia_dir,daemonize,initial_bees"
 
 if $(getopt -T >/dev/null 2>&1) ; [ $? = 4 ] ; then # New longopts getopt.
 	OPTS=$(getopt -o "$SHORTOPTS" --longoptions "$LONGOPTS" -n "$progname" -- "$@")
@@ -88,14 +88,14 @@ while [ $# -gt 0 ]; do
 		-s|--seed)
 			ROUTER_OPTS="$ROUTER_OPTS seed '$2'"
 			shift 2;;
-		-i|--initial_backends)
-			ROUTER_OPTS="$ROUTER_OPTS backends '$2'"
+		-i|--initial_bees)
+			ROUTER_OPTS="$ROUTER_OPTS bees '$2'"
 			shift 2;;
 		-t|--type)
 			TYPE=$2
 			shift 2;;
     -g|--strategy)
-			ROUTER_OPTS="$ROUTER_OPTS backend_strategy '$2'"
+			ROUTER_OPTS="$ROUTER_OPTS bee_strategy '$2'"
       shift 2;;
 		-d|--daemonize)
 			DAEMONIZE_ARGS="-detached -heart"
@@ -116,7 +116,7 @@ if [ -z $NAME ]; then
 	NAME="$TYPE@$HOSTNAME"
 fi
 
-if [ $TYPE != 'router' ]; then
+if [ $TYPE != 'beehive' ]; then
 	ROUTER_OPTS="$ROUTER_OPTS run_rest_server false"
 fi
 
@@ -138,4 +138,4 @@ erl -pa $PWD/ebin \
 		-name $NAME \
 		$ROUTER_OPTS \
 		$DAEMONIZE_ARGS \
-    -boot router-0.1
+    -boot beehive-$version

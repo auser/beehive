@@ -44,13 +44,13 @@ start_link(Args) ->
 init(_Args) ->
   NodeManager = {the_node_manager, {node_manager, start_link, []}, permanent, 2000, worker, dynamic},
   EventManager = {the_app_event_manager, {?EVENT_MANAGER, start_link, []}, permanent, 2000, worker, dynamic},
-  AppSrv = {the_backend_srv_sup, {backend_srv_sup, start_link, []}, permanent,2000,worker,dynamic},
+  AppSrv = {the_bee_srv_sup, {bee_srv_sup, start_link, []}, permanent,2000,worker,dynamic},
   HttpCl = {the_socket_server, {socket_server_sup, start_link, []}, permanent,2000,worker,dynamic},
   StatSrv = {the_stats_srv, {stats_srv, start_link, []}, permanent,2000,worker,dynamic},
   AppManagerSrv  = {the_app_manager,{app_manager, start_link,[]}, permanent, 2000, worker, dynamic},
   AppHandler  = {the_app_handler,{app_handler, start_link,[]}, permanent, 2000, worker, dynamic},
   
-  AppsToStart = case apps:search_for_application_value(node_type, node, router) of
+  AppsToStart = case apps:search_for_application_value(node_type, node, beehive) of
     node -> [EventManager,NodeManager, AppHandler];
     router -> [EventManager,NodeManager,AppManagerSrv,AppSrv,HttpCl, StatSrv]
   end,

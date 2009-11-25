@@ -48,7 +48,7 @@ post("/new", Data) ->
     {stop_command, StopCmd}
   ],
   
-  backend_srv:add_application(ConfigProplist),
+  bee_srv:add_application(ConfigProplist),
   
   Out = {added, misc_utils:to_bin(Name)},
   {json, 200, [], Out};
@@ -64,8 +64,8 @@ delete(_Path, _Data) -> "unhandled".
 %%%
 
 format_proxy_state() ->
-  Backends = backend:all(),
-  State = backend_srv:get_proxy_state(),
+  Backends = bee:all(),
+  State = bee_srv:get_proxy_state(),
   StateHeaders = ?BINIFY([
     {"proxy_start_time", date_util:fmt_date(State#proxy_state.start_time)},
     {"current_time", date_util:fmt_date(date_util:now_to_seconds())},
@@ -75,18 +75,18 @@ format_proxy_state() ->
   ]),
   [
     {struct, StateHeaders},
-    {struct, [{"backends", format_backend_list(Backends)}]}
+    {struct, [{"bees", format_bee_list(Backends)}]}
   ].
 
-format_backend_list(List) -> format_backend_list(List, []).
-format_backend_list([], Acc) -> lists:reverse(Acc);
-format_backend_list([B|Bs], Acc) ->
-  {L1, L2} = case ?QSTORE:get_queue(?WAIT_DB, B#backend.app_name) of
+format_bee_list(List) -> format_bee_list(List, []).
+format_bee_list([], Acc) -> lists:reverse(Acc);
+format_bee_list([B|Bs], Acc) ->
+  {L1, L2} = case ?QSTORE:get_queue(?WAIT_DB, B#bee.app_name) of
     empty -> {[], []};
     E -> E
   end,
 
-  #backend_stat{
+  #bee_stat{
     total_requests = TotalReq,
     current = CurrentReq,
     total_time = TotalTime,
@@ -94,19 +94,19 @@ format_backend_list([B|Bs], Acc) ->
     packet_count = PacketCount,
     bytes_received = RecvBytes
   } = 
-    _BackendStat = case stats_srv:backend_dump(B#backend.id) of
+    _BackendStat = case stats_srv:bee_dump(B#bee.id) of
     [{_Name, Q}|_] -> Q;
-    _ -> stats_srv:new_backend_stat()
+    _ -> stats_srv:new_bee_stat()
   end,
 
-  % PidList = backend_pids:lookup(B#backend.app_name),
+  % PidList = bee_pids:lookup(B#bee.app_name),
   % {Active, Pending} = count_reqs(PidList),
-  format_backend_list(Bs, [{struct, ?BINIFY([
-    {"app_name", B#backend.app_name},
-    {"host", B#backend.host},
-    {"port", B#backend.port},
-    {"status", B#backend.status},
-    {"last_err_time", B#backend.lasterr_time},
+  format_bee_list(Bs, [{struct, ?BINIFY([
+    {"app_name", B#bee.app_name},
+    {"host", B#bee.host},
+    {"port", B#bee.port},
+    {"status", B#bee.status},
+    {"last_err_time", B#bee.lasterr_time},
     {"average_req_time", AvgTime},
     {"pending_requests", (length(L1) + length(L2))},
     {"total_requests", TotalReq},

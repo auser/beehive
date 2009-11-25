@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% File    : backend_srv.erl
+%%% File    : bee_srv.erl
 %%% Author  : Ari Lerner
 %%% Description : 
 %%%
 %%% Created :  Wed Oct  7 22:37:21 PDT 2009
 %%%-------------------------------------------------------------------
 
--module (backend_srv).
+-module (bee_srv).
 
 -include ("router.hrl").
 -include ("common.hrl").
@@ -20,15 +20,15 @@
   start_link/1, 
   start_link/3
 ]).
--export([ get_backend/2, 
+-export([ get_bee/2, 
           get_proxy_state/0,
           get_host/1,
           reset_host/1, 
           reset_host/2, 
           reset_all/0,
-          update_backend_status/2,
-          add_backend/1,
-          del_backend/1,
+          update_bee_status/2,
+          add_bee/1,
+          del_bee/1,
           maybe_handle_next_waiting_client/1
         ]). 
 
@@ -57,8 +57,8 @@ start_link(LocalPort, ConnTimeout, ActTimeout) ->
   gen_server:start_link({local, ?MODULE}, ?MODULE, [LocalPort, ConnTimeout, ActTimeout], []).
 
 %% Choose an available back-end host
-get_backend(Pid, Hostname) ->
-  gen_server:call(?MODULE, {Pid, get_backend, Hostname}, infinity).
+get_bee(Pid, Hostname) ->
+  gen_server:call(?MODULE, {Pid, get_bee, Hostname}, infinity).
 
 %% Get the overall status summary of the balancer
 get_proxy_state() ->
@@ -68,8 +68,8 @@ get_proxy_state() ->
 get_host(Host) ->
   gen_server:call(?MODULE, {get_host, Host}).
 
-update_backend_status(Backend, Status) ->
-  gen_server:cast(?MODULE, {update_backend_status, Backend, Status}).
+update_bee_status(Backend, Status) ->
+  gen_server:cast(?MODULE, {update_bee_status, Backend, Status}).
 
 %% Reset a back-end host's status to 'ready'
 reset_host(Hostname) ->
@@ -84,16 +84,16 @@ reset_host(Hostname, Status) ->
 reset_all() ->
   gen_server:call(?MODULE, {reset_all}).
 
-add_backend(NewBE) when is_record(NewBE, backend) ->
-  gen_server:call(?MODULE, {add_backend, NewBE});
+add_bee(NewBE) when is_record(NewBE, bee) ->
+  gen_server:call(?MODULE, {add_bee, NewBE});
 
-% Add a backend by name, host and port
-add_backend({Name, Host, Port}) ->
-  add_backend(#backend{id = {Name, Host, Port}, app_name = Name, host = Host, port = Port}).
+% Add a bee by name, host and port
+add_bee({Name, Host, Port}) ->
+  add_bee(#bee{id = {Name, Host, Port}, app_name = Name, host = Host, port = Port}).
 
 %% Delete a back-end host from the balancer's list.
-del_backend(Host) ->
-  gen_server:call(?MODULE, {del_backend, Host}).
+del_bee(Host) ->
+  gen_server:call(?MODULE, {del_bee, Host}).
   
 maybe_handle_next_waiting_client(Name) ->
   gen_server:cast(?MODULE, {maybe_handle_next_waiting_client, Name}).
@@ -117,7 +117,7 @@ init([LocalPort, ConnTimeout, ActTimeout]) ->
   
   LocalHost = host:myip(),
   
-  add_backends_from_config(),
+  add_bees_from_config(),
 
   % {ok, TOTimer} = timer:send_interval(1000, {check_waiter_timeouts}),
   {ok, #proxy_state{
@@ -140,22 +140,22 @@ init([LocalPort, ConnTimeout, ActTimeout]) ->
 %%          {stop, Reason, Reply, State}   | (terminate/2 is called)
 %%          {stop, Reason, State}            (terminate/2 is called)
 %%----------------------------------------------------------------------
-handle_call({Pid, get_backend, Hostname}, From, State) ->
+handle_call({Pid, get_bee, Hostname}, From, State) ->
   % If this is a request for an internal application, then serve that first
   % These are abnormal applications because they MUST be running for every router
-  % and backend_srv. 
+  % and bee_srv. 
   case Hostname of
     base ->
-      Port = apps:search_for_application_value(beehive_app_port, 4999, router), 
+      Port = apps:search_for_application_value(beehive_app_port, 4999, beehive), 
       Host = {127,0,0,1},
       Id = {Hostname, Host, Port},
       
-      Backend = #backend{ 
+      Backend = #bee{ 
         id = Id, port = Port, host = Host, app_name = Hostname
       },
       {reply, {ok, Backend}, State};
     _ ->
-      case choose_backend(Hostname, From, Pid) of
+      case choose_bee(Hostname, From, Pid) of
     	  ?MUST_WAIT_MSG -> 
     	    timer:apply_after(3000, ?MODULE, maybe_handle_next_waiting_client, [Hostname]),
     	    {noreply, State};
@@ -163,7 +163,7 @@ handle_call({Pid, get_backend, Hostname}, From, State) ->
     	    {reply, {ok, Backend}, State};
     	  {error, Reason} -> {reply, {error, Reason}, State};
     	  E ->
-    	    ?LOG(error, "Got weird response in get_backend: ~p", [E]),
+    	    ?LOG(error, "Got weird response in get_bee: ~p", [E]),
     	    {noreply, State}
       end
   end;
@@ -171,10 +171,10 @@ handle_call({get_proxy_state}, _From, State) ->
   Reply = State,
   {reply, Reply, State};
 handle_call({get_host, Hostname}, _From, State) ->
-  Reply = apps:lookup(backends, Hostname),
+  Reply = apps:lookup(bees, Hostname),
   {reply, Reply, State};
-handle_call({add_backend, NewBE}, _From, State) ->
-  {reply, handle_add_backend(NewBE), State};
+handle_call({add_bee, NewBE}, _From, State) ->
+  {reply, handle_add_bee(NewBE), State};
 handle_call(Request, From, State) ->
   error_logger:format("~s:handle_call: got ~w from ~w\n", [?MODULE, Request, From]),
   Reply = error,
@@ -236,8 +236,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%%----------------------------------------------------------------------
 %%% Internal functions
 %%%----------------------------------------------------------------------
-choose_backend(Hostname, From, FromPid) ->
-  case choose_backend(Hostname, FromPid) of
+choose_bee(Hostname, From, FromPid) ->
+  case choose_bee(Hostname, FromPid) of
 	  {ok, Backend} -> {ok, Backend};
 	  {error, Reason} -> {error, Reason};
 	  ?MUST_WAIT_MSG ->
@@ -245,44 +245,44 @@ choose_backend(Hostname, From, FromPid) ->
       ?MUST_WAIT_MSG
   end.
 
-% Find a backend host that is ready and choose it based on the strategy
-% given for the backend
-choose_backend(Hostname, FromPid) ->
-  case backend:find_all_by_name(Hostname) of
+% Find a bee host that is ready and choose it based on the strategy
+% given for the bee
+choose_bee(Hostname, FromPid) ->
+  case bee:find_all_by_name(Hostname) of
     [] -> 
       case app:exist(Hostname) of
         false ->
           {error, unknown_app};
         true ->
-          ?NOTIFY({app, request_to_start_new_backend, Hostname}),
+          ?NOTIFY({app, request_to_start_new_bee, Hostname}),
           ?MUST_WAIT_MSG
       end;
     Backends ->
       % We should move this out of here so that it doesn't slow down the proxy
       % as it is right now, this will slow down the proxy quite a bit
-      AvailableBackends = lists:filter(fun(B) -> B#backend.status =:= ready end, Backends),
-      case choose_from_backends(AvailableBackends, FromPid) of
+      AvailableBackends = lists:filter(fun(B) -> B#bee.status =:= ready end, Backends),
+      case choose_from_bees(AvailableBackends, FromPid) of
         ?MUST_WAIT_MSG ->
           % This might not be appropriate... not sure yet
-          ?NOTIFY({app, request_to_start_new_backend, Hostname}),
+          ?NOTIFY({app, request_to_start_new_bee, Hostname}),
           ?MUST_WAIT_MSG;
         E -> E
       end
   end.
 
-% Choose from the list of backends
-% Here is the logic to choose a backend from the list of backends
+% Choose from the list of bees
+% Here is the logic to choose a bee from the list of bees
 % For now, we'll just be using the random strategy
-choose_from_backends([], _FromPid) -> ?MUST_WAIT_MSG;
-choose_from_backends(Backends, _FromPid) ->
-  Strategy = apps:search_for_application_value(backend_strategy, "random", router),
+choose_from_bees([], _FromPid) -> ?MUST_WAIT_MSG;
+choose_from_bees(Backends, _FromPid) ->
+  Strategy = apps:search_for_application_value(bee_strategy, "random", beehive),
   Fun = erlang:list_to_atom(Strategy),
-  Backend = backend_strategies:Fun(Backends),
+  Backend = bee_strategies:Fun(Backends),
   {ok, Backend}.
 
-% Handle adding a new backend
-handle_add_backend(NewBE) ->
-  backend:create(NewBE).
+% Handle adding a new bee
+handle_add_bee(NewBE) ->
+  bee:create(NewBE).
 
 % Handle the *next* pending client only. 
 % Perhaps this should go somewhere else in the stack, but for the time being
@@ -297,9 +297,9 @@ maybe_handle_next_waiting_client(Name, State) ->
       maybe_handle_next_waiting_client(Name, State);
     {value, {Hostname, From, Pid, _InsertTime}} ->
       ?LOG(info, "Handling Q: ~p", [Hostname]),
-      case choose_backend(Hostname, From, Pid) of
-        % Clearly we are not ready for another backend connection request. :(
-        % choose_backend puts the request in the pending queue, so we don't have
+      case choose_bee(Hostname, From, Pid) of
+        % Clearly we are not ready for another bee connection request. :(
+        % choose_bee puts the request in the pending queue, so we don't have
         % to take care of that here
         ?MUST_WAIT_MSG -> ok;
         {ok, B} -> gen_server:reply(From, {ok, B})
@@ -308,8 +308,8 @@ maybe_handle_next_waiting_client(Name, State) ->
   
 % Basic configuration stuff
 % Add apps from a configuration file
-add_backends_from_config() ->
-  case apps:search_for_application_value(backends, undefined, router) of
+add_bees_from_config() ->
+  case apps:search_for_application_value(bees, undefined, beehive) of
     undefined -> ok;
     RawPath ->
       case (catch file_utils:abs_or_relative_filepath(RawPath)) of
@@ -321,7 +321,7 @@ add_backends_from_config() ->
                 case V of
                   {Name, Host, Port} ->
                     ?LOG(info, "Adding app: ~p, ~p:~p", [Name, Host, Port]),
-                    backend:create(#backend{id={Name, Host, Port}, app_name = Name, host = Host, port = Port, status = ready})
+                    bee:create(#bee{id={Name, Host, Port}, app_name = Name, host = Host, port = Port, status = ready})
                 end
               end,
               lists:map(F, List);

@@ -2,8 +2,8 @@ Client->ClientRequestHandler: Initial request
 ClientRequestHandler->ProxyHandler: Spawn new\n ProxyHandler
 ProxyHandler->HTTPRequestDecoder: Hand over \nclient request
 HTTPRequestDecoder->ProxyHandler: Return parsed request
-ProxyHandler->ServerSelector: Choose an\n available backend
-ServerSelector->ProxyHandler: Connect and \nengage backend
+ProxyHandler->ServerSelector: Choose an\n available bee
+ServerSelector->ProxyHandler: Connect and \nengage bee
 ProxyHandler->Server: Send initial request to Server
 ProxyHandler->Client: Spawn listener \nfor client data
 ProxyHandler->Server: Spawn listener \nfor server data

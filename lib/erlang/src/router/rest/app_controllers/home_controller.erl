@@ -11,7 +11,7 @@
 -export ([get/1, post/2, put/2, delete/2]).
 
 get(_) -> 
-  {struct, [{"beehive", <<"app, node, backend, stats">>}]}.
+  {struct, [{"beehive", <<"app, node, bees, stats">>}]}.
 post(_Path, _Data) -> "unhandled".
 put(_Path, _Data) -> "unhandled".
 delete(_Path, _Data) -> "unhandled".

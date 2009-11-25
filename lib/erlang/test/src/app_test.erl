@@ -46,4 +46,4 @@ find_by_name_test() ->
 delete_test() ->
   App1 = #app{name="test_app"},
   app:delete("another_app"),
-  ?assertEqual([App1], backend:all()).
+  ?assertEqual([App1], bee:all()).

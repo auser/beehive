@@ -8,23 +8,23 @@
 % Time period to kill an instance after: defaults to an hour
 -define (RUN_INSTANCE_TIME_PERIOD, 3600).
 
-% Max backends available on every host
+% Max bees available on every host
 -define (MAX_BACKENDS_PER_HOST, 3).
 
 % Get the fields of a record into a proplist
 -define(rec_info(T,R),lists:zip(record_info(fields,T),tl(tuple_to_list(R)))). 
 
 % Messages
--define (NEEDS_BACKEND_MSG, needs_backend).
--define (BACKEND_TIMEOUT_MSG, backend_timeout).
--define (MUST_WAIT_MSG, backend_must_wait).
+-define (NEEDS_BACKEND_MSG, needs_bee).
+-define (BACKEND_TIMEOUT_MSG, bee_timeout).
+-define (MUST_WAIT_MSG, bee_must_wait).
 
 % STORES
 -define (WAIT_DB, waiting_db).
 
 % EVENTS
 -define (EVENT_MANAGER, event_manager).
--define (EVENT_HANDLERS, [log_event_handler, app_event_handler, proxy_event_handler, backend_event_handler]).
+-define (EVENT_HANDLERS, [log_event_handler, app_event_handler, proxy_event_handler, bee_event_handler]).
 -define (NOTIFY (Event), ?EVENT_MANAGER:notify(Event)).
 
 % Port to start on
@@ -44,17 +44,17 @@
 % Default KV store
 -define (QSTORE, queue_store).
 
-% Application backend
+% Application bee
 % Yes, the id is redundant, optimization of this might be ideal... i.e. remove the host/port/app_name
 % fields
--record (backend, {
+-record (bee, {
   id,                       % tuple id of the app_name, host and port {app_name, host, port}
-  app_name,                 % name of the app this backend supports
+  app_name,                 % name of the app this bee supports
   host,
   port,
   start_time,               % starting time
   pid,                      % pid of os port process
-  sticky        = false,    % keep this backend around, don't remove it from the backend list if it dies
+  sticky        = false,    % keep this bee around, don't remove it from the bee list if it dies
   lastresp_time = 0,
   lasterr       = 0,
   lasterr_time  = 0,
@@ -80,7 +80,7 @@
   stop_command
 }).
 
--record (backend_pid, {pid, status, start_time, backend_name}).
+-record (bee_pid, {pid, status, start_time, bee_name}).
 
 %% Overall proxy_state of the proxy
 -record(proxy_state, {
@@ -93,9 +93,9 @@
   to_timer 				            % Timeout timer ref
 }).
 
-% Stats for a backend
--record (backend_stat, {
-  total_requests,   % total requests for the backend
+% Stats for a bee
+-record (bee_stat, {
+  total_requests,   % total requests for the bee
   current,          % current number of requests
   total_time,       % total active time
   average_req_time, % average request time
