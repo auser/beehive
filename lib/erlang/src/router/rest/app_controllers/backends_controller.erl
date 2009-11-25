@@ -6,7 +6,7 @@
 %%% Created :  Fri Nov 13 11:59:03 PST 2009
 %%%-------------------------------------------------------------------
 
--module (backend_controller).
+-module (backends_controller).
 -include ("router.hrl").
 -include ("http.hrl").
 

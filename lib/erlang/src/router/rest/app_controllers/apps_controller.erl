@@ -6,7 +6,7 @@
 %%% Created :  Fri Nov 13 11:43:43 PST 2009
 %%%-------------------------------------------------------------------
 
--module (app_controller).
+-module (apps_controller).
 -include ("router.hrl").
 -include ("http.hrl").
 -export ([get/1, post/2, put/2, delete/2]).
