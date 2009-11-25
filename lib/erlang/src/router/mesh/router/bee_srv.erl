@@ -260,7 +260,7 @@ choose_bee(Hostname, FromPid) ->
     Backends ->
       % We should move this out of here so that it doesn't slow down the proxy
       % as it is right now, this will slow down the proxy quite a bit
-      AvailableBackends = lists:filter(fun(B) -> B#bee.status =:= ready end, Backends),
+      AvailableBackends = lists:filter(fun(B) -> (catch B#bee.status =:= ready) end, Backends),
       case choose_from_bees(AvailableBackends, FromPid) of
         ?MUST_WAIT_MSG ->
           % This might not be appropriate... not sure yet
