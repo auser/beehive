@@ -15,6 +15,7 @@
     {seed, []},
     {beehive_app_port, 4999},
     {bees, undefined},
+    {user_defined_event_handler, undefined},
     {log_path, "/var/logs/router.log"}
   ]}
  ]
