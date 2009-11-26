@@ -155,8 +155,10 @@ handle_call({Pid, get_bee, Hostname}, From, State) ->
       },
       {reply, {ok, Backend}, State};
     _ ->
-      App = app:find_by_name(Hostname),
-      MetaParam = App#app.routing_param,
+      MetaParam = case app:find_by_name(Hostname) of
+        [] -> apps:search_for_application_value(bee_strategy, random, beehive);
+        App -> App#app.routing_param
+      end,
       case choose_bee({MetaParam, Hostname}, From, Pid) of
     	  ?MUST_WAIT_MSG -> 
     	    timer:apply_after(3000, ?MODULE, maybe_handle_next_waiting_client, [Hostname]),
