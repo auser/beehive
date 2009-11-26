@@ -36,11 +36,11 @@ init([]) ->
 %% gen_event:notify/2 or gen_event:sync_notify/2, this function is called for
 %% each installed event handler to handle the event.
 %%--------------------------------------------------------------------  
-handle_event({bee, used, Backend}, State) ->
+handle_event({bee, used, Backend}, State) when is_record(Backend, bee) ->
   stats_srv:bee_stat({request_begin, Backend#bee.id}),
   {ok, State};
   
-handle_event({bee, ready, Backend}, State) ->
+handle_event({bee, ready, Backend}, State) when is_record(Backend, bee) ->
   bee_srv:maybe_handle_next_waiting_client(Backend#bee.app_name),
   {ok, State};
 
