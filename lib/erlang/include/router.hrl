@@ -60,7 +60,7 @@
   lasterr       = 0,
   lasterr_time  = 0,
   act_time      = 0,
-  status        = pending,    % pending | ready | broken
+  status        = ready,    % pending | ready | broken
   maxconn       = 10,
   act_count     = 0
 }).
