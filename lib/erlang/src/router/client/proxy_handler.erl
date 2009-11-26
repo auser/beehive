@@ -165,8 +165,9 @@ terminate(Reason, #state{server_socket = SSock, client_socket = CSock, start_tim
     _ -> StatsProplist1
   end,
   
-  ?NOTIFY({bee, ready, Backend}),
-  ?NOTIFY({bee, closing_stats, Backend, StatsProplist}),
+  RealBee = bee:find_by_id(Backend#bee.id),
+  ?NOTIFY({bee, ready, RealBee}),
+  ?NOTIFY({bee, closing_stats, RealBee, StatsProplist}),
   gen_tcp:close(SSock), gen_tcp:close(CSock),
   exit(Reason).
 
