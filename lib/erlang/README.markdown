@@ -130,6 +130,11 @@ Note that this will *not* alter the functionality of beehive, it can only <stron
 
 Note: The documentation assumes that the router is sitting at a network accessible location. The documentation uses the CNAME "beehive.com" to illustrate.
 
+To start a router with the custom callback module, use the -c and -a switches:
+
+<pre><code>
+  ./scripts/start_beehive.sh -a /path/to/custom_callback_module -c custom_callback_module
+</code></pre>
 
 DEVELOPER DATA
 ===
@@ -149,3 +154,4 @@ TODO
   * Add ets/mnesia storage to the front-end servers
   * Add bee dets file for recovery when the router dies
   * Add more than just http servers (abstract the proxying protocols)
+  * Propagate the custom callback module across the mesh

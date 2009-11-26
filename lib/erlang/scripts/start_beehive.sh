@@ -15,19 +15,19 @@ Usage: $progname options
 Start beehive
 
 OPTIONS
-	-m		Mnesia directory (defaults to ./db)
-	-n 		Name of the erlang process (useful for multiple nodes on the same instance)
-	-r, --rest	Run the rest server (boolean)
+	-m			Mnesia directory (defaults to ./db)
+	-n 			Name of the erlang process (useful for multiple nodes on the same instance)
+	-r, --rest		Run the rest server (boolean)
 	-a, --additional_path	Additional paths for the beehive runtime
 	-c, --callback_module	Module name of the callback module
-	-s, --seed	Pass in the seed node
-	-p, --port	Port to run the router
-	-i, --initial_bees Initial bees to start the bee_srv
-	-t, --type	Type of node to start (default: router)
-	-g, --strategy	Strategy to choose a bee. (default: random)
-	-d		Daemonize the process
-	-v		Verbose
-	-h, --help	Show this screen
+	-s, --seed		Pass in the seed node
+	-p, --port		Port to run the router
+	-i, --initial_bees 	Initial bees to start the bee_srv
+	-t, --type		Type of node to start (default: router)
+	-g, --strategy		Strategy to choose a bee. (default: random)
+	-d			Daemonize the process
+	-v			Verbose
+	-h, --help		Show this screen
 	
 EOF
 }
