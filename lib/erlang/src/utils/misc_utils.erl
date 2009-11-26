@@ -1,6 +1,30 @@
 -module (misc_utils).
 -compile (export_all).
 
+-define (ADJECTIVES, [
+  "fast", "quick", "clean", "positive", "generous", "silly", "enjoyable", "friendly"
+]).
+
+-define (NOUNS, [
+  "giant", "bee", "queenbee", "sound", "music", "honey", "smile"
+]).
+
+-define (LETTERS, "abcdefghijklmnopqrstuvwxyz0123456789").
+
+generate_unique_name(Num) ->
+  lists:flatten([
+    random_word(?ADJECTIVES),"-",
+    random_word(?NOUNS),"-",
+    random_word(?LETTERS, Num, [])
+  ]).
+
+random_word(_, 0, Acc) -> lists:reverse(Acc);
+random_word(List, Length, Acc) ->
+  random_word(List, Length - 1, [random_word(List)|Acc]).
+  
+random_word(List) ->
+  lists:nth(random:uniform(erlang:length(List)), List).
+  
 to_list(Bin) when is_binary(Bin) -> erlang:binary_to_list(Bin);
 to_list(Atom) when is_atom(Atom) -> erlang:atom_to_list(Atom);
 to_list(Float) when is_float(Float) -> erlang:float_to_list(Float);
