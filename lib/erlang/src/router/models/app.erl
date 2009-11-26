@@ -43,7 +43,8 @@ create(App) when is_record(App, app) ->
     true -> ?NOTIFY({app, updated, App});
     false -> ?NOTIFY({app, created, App})
   end,
-  db:write(App);
+  db:write(App),
+  App;
 create(NewProps) ->
   create(new(NewProps)).
 
@@ -73,6 +74,10 @@ new(NewProps) ->
 validate_app_proplists(PropList) ->
   lists:map(fun({Key, Val}) ->
     case Key of
+      name -> case Val of
+        undefined -> {Key, misc_utils:generate_unique_name(5)};
+        E -> {Key, E}
+      end;
       updated_at -> {Key, date_util:now_to_seconds()};
       _ -> {Key, Val}
     end
