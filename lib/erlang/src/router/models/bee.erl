@@ -25,6 +25,7 @@
   find_by_name/1,
   find_all_by_name/1,
   find_all_by_host/1,
+  find_by_id/1,
   find_all_grouped_by_host/0,
   create/1,
   update/1,
@@ -34,6 +35,12 @@
 
 find_by_name(Hostname) ->
   case find_all_by_name(Hostname) of
+    [B|_] -> B;
+    _ -> []
+  end.
+  
+find_by_id(Id) ->
+  case db:match(#bee{id = Id, _='_'}) of
     [B|_] -> B;
     _ -> []
   end.
@@ -96,7 +103,7 @@ validate_bee_proplists(PropList) ->
   lists:map(fun({Key, Val}) ->
     case Key of
       port -> {Key, misc_utils:to_integer(Val)};
-      routing_param -> {Key, misc_utils:to_atom(Val)};
+      routing_param -> {Key, misc_utils:to_integer(Val)};
       _ -> {Key, Val}
     end
   end, PropList).
