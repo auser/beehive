@@ -11,7 +11,7 @@
 -include ("http.hrl").
 -export ([get/1, post/2, put/2, delete/2]).
 
-get(["all"]) -> 
+get(_) -> 
   All = app:all(),
   {struct, [{
     "apps",
@@ -23,22 +23,21 @@ get(["all"]) ->
         {"last_updated", A#app.updated_at}
       ])}
     end, All)
-  }]};
+  }]}.
 
-get(_) -> "hello world".
+post(["new"], Data) ->
+  case app:create(Data) of
+    App when is_record(App, app) -> 
+      {struct, ?BINIFY([{"app", misc_utils:to_bin(App#app.name)}])};
+    _ -> "There was an error adding bee\n"
+  end;
 
 post([Name], _Data) ->
   case app:update_by_name(Name) of
     {ok, _} -> updated;
     _ -> error
   end;
-
-post(["new"], Data) ->
-  case app:create(Data) of
-    ok -> {"apps", Data};
-    _ -> "There was an error adding bee\n"
-  end;
-  
+    
 post(_Path, _Data) -> "unhandled".
 put(_Path, _Data) -> "unhandled".
 delete(_Path, _Data) -> "unhandled".

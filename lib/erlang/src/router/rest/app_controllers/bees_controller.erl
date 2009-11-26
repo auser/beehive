@@ -12,7 +12,7 @@
 
 -export ([get/1, post/2, put/2, delete/2]).
 
-get(["all"]) -> 
+get(_) -> 
   All = bee:all(),
   {struct, [{
     "bees",
@@ -25,9 +25,7 @@ get(["all"]) ->
         {"status", B#bee.status}]
       )}
     end, All)
-  }]};
-get(_Path) ->
-  {struct, [{"path", <<"Backends">>}]}.
+  }]}.
 
 post(_Path, Data) ->
   case bee:create(Data) of
