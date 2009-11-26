@@ -95,6 +95,39 @@ To add an existing node to a cluster, you can set the seed with:
   node_manager:set_seed(OtherNodePid).
 </code></pre>
 
+Advanced
+===
+The core functionality of Beehive is event-driven. It supports user defined callbacks as well. To hook into the beehive architecture, you will have to write a custom handler that exports the function: handle_event/1. And example of this custom event handler might look something like this:
+
+<pre><code>
+  -module (my_callback_handler).
+  -include ("/path/to/include/router.hrl").
+
+  -export ([handle_event/1]).
+
+  handle_event({bee, ready, Bee}) ->
+    io:format("The bee: ~p is ready~n", [Bee#bee.id]);
+
+  handle_event(_) -> ok.
+</code></pre>
+
+Notice that the module name is pretty unique. It's a good idea to stick to a unique name so as not to clash with Beehive modules.
+
+In any case, the handler for the event will catch the {bee, ready, Bee} event thrown when a backend has been released from a single connection. 
+
+All the events in the source are thrown with the method: ?NOTIFY(EventTuple) and are documented throughout the source. Here is a brief list of the callbacks available to handle:
+
+<table><tr><th>Event</th><th>Description</th></tr>
+  <tr><td>{bee, used, Bee}</td><td>When a connection has been established</td></tr>
+  <tr><td>{bee, ready, Bee}</td><td>When a connection has been terminated</td></tr>
+  <tr><td>{bee, cannot_connect, Bee}</td><td>When a connection could not be made to the bee</td></tr>
+  <tr><td>{bee, bee_down_, Bee}</td><td>Fired when the backend is requested to be terminated</td></tr>
+  <tr><td>{app, updated, App}</td><td>Fired when the app has been updated</td></tr>
+  <tr><td>{app, request_to_start_new_bee, Name}</td><td>Fired when the app has been queried and there are not enough bees</td></tr>
+</table>
+
+Note that this will *not* alter the functionality of beehive, it can only <strong>enhance</strong> usage for the user.
+
 Note: The documentation assumes that the router is sitting at a network accessible location. The documentation uses the CNAME "beehive.com" to illustrate.
 
 
