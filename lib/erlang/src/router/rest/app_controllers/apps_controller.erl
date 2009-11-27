@@ -32,7 +32,7 @@ post(["new"], Data) ->
     _ -> "There was an error adding bee\n"
   end;
 
-post([Name], _Data) ->
+post([Name, "restart"], _Data) ->
   case app:update_by_name(Name) of
     {ok, _} -> updated;
     _ -> error
