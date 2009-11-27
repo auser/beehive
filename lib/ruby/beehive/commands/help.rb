@@ -4,17 +4,28 @@ module Beehive
     class Help < Base
       
       def run(o={})
+        commands = build_help.map do |klass|
+          "#{klass.to_s.top_class}          #{klass.description}"
+        end
         colored_say o[:msg] if o[:msg]
         colored_say "<line>
 <yellow>Beehive</yellow>
 <line>
 Commands
 
-start_router          Start a development version of the router
-Help                  Display this screen
+#{commands}
+Help            Display this screen
 "
       end
-    end
     
+      def build_help
+        Dir["#{File.dirname(__FILE__)}/*"].each do |lib|
+          require lib
+        end
+        self.class.base_classes.reject do |klass|
+          !klass.respond_to?(:description)
+        end
+      end
+    end
   end
 end

@@ -5,6 +5,14 @@ module Beehive
       
       attr_reader :app_name
       
+      def self.description
+        "Create a new app"
+      end
+      
+      def self.help
+        "Create a new app help"
+      end
+      
       def run
         parse_args do |opts|
           opts.on('-n name', '--name name') {|n| @app_name = n}

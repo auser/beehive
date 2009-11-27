@@ -50,6 +50,14 @@ module Beehive
         @tmp_dir ||= "/tmp/beehive"
       end
       
+      def self.inherited(base)
+        base_classes << base
+      end
+      
+      def self.base_classes
+        @@base_classes ||= []
+      end
+      
     end
     
   end

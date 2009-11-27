@@ -10,6 +10,10 @@ class String
     File.join(self, o.to_s)
   end
   
+  def top_class
+    self.split("::")[-1]
+  end
+  
   # foo_bar => FooBar
   def camelcase
     gsub(/(^|_|-)(.)/) { $2.upcase }
