@@ -2,11 +2,11 @@
 -compile (export_all).
 
 -define (ADJECTIVES, [
-  "fast", "quick", "clean", "positive", "generous", "silly", "enjoyable", "friendly"
+  "fast", "quick", "clean", "positive", "generous", "silly", "enjoyable", "friendly", "flighty", "handsome"
 ]).
 
 -define (NOUNS, [
-  "giant", "bee", "queenbee", "sound", "music", "honey", "smile"
+  "giant", "bee", "queenbee", "sound", "music", "honey", "smile", "balloon", "bird", "wind", "dog", "cat"
 ]).
 
 -define (LETTERS, "abcdefghijklmnopqrstuvwxyz0123456789").
