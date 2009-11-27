@@ -75,10 +75,18 @@ validate_app_proplists(PropList) ->
   lists:map(fun({Key, Val}) ->
     case Key of
       name -> case Val of
-        undefined -> {Key, misc_utils:generate_unique_name(5)};
+        undefined -> {Key, generate_unique_name()};
         E -> {Key, E}
       end;
       updated_at -> {Key, date_util:now_to_seconds()};
       _ -> {Key, Val}
     end
   end, PropList).
+
+% Generate a new name for the app, if none are created
+generate_unique_name() ->
+  NewName = misc_utils:generate_unique_name(5),
+  case find_by_name(NewName) of
+    [] -> NewName;
+    _ -> generate_unique_name()
+  end.
