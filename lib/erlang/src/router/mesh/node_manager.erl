@@ -244,7 +244,11 @@ handle_info({stay_connected_to_seed}, #state{seed = SeedNode, type = Type} = Sta
         pang -> 
           RespondingSeed = case ping_node(get_other_nodes(Type)) of
             [] -> SeedNode;
-            E -> E
+            E -> 
+              case E =:= self() of
+                true -> SeedNode;
+                false -> E
+              end
           end,
           {noreply, State#state{seed = RespondingSeed}}
       end
