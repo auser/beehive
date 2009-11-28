@@ -120,11 +120,6 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
   	{tcp, SSock, Data} ->
       % Received info from the server
       gen_tcp:send(CSock, Data),
-      % Don't see much of a way around this... but there has got to be a better way
-      % Try for a half of a second to passivly receive more data on the server socket
-      % if there is more data, then we'll assume there is a lot more data, so send
-      % it and then continue the proxy, otherwise we'll assume that the proxy is dead
-      % and we should terminate the proxy
       inet:setopts(SSock, [{active, once}]),
       proxy_loop(State);
     {tcp_closed, CSock} ->
