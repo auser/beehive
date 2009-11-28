@@ -33,10 +33,11 @@ post(["new"], Data) ->
   end;
 
 post([Name, "restart"], _Data) ->
-  case app:update_by_name(Name) of
-    {ok, _} -> updated;
-    _ -> error
-  end;
+  Response = case app:update_by_name(Name) of
+    {ok, _} -> {"app", <<"updated">>};
+    _ -> {"app", <<"error">>}
+  end,
+  {struct, ?BINIFY([Response])};
     
 post(_Path, _Data) -> "unhandled".
 put(_Path, _Data) -> "unhandled".
