@@ -22,8 +22,10 @@ module Beehive
         @app_name ||= @args[0]
         @type     ||= :rack
         
-        ssh "#{@prefix}/bin/git-bare-setup.sh #{@app_name} #{user}"
-        build_templates
+        # ssh "#{@prefix}/bin/git-bare-setup.sh #{@app_name} #{user}"
+        # build_templates
+        
+        puts "@host: #{host}"
       end
       
       def build_templates

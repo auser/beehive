@@ -1,3 +1,4 @@
+require "yaml"
 module Beehive
   module Command
     
@@ -56,6 +57,28 @@ module Beehive
       
       def self.base_classes
         @@base_classes ||= []
+      end
+      
+      def user
+        @user ||= config["user"]
+      end
+      
+      def password
+        @password ||= config["password"]
+      end
+      
+      def host
+        @host ||= config["host"]
+      end
+      
+      private
+      
+      def config_file
+        "#{ENV['HOME']}/.beehive"
+      end
+      
+      def config(file=config_file)
+        @config ||= File.exists?(file) ? YAML.load(open(file).read) : {}
       end
       
     end
