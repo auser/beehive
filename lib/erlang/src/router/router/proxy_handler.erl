@@ -87,6 +87,9 @@ engage_bee(ClientSock, RequestPid, Hostname, ForwardReq, Req, {ok, #bee{host = H
         ClientSock, 503,
         ?APP_ERROR("503 Service Unavailable")
       );
+    {error,econnreset} ->
+      timer:sleep(200),
+      engage_bee(ClientSock, RequestPid, Hostname, ForwardReq, Req, bee_srv:get_bee(RequestPid, Hostname));
     Error ->
       ?LOG(error, "Connection to remote TCP server: ~p:~p ~p", [Host, Port, Error]),
       ?NOTIFY({bee, cannot_connect, Backend}),
