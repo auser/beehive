@@ -75,6 +75,14 @@ Viewing the list of supported apps:
   curl -i beehive.com:8080/app
 </code></pre>
 
+All operations can be handled in a RESTful interface.
+
+For instance, to terminate and restart the application in the beehive, issue a request such as:
+
+<pre><code>
+  curl -i -XPOST http://beehive.com:8080/apps/[app_name]/restart
+</code></pre>
+
 ## Nodes
 Beehive is a distributed system. You can add multiple nodes in the router. The node_manager handles the node connections.
 
