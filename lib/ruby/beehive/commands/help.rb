@@ -6,7 +6,7 @@ module Beehive
       def run(o={})
         commands = build_help.map do |klass|
           "#{klass.to_s.top_class}          #{klass.description}"
-        end
+        end.join("\n")
         colored_say o[:msg] if o[:msg]
         colored_say "<line>
 <yellow>Beehive</yellow>

@@ -38,12 +38,6 @@ module Beehive
           end
         }.parse! @args
         
-        @host       ||= @args[0]
-        
-        @user       ||= "root"
-        @prefix     ||= "/opt/beehive"
-        @keypair    ||= Keypair.new
-        
         opts
       end
       
