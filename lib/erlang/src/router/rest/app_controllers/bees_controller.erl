@@ -14,7 +14,7 @@
 
 get(_) -> 
   All = bee:all(),
-  {struct, [{
+  O = {struct, [{
     "bees",
     lists:map(fun(B) ->
       {struct, ?BINIFY([
@@ -25,7 +25,8 @@ get(_) ->
         {"status", B#bee.status}]
       )}
     end, All)
-  }]}.
+  }]},
+  O.
 
 post(_Path, Data) ->
   case bee:create(Data) of
