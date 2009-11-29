@@ -9,7 +9,7 @@
 -module (rest_server).
 -behaviour(gen_server).
 
--include ("router.hrl").
+-include ("beehive.hrl").
 -include ("common.hrl").
 -include ("http.hrl").
 

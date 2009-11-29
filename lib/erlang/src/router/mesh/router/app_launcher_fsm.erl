@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 
 -module (app_launcher_fsm).
--include ("router.hrl").
+-include ("beehive.hrl").
 -include ("common.hrl").
 -behaviour(gen_fsm).
 
@@ -169,7 +169,6 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %% (or a system message).
 %%--------------------------------------------------------------------
 handle_info(Info, StateName, State) ->
-  io:format("Uncaught info: ~p while in state: ~p ~n", [Info, StateName]),
   apply(?MODULE, StateName, [Info, State]).
   % {next_state, StateName, State}.
 

@@ -10,7 +10,7 @@
 
 -include ("common.hrl").
 -include ("http.hrl").
--include ("router.hrl").
+-include ("beehive.hrl").
 
 -export ([
   start_link/1

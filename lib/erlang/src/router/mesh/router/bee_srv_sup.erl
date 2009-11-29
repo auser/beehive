@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 
 -module (bee_srv_sup).
--include ("router.hrl").
+-include ("beehive.hrl").
 -behaviour(supervisor).
 
 %% API

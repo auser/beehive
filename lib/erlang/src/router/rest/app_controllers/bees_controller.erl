@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 
 -module (bees_controller).
--include ("router.hrl").
+-include ("beehive.hrl").
 -include ("http.hrl").
 
 -export ([get/1, post/2, put/2, delete/2]).

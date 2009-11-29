@@ -8,7 +8,7 @@
 
 -module (node_manager).
 -include ("common.hrl").
--include ("router.hrl").
+-include ("beehive.hrl").
 -behaviour(gen_server).
 
 %% API
@@ -128,7 +128,10 @@ init([Type, Seed]) ->
       case Seed of
         [] -> 
           % Initializing root router
-          db:init();
+          case db:already_initialized() of
+            true -> ok;
+            false -> db:init()
+          end;
         _ -> 
           ?LOG(info, "Initializing slave db: ~p", [Seed]),
           mesh_util:init_db_slave(Seed)

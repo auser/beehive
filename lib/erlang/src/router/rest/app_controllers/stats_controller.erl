@@ -8,7 +8,7 @@
 
 -module (stats_controller).
 
--include ("router.hrl").
+-include ("beehive.hrl").
 -include ("common.hrl").
 -include ("http.hrl").
 

@@ -6,7 +6,7 @@
   {modules,      []},
   {registered,   [tcp_socket_server, bee_srv]},
   {applications, [kernel, stdlib, sasl]},
-  {mod, {router, []}},
+  {mod, {beehive, []}},
   {env, [
     {client_port, 8080},
     {routing_parameter, 'Host'},

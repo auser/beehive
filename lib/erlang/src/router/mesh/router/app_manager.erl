@@ -8,7 +8,7 @@
 
 -module (app_manager).
 
--include ("router.hrl").
+-include ("beehive.hrl").
 -include ("common.hrl").
 -behaviour(gen_server).
 

@@ -82,6 +82,15 @@
   stop_command
 }).
 
+
+% User
+-record (user, {
+  email,
+  password,
+  key
+}).
+
+
 -record (bee_pid, {pid, status, start_time, bee_name}).
 
 %% Overall proxy_state of the proxy

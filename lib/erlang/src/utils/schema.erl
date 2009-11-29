@@ -8,7 +8,7 @@
 
 -module (schema).
 
--include ("router.hrl").
+-include ("beehive.hrl").
 
 -export ([
   install/0, install/1,
@@ -17,14 +17,11 @@
 
 initialized() ->
   try
-    mnesia:table_info(app, type)
+    (catch db:start()),
+    lists:map(fun(TableAtom) -> mnesia:table_info(TableAtom, type) end, [app, bee, user]),
+    true
   catch _:_ -> false
-  end,
-  try
-    mnesia:table_info(bee, type)
-  catch _:_ -> false
-  end,
-  true.
+  end.
 
 install() -> install([node()]).
 remove(Node) ->
@@ -38,6 +35,7 @@ install(Nodes) when is_list(Nodes) ->
   db:start(),
   install_app(Nodes),
   install_bee(Nodes),
+  install_user(Nodes),
   ok.
 
 install_app(Nodes) ->
@@ -71,3 +69,20 @@ install_bee(Nodes) ->
       io:format("Error creating mnesia table: ~p", [Error]),
       throw(Error)
   end.
+
+install_user(Nodes) ->
+  try 
+    mnesia:table_info(user, type)
+  catch
+    exit:_Why ->
+      io:format("Creating table user\n"),
+      mnesia:create_table(user,[
+        {attributes, record_info(fields, user)},
+        {type, set},
+        {disc_copies, Nodes}
+      ]);
+    Error ->
+      io:format("Error creating mnesia table: ~p", [Error]),
+      throw(Error)
+  end.
+  

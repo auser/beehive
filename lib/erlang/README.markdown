@@ -109,7 +109,7 @@ The core functionality of Beehive is event-driven. It supports user defined call
 
 <pre><code>
   -module (my_callback_handler).
-  -include ("/path/to/include/router.hrl").
+  -include ("/path/to/include/beehive.hrl").
 
   -export ([handle_event/1]).
 
@@ -129,7 +129,7 @@ All the events in the source are thrown with the method: ?NOTIFY(EventTuple) and
   <tr><td>{bee, used, Bee}</td><td>When a connection has been established</td></tr>
   <tr><td>{bee, ready, Bee}</td><td>When a connection has been terminated</td></tr>
   <tr><td>{bee, cannot_connect, Bee}</td><td>When a connection could not be made to the bee</td></tr>
-  <tr><td>{bee, bee_down, Bee}</td><td>Fired when the backend is requested to be terminated</td></tr>
+  <tr><td>{bee, bee_down_, Bee}</td><td>Fired when the backend is requested to be terminated</td></tr>
   <tr><td>{app, updated, App}</td><td>Fired when the app has been updated</td></tr>
   <tr><td>{app, request_to_start_new_bee, Name}</td><td>Fired when the app has been queried and there are not enough bees</td></tr>
 </table>
