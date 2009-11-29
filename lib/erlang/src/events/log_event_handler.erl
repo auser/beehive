@@ -35,7 +35,6 @@ init([]) ->
     P -> P
   end,
   
-  io:format(":--------- ~p~n", [FullFilepath]),
   {ok, Fd} = file:open(FullFilepath, [append]),
   
   {ok, #state{filename = FullFilepath, log_handle = Fd}}.
