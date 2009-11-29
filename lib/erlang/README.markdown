@@ -43,13 +43,6 @@ The app table stores the applications associated with Beehive.
 
 The bee table stores the bee data, and their state.
 
-## Users
-
-Beehive has basic support for user accounts. The root user account information is:
-<pre><code>username: root@getbeehive.com
-password: 098f6bcd4621d373cade4e832627b4f6
-</code></pre>
-
 ## Proxy
 
 The proxy can be hot-loaded with new routes simply with a RESTful interface. The name (the routing key), the endpoint host and the port of the bee need to be included. For instance:
@@ -109,6 +102,16 @@ To add an existing node to a cluster, you can set the seed with:
 <pre><code>
   node_manager:set_seed(OtherNodePid).
 </code></pre>
+
+
+## Users
+
+Beehive has basic support for user accounts. The root user account information is:
+<pre><code>username: root@getbeehive.com
+password: 098f6bcd4621d373cade4e832627b4f6
+</code></pre>
+
+It is strongly recommended that you delete this user as soon as you create your own (you must log in once with this user to create a new user). Details on that coming soon
 
 Advanced
 ===
