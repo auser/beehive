@@ -1,13 +1,13 @@
 %%%-------------------------------------------------------------------
-%%% File    : router_sup.erl
+%%% File    : beehive_sup.erl
 %%% Author  : Ari Lerner
 %%% Description : 
 %%%
 %%% Created :  Sun Oct 25 13:09:07 PDT 2009
 %%%-------------------------------------------------------------------
 
--module (router_sup).
--include ("router.hrl").
+-module (beehive_sup).
+-include ("beehive.hrl").
 -behaviour(supervisor).
 -compile([verbose, report_errors, report_warnings, trace, debug_info]).
 
