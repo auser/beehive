@@ -16,6 +16,7 @@
   start_link/0,
   start_link/2,
   request_to_start_new_bee/1,
+  request_to_terminate_bee/1,
   request_to_terminate_all_bees/1,
   get_host/0, get_seed/0,
   set_seed/1,
@@ -93,6 +94,9 @@ get_nodes() ->
   
 request_to_start_new_bee(Name) -> 
   gen_server:cast(?SERVER, {request_to_start_new_bee, Name}).
+
+request_to_terminate_bee(Bee) ->
+  gen_server:cast(?SERVER, {request_to_terminate_bee, Bee}).
 
 request_to_terminate_all_bees(Name) ->
   gen_server:cast(?SERVER, {request_to_terminate_all_bees, Name}).
@@ -200,7 +204,7 @@ handle_cast({request_to_terminate_all_bees, Name}, State) ->
   % First, find all the bees and "unregister" them, or delete them from the bee list so we don't
   % route any requests this way
   Backends = bees:find_all_by_name(Name),
-  lists:map(fun(Backend) -> bees:delete(Backend#bee{status = unavailable}) end, Backends),
+  lists:map(fun(Backend) -> bees:update(Backend#bee{status = unavailable}) end, Backends),
   % Next, do this in an rpc call to shutdown the nodes
   App = apps:find_by_name(Name),
   Nodes = lists:map(fun(N) -> node(N) end, get_nodes()),
@@ -214,6 +218,19 @@ handle_cast({request_to_terminate_all_bees, Name}, State) ->
     end
   end, Nodes),
   {noreply, State};
+
+handle_cast({request_to_terminate_bee, Bee}, State) ->
+  App = apps:find_by_name(Bee#bee.app_name),
+  Nodes = lists:map(fun(N) -> node(N) end, get_nodes()),
+  lists:map(fun(Node) ->
+    case rpc:call(Node, ?APP_HANDLER, has_app_named, [Bee#bee.app_name]) of
+      true -> 
+        rpc:call(Node, ?APP_HANDLER, stop_instance, [Bee, App, self()]);
+      false -> ok
+    end
+  end, Nodes),
+  {noreply, State};
+  
 handle_cast({request_to_start_new_bee, Name}, State) ->
   Backends = bees:find_all_by_name(Name),
   % Don't start a new bee if there is a pending one
