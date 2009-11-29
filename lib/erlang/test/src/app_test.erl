@@ -8,7 +8,7 @@
 
 -module (app_test).
 
--include ("router.hrl").
+-include ("beehive.hrl").
 -include_lib("eunit/include/eunit.hrl").
 -export ([test/0]).
 

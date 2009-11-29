@@ -8,7 +8,7 @@
 
 -module (schema).
 
--include ("router.hrl").
+-include ("beehive.hrl").
 
 -export ([
   install/0, install/1,
