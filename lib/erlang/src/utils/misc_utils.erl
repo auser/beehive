@@ -69,3 +69,10 @@ new_or_previous_value(NewProplist, [{K,V}|Rest], Acc) ->
     false ->
       new_or_previous_value(NewProplist, Rest, [{K, V}|Acc])
   end.
+
+% From rabbitmq
+localnode(Name) ->
+  list_to_atom(lists:append([atom_to_list(Name), "@", nodehost(node())])).
+
+nodehost(Node) ->
+  tl(lists:dropwhile(fun (E) -> E =/= $@ end, atom_to_list(Node))).
