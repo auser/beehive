@@ -47,7 +47,7 @@ The bee table stores the bee data, and their state.
 
 Beehive has basic support for user accounts. The root user account information is:
 <pre><code>username: root@getbeehive.com
-  password: 098f6bcd4621d373cade4e832627b4f6
+password: 098f6bcd4621d373cade4e832627b4f6
 </code></pre>
 
 ## Proxy
