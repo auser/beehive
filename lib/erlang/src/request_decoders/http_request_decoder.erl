@@ -8,7 +8,7 @@
 
 -module (http_request_decoder).
 
--include ("router.hrl").
+-include ("beehive.hrl").
 -include ("http.hrl").
 -include ("common.hrl").
 

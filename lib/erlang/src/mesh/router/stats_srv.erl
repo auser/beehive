@@ -9,7 +9,7 @@
 
 -module (stats_srv).
 
--include ("router.hrl").
+-include ("beehive.hrl").
 -behaviour(gen_server2).
 
 %% API

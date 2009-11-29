@@ -8,7 +8,7 @@
 
 -module (bee_event_handler).
 
--include ("router.hrl").
+-include ("beehive.hrl").
 -include ("common.hrl").
 
 -behaviour(gen_event).

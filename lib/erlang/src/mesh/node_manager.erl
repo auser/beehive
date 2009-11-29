@@ -8,7 +8,7 @@
 
 -module (node_manager).
 -include ("common.hrl").
--include ("router.hrl").
+-include ("beehive.hrl").
 -behaviour(gen_server).
 
 %% API

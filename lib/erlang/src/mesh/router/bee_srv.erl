@@ -8,7 +8,7 @@
 
 -module (bee_srv).
 
--include ("router.hrl").
+-include ("beehive.hrl").
 -include ("common.hrl").
 -include_lib("kernel/include/inet.hrl").
 

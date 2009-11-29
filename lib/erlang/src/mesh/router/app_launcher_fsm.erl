@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 
 -module (app_launcher_fsm).
--include ("router.hrl").
+-include ("beehive.hrl").
 -include ("common.hrl").
 -behaviour(gen_fsm).
 
