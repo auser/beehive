@@ -43,6 +43,13 @@ The app table stores the applications associated with Beehive.
 
 The bee table stores the bee data, and their state.
 
+## Users
+
+Beehive has basic support for user accounts. The root user account information is:
+<pre><code>username: root@getbeehive.com
+  password: 098f6bcd4621d373cade4e832627b4f6
+</code></pre>
+
 ## Proxy
 
 The proxy can be hot-loaded with new routes simply with a RESTful interface. The name (the routing key), the endpoint host and the port of the bee need to be included. For instance:
