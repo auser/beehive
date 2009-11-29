@@ -49,7 +49,7 @@ TYPE="router"
 REST="true"
 VERBOSE=false
 STRATEGY="random"
-PATHS="-pa $PWD/ebin"
+PATHS="-pa $PWD/ebin -pa $PWD/include"
 
 SHORTOPTS="hm:n:dp:t:g:r:s:vi:a:c:"
 LONGOPTS="help,version,port,type,strategy,rest,seed,mnesia_dir,daemonize,initial_bees,additional_path,callback_module"
