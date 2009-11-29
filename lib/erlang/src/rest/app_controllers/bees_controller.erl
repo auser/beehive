@@ -13,7 +13,7 @@
 -export ([get/1, post/2, put/2, delete/2]).
 
 get(_) -> 
-  All = bee:all(),
+  All = bees:all(),
   O = {struct, [{
     "bees",
     lists:map(fun(B) ->
@@ -29,8 +29,8 @@ get(_) ->
   O.
 
 post(_Path, Data) ->
-  case bee:create(Data) of
-    {ok, Be} -> misc_utils:to_bin(io_lib:format("Added bee: ~p on ~p:~p", [Be#bee.app_name, Be#bee.host, Be#bee.port]));
+  case bees:create(Data) of
+    {ok, Be} -> misc_utils:to_bin(io_lib:format("Added bees: ~p on ~p:~p", [Be#bee.app_name, Be#bee.host, Be#bee.port]));
     _ -> misc_utils:to_bin("There was an error adding bee\n")
   end.
   
@@ -38,12 +38,12 @@ post(_Path, Data) ->
 put(_Path, _Data) -> "unhandled".
 
 delete([Name], _Data) ->
-  case bee:delete(Name) of
+  case bees:delete(Name) of
     ok -> misc_utils:to_bin("Deleted bee");
     _ -> misc_utils:to_bin("There was an error deleting bee\n")
   end;
 delete([Name, Host, Port], _Data) ->
-  case bee:delete(Name, Host, misc_utils:to_integer(Port)) of
+  case bees:delete(Name, Host, misc_utils:to_integer(Port)) of
     ok -> misc_utils:to_bin("Deleted bee");
     _ -> misc_utils:to_bin("There was an error deleting bee\n")
   end;

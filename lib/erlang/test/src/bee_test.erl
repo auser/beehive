@@ -31,31 +31,31 @@ create_test() ->
   db:clear_table(bee),
   schema:install(),
   Be1 = #bee{id={"test_app", {127,0,0,1}, 8090}, app_name = "test_app"},
-  bee:create(Be1),
+  bees:create(Be1),
   {atomic,Results1} = mnesia:transaction(fun() -> mnesia:match_object(#bee{_='_'}) end),
   % Results1 = mnesia:dirty_read({bee, "test_app"}),
   ?assertEqual([Be1], Results1),
   % create via proplists
   Props = [{app_name, "another_app"}, {host, {127,0,0,1}}, {port, 8091}],
-  Be2 = bee:new(Props),
-  bee:create(Props),
+  Be2 = bees:new(Props),
+  bees:create(Props),
   {atomic,Results2} = mnesia:transaction(fun() -> mnesia:match_object(#bee{_='_'}) end),
   ?assertEqual([Be2, Be1], Results2).
 
 find_by_name_test() ->
   Be1 = #bee{app_name = "test_app", id={"test_app", {127,0,0,1}, 8090}},
-  Results1 = bee:find_by_name("test_app"),
+  Results1 = bees:find_by_name("test_app"),
   ?assertEqual(Be1, Results1).
   
 all_test() ->
-  All = bee:all(),
+  All = bees:all(),
   ?assertEqual(2, length(All)).
 
 find_all_grouped_by_host_test() ->
-  bee:create(#bee{id={"test_app", {127,0,0,1}, 8090}, app_name = "test_app", host={127,0,0,1}}),
-  bee:create([{app_name, "another_app"}, {host, {127,0,0,1}}, {port, 8091}]),
-  bee:create([{app_name, "yarrrrn pirates"}, {host, {127,0,0,2}}, {port, 8091}]),
-  AllBackends = bee:find_all_grouped_by_host(),
+  bees:create(#bee{id={"test_app", {127,0,0,1}, 8090}, app_name = "test_app", host={127,0,0,1}}),
+  bees:create([{app_name, "another_app"}, {host, {127,0,0,1}}, {port, 8091}]),
+  bees:create([{app_name, "yarrrrn pirates"}, {host, {127,0,0,2}}, {port, 8091}]),
+  AllBackends = bees:find_all_grouped_by_host(),
   All = lists:map(fun({Host, _Backends, Count}) ->
     {Host, Count}
   end, AllBackends),
@@ -64,9 +64,9 @@ find_all_grouped_by_host_test() ->
     {{127,0,0,2}, 1},
     {{127,0,0,1}, 2}
   ], All),
-  bee:delete("yarrrrn pirates").
+  bees:delete("yarrrrn pirates").
   
 delete_test() ->
   Be1 = #bee{app_name = "test_app", id={"test_app", {127,0,0,1}, 8090}},
-  bee:delete("another_app"),
-  ?assertEqual([Be1], bee:all()).
+  bees:delete("another_app"),
+  ?assertEqual([Be1], bees:all()).

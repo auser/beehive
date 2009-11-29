@@ -12,7 +12,7 @@
 -export ([get/1, post/2, put/2, delete/2]).
 
 get(_) -> 
-  All = app:all(),
+  All = apps:all(),
   {struct, [{
     "apps",
     lists:map(fun(A) ->
@@ -26,14 +26,14 @@ get(_) ->
   }]}.
 
 post(["new"], Data) ->
-  case app:create(Data) of
+  case apps:create(Data) of
     App when is_record(App, app) -> 
       {struct, ?BINIFY([{"app", misc_utils:to_bin(App#app.name)}])};
     _ -> "There was an error adding bee\n"
   end;
 
 post([Name, "restart"], _Data) ->
-  Response = case app:update_by_name(Name) of
+  Response = case apps:update_by_name(Name) of
     {ok, _} -> {"app", <<"updated">>};
     _ -> {"app", <<"error">>}
   end,

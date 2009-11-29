@@ -64,7 +64,7 @@ delete(_Path, _Data) -> "unhandled".
 %%%
 
 format_proxy_state() ->
-  Backends = bee:all(),
+  Backends = bees:all(),
   State = bee_srv:get_proxy_state(),
   StateHeaders = ?BINIFY([
     {"proxy_start_time", date_util:fmt_date(State#proxy_state.start_time)},

@@ -199,7 +199,7 @@ set ylabel 'Response time (ms)'
 set output '$OUTPUT.png'" > $PLOT_OUTPUT_SCRIPT
 
 echo "Testing proxy at url: http://$PROXY_URL"
-echo "Adding bee: "
+echo "Adding bees: "
 echo "curl -i -XPOST -d\"{\"app_name\":\"$NAME\", \"host\":\"$RAW_URL\", \"port\":\"$RAW_PORT\"}\" http://$PROXY_URL:$PORT/bees/new"
 curl -i -XPOST -d"{\"app_name\":\"$NAME\", \"host\":\"$RAW_URL\", \"port\":\"$RAW_PORT\"}" http://$PROXY_URL:$PORT/bees/new > /dev/null
 

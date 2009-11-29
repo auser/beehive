@@ -45,7 +45,7 @@ init([]) ->
   
   AppsToStart = [AppSrv],
   
-  AppsToStart2 = case apps:search_for_application_value(run_rest_server, true, beehive) of
+  AppsToStart2 = case config:search_for_application_value(run_rest_server, true, beehive) of
     true -> [BHApps|AppsToStart];
     false -> AppsToStart
   end,

@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% File    : app.erl
+%%% File    : apps.erl
 %%% Author  : Ari Lerner
 %%% Description : 
 %%%
 %%% Created :  Fri Nov  6 14:22:05 PST 2009
 %%%-------------------------------------------------------------------
 
--module (app).
+-module (apps).
 
 -include ("beehive.hrl").
 -include_lib("stdlib/include/qlc.hrl").

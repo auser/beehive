@@ -45,11 +45,11 @@ handle_event({bee, ready, Backend}, State) when is_record(Backend, bee) ->
   {ok, State};
 
 handle_event({bee, bee_down, Backend}, State) ->
-  bee:update(Backend#bee{status = down}),
+  bees:update(Backend#bee{status = down}),
   {ok, State};
 
 handle_event({bee, cannot_connect, Backend}, State) ->
-  bee:update(Backend#bee{status = down}),
+  bees:update(Backend#bee{status = down}),
   {ok, State};
 
 handle_event({bee, closing_stats, #bee{id = Id} = Backend, StatsProplist}, State) ->

@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% File    : bee.erl
+%%% File    : bees.erl
 %%% Author  : Ari Lerner
 %%% Description : 
 %%%
 %%% Created :  Fri Nov  6 13:15:07 PST 2009
 %%%-------------------------------------------------------------------
 
--module (bee).
+-module (bees).
 
 % This provides an interface to the bee mnesia table that looks like:
 % |----------|

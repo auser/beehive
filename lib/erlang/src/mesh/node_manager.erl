@@ -48,8 +48,8 @@
 %% Description: Starts the server
 %%--------------------------------------------------------------------
 start_link() -> 
-  Seed = apps:search_for_application_value(seed, node(), beehive),
-  case apps:search_for_application_value(node_type, router, beehive) of
+  Seed = config:search_for_application_value(seed, node(), beehive),
+  case config:search_for_application_value(node_type, router, beehive) of
     router -> start_link(router, Seed);
     node -> start_link(node, Seed)
   end.
@@ -128,10 +128,7 @@ init([Type, Seed]) ->
       case Seed of
         [] -> 
           % Initializing root router
-          case db:already_initialized() of
-            true -> ok;
-            false -> db:init()
-          end;
+          db:init();
         _ -> 
           ?LOG(info, "Initializing slave db: ~p", [Seed]),
           mesh_util:init_db_slave(Seed)
@@ -196,13 +193,13 @@ handle_call(_Request, _From, State) ->
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
 handle_cast({request_to_terminate_all_bees, Name}, State) ->
-  % bee:update(Backend#bee{status = down}),
+  % bees:update(Backend#bee{status = down}),
   % First, find all the bees and "unregister" them, or delete them from the bee list so we don't
   % route any requests this way
-  Backends = bee:find_all_by_name(Name),
-  lists:map(fun(Backend) -> bee:delete(Backend#bee{status = unavailable}) end, Backends),
+  Backends = bees:find_all_by_name(Name),
+  lists:map(fun(Backend) -> bees:delete(Backend#bee{status = unavailable}) end, Backends),
   % Next, do this in an rpc call to shutdown the nodes
-  App = app:find_by_name(Name),
+  App = apps:find_by_name(Name),
   Nodes = lists:map(fun(N) -> node(N) end, get_nodes()),
   % Can't do this in a multicall (or it would be an optimization), but want to get the node back
   % so for now, we'll do it in an rpc:call, instead
@@ -215,7 +212,7 @@ handle_cast({request_to_terminate_all_bees, Name}, State) ->
   end, Nodes),
   {noreply, State};
 handle_cast({request_to_start_new_bee, Name}, State) ->
-  Backends = bee:find_all_by_name(Name),
+  Backends = bees:find_all_by_name(Name),
   % Don't start a new bee if there is a pending one
   PendingBackends = lists:filter(fun(B) -> B#bee.status =:= pending end, Backends),
   case length(PendingBackends) > 0 of
@@ -233,7 +230,7 @@ handle_cast(_Msg, State) ->
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
 handle_info({stopped_bee, Backend}, State) ->
-  bee:update(Backend#bee{status = down}),
+  bees:update(Backend#bee{status = down}),
   {noreply, State};
   
 handle_info({stay_connected_to_seed}, #state{seed = SeedNode, type = Type} = State) ->
@@ -303,7 +300,7 @@ start_new_instance_by_name(Name) ->
   case get_next_available_host() of
     false -> false;
     Host ->
-      App = app:find_by_name(Name),
+      App = apps:find_by_name(Name),
       spawn_to_start_new_instance(App, Host)
   end.
 % Start with the app_launcher_fsm

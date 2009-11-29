@@ -188,7 +188,7 @@ code_change(_OldVsn, State, _Extra) ->
 spawn_update_bee_status(Backend, From, Nums) ->
   spawn(fun() ->
     BackendStatus = try_to_connect_to_new_instance(Backend, Nums),
-    bee:update(Backend#bee{status = BackendStatus}),
+    bees:update(Backend#bee{status = BackendStatus}),
     From ! {updated_bee_status, BackendStatus}
   end).
 
@@ -206,8 +206,8 @@ try_to_connect_to_new_instance(Backend, Attempts) ->
   
 % Update configuration for an application from a proplist of configuration details
 update_app_configuration(ConfigProplist, App, State) ->
-  DefaultStartCmd = apps:search_for_application_value(default_app_command, "thin -p [[PORT]] -u [[USER]] -g [[GROUP]] -e production start", beehive),
-  DefaultStopCmd = apps:search_for_application_value(default_stop_command, "thin stop", beehive),
+  DefaultStartCmd = config:search_for_application_value(default_app_command, "thin -p [[PORT]] -u [[USER]] -g [[GROUP]] -e production start", beehive),
+  DefaultStopCmd = config:search_for_application_value(default_stop_command, "thin stop", beehive),
   
   StartCmd  = update_app_configuration_param(start_command, DefaultStartCmd, ConfigProplist, App),
   StopCmd   = update_app_configuration_param(stop_command, DefaultStopCmd, ConfigProplist, App),
@@ -235,7 +235,7 @@ update_app_configuration(ConfigProplist, App, State) ->
     group = Group
   },
   
-  app:create(NewApp),
+  apps:create(NewApp),
   State.
 
 % Get the current application configuration or the default
@@ -332,7 +332,7 @@ load_app_config_from_yaml_file(Filepath, Ext) ->
 
 % MAINTENANCE
 ping_bees() ->
-  ReadyBackends = lists:filter(fun(B) -> B#bee.status =:= ready end, bee:all()),
+  ReadyBackends = lists:filter(fun(B) -> B#bee.status =:= ready end, bees:all()),
   lists:map(fun(B) ->
     spawn_update_bee_status(B, self(), 10)
   end, ReadyBackends),
@@ -340,7 +340,7 @@ ping_bees() ->
 
 % GARBAGE COLLECTION
 handle_non_ready_bees() ->
-  DownBackends = lists:filter(fun(B) -> B#bee.status =/= ready andalso B#bee.sticky =:= false end, bee:all()),
+  DownBackends = lists:filter(fun(B) -> B#bee.status =/= ready andalso B#bee.sticky =:= false end, bees:all()),
   lists:map(fun(B) ->
     spawn(fun() -> try_to_reconnect_to_bee(B, 5) end)
   end, DownBackends),
@@ -358,13 +358,13 @@ try_to_reconnect_to_bee(B, Num) ->
       timer:sleep(200),
       try_to_reconnect_to_bee(B, Num - 1);
     NewStatus ->
-      bee:update(B#bee{status = NewStatus})
+      bees:update(B#bee{status = NewStatus})
   end.
 
 % Cleanup the bee. Remove traces of the bee from the system
 cleanup_bee(B) ->
   ?QSTORE:delete_queue(?WAIT_DB, B#bee.app_name),
-  bee:delete(B).
+  bees:delete(B).
 
 % Turn the priplists into atoms
 atomize([], Acc) -> Acc;

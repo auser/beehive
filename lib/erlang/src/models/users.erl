@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% File    : user.erl
+%%% File    : users.erl
 %%% Author  : Ari Lerner
 %%% Description : 
 %%%
 %%% Created :  Sat Nov 28 21:28:31 PST 2009
 %%%-------------------------------------------------------------------
 
--module (user).
+-module (users).
 
 -include ("beehive.hrl").
 -include_lib("stdlib/include/qlc.hrl").

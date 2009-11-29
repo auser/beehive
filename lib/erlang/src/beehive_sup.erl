@@ -3,11 +3,10 @@
 %%% Author  : Ari Lerner
 %%% Description : 
 %%%
-%%% Created :  Sat Nov 28 22:13:02 PST 2009
+%%% Created :  Sun Oct 25 13:09:07 PDT 2009
 %%%-------------------------------------------------------------------
 
 -module (beehive_sup).
-
 -include ("beehive.hrl").
 -behaviour(supervisor).
 -compile([verbose, report_errors, report_warnings, trace, debug_info]).
@@ -51,9 +50,9 @@ init(_Args) ->
   AppManagerSrv  = {the_app_manager,{app_manager, start_link,[]}, permanent, 2000, worker, dynamic},
   AppHandler  = {the_app_handler,{app_handler, start_link,[]}, permanent, 2000, worker, dynamic},
   
-  AppsToStart = case apps:search_for_application_value(node_type, node, beehive) of
+  AppsToStart = case config:search_for_application_value(node_type, node, beehive) of
     node -> [EventManager,NodeManager, AppHandler];
-    router -> [EventManager,NodeManager,AppManagerSrv,AppSrv,HttpCl,StatSrv]
+    router -> [EventManager,NodeManager,AppManagerSrv,AppSrv,HttpCl, StatSrv]
   end,
   
   {ok,{{one_for_one,5,10}, AppsToStart}}.

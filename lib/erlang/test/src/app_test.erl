@@ -28,22 +28,22 @@ test() ->
 
 create_test() ->
   App1 = #app{name="test_app"},
-  app:create(App1),
+  apps:create(App1),
   {atomic,Results1} = mnesia:transaction(fun() -> mnesia:match_object(#app{_='_'}) end),
   ?assertEqual([App1], Results1),
   % create via proplists
   Props = [{name, "another_app"}, {min_instances, 1}, {max_instances, 10}],
-  App2 = app:new(Props),
-  app:create(Props),
+  App2 = apps:new(Props),
+  apps:create(Props),
   {atomic,Results2} = mnesia:transaction(fun() -> mnesia:match_object(#app{_='_'}) end),
   ?assertEqual([App1,App2], Results2).
 
 find_by_name_test() ->
   App1 = #app{name="test_app"},
-  Results1 = app:find_by_name("test_app"),
+  Results1 = apps:find_by_name("test_app"),
   ?assertEqual(App1, Results1).
 
 delete_test() ->
   App1 = #app{name="test_app"},
-  app:delete("another_app"),
-  ?assertEqual([App1], bee:all()).
+  apps:delete("another_app"),
+  ?assertEqual([App1], bees:all()).

@@ -114,7 +114,7 @@ The core functionality of Beehive is event-driven. It supports user defined call
   -export ([handle_event/1]).
 
   handle_event({bee, ready, Bee}) ->
-    io:format("The bee: ~p is ready~n", [Bee#bee.id]);
+    io:format("The bees: ~p is ready~n", [Bee#bee.id]);
 
   handle_event(_) -> ok.
 </code></pre>

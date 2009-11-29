@@ -42,9 +42,9 @@
 %%%----------------------------------------------------------------------
 
 start_link() ->
-  LocalPort   = apps:search_for_application_value(client_port, 8080, local_port),
-  ConnTimeout = apps:search_for_application_value(client_port, 120*1000, local_port),
-  ActTimeout  = apps:search_for_application_value(client_port, 120*1000, local_port),
+  LocalPort   = config:search_for_application_value(client_port, 8080, local_port),
+  ConnTimeout = config:search_for_application_value(client_port, 120*1000, local_port),
+  ActTimeout  = config:search_for_application_value(client_port, 120*1000, local_port),
   
   start_link(LocalPort, ConnTimeout, ActTimeout).
   
@@ -146,7 +146,7 @@ handle_call({Pid, get_bee, Hostname}, From, State) ->
   % and bee_srv. 
   case Hostname of
     base ->
-      Port = apps:search_for_application_value(beehive_app_port, 4999, beehive), 
+      Port = config:search_for_application_value(beehive_app_port, 4999, beehive), 
       Host = {127,0,0,1},
       Id = {Hostname, Host, Port},
       
@@ -155,8 +155,8 @@ handle_call({Pid, get_bee, Hostname}, From, State) ->
       },
       {reply, {ok, Backend}, State};
     _ ->
-      MetaParam = case app:find_by_name(Hostname) of
-        [] -> apps:search_for_application_value(bee_strategy, random, beehive);
+      MetaParam = case apps:find_by_name(Hostname) of
+        [] -> config:search_for_application_value(bee_strategy, random, beehive);
         App -> App#app.routing_param
       end,
       case choose_bee({MetaParam, Hostname}, From, Pid) of
@@ -167,7 +167,7 @@ handle_call({Pid, get_bee, Hostname}, From, State) ->
     	    {reply, {ok, Backend}, State};
     	  {error, Reason} -> {reply, {error, Reason}, State};
     	  E ->
-    	    ?LOG(error, "Got weird response in get_bee: ~p", [E]),
+    	    ?LOG(error, "Got weird response in get_bees: ~p", [E]),
     	    {noreply, State}
       end
   end;
@@ -253,9 +253,9 @@ choose_bee({_, Name} = Tuple, From, FromPid) ->
 % given for the bee
 % Tuple = {name, Hostname}
 choose_bee({RoutingParameter, Hostname}) ->
-  case bee:find_all_by_name(Hostname) of
+  case bees:find_all_by_name(Hostname) of
     [] -> 
-      case app:exist(Hostname) of
+      case apps:exist(Hostname) of
         false ->
           {error, unknown_app};
         true ->
@@ -285,7 +285,7 @@ choose_bee({RoutingParameter, Hostname}) ->
 % be used
 choose_from_bees([], _RoutingParameter) -> ?MUST_WAIT_MSG;
 choose_from_bees(Backends, AppRoutingParam) ->
-  PreferredStrategy = apps:search_for_application_value(bee_strategy, random, beehive),
+  PreferredStrategy = config:search_for_application_value(bee_strategy, random, beehive),
   Fun = case AppRoutingParam of
     undefined -> PreferredStrategy;
     F -> F
@@ -295,7 +295,7 @@ choose_from_bees(Backends, AppRoutingParam) ->
 
 % Handle adding a new bee
 handle_add_bee(NewBE) ->
-  bee:create(NewBE).
+  bees:create(NewBE).
 
 % Handle the *next* pending client only. 
 % Perhaps this should go somewhere else in the stack, but for the time being
@@ -322,7 +322,7 @@ maybe_handle_next_waiting_client(Name, State) ->
 % Basic configuration stuff
 % Add apps from a configuration file
 add_bees_from_config() ->
-  case apps:search_for_application_value(bees, undefined, beehive) of
+  case config:search_for_application_value(bees, undefined, beehive) of
     undefined -> ok;
     RawPath ->
       case (catch file_utils:abs_or_relative_filepath(RawPath)) of
@@ -334,7 +334,7 @@ add_bees_from_config() ->
                 case V of
                   {Name, Host, Port} ->
                     ?LOG(info, "Adding app: ~p, ~p:~p", [Name, Host, Port]),
-                    bee:create(#bee{id={Name, Host, Port}, app_name = Name, host = Host, port = Port, status = ready})
+                    bees:create(#bee{id={Name, Host, Port}, app_name = Name, host = Host, port = Port, status = ready})
                 end
               end,
               lists:map(F, List);
