@@ -24,10 +24,10 @@ mochi:
 boot:
 	(cd ebin; $(ERL) -pa src -pa ebin -pz deps/*/ebin -noshell -run make_boot write_scripts beehive $(VERSION);)
 
-compile:
+compile: $(TEST_EBIN_DIR)
 	@$(ERL) -pa $(EBIN_DIRS) -pa $(EBIN) -noinput +B -eval 'case make:all() of up_to_date -> halt(0); error -> halt(1) end.'
 	
-test: $(TEST_EBIN_DIR) compile
+test: compile
 	$(ERL) 	-noshell -pa $(EBIN) \
 					-pa deps/*/ebin \
 					-pa $(TEST_EBIN_DIR) \
@@ -35,13 +35,12 @@ test: $(TEST_EBIN_DIR) compile
 					-s test_suite test \
 					-s init stop
 	
-
 edoc:
 	@echo Generating $(APP) documentation from srcs
 	@$(ERL) -noinput -eval 'edoc:application($(APP), "./", [{doc, "doc/"}, {files, "src/"}])' -s erlang halt
 
 $(TEST_EBIN_DIR):
-	@mkdir $(TEST_EBIN_DIR)
+	@mkdir -p $(TEST_EBIN_DIR)
 
 clean:
 	echo $(TEST_EBIN_DIR)
