@@ -22,6 +22,8 @@ To start with a list of bees, use the -i option to point to a file that looks li
     {"app1", "ec2-67-202-21-173.compute-1.amazonaws.com", 8080}.
     {"app2", "ec2-174-129-54-214.compute-1.amazonaws.com", 8080}.
 
+To start it, run:
+
     ./scripts/start_beehive.sh -i /path/to/the/file/from/above
 
 How it works
