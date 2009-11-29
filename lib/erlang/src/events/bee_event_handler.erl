@@ -42,6 +42,7 @@ handle_event({bee, used, Backend}, State) when is_record(Backend, bee) ->
   
 handle_event({bee, ready, Backend}, State) when is_record(Backend, bee) ->
   bee_srv:maybe_handle_next_waiting_client(Backend#bee.app_name),
+  bees:update(Backend#bee{lastresp_time = date_util:now_to_seconds()}),
   {ok, State};
 
 handle_event({bee, bee_down, Backend}, State) ->
