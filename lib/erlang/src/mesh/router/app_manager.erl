@@ -33,6 +33,7 @@
   active_apps = [],     % Active applications (that have their socket handled via proxy_handler)
   dead_apps = []        % Apps that have been killed and or are dead
 }).
+
 -define (SERVER, ?MODULE).
 
 %%====================================================================
@@ -76,6 +77,8 @@ init([]) ->
   % Run maintenance
   timer:send_interval(timer:seconds(20), {ping_bees}),
   timer:send_interval(timer:minutes(10), {garbage_collection}),
+  
+  timer:send_interval(timer:minutes(2), {clean_up_apps}),
   {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -133,7 +136,7 @@ handle_cast(_Msg, State) ->
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------  
 handle_info({clean_up}, State) ->
-  {noreply, clean_up(State)};
+  {noreply, State};
 
 handle_info({manage_pending_bees}, State) ->
   PendingBackends = lists:filter(fun(B) -> B#bee.status == pending end, apps:all(bees)),
@@ -154,6 +157,10 @@ handle_info({garbage_collection}, State) ->
   handle_non_ready_bees(),
   {noreply, State};
     
+handle_info({clean_up_apps}, State) ->
+  clean_up(),
+  {noreply, State};    
+
 handle_info({'EXIT',_Pid,normal}, State) ->
   {noreply, State};
 
@@ -213,10 +220,11 @@ update_app_configuration(ConfigProplist, App, State) ->
   Name      = update_app_configuration_param(name, App#app.name, ConfigProplist, App),
   Path      = update_app_configuration_param(path, "./", ConfigProplist, App),
   Url       = update_app_configuration_param(url, "", ConfigProplist, App),
+  Sticky    = update_app_configuration_param(sticky, false, ConfigProplist, App),
   UpdatedAt = update_app_configuration_param(updated_at, date_util:now_to_seconds(), ConfigProplist, App),
   CC        = update_app_configuration_param(concurrency, 1, ConfigProplist, App),
   % Hostnames = update_app_configuration_param(hostname, Name, ConfigProplist, App),
-  Timeout   = update_app_configuration_param(timeout, 30000, ConfigProplist, App),
+  Timeout   = update_app_configuration_param(timeout, 3600, ConfigProplist, App),
   MaxInst   = update_app_configuration_param(max_instances, 2, ConfigProplist, App),
   MinInst   = update_app_configuration_param(min_instances, 1, ConfigProplist, App),
   User      = update_app_configuration_param(user, "beehive", ConfigProplist, App),
@@ -227,9 +235,10 @@ update_app_configuration(ConfigProplist, App, State) ->
     path = Path, updated_at = UpdatedAt,
     concurrency = misc_utils:to_integer(CC),
     timeout = misc_utils:to_integer(Timeout), 
+    sticky = Sticky,
     max_instances = misc_utils:to_integer(MaxInst),
     min_instances = misc_utils:to_integer(MinInst), 
-    user = User, 
+    user = User,
     group = Group
   },
   
@@ -251,61 +260,58 @@ add_application_by_configuration(ConfigProplist, State) ->
   update_app_configuration(ConfigProplist, #app{}, State).
 
 % Clean up applications
-clean_up(State) ->
-  Backends = bee_srv:all(instances),
-  lists:map(fun(Name, AppBackends) -> 
-    App = bee_srv:lookup(app, Name),
-    clean_up_instances(AppBackends, App, State) 
-  end, Backends).
+clean_up() ->
+  Apps = apps:all(),
+  lists:map(fun(App) -> 
+    Bees = bees:find_all_by_name(App#app.name),
+    RunningBackends = lists:filter(fun(B) -> B#bee.status =:= ready end, Bees),
+    Proplist = [{num_backends, erlang:length(RunningBackends)}],
+    clean_up_instances(Bees, App, Proplist) 
+  end, Apps).
   
 % Clean up the instances
-clean_up_instances([], _, State) -> State;
-clean_up_instances([Backend|Rest], App, State) -> clean_up_instances(Rest, App, clean_up_instance(Backend, App, State)).
+clean_up_instances([], _, Proplist) -> Proplist;
+clean_up_instances([Backend|Rest], App, Proplist) -> 
+  clean_up_instance(Backend, App, Proplist),
+  clean_up_instances(Rest, App, Proplist).
 
 % Cleanup a single instance
-clean_up_instance(Backend, App, State) ->
+clean_up_instance(Backend, App, Proplist) ->
   % If the instance of the application has been used before
   case Backend#bee.lastresp_time of
-    undefined -> State;
-    _Time ->  clean_up_on_app_timeout(Backend, App, State)
+    0 -> Proplist;
+    _Time ->  clean_up_on_app_timeout(Backend, App, Proplist)
   end.
   
 % If the instance is not busy, the timeout has been exceeded and there are other application instances running
-clean_up_on_app_timeout(#bee{status=Status,lastresp_time=LastReq} = Backend, #app{name=Name,timeout=Timeout,min_instances=Min} = App, State) ->
-	NumBackends = length(bee_srv:lookup(instance, Name)),
+clean_up_on_app_timeout(#bee{lastresp_time=LastReq} = Backend, #app{timeout=Timeout,sticky=Sticky} = App, Proplist) ->
+  _NumBackends = proplists:get_value(num_backends, Proplist),
 	TimeDiff = date_util:time_difference_from_now(LastReq),
-  % ?LOG(info, "clean_up_on_app_timeout: ~p > ~p, ~p > ~p", [NumBackends, App#app.min_instances, TimeDiff, Timeout]),
+  % ?LOG(info, "clean_up_on_app_timeout: ~p > ~p, ~p > ~p", [NumBackends, Min, TimeDiff, Timeout]),
   if
     % stop_instance(Backend, App, From)
-    Status =/= busy andalso NumBackends > Min andalso TimeDiff > Timeout -> app_handler:stop_instance(Backend, App, self());
-    true -> clean_up_on_broken_status(Backend, App, State)
+    % NumBackends > Min andalso 
+    TimeDiff > Timeout andalso Sticky =/= true -> node_manager:request_to_terminate_bee(Backend);
+    true -> clean_up_on_busy_and_stale_status(Backend, App, Proplist)
   end.
-  
-% If the instance status is broken, then stop the app
-clean_up_on_broken_status(Backend, App, State) ->
-  % ?LOG(info, "clean_up_on_broken_status: ~p", [Backend#bee.status]),
-  if
-    Backend#bee.status =:= broken -> app_handler:stop_instance(Backend, App, self());
-    true -> clean_up_on_busy_and_stale_status(Backend, App, State)
-  end.
-  
+    
 % If the instance is busy, but hasn't served a request in a long time, kill it
-clean_up_on_busy_and_stale_status(#bee{status = Status, lastresp_time = LastReq} = Backend, #app{timeout = Timeout} = App, State) ->
+clean_up_on_busy_and_stale_status(#bee{status = Status, lastresp_time = LastReq} = Backend, #app{timeout = Timeout} = App, Proplist) ->
 	TimeDiff = date_util:time_difference_from_now(LastReq),
   % ?LOG(info, "clean_up_on_busy_and_stale_status: ~p > ~p + ~p", [TimeDiff, Timeout, ?TIME_BUFFER]),
   if
     Status =:= busy andalso TimeDiff > Timeout + ?TIME_BUFFER -> 
-			app_handler:stop_instance(Backend, App, self());
-    true -> clean_up_on_long_running_instance(Backend, App, State)
+			node_manager:request_to_terminate_bee(Backend);
+    true -> clean_up_on_long_running_instance(Backend, App, Proplist)
   end.
 
 % If the application has been running for a while, kill it
-clean_up_on_long_running_instance(#bee{start_time = StartTime} = Backend, App, State) ->
+clean_up_on_long_running_instance(#bee{start_time = StartTime} = Backend, _App, Proplist) ->
 	TimeDiff = date_util:time_difference_from_now(StartTime),
   % ?LOG(info, "clean_up_on_long_running_instance: ~p > ~p", [TimeDiff, ?RUN_INSTANCE_TIME_PERIOD]),
   if
-    TimeDiff > ?RUN_INSTANCE_TIME_PERIOD -> app_handler:stop_instance(Backend, App, self());
-    true -> State
+    TimeDiff > ?RUN_INSTANCE_TIME_PERIOD -> node_manager:request_to_terminate_bee(Backend);
+    true -> Proplist
   end.
 
 load_static_configs() ->
