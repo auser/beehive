@@ -9,6 +9,7 @@
 -module (schema).
 
 -include ("beehive.hrl").
+-include ("common.hrl").
 
 -export ([
   install/0, install/1,
@@ -20,7 +21,9 @@ initialized() ->
     (catch db:start()),
     lists:map(fun(TableAtom) -> mnesia:table_info(TableAtom, type) end, [app, bee, user]),
     true
-  catch _:_ -> false
+  catch _:Why -> 
+    ?LOG(info, "Creating tables: ~p", [Why]),
+    false
   end.
 
 install() -> install([node()]).
@@ -36,6 +39,8 @@ install(Nodes) when is_list(Nodes) ->
   install_app(Nodes),
   install_bee(Nodes),
   install_user(Nodes),
+  % Load the config'd applications
+  app_manager:load_static_configs(),
   ok.
 
 install_app(Nodes) ->

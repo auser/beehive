@@ -20,7 +20,8 @@
   terminate_all/0,
   terminate_app_instances/1,
   add_application/1,
-  spawn_update_bee_status/3
+  spawn_update_bee_status/3,
+  load_static_configs/0
 ]).
 
 %% gen_server callbacks
@@ -69,10 +70,7 @@ start_link() ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([]) ->  
-  % Load the applications
-  load_static_configs(),
-  
+init([]) ->   
   % Try to make sure the pending bees are taken care of by either turning them broken or ready
   % timer:send_interval(timer:seconds(5), {manage_pending_bees}),
   % Run maintenance
