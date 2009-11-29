@@ -106,6 +106,7 @@ format_bee_list([B|Bs], Acc) ->
     {"host", B#bee.host},
     {"port", B#bee.port},
     {"status", B#bee.status},
+    {"last_response", B#bee.lastresp_time},
     {"last_err_time", B#bee.lasterr_time},
     {"average_req_time", AvgTime},
     {"pending_requests", (length(L1) + length(L2))},
