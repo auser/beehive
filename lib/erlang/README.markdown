@@ -5,33 +5,24 @@ Getting started
 ===
 
 To start the router:
-<pre><code>
-  make && make boot
-  ./scripts/start_beehive.sh
-</code></pre>
+
+    make && make boot
+    ./scripts/start_beehive.sh
 
 This will start the basic router with the default options. The default node type that gets started is the router type. You can start a node (see glossary below) with the following command. Node that the -s argument refers to a seed node. This is any node already in the mesh.
 
-<pre><code>
-  ./scripts/start_beehive.sh -t node -n bob@mymac.local -s router@mymac.local
-</code></pre>
+    ./scripts/start_beehive.sh -t node -n bob@mymac.local -s router@mymac.local
 
 There are many options to starting the router, for more information and options, type:
 
-<pre><code>
-  ./scripts/start_beehive.sh -h
-</code></pre>
+    ./scripts/start_beehive.sh -h
 
 To start with a list of bees, use the -i option to point to a file that looks like:
 
-<pre><code>
-  {"app1", "ec2-67-202-21-173.compute-1.amazonaws.com", 8080}.
-  {"app2", "ec2-174-129-54-214.compute-1.amazonaws.com", 8080}.
-</code></pre>
+    {"app1", "ec2-67-202-21-173.compute-1.amazonaws.com", 8080}.
+    {"app2", "ec2-174-129-54-214.compute-1.amazonaws.com", 8080}.
 
-<pre><code>
-  ./scripts/start_beehive.sh -i /path/to/the/file/from/above
-</code></pre>
+    ./scripts/start_beehive.sh -i /path/to/the/file/from/above
 
 How it works
 ===
@@ -47,69 +38,53 @@ The bee table stores the bee data, and their state.
 
 The proxy can be hot-loaded with new routes simply with a RESTful interface. The name (the routing key), the endpoint host and the port of the bee need to be included. For instance:
 
-<pre><code>
-  curl -i -XPOST -d"{\"app_name\":\"test\", \"host\":\"google.com\", \"port\":\"80\"}" beehive.com:8080/bee/new
-</code></pre>
+    curl -i -XPOST -d"{\"app_name\":\"test\", \"host\":\"google.com\", \"port\":\"80\"}" beehive.com:8080/bee/new
 
 The parameters that must be included are the app_name (the routing key), the host and the port. You can check to make sure that they were added by visiting the page: http://beehive.com:8080/bee/all
 
 These can also be added at the erlang command-line by:
 
-<pre><code>
-  bee_srv:add_bee({"streaming",{127,0,0,1}, 5001}).
-  % or
-  bee_srv:add_bee([{app_name, "streaming"}, {host, "127.0.0.1"}, {port, 5001}]).
-</code></pre>
+    bee_srv:add_bee({"streaming",{127,0,0,1}, 5001}).
+    % or
+    bee_srv:add_bee([{app_name, "streaming"}, {host, "127.0.0.1"}, {port, 5001}]).
 
 ## Apps
 Adding an application can also be added via the RESTful interface. For example:
 
-<pre><code>
-  curl -i -XPOST -d"{\"name\":\"beehive\", \"host\":\"ec2-75-121-34-215-amazon.com\", \"port\":\"8080\"}" beehive.com:8080/app/new
-  curl -i -XPOST -d"{\"name\":\"test\", \"host\":\"ec2-75-121-34-210-amazon.com\", \"port\":\"8081\"}" beehive.com:8080/app/new
-</code></pre>
+    curl -i -XPOST -d"{\"name\":\"beehive\", \"host\":\"ec2-75-121-34-215-amazon.com\", \"port\":\"8080\"}" beehive.com:8080/app/new
+    curl -i -XPOST -d"{\"name\":\"test\", \"host\":\"ec2-75-121-34-210-amazon.com\", \"port\":\"8081\"}" beehive.com:8080/app/new
 
 Viewing the list of supported apps:
 
-<pre><code>
-  curl -i beehive.com:8080/app
-</code></pre>
+    curl -i beehive.com:8080/app
 
 All operations can be handled in a RESTful interface.
 
 For instance, to terminate and restart the application in the beehive, issue a request such as:
 
-<pre><code>
-  curl -i -XPOST http://beehive.com:8080/apps/[app_name]/restart
-</code></pre>
+    curl -i -XPOST http://beehive.com:8080/apps/[app_name]/restart
 
 ## Nodes
 Beehive is a distributed system. You can add multiple nodes in the router. The node_manager handles the node connections.
 
 Viewing the nodes is as easy as a query as well:
 
-<pre><code>
-  curl -i beehive.com:8080/nodes
-</code></pre>
+    curl -i beehive.com:8080/nodes
 
 To add a new node, as mentioned above, start a node with the seed value from the start script:
-<pre><code>
-  ./start_beehive.sh -s 'router@my-other-machine.com'
-</code></pre>
+  
+    ./start_beehive.sh -s 'router@my-other-machine.com'
 
 To add an existing node to a cluster, you can set the seed with:
 
-<pre><code>
-  node_manager:set_seed(OtherNodePid).
-</code></pre>
-
+    node_manager:set_seed(OtherNodePid).
 
 ## Users
 
 Beehive has basic support for user accounts. The root user account information is:
-<pre><code>username: root@getbeehive.com
-password: 098f6bcd4621d373cade4e832627b4f6
-</code></pre>
+    username: root@getbeehive.com
+    password: 098f6bcd4621d373cade4e832627b4f6
+
 
 It is strongly recommended that you delete this user as soon as you create your own (you must log in once with this user to create a new user). Details on that coming soon
 
@@ -117,17 +92,16 @@ Advanced
 ===
 The core functionality of Beehive is event-driven. It supports user defined callbacks as well. To hook into the beehive architecture, you will have to write a custom handler that exports the function: handle_event/1. And example of this custom event handler might look something like this:
 
-<pre><code>
-  -module (my_callback_handler).
-  -include ("/path/to/include/beehive.hrl").
 
-  -export ([handle_event/1]).
+    -module (my_callback_handler).
+    -include ("/path/to/include/beehive.hrl").
 
-  handle_event({bee, ready, Bee}) ->
-    io:format("The bees: ~p is ready~n", [Bee#bee.id]);
+    -export ([handle_event/1]).
 
-  handle_event(_) -> ok.
-</code></pre>
+    handle_event({bee, ready, Bee}) ->
+      io:format("The bees: ~p is ready~n", [Bee#bee.id]);
+
+    handle_event(_) -> ok.
 
 Notice that the module name is pretty unique. It's a good idea to stick to a unique name so as not to clash with Beehive modules.
 
@@ -150,9 +124,7 @@ Note: The documentation assumes that the router is sitting at a network accessib
 
 To start a router with the custom callback module, use the -c and -a switches:
 
-<pre><code>
-  ./scripts/start_beehive.sh -a /path/to/custom_callback_module -c custom_callback_module
-</code></pre>
+    ./scripts/start_beehive.sh -a /path/to/custom_callback_module -c custom_callback_module
 
 DEVELOPER DATA
 ===
