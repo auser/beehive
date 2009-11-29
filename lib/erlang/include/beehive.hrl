@@ -71,8 +71,9 @@
   path,
   url,
   concurrency,
-  routing_param = undefined,       % determine the method of choosing the backend
+  routing_param = undefined,        % determine the method of choosing the backend
   timeout,
+  sticky        = false,            % if an app is sticky, the apps are not requested after timeout time
   min_instances,
   max_instances,
   updated_at,
