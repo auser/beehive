@@ -12,6 +12,7 @@
 -include_lib("stdlib/include/qlc.hrl").
 
 -export ([
+  add_root_user/0,
   find_by_email/1,
   find_all_by_email/1,
   all/0,
@@ -57,7 +58,16 @@ delete(Name) ->
 
 all() ->
   db:find(qlc:q([ B || B <- mnesia:table(user) ])).
-  
+
+% Add the initial root user
+% email: root@getbeehive.com
+% password: 098f6bcd4621d373cade4e832627b4f6
+add_root_user() ->
+  create(new([
+    {email, "root@getbeehive.com"},
+    {password, md5:hex("test")}
+  ])).
+
 new(NewProps) ->
   PropList = ?rec_info(user, #user{}),
   FilteredProplist1 = misc_utils:filter_proplist(PropList, NewProps, []),

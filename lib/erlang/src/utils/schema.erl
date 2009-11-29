@@ -80,7 +80,8 @@ install_user(Nodes) ->
         {attributes, record_info(fields, user)},
         {type, set},
         {disc_copies, Nodes}
-      ]);
+      ]),
+      users:add_root_user();
     Error ->
       io:format("Error creating mnesia table: ~p", [Error]),
       throw(Error)
