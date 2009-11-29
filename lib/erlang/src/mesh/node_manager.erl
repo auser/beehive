@@ -248,7 +248,7 @@ handle_info({stay_connected_to_seed}, #state{seed = SeedNode, type = Type} = Sta
           RespondingSeed = case ping_node(get_other_nodes(Type)) of
             [] -> SeedNode;
             E -> 
-              case E =:= self() of
+              case E =:= node(self()) of
                 true -> SeedNode;
                 false -> E
               end
