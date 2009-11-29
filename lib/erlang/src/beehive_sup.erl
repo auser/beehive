@@ -53,7 +53,7 @@ init(_Args) ->
   
   AppsToStart = case apps:search_for_application_value(node_type, node, beehive) of
     node -> [EventManager,NodeManager, AppHandler];
-    router -> [EventManager,NodeManager,AppManagerSrv,AppSrv,HttpCl, StatSrv]
+    router -> [EventManager,NodeManager,AppManagerSrv,AppSrv,HttpCl,StatSrv]
   end,
   
   {ok,{{one_for_one,5,10}, AppsToStart}}.

@@ -2,7 +2,7 @@
  [
   {description, "Beehive app"},
   {vsn, "0.1"},
-  {id, "router_srv"},
+  {id, "beehive_srv"},
   {modules,      []},
   {registered,   [tcp_socket_server, bee_srv]},
   {applications, [kernel, stdlib, sasl]},
@@ -16,7 +16,7 @@
     {beehive_app_port, 4999},
     {bees, undefined},
     {user_defined_event_handler, undefined},
-    {log_path, "/var/logs/router.log"}
+    {log_path, "/var/logs/beehive.log"}
   ]}
  ]
 }.
