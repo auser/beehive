@@ -21,6 +21,8 @@
   update/1,
   delete/1, 
   create_new_token_for/1, create_new_token_for/2,
+  find_by_token/1,
+  is_user_token/2,
   new/1
 ]).
 
@@ -32,6 +34,12 @@ find_by_email(Hostemail) ->
 
 find_all_by_email(Name) -> 
   db:read({user, Name}).
+
+find_by_token(Token) ->
+  case db:match(#user{token = Token, _='_'}) of
+    [U|_] -> U;
+    _ -> []
+  end.
 
 % Does this user exist?
 exist(Name) ->
@@ -68,6 +76,15 @@ create_new_token_for(User) when is_record(User, user) ->
   ])),
   create(User#user{token = NewToken}).
 
+is_user_token(Email, Token) ->
+  case find_by_email(Email) of
+    [] -> false;
+    User ->
+      User#user.token =:= Token
+  end.
+  
+
+% Create a new token for the user
 create_new_token_for(Email, Password) ->
   case find_by_email(Email) of
     [] -> error;
