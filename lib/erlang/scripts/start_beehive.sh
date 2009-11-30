@@ -50,6 +50,7 @@ REST="true"
 VERBOSE=false
 STRATEGY="random"
 PATHS="-pa $PWD/ebin -pa $PWD/include"
+ERL_OPTS="-s reloader"
 
 SHORTOPTS="hm:n:dp:t:g:r:s:vi:a:c:"
 LONGOPTS="help,version,port,type,strategy,rest,seed,mnesia_dir,daemonize,initial_bees,additional_path,callback_module"
@@ -108,6 +109,7 @@ while [ $# -gt 0 ]; do
       shift 2;;
 		-d|--daemonize)
 			DAEMONIZE_ARGS="-detached -heart"
+			ERL_OPTS=""
 			shift;;
 		-v)
 			VERBOSE=true
@@ -143,7 +145,7 @@ fi
 
 erl $PATHS \
     -pz $PWD/deps/*/ebin \
-    -s reloader \
+    $ERL_OPTS \
 		-mnesia dir \'$MNESIA_DIR\' \
 		-name $NAME \
 		$ROUTER_OPTS \
