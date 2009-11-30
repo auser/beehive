@@ -96,6 +96,11 @@
   level   = ?REGULAR_USER_LEVEL
 }).
 
+% User to app acl
+-record (user_apps, {
+  user_email,
+  app_name
+}).
 
 -record (bee_pid, {pid, status, start_time, bee_name}).
 
