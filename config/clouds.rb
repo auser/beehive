@@ -5,6 +5,7 @@ pool "beehive" do
     instances 1
     image_id "ami-1515f67c"
     user 'ubuntu'
+    elastic_ip "174.129.43.151"
     security_group do
       authorize :from_port => 22, :to_port => 22
       authorize :user_id => ENV["EC2_USER"], :group_name => "beehive-router"
