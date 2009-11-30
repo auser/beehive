@@ -85,20 +85,30 @@ To add an existing node to a cluster, you can set the seed with:
 
 Beehive has basic support for user accounts. The root user account information is:
     username: root@getbeehive.com
-    password: 098f6bcd4621d373cade4e832627b4f6
+    password: test
 
 
 It is strongly recommended that you delete this user as soon as you create your own (you must log in once with this user to create a new user).
 
-Certain requests require an authenticated user. To authenticate, you must first get a token. This is achieved by submitting a request, such as:
+Certain requests require an authenticated user. To remove the root@getbeehive.com user, we must authenticate. To authenticate, you must first get a token. This is achieved by submitting a request, such as:
 
-    curl -i -XPOST -d"{\"email\":\"root@getbeehive.com\", \"password\": \"098f6bcd4621d373cade4e832627b4f6\"}" http://beehive.com:8080/auth
+    curl -i -XPOST -d"{\"email\":\"root@getbeehive.com\", \"password\": \"test\"}" http://beehive.com:8080/auth
 
 This will return a tuple that will look like:
   
     {"user":"root@getbeehive.com","token":"f24e53e38dfb380066ea166f1844cf19"}
 
 Subsequent requests that require authentication should attach this token onto the data.
+    
+Of course, it would be wise to add another admin user first. To add an admin level user, use the level 1 and ass, such as below
+
+    curl -i -XPOST -d"{\"email\":\"arilerner@mac.com\", \"password\":\"myuniquepassword\", \"level\":\"1\", \"token\":\"f24e53e38dfb380066ea166f1844cf19\"}" beehive.com:8080/users/new
+
+So, to remove the root@getbeehive.com user, we can then issue a request like:
+
+    curl -i -XDELETE -d"{\"email\":\"root@getbeehive.com\", \"token\":\"f24e53e38dfb380066ea166f1844cf19\"}" beehive.com:8080/users    
+
+And there you go, you have a custom authenticat-able user at your disposal.
 
 Advanced
 ===
