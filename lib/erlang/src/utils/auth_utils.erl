@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 
 -module (auth_utils).
-
+-include ("beehive.hrl").
 -compile(export_all).
 
 % Only run if there is a user associated with given token
@@ -18,6 +18,19 @@ get_authorized_user(Data) ->
       Token = proplists:get_value(token, Data),
       case users:find_by_token(Token) of
         [] -> false;
-        _ -> User
+        User -> User
       end
   end.
+
+run_if_admin(F, Data) ->
+  case auth_utils:get_authorized_user(Data) of
+    false -> misc_utils:to_bin("Unauthorized");
+    ReqUser ->
+      case auth_utils:is_admin_user(ReqUser) of
+        false -> misc_utils:to_bin("Unauthorized");
+        true -> F()
+      end
+  end.
+
+is_admin_user(User) ->
+  User#user.level < ?REGULAR_USER_LEVEL.
