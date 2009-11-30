@@ -84,15 +84,16 @@
 }).
 
 % User levels
--define (ADMIN_LEVEL, 1).
--define (USER_LEVEL, 2).
+-define (ADMIN_USER_LEVEL, 1).
+-define (REGULAR_USER_LEVEL, 2).
 
 % User
 -record (user, {
   email,
   password,
   key,
-  token
+  token,
+  level   = ?REGULAR_USER_LEVEL
 }).
 
 
