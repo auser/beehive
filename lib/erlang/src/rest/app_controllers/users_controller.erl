@@ -24,12 +24,24 @@ get(_) ->
   }]}.
 
 post(["new"], Data) ->
-  case users:create(Data) of
-    User when is_record(User, user) -> 
-      {struct, ?BINIFY([{"user", misc_utils:to_bin(User#user.email)}])};
-    _ -> "There was an error adding bee\n"
-  end;
-    
+  auth_utils:run_if_admin(fun() ->
+    case users:create(Data) of
+      User when is_record(User, user) -> 
+        {struct, ?BINIFY([{"user", misc_utils:to_bin(User#user.email)}])};
+      _ -> "There was an error adding bee\n"
+    end
+  end, Data);
+      
 post(_Path, _Data) -> "unhandled".
 put(_Path, _Data) -> "unhandled".
+
+delete([], Data) ->
+  auth_utils:run_if_admin(fun() ->
+    case proplists:is_defined(email, Data) of
+      false -> misc_utils:to_bin("No email given");
+      true ->
+        Email = proplists:get_value(email, Data),
+        users:delete(Email)
+    end
+  end, Data);
 delete(_Path, _Data) -> "unhandled".
