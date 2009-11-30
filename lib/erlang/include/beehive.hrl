@@ -53,7 +53,7 @@
   port,
   routing_param,            % meta data on the bee allows for more granualar abstract parameters
                             % should be a tuple, e.g. {ports: 2}
-  start_time,               % starting time
+  start_time    = 0,        % starting time
   pid,                      % pid of os port process
   sticky        = false,    % keep this bee around, don't remove it from the bee list if it dies
   lastresp_time = 0,
@@ -83,6 +83,9 @@
   stop_command
 }).
 
+% User levels
+-define (ADMIN_LEVEL, 1).
+-define (USER_LEVEL, 2).
 
 % User
 -record (user, {
@@ -102,7 +105,7 @@
   conn_timeout = (1*1000),		% Connection timeout (ms)
   act_timeout = (120*1000),		% Activity timeout (ms)
   acceptor,				            % Pid of listener proc
-  start_time,				          % Proxy start timestamp
+  start_time  = 0,            % Proxy start timestamp
   to_timer 				            % Timeout timer ref
 }).
 
