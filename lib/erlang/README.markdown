@@ -88,7 +88,17 @@ Beehive has basic support for user accounts. The root user account information i
     password: 098f6bcd4621d373cade4e832627b4f6
 
 
-It is strongly recommended that you delete this user as soon as you create your own (you must log in once with this user to create a new user). Details on that coming soon
+It is strongly recommended that you delete this user as soon as you create your own (you must log in once with this user to create a new user).
+
+Certain requests require an authenticated user. To authenticate, you must first get a token. This is achieved by submitting a request, such as:
+
+    curl -i -XPOST -d"{\"email\":\"root@getbeehive.com\", \"password\": \"098f6bcd4621d373cade4e832627b4f6\"}" http://beehive.com:8080/auth
+
+This will return a tuple that will look like:
+  
+    {"user":"root@getbeehive.com","token":"f24e53e38dfb380066ea166f1844cf19"}
+
+Subsequent requests that require authentication should attach this token onto the data.
 
 Advanced
 ===
