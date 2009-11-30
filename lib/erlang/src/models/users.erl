@@ -89,9 +89,8 @@ create_new_token_for(Email, Password) ->
   case find_by_email(Email) of
     [] -> error;
     User ->
-      case User#user.password =:= Password of
-        false -> 
-          User#user{token = "error"};
+      case User#user.password =:= md5:hex(Password) of
+        false -> error;
         true ->
           create_new_token_for(User)
       end
@@ -104,7 +103,8 @@ create_new_token_for(Email, Password) ->
 add_root_user() ->
   create(new([
     {email, "root@getbeehive.com"},
-    {password, md5:hex("test")}
+    {password, "test"},
+    {level, ?ADMIN_USER_LEVEL}
   ])).
 
 new(NewProps) ->
@@ -118,6 +118,13 @@ validate_user_proplists(PropList) ->
   lists:map(fun({Key, Val}) ->
     case Key of
       updated_at -> {Key, date_util:now_to_seconds()};
+      password -> 
+        case Val of
+          undefined -> md5:hex("test");
+          _ -> {Key, md5:hex(Val)}
+        end;
+      token -> {Key, none};
+      level -> {Key, misc_utils:to_integer(Val)};
       _ -> {Key, Val}
     end
   end, PropList).
