@@ -30,7 +30,7 @@ How it works
 ===
 There are 3 mnesia tables setup by the beehive router:
 
-<img src="http://i36.tinypic.com/t023xw.png" alt="table" />
+<img src="https://github.com/auser/beehive/raw/master/lib/erlang/docs/tables.png" width="100" alt="table" />
 
 The app table stores the applications associated with Beehive.
 
