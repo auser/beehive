@@ -167,3 +167,4 @@ TODO
   * Add bee dets file for recovery when the router dies
   * Add more than just http servers (abstract the proxying protocols)
   * Propagate the custom callback module across the mesh
+  * Add token expiry to the user tokens
