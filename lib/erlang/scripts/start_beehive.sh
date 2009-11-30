@@ -136,8 +136,9 @@ ROUTER_OPTS="$ROUTER_OPTS node_type $TYPE "
 if $VERBOSE; then
 cat <<EOF
 	Running with:
-		Mnesia dir: \'$MNESIA_DIR\'
-		Name: 		\'$NAME\'
+		Erlang opts: $ERL_OPTS
+		Mnesia dir: '$MNESIA_DIR'
+		Name: 		'$NAME'
 		Router opts:	$ROUTER_OPTS
 		Paths: $PATHS
 EOF
