@@ -22,8 +22,8 @@ get(_) ->
         {"host", B#bee.host},
         {"port", B#bee.port},
         {"routing_param", B#bee.routing_param},
-        {"status", B#bee.status}]
-      )}
+        {"status", B#bee.status}
+      ])}
     end, All)
   }]},
   O.

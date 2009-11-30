@@ -88,7 +88,8 @@
 -record (user, {
   email,
   password,
-  key
+  key,
+  token
 }).
 
 

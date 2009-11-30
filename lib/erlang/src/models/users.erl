@@ -19,7 +19,9 @@
   exist/1,
   create/1,
   update/1,
-  delete/1, new/1
+  delete/1, 
+  create_new_token_for/1, create_new_token_for/2,
+  new/1
 ]).
 
 find_by_email(Hostemail) ->
@@ -50,7 +52,7 @@ create(NewProps) ->
   create(new(NewProps)).
 
 update(NewProps) ->
-  update(new(NewProps)).
+  create(new(NewProps)).
 
 delete(User) when is_record(User, user) -> db:delete_object(User);
 delete(Name) ->
@@ -58,6 +60,26 @@ delete(Name) ->
 
 all() ->
   db:find(qlc:q([ B || B <- mnesia:table(user) ])).
+
+create_new_token_for(User) when is_record(User, user) ->
+  NewToken = md5:hex(lists:flatten([
+    User#user.email,
+    misc_utils:to_list(date_util:now_to_seconds())
+  ])),
+  create(User#user{token = NewToken}).
+
+create_new_token_for(Email, Password) ->
+  case find_by_email(Email) of
+    [] -> error;
+    User ->
+      case User#user.password =:= Password of
+        false -> 
+          User#user{token = "error"};
+        true ->
+          create_new_token_for(User)
+      end
+  end.
+  
 
 % Add the initial root user
 % email: root@getbeehive.com
