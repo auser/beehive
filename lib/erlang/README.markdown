@@ -28,13 +28,17 @@ To start it, run:
 
 How it works
 ===
-There are 2 mnesia tables setup by the beehive router:
+There are 4 mnesia tables setup by the beehive router:
 
-<img src="http://i36.tinypic.com/t023xw.png" alt="table" />
+<img src="https://github.com/auser/beehive/raw/master/lib/erlang/docs/tables.png" width="300" alt="table" />
 
 The app table stores the applications associated with Beehive.
 
 The bee table stores the bee data, and their state.
+
+The user table stores information about the users associated with the system.
+
+The users_apps table stores the mappings between users and their apps
 
 ## Proxy
 
@@ -167,3 +171,4 @@ TODO
   * Add bee dets file for recovery when the router dies
   * Add more than just http servers (abstract the proxying protocols)
   * Propagate the custom callback module across the mesh
+  * Add token expiry to the user tokens
