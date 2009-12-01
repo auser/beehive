@@ -38,7 +38,7 @@ The bee table stores the bee data, and their state.
 
 The user table stores information about the users associated with the system.
 
-The users_apps table stores the mappings between users and their apps
+The user_app table stores the mappings between users and their apps
 
 ## Proxy
 
