@@ -13,8 +13,8 @@
 get(_) -> 
   {struct, [{"beehive", <<"app, node, bees, stats">>}]}.
 
-post(["post-receive"], Data) ->
-  io:format("Github post commit hook fired: ~p~n", [Data]),
+post([Name, "post-receive"], Data) ->
+  io:format("Git post commit hook fired for ~p: ~p~n", [Name, Data]),
   misc_utils:to_bin("Success!");
   
 post(_Path, _Data) -> "unhandled".
