@@ -96,10 +96,14 @@
   level   = ?REGULAR_USER_LEVEL
 }).
 
+-define (OWNER_APP_ROLE, 1).
+-define (CONTRIBUTOR_APP_ROLE, 2).
+
 % User to app acl
--record (user_apps, {
+-record (user_app, {
   user_email,
-  app_name
+  app_name,
+  level       = ?OWNER_APP_ROLE
 }).
 
 -record (bee_pid, {pid, status, start_time, bee_name}).

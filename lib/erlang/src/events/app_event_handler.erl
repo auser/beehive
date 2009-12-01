@@ -41,6 +41,7 @@ handle_event({app, not_enough_app_instances_running_to_serve_requests, Hostname}
   {ok, State};
 
 handle_event({app, updated, App}, State) ->
+  % app_manager:update_app(App),
   node_manager:request_to_terminate_all_bees(App#app.name),
   {ok, State};
 
