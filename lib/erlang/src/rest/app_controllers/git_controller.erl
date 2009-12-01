@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% File    : github_controller.erl
+%%% File    : git_controller.erl
 %%% Author  : Ari Lerner
 %%% Description : 
 %%%
 %%% Created :  Sun Nov 29 23:18:32 PST 2009
 %%%-------------------------------------------------------------------
 
--module (github_controller).
+-module (git_controller).
 
 -export ([get/1, post/2, put/2, delete/2]).
 
