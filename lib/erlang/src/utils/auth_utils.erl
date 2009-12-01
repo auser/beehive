@@ -22,13 +22,28 @@ get_authorized_user(Data) ->
       end
   end.
 
+% Call the function if the user (defined by the token) is
+% found and their email is in the list of given emails
+% otherwise chuck out as unauthorized
+run_if_authorized(F, Emails, Data) ->
+  case get_authorized_user(Data) of
+    false -> misc_utils:to_bin("No user defined or invalid token");
+    ReqUser ->
+      case lists:member(ReqUser#user.email, Emails) of
+        false -> misc_utils:to_bin("Unauthorized user");
+        true -> F(ReqUser)
+      end
+  end.
+
+% If the user is defined by the token and the user is an admin, then
+% call the function With the authorized user record
 run_if_admin(F, Data) ->
-  case auth_utils:get_authorized_user(Data) of
+  case get_authorized_user(Data) of
     false -> misc_utils:to_bin("Unauthorized");
     ReqUser ->
-      case auth_utils:is_admin_user(ReqUser) of
+      case is_admin_user(ReqUser) of
         false -> misc_utils:to_bin("Unauthorized");
-        true -> F()
+        true -> F(ReqUser)
       end
   end.
 
