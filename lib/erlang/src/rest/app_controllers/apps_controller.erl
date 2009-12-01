@@ -20,18 +20,25 @@ get(_) ->
         {"name", A#app.name},
         {"url", A#app.url},
         {"routing_param", A#app.routing_param},
+        {"owner", A#app.routing_param},
         {"last_updated", A#app.updated_at}
       ])}
     end, All)
   }]}.
 
 post(["new"], Data) ->
-  case apps:create(Data) of
-    App when is_record(App, app) -> 
-      {struct, ?BINIFY([{"app", misc_utils:to_bin(App#app.name)}])};
-    _ -> "There was an error adding bee\n"
+  case auth_utils:get_authorized_user(Data) of
+    false -> misc_utils:to_bin("No user defined or invalid token");
+    ReqUser ->
+      case apps:create(Data) of
+        App when is_record(App, app) -> 
+          user_apps:create(ReqUser, App),
+          {struct, ?BINIFY([{"app", misc_utils:to_bin(App#app.name)}])};
+        _ -> "There was an error adding bee\n"
+      end
   end;
 
+% Not sure about this... yet as far as authentication goes
 post([Name, "restart"], _Data) ->
   Response = case apps:update_by_name(Name) of
     {ok, _} -> {"app", <<"updated">>};
