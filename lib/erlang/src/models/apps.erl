@@ -21,12 +21,14 @@
   delete/1, new/1
 ]).
 
-find_by_name(Hostname) ->
-  case find_all_by_name(Hostname) of
+% Find the first application named Name
+find_by_name(Name) ->
+  case find_all_by_name(Name) of
     [B|_] -> B;
     _ -> []
   end.
 
+% Find the apps that are named Name
 find_all_by_name(Name) -> 
   db:read({app, Name}).
 

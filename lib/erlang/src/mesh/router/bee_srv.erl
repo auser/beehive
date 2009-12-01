@@ -309,7 +309,7 @@ maybe_handle_next_waiting_client(Name, State) ->
       gen_server:reply(From, ?BACKEND_TIMEOUT_MSG),
       maybe_handle_next_waiting_client(Name, State);
     {value, {{_RoutingParam, Hostname} = Tuple, From, Pid, _InsertTime}} ->
-      ?LOG(info, "Handling Q: ~p", [Hostname]),
+      ?LOG(info, "Handling Q: ~p (~p)", [Hostname, Tuple]),
       case choose_bee(Tuple, From, Pid) of
         % Clearly we are not ready for another bee connection request. :(
         % choose_bee puts the request in the pending queue, so we don't have
