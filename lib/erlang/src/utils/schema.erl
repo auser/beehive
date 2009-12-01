@@ -19,7 +19,7 @@
 initialized() ->
   try
     (catch db:start()),
-    lists:map(fun(TableAtom) -> mnesia:table_info(TableAtom, type) end, [app, bee, user]),
+    lists:map(fun(TableAtom) -> mnesia:table_info(TableAtom, type) end, [app, bee, user, user_app]),
     true
   catch _:Why -> 
     ?LOG(info, "Creating tables: ~p", [Why]),
@@ -77,7 +77,8 @@ install_bee(Nodes) ->
 
 install_user(Nodes) ->
   try 
-    mnesia:table_info(user, type)
+    mnesia:table_info(user, type),
+    mnesia:table_info(user_app, type)
   catch
     exit:_Why ->
       io:format("Creating table user\n"),
@@ -86,9 +87,14 @@ install_user(Nodes) ->
         {type, set},
         {disc_copies, Nodes}
       ]),
+      io:format("Creating table user_app\n"),
+      mnesia:create_table(user_app, [
+        {attributes, record_info(fields, user_app)},
+        {type, set},
+        {disc_copies, Nodes}
+      ]),
       users:add_root_user();
     Error ->
       io:format("Error creating mnesia table: ~p", [Error]),
       throw(Error)
   end.
-  
