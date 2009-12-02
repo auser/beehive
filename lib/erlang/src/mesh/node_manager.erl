@@ -200,7 +200,6 @@ handle_call(_Request, _From, State) ->
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
 handle_cast({request_to_terminate_all_bees, Name}, State) ->
-  % bees:update(Backend#bee{status = down}),
   % First, find all the bees and "unregister" them, or delete them from the bee list so we don't
   % route any requests this way
   Backends = bees:find_all_by_name(Name),
@@ -249,8 +248,9 @@ handle_cast(_Msg, State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
-handle_info({stopped_bee, Backend}, State) ->
-  bees:update(Backend#bee{status = down}),
+handle_info({stopped_bee, Bee}, State) ->
+  RealBee = bees:find_by_id(Bee#bee.id),
+  bees:update(RealBee#bee{status = down}),
   {noreply, State};
   
 handle_info({stay_connected_to_seed}, #state{seed = SeedNode, type = Type} = State) ->
@@ -321,7 +321,12 @@ start_new_instance_by_name(Name) ->
     false -> false;
     Host ->
       App = apps:find_by_name(Name),
-      spawn_to_start_new_instance(App, Host)
+      case App#app.type of
+        static -> ok;
+        T ->
+          io:format("Type: ~p~n", [T]),
+          spawn_to_start_new_instance(App, Host)
+      end
   end.
 % Start with the app_launcher_fsm
 spawn_to_start_new_instance(Name, Host) ->
