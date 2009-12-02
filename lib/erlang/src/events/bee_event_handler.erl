@@ -40,17 +40,26 @@ handle_event({bee, used, Backend}, State) when is_record(Backend, bee) ->
   stats_srv:bee_stat({request_begin, Backend#bee.id}),
   {ok, State};
   
-handle_event({bee, ready, Backend}, State) when is_record(Backend, bee) ->
-  bee_srv:maybe_handle_next_waiting_client(Backend#bee.app_name),
-  bees:update(Backend#bee{lastresp_time = date_util:now_to_seconds()}),
+handle_event({bee, ready, Bee}, State) when is_record(Bee, bee) ->
+  bee_srv:maybe_handle_next_waiting_client(Bee#bee.app_name),
+  bees:transactional_update(fun() ->
+    RealBee = bees:find_by_id(Bee#bee.id),
+    bees:update(RealBee#bee{lastresp_time = date_util:now_to_seconds()})
+  end),
   {ok, State};
 
-handle_event({bee, bee_down, Backend}, State) ->
-  bees:update(Backend#bee{status = down}),
+handle_event({bee, bee_down, Bee}, State) ->
+  bees:transactional_update(fun() ->
+    RealBee = bees:find_by_id(Bee#bee.id),
+    bees:update(RealBee#bee{status = down})
+  end),
   {ok, State};
 
-handle_event({bee, cannot_connect, Backend}, State) ->
-  bees:update(Backend#bee{status = down}),
+handle_event({bee, cannot_connect, Bee}, State) ->
+  bees:transactional_update(fun() ->
+    RealBee = bees:find_by_id(Bee#bee.id),
+    bees:update(RealBee#bee{status = down})
+  end),
   {ok, State};
 
 handle_event({bee, closing_stats, #bee{id = Id} = Backend, StatsProplist}, State) ->
