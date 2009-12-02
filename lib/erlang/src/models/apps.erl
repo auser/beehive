@@ -80,6 +80,9 @@ validate_app_proplists(PropList) ->
         undefined -> {Key, generate_unique_name()};
         E -> {Key, E}
       end;
+      type -> {Key, misc_utils:to_atom(Val)};
+      bee_picker -> {Key, misc_utils:to_atom(Val)};
+      routing_param -> {Key, misc_utils:to_atom(Val)};
       updated_at -> {Key, date_util:now_to_seconds()};
       _ -> {Key, Val}
     end

@@ -28,7 +28,7 @@
   find_by_id/1,
   find_all_grouped_by_host/0,
   create/1,
-  update/1,
+  update/1, transactional_update/1,
   delete/1, delete/3,
   all/0, new/1
 ]).
@@ -71,6 +71,9 @@ create(NewProps) ->
   create(new(NewProps)).
 
 % Grrr update!
+transactional_update(F) ->
+  db:transaction(F()).
+  
 update(Backend) -> 
   create(Backend).
 
@@ -103,7 +106,7 @@ validate_bee_proplists(PropList) ->
   lists:map(fun({Key, Val}) ->
     case Key of
       port -> {Key, misc_utils:to_integer(Val)};
-      routing_param -> {Key, misc_utils:to_integer(Val)};
+      meta_param -> {Key, Val};
       _ -> {Key, Val}
     end
   end, PropList).
