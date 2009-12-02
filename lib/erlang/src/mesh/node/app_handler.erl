@@ -15,7 +15,7 @@
 -export([
   start_link/0,
   stop/0,
-  start_new_instance/2,
+  start_new_instance/3,
   stop_instance/3, stop_app/2,
   can_deploy_new_app/0,
   has_app_named/1
@@ -29,10 +29,12 @@
 -record(state, {
   max_bees,             % maximum number of bees on this host
   available_ports,          % available ports on this node
-  app_pids,                 % pids that are running the apps
   current_bees  = []    % bees hosted on this app_handler
 }).
 -define(SERVER, ?MODULE).
+
+-define (TAB_ID_TO_BEE, 'id_to_bee_table').
+-define (TAB_PID_TO_BEE, 'port_to_bee_table').
 
 %%====================================================================
 %% API
@@ -50,8 +52,8 @@ stop() ->
 can_deploy_new_app() ->
   gen_server:call(?SERVER, {can_deploy_new_app}).
   
-start_new_instance(App, From) ->
-  gen_server:call(?SERVER, {start_new_instance, App, From}).
+start_new_instance(App, AppLauncher, From) ->
+  gen_server:call(?SERVER, {start_new_instance, App, AppLauncher, From}).
 
 stop_instance(Backend, App, From) ->
   gen_server:call(?SERVER, {stop_instance, Backend, App, From}).
@@ -77,7 +79,8 @@ init([]) ->
   process_flag(trap_exit, true),
   
   Opts = [named_table, set],
-  ets:new(?MODULE, Opts),
+  ets:new(?TAB_ID_TO_BEE, Opts),
+  ets:new(?TAB_PID_TO_BEE, Opts),
   
   MaxBackends     = ?MAX_BACKENDS_PER_HOST,
   % set a list of ports that the node can use to deploy applications
@@ -85,7 +88,6 @@ init([]) ->
   
   {ok, #state{
     max_bees = MaxBackends,
-    app_pids        = [],
     available_ports = AvailablePorts
   }}.
 
@@ -98,22 +100,20 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%-------------------------------------------------------------------- 
-handle_call({start_new_instance, App, From}, _From, #state{
+handle_call({start_new_instance, App, AppLauncher, From}, _From, #state{
                                       current_bees = CurrBackends,
-                                      app_pids = AppPids, 
                                       available_ports = AvailablePorts} = State) ->
   Port = case AvailablePorts of
     [] -> ?STARTING_PORT;
     [P|_] -> P
   end,
   % ?LOG(info, "internal_start_new_instance(~p, ~p, ~p)", [App, Port, From]),
-  Backend = internal_start_new_instance(App, Port, From),
+  Backend = internal_start_new_instance(App, Port, AppLauncher, From),
   NewAvailablePorts = lists:delete(Port, AvailablePorts),
   {reply, ok, State#state{
     current_bees = [Backend|CurrBackends], 
-    available_ports = NewAvailablePorts,
-    app_pids = [{Backend#bee.pid, Backend}|AppPids]}
-  };
+    available_ports = NewAvailablePorts
+  }};
 
 handle_call({stop_instance, Backend, App, From}, _From, #state{current_bees = CurrBackends, available_ports = AvailablePorts} = State) ->
   Port = Backend#bee.port,
@@ -131,7 +131,7 @@ handle_call({has_app_named, Name}, _From, #state{current_bees = Curr} = State) -
 
 % Check if this node can deploy a new application or not
 handle_call({can_deploy_new_app}, _From, #state{current_bees = Curr, max_bees = Max} = State) ->
-  Reply = (length(Curr) =< Max),
+  Reply = (length(Curr) < Max),
   {reply, Reply, State};
 handle_call(_Request, _From, State) ->
   Reply = ok,
@@ -164,23 +164,12 @@ handle_cast(_Msg, State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
-handle_info({'EXIT', Pid, _Reason}, #state{
-                                      app_pids = AppPids, 
-                                      current_bees = CurrBackends, 
-                                      available_ports = AvailablePorts} = State
-                                    ) ->
-  case lists:keymember(Pid, 1, AppPids) of
-    true ->
-      % This is an app port running
-      {value, {Pid, Backend}} = lists:keysearch(Pid, 1, AppPids),
-      NewAppPids = lists:keydelete(Pid, 1, AppPids),
-      NewPorts = lists:delete(Backend#bee.port, AvailablePorts),
-      NewBackends = lists:delete(Backend, CurrBackends),
-      ?NOTIFY({bee, bee_down, Backend}),
-      {noreply, State#state{app_pids = NewAppPids, available_ports = NewPorts, current_bees = NewBackends}};
-    false ->
-      {noreply, State}
-  end;
+handle_info({'EXIT', Pid, _Reason}, State) ->
+  ?LOG(info, "Pid exited: ~p", [Pid]),
+  {noreply, handle_pid_exit(Pid, State)};
+handle_info({port_closed, Pid}, State) ->
+  ?LOG(info, "Port closed: ~p", [Pid]),
+  {noreply, handle_pid_exit(Pid, State)};
 handle_info(Info, State) ->
   ?LOG(info, "~p caught info: ~p", [?MODULE, Info]),
   {noreply, State}.
@@ -208,7 +197,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 % Start a new instance of the application
-internal_start_new_instance(App, Port, From) ->
+internal_start_new_instance(App, Port, AppLauncher, From) ->
   ?LOG(info, "App ~p", [App]),
   
   TemplateCommand = App#app.start_command,  
@@ -220,6 +209,7 @@ internal_start_new_instance(App, Port, From) ->
   % START INSTANCE
   % port_handler:start("thin -R beehive.ru --port 5000 start", "/Users/auser/Development/erlang/mine/router/test/fixtures/apps").
   ?LOG(info, "Starting on port ~p as ~p:~p with ~p", [Port, App#app.group, App#app.user, RealCmd]),
+  process_flag(trap_exit, true),
   Pid = port_handler:start(RealCmd, App#app.path, self()),
   Host = host:myip(),
   Id = {App#app.name, Host, Port},
@@ -234,13 +224,13 @@ internal_start_new_instance(App, Port, From) ->
     start_time              = date_util:now_to_seconds()
   },
   
-  From ! {started_bee, Backend},
-  ets:insert(?MODULE, {Id, Backend}),
+  AppLauncher ! {started_bee, Backend},
+  ets:insert(?TAB_ID_TO_BEE, {Id, Backend}),
+  ets:insert(?TAB_PID_TO_BEE, {Pid, Backend, App, From}),
   Backend.
 
 % kill the instance of the application  
-internal_stop_instance(Backend, App, From) ->
-  From ! {stopped_bee, Backend},
+internal_stop_instance(Backend, App, From) when is_record(App, app) ->
   RealCmd = template_command_string(App#app.stop_command, [
                                                         {"[[PORT]]", erlang:integer_to_list(Backend#bee.port)},
                                                         {"[[GROUP]]", App#app.group},
@@ -249,11 +239,13 @@ internal_stop_instance(Backend, App, From) ->
 
   Backend#bee.pid ! {stop, RealCmd},
   os:cmd(RealCmd),
-  case ets:lookup(?MODULE, {App#app.name, Backend#bee.host, Backend#bee.port}) of
+  case ets:lookup(?TAB_ID_TO_BEE, {App#app.name, Backend#bee.host, Backend#bee.port}) of
     [{Key, _B}] ->
-      ets:delete(?MODULE, Key);
+      ets:delete(?TAB_PID_TO_BEE, Backend#bee.pid),
+      ets:delete(?TAB_ID_TO_BEE, Key);
     _ -> true
-  end.
+  end,
+  From ! {bee_terminated, Backend}.
 
 % turn the command string from the comand string with the values
 % of [[KEY]] replaced by the corresponding proplist element of
@@ -263,3 +255,23 @@ template_command_string(OriginalCommand, []) -> OriginalCommand;
 template_command_string(OriginalCommand, [{Str, Replace}|T]) ->
   NewCommand = string_utils:gsub(OriginalCommand, Str, Replace),
   template_command_string(NewCommand, T).
+
+% Handle pid exiting
+handle_pid_exit(Pid, #state{current_bees = CurrBackends, available_ports = AvailablePorts} = State) ->
+  case find_pid_in_pid_table(Pid) of
+    false -> 
+      State;
+    {Bee, App, From} -> 
+      NewPorts = lists:delete(Bee#bee.port, AvailablePorts),
+      NewBackends = lists:delete(Bee, CurrBackends),
+      internal_stop_instance(Bee, App, From),
+      State#state{available_ports = NewPorts, current_bees = NewBackends}
+  end.
+
+% Look up the pid in the ets table
+find_pid_in_pid_table(Port) ->
+  case ets:lookup(?TAB_PID_TO_BEE, Port) of
+    [{_Key, Bee, App, From}] ->
+      {Bee, App, From};
+    _ -> false
+  end.

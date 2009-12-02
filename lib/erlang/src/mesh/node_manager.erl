@@ -252,6 +252,11 @@ handle_info({stopped_bee, Bee}, State) ->
   RealBee = bees:find_by_id(Bee#bee.id),
   bees:update(RealBee#bee{status = down}),
   {noreply, State};
+
+handle_info({bee_terminated, Bee}, State) ->
+  RealBee = bees:find_by_id(Bee#bee.id),
+  bees:update(RealBee#bee{status = terminated}),
+  {noreply, State};
   
 handle_info({stay_connected_to_seed}, #state{seed = SeedNode, type = Type} = State) ->
   case SeedNode of
@@ -331,7 +336,7 @@ start_new_instance_by_name(Name) ->
 % Start with the app_launcher_fsm
 spawn_to_start_new_instance(Name, Host) ->
   {ok, P} = app_launcher_fsm:start_link(Name, Host),
-  app_launcher_fsm:launch(P).
+  app_launcher_fsm:launch(P, self()).
 
 % Get the next nodes of the same type
 get_other_nodes(Type) ->
