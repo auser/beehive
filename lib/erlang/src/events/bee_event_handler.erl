@@ -36,6 +36,10 @@ init([]) ->
 %% gen_event:notify/2 or gen_event:sync_notify/2, this function is called for
 %% each installed event handler to handle the event.
 %%--------------------------------------------------------------------  
+handle_event({bee, create, Bee}, State) when is_record(Bee, bee) ->
+  bees:create(Bee),
+  {ok, State};
+  
 handle_event({bee, used, Backend}, State) when is_record(Backend, bee) ->
   stats_srv:bee_stat({request_begin, Backend#bee.id}),
   {ok, State};
@@ -52,6 +56,14 @@ handle_event({bee, bee_down, Bee}, State) ->
   bees:transactional_update(fun() ->
     RealBee = bees:find_by_id(Bee#bee.id),
     bees:update(RealBee#bee{status = down})
+  end),
+  {ok, State};
+
+handle_event({bee, bee_terminated, Bee}, State) when is_record(Bee, bee) ->
+  io:format("bee_terminated: ~p~n", [Bee]),
+  bees:transactional_update(fun() ->
+    RealBee = bees:find_by_id(Bee#bee.id),
+    bees:update(RealBee#bee{status = terminated})
   end),
   {ok, State};
 
