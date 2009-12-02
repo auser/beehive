@@ -179,10 +179,16 @@ top_level_request(Path) ->
 % from {<<name>>, <<value>>} to {name, value}
 convert_to_struct(RawData) ->
   lists:map(fun({BinKey, BinVal}) ->
-      Key = misc_utils:to_atom(BinKey),
-      Val = misc_utils:to_list(BinVal),
-      {Key, Val}
-    end, RawData).
+    case BinVal of
+      {struct, Arr} -> 
+        Key = misc_utils:to_atom(BinKey),
+        {Key, convert_to_struct(Arr)};
+      _ ->
+        Key = misc_utils:to_atom(BinKey),
+        Val = misc_utils:to_list(BinVal),
+        {Key, Val}
+    end
+  end, RawData).
 
 % Get the data off the request
 decode_data_from_request(Req) ->
