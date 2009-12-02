@@ -36,10 +36,6 @@ init([]) ->
 %% gen_event:notify/2 or gen_event:sync_notify/2, this function is called for
 %% each installed event handler to handle the event.
 %%--------------------------------------------------------------------
-handle_event({app, not_enough_app_instances_running_to_serve_requests, Hostname}, State) ->
-  node_manager:request_to_start_new_bee(Hostname),
-  {ok, State};
-
 handle_event({app, updated, App}, State) ->
   % app_manager:update_app(App),
   node_manager:request_to_terminate_all_bees(App#app.name),
