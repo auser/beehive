@@ -116,6 +116,9 @@ And there you go, you have a custom authenticat-able user at your disposal.
 
 Advanced
 ===
+
+## Custom event handlers
+
 The core functionality of Beehive is event-driven. It supports user defined callbacks as well. To hook into the beehive architecture, you will have to write a custom handler that exports the function: handle_event/1. And example of this custom event handler might look something like this:
 
 
@@ -151,6 +154,28 @@ Note: The documentation assumes that the router is sitting at a network accessib
 To start a router with the custom callback module, use the -c and -a switches:
 
     ./scripts/start_beehive.sh -a /path/to/custom_callback_module -c custom_callback_module
+
+## Custom backend strategies
+
+Backends are chosen via a strategy. There are baked in strategies that can be used. Those are described in the file: [src/mesh/router/backend_strategies.erl](https://github.com/auser/beehive/blob/master/lib/erlang/src/mesh/router/bee_strategies.erl).
+
+If needed, custom strategies can be written to describe more complicated descriptions. To do so, write a custom handler, for instance:
+
+    -module (custom_bee_picker).
+    -include ("/path/to/include/beehive.hrl").
+    -export([custom_chooser/1]).
+    
+    custom_chooser(Bees) ->
+      hd(Bees).
+      
+This is clearly a dummy handler as it will choose the top of the bees, but it illustrates how to build a bee picker. To start with this bee picker at the top of the list:
+
+    ./scripts/start_beehive.sh -a /path/to/custom_callback_module -q channel_chooser
+    
+Now, any application that has the routing_param set to channel_chooser will use the custom_chooser module.
+
+    curl -i -XPOST -d"{\"token\":\"tokenofauthorizeduser\", \"name\":\"picky_app\", \"routing_param\":\"custom_chooser\", \"bee_picker\":\"custom_bee_picker\"}" beehive.com:8080/apps/new
+
 
 DEVELOPER DATA
 ===
