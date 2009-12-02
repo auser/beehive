@@ -51,7 +51,7 @@
   app_name,                 % name of the app this bee supports
   host,
   port,
-  routing_param,            % meta data on the bee allows for more granualar abstract parameters
+  meta_data,                % meta data on the bee allows for more granualar abstract parameters
                             % should be a tuple, e.g. {ports: 2}
   start_time    = 0,        % starting time
   pid,                      % pid of os port process
@@ -71,7 +71,9 @@
   path,
   url,
   concurrency,
+  type = dynamic,                   % dynamic | static (if this is set to static, we cannot launch a new one)
   routing_param = undefined,        % determine the method of choosing the backend
+  bee_picker = bee_strategies,      % Defined the bee picker module (defaults to bee_strategies)
   timeout,
   sticky        = false,            % if an app is sticky, the apps are not requested after timeout time
   min_instances,
