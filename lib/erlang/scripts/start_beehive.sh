@@ -20,6 +20,7 @@ OPTIONS
 	-r, --rest		Run the rest server (boolean)
 	-a, --additional_path	Additional paths for the beehive runtime
 	-c, --callback_module	Module name of the callback module
+	-q, --bee_picker	Name of the method that contains the bee chooser
 	-s, --seed		Pass in the seed node
 	-p, --port		Port to run the router
 	-i, --initial_bees 	Initial bees to start the bee_srv
@@ -52,8 +53,8 @@ STRATEGY="random"
 PATHS="-pa $PWD/ebin -pa $PWD/include"
 ERL_OPTS="-s reloader"
 
-SHORTOPTS="hm:n:dp:t:g:r:s:vi:a:c:"
-LONGOPTS="help,version,port,type,strategy,rest,seed,mnesia_dir,daemonize,initial_bees,additional_path,callback_module"
+SHORTOPTS="hm:n:dp:t:g:r:s:vi:a:c:q:"
+LONGOPTS="help,version,port,type,strategy,rest,seed,mnesia_dir,daemonize,initial_bees,additional_path,callback_module,bee_picker"
 
 if $(getopt -T >/dev/null 2>&1) ; [ $? = 4 ] ; then # New longopts getopt.
 	OPTS=$(getopt -o "$SHORTOPTS" --longoptions "$LONGOPTS" -n "$progname" -- "$@")
@@ -91,6 +92,9 @@ while [ $# -gt 0 ]; do
 			shift 2;;
 		-s|--seed)
 			ROUTER_OPTS="$ROUTER_OPTS seed '$2'"
+			shift 2;;
+		-q|--bee_picker)
+			ROUTER_OPTS="$ROUTER_OPTS bee_picker '$2'"
 			shift 2;;
 		-a|--additional_path)
 			PATHS="$PATHS -pa $2"
