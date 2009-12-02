@@ -190,11 +190,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 
 % Spawn a process to try to connect to the instance
-spawn_update_bee_status(Backend, From, Nums) ->
+spawn_update_bee_status(Bee, From, Nums) ->
   spawn(fun() ->
-    BackendStatus = try_to_connect_to_new_instance(Backend, Nums),
-    bees:update(Backend#bee{status = BackendStatus}),
-    From ! {updated_bee_status, BackendStatus}
+    BeeStatus = try_to_connect_to_new_instance(Bee, Nums),
+    RealBee = bees:find_by_id(Bee#bee.id),
+    bees:update(RealBee#bee{status = BeeStatus}),
+    From ! {updated_bee_status, BeeStatus}
   end).
 
 % Try to connect to the application instance while it's booting up
@@ -362,7 +363,8 @@ try_to_reconnect_to_bee(B, Num) ->
       timer:sleep(200),
       try_to_reconnect_to_bee(B, Num - 1);
     NewStatus ->
-      bees:update(B#bee{status = NewStatus})
+      RealBee = bees:find_by_id(B#bee.id),
+      bees:update(RealBee#bee{status = NewStatus})
   end.
 
 % Cleanup the bee. Remove traces of the bee from the system
