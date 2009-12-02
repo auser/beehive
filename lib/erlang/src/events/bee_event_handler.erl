@@ -60,7 +60,6 @@ handle_event({bee, bee_down, Bee}, State) ->
   {ok, State};
 
 handle_event({bee, bee_terminated, Bee}, State) when is_record(Bee, bee) ->
-  io:format("bee_terminated: ~p~n", [Bee]),
   bees:transactional_update(fun() ->
     RealBee = bees:find_by_id(Bee#bee.id),
     bees:update(RealBee#bee{status = terminated})

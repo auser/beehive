@@ -78,13 +78,11 @@ init([App, Host]) ->
 %%--------------------------------------------------------------------
 launching({launch, From}, #state{app = App, host = Host} = State) ->
   Self = self(),
-  ?LOG(info, "launching app: ~p on ~p", [App#app.name, Host]),
   rpc:call(Host, app_handler, start_new_instance, [App, Self, From]),
   {next_state, launching, State};
 
 launching({started_bee, Be}, State) ->
   bee_srv:add_bee(Be),
-  io:format("Adding bee: ~p~n", [Be]),
   Self = self(),
   app_manager:spawn_update_bee_status(Be, Self, 20),
   {next_state, pending, State#state{bee = Be}};

@@ -329,7 +329,6 @@ start_new_instance_by_name(Name) ->
       case App#app.type of
         static -> ok;
         T ->
-          io:format("Type: ~p~n", [T]),
           spawn_to_start_new_instance(App, Host)
       end
   end.

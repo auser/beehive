@@ -21,8 +21,8 @@ initialized() ->
     (catch db:start()),
     lists:map(fun(TableAtom) -> mnesia:table_info(TableAtom, type) end, [app, bee, user, user_app]),
     true
-  catch _:Why -> 
-    ?LOG(info, "Creating tables: ~p", [Why]),
+  catch _:_Why -> 
+    ?LOG(info, "Creating tables", []),
     false
   end.
 
