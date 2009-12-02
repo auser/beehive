@@ -155,19 +155,23 @@ handle_call({Pid, get_bee, Hostname}, From, State) ->
       },
       {reply, {ok, Backend}, State};
     _ ->
-      MetaParam = case apps:find_by_name(Hostname) of
-        [] -> config:search_for_application_value(bee_strategy, random, beehive);
-        App -> App#app.routing_param
+      {AppMod, MetaParam} = case apps:find_by_name(Hostname) of
+        [] ->
+          M = config:search_for_application_value(bee_picker, bee_strategies, beehive),
+          Meta = config:search_for_application_value(bee_strategy, random, beehive),
+          {M, Meta};
+        App ->
+          pick_mod_and_meta_from_app(App)
       end,
-      case choose_bee({MetaParam, Hostname}, From, Pid) of
+      case choose_bee({Hostname, AppMod, MetaParam}, From, Pid) of
     	  ?MUST_WAIT_MSG -> 
     	    timer:apply_after(3000, ?MODULE, maybe_handle_next_waiting_client, [Hostname]),
     	    {noreply, State};
     	  {ok, Backend} -> 
     	    {reply, {ok, Backend}, State};
     	  {error, Reason} -> {reply, {error, Reason}, State};
-    	  E ->
-    	    ?LOG(error, "Got weird response in get_bees: ~p", [E]),
+    	  Else ->
+    	    ?LOG(error, "Got weird response in get_bees: ~p", [Else]),
     	    {noreply, State}
       end
   end;
@@ -240,7 +244,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%----------------------------------------------------------------------
 %%% Internal functions
 %%%----------------------------------------------------------------------
-choose_bee({_, Name} = Tuple, From, FromPid) ->
+choose_bee({Name, _, _} = Tuple, From, FromPid) ->
   case choose_bee(Tuple) of
 	  {ok, Backend} -> {ok, Backend};
 	  {error, Reason} -> {error, Reason};
@@ -252,7 +256,7 @@ choose_bee({_, Name} = Tuple, From, FromPid) ->
 % Find a bee host that is ready and choose it based on the strategy
 % given for the bee
 % Tuple = {name, Hostname}
-choose_bee({RoutingParameter, Hostname}) ->
+choose_bee({Hostname, AppMod, RoutingParameter}) ->
   case bees:find_all_by_name(Hostname) of
     [] -> 
       case apps:exist(Hostname) of
@@ -266,7 +270,7 @@ choose_bee({RoutingParameter, Hostname}) ->
       % We should move this out of here so that it doesn't slow down the proxy
       % as it is right now, this will slow down the proxy quite a bit
       AvailableBackends = lists:filter(fun(B) -> (catch B#bee.status =:= ready) end, Backends),
-      case choose_from_bees(AvailableBackends, RoutingParameter) of
+      case choose_from_bees(AvailableBackends, AppMod, RoutingParameter) of
         ?MUST_WAIT_MSG ->
           % This might not be appropriate... not sure yet
           ?NOTIFY({app, request_to_start_new_bee, Hostname}),
@@ -283,14 +287,14 @@ choose_bee({RoutingParameter, Hostname}) ->
 % If the application defines it's own routing mechanism with the routing_param
 % then that is used to choose the backend, otherwise the default router param will
 % be used
-choose_from_bees([], _RoutingParameter) -> ?MUST_WAIT_MSG;
-choose_from_bees(Backends, AppRoutingParam) ->
+choose_from_bees([], _AppMod, _RoutingParameter) -> ?MUST_WAIT_MSG;
+choose_from_bees(Backends, Mod, AppRoutingParam) ->
   PreferredStrategy = config:search_for_application_value(bee_strategy, random, beehive),
   Fun = case AppRoutingParam of
     undefined -> PreferredStrategy;
     F -> F
   end,
-  Backend = bee_strategies:Fun(Backends),
+  Backend = Mod:Fun(Backends),
   {ok, Backend}.
 
 % Handle adding a new bee
@@ -308,7 +312,7 @@ maybe_handle_next_waiting_client(Name, State) ->
     {value, {_Hostname, From, _Pid, InsertTime}} when InsertTime < TOTime ->
       gen_server:reply(From, ?BACKEND_TIMEOUT_MSG),
       maybe_handle_next_waiting_client(Name, State);
-    {value, {{_RoutingParam, Hostname} = Tuple, From, Pid, _InsertTime}} ->
+    {value, {{Hostname, _AppMod, _RoutingParam} = Tuple, From, Pid, _InsertTime}} ->
       ?LOG(info, "Handling Q: ~p (~p)", [Hostname, Tuple]),
       case choose_bee(Tuple, From, Pid) of
         % Clearly we are not ready for another bee connection request. :(
@@ -343,3 +347,14 @@ add_bees_from_config() ->
           end
       end
   end.
+
+pick_mod_and_meta_from_app(App) ->
+  Mod = case App#app.bee_picker of
+    undefined -> config:search_for_application_value(bee_picker, bee_strategies, beehive);
+    E -> E
+  end,
+  R = case App#app.routing_param of
+    undefined -> config:search_for_application_value(bee_strategy, random, beehive);
+    El -> El
+  end,
+  {Mod, R}.
