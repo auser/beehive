@@ -169,7 +169,9 @@ handle_call({Pid, get_bee, Hostname}, From, State) ->
     	    {noreply, State};
     	  {ok, Backend} -> 
     	    {reply, {ok, Backend}, State};
-    	  {error, Reason} -> {reply, {error, Reason}, State};
+    	  {error, Reason} -> 
+    	    ?LOG(error, "handle_call (~p:~p) failed because: ~p, ~p~n", [?MODULE, ?LINE, Reason, Hostname]),
+    	    {reply, {error, Reason}, State};
     	  Else ->
     	    ?LOG(error, "Got weird response in get_bees: ~p", [Else]),
     	    {noreply, State}
@@ -257,7 +259,7 @@ choose_bee({Name, _, _} = Tuple, From, FromPid) ->
 % given for the bee
 % Tuple = {name, Hostname}
 choose_bee({Hostname, AppMod, RoutingParameter}) ->
-  case bees:find_all_by_name(Hostname) of
+  case (catch bees:find_all_by_name(Hostname)) of
     [] -> 
       case apps:exist(Hostname) of
         false ->
@@ -266,6 +268,12 @@ choose_bee({Hostname, AppMod, RoutingParameter}) ->
           ?NOTIFY({app, request_to_start_new_bee, Hostname}),
           ?MUST_WAIT_MSG
       end;
+    {'EXIT', {_, {no_exists, _}}} ->
+      ?LOG(error, "No exists for bees", []),
+      ?MUST_WAIT_MSG;
+    {'EXIT', _} ->
+      ?LOG(error, "Undefined error with choose_bee", []),
+      ?MUST_WAIT_MSG;
     Backends ->
       % We should move this out of here so that it doesn't slow down the proxy
       % as it is right now, this will slow down the proxy quite a bit
@@ -348,6 +356,10 @@ add_bees_from_config() ->
       end
   end.
 
+% These are commands that can be specified on an application
+% bee_picker is the custom module to choose the bee from
+% routing_param is the name of the method in the bee_picker
+% Defaults to bee_strategies:random if none are specified on the app
 pick_mod_and_meta_from_app(App) ->
   Mod = case App#app.bee_picker of
     undefined -> config:search_for_application_value(bee_picker, bee_strategies, beehive);
