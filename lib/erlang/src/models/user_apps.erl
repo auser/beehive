@@ -45,10 +45,7 @@ find_all_by_email(Name) ->
   db:read({user_app, Name}).
   
 find_all_by_app_name(Name) -> 
-  case db:match(#user_app{app_name = Name, _='_'}) of
-    [U|_] -> U;
-    _ -> []
-  end.
+  db:match(#user_app{app_name = Name, _='_'}).
   
 % These aren't going to be incredibly fast
 % Get the owners of a specific app
@@ -86,7 +83,7 @@ all() ->
   db:find(qlc:q([ B || B <- mnesia:table(user_app) ])).  
 
 new(NewProps) ->
-  PropList = ?rec_info(user_app, #user{}),
+  PropList = ?rec_info(user_app, #user_app{}),
   FilteredProplist1 = misc_utils:filter_proplist(PropList, NewProps, []),
   FilteredProplist2 = misc_utils:new_or_previous_value(FilteredProplist1, PropList, []),
   FilteredProplist = validate_user_app_proplists(FilteredProplist2),
