@@ -55,13 +55,13 @@ proxy_init(ClientSock) ->
 % Let the packet_decoder address the forwarding of the packet to the server and start the proxy loop
 % If the bee cannot be reached, send an alert through the event handler that we could not reach
 % the bee and try to find a new bee
-engage_bee(ClientSock, RequestPid, Hostname, ForwardReq, Req, {ok, #bee{host = Host, port = Port} = Backend}) ->
+engage_bee(ClientSock, RequestPid, Hostname, ForwardReq, Req, {ok, #bee{host = Host, port = Port} = Bee}) ->
   SockOpts = [  binary,
 				        {active, false}
 			       ],
   case gen_tcp:connect(Host, Port, SockOpts, ?CONNECT_TIMEOUT) of
     {ok, ServerSock} ->
-      ?NOTIFY({bee, used, Backend}),
+      ?NOTIFY({bee, used, Bee}),
       % Sending raw request to bee server
       gen_tcp:send(ServerSock, ForwardReq),
       
@@ -78,11 +78,11 @@ engage_bee(ClientSock, RequestPid, Hostname, ForwardReq, Req, {ok, #bee{host = H
                   request = Req,
                   subdomain = Hostname,
                   timeout = Timeout,
-                  bee = Backend}
+                  bee = Bee}
                 );
     {error, emfile} ->
       ?LOG(error, "Maximum number of sockets open. Die instead", []),
-      ?NOTIFY({bee, cannot_connect, Backend}),
+      ?NOTIFY({bee, cannot_connect, Bee}),
       send_and_terminate(
         ClientSock, 503,
         ?APP_ERROR("503 Service Unavailable")
@@ -92,7 +92,7 @@ engage_bee(ClientSock, RequestPid, Hostname, ForwardReq, Req, {ok, #bee{host = H
       engage_bee(ClientSock, RequestPid, Hostname, ForwardReq, Req, bee_srv:get_bee(RequestPid, Hostname));
     Error ->
       ?LOG(error, "Connection to remote TCP server: ~p:~p ~p", [Host, Port, Error]),
-      ?NOTIFY({bee, cannot_connect, Backend}),
+      ?NOTIFY({bee, cannot_connect, Bee}),
       timer:sleep(200),
       engage_bee(ClientSock, RequestPid, Hostname, ForwardReq, Req, bee_srv:get_bee(RequestPid, Hostname))
   end;
@@ -156,14 +156,14 @@ send_and_terminate(ClientSock, Reason, Data) ->
 % and notify the event chains of the closing stats. This also closes the stats activity for 
 % this bee. Finally, close the two sockets and leave the process. This way we can be assured
 % that the process closes itself.
-terminate(Reason, #state{server_socket = SSock, client_socket = CSock, start_time = STime, bee = Backend} = _State) ->
+terminate(Reason, #state{server_socket = SSock, client_socket = CSock, start_time = STime, bee = Bee} = _State) ->
   StatsProplist1 = [{elapsed_time, date_util:now_to_seconds() - STime}],
   StatsProplist = case inet:getstat(CSock) of
     {ok, D} -> [{socket, D}|StatsProplist1];
     _ -> StatsProplist1
   end,
   
-  RealBee = bees:find_by_id(Backend#bee.id),
+  RealBee = bees:find_by_id(Bee#bee.id),
   ?NOTIFY({bee, ready, RealBee}),
   ?NOTIFY({bee, closing_stats, RealBee, StatsProplist}),
   gen_tcp:close(SSock), gen_tcp:close(CSock),
