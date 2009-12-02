@@ -16,13 +16,8 @@ get(_) ->
   {struct, [{
     "apps",
     lists:map(fun(A) ->
-      {struct, ?BINIFY([
-        {"name", A#app.name},
-        {"url", A#app.url},
-        {"routing_param", A#app.routing_param},
-        {"owner", A#app.routing_param},
-        {"last_updated", A#app.updated_at}
-      ])}
+      Details = compile_app_details(A),
+      {struct, ?BINIFY(Details)}
     end, All)
   }]}.
 
@@ -49,3 +44,22 @@ post([Name, "restart"], _Data) ->
 post(_Path, _Data) -> "unhandled".
 put(_Path, _Data) -> "unhandled".
 delete(_Path, _Data) -> "unhandled".
+
+% Internal
+compile_app_details(App) ->
+  compile_app_details1(App, [ 
+      {"name", App#app.name}, 
+      {"url", App#app.url}, 
+      {"routing_param", App#app.routing_param}, 
+      {"owners", lists:map(fun(Owner) -> Owner#user.email end, user_apps:get_owners(App))}, 
+      {"updated_at", App#app.updated_at},
+      {"bee_picker", App#app.bee_picker}
+    ], []).
+
+compile_app_details1(_App, [], Acc) -> lists:reverse(Acc);
+compile_app_details1(App, [{K,V}|Rest], Acc) ->
+  case V of
+    % [] -> compile_app_details1(App, Rest, Acc);
+    % undefined -> compile_app_details1(App, Rest, Acc);
+    _E -> compile_app_details1(App, Rest, [{K,V}|Acc])
+  end.

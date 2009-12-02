@@ -67,8 +67,8 @@ format_proxy_state() ->
   Backends = bees:all(),
   State = bee_srv:get_proxy_state(),
   StateHeaders = ?BINIFY([
-    {"proxy_start_time", date_util:fmt_date(State#proxy_state.start_time)},
-    {"current_time", date_util:fmt_date(date_util:now_to_seconds())},
+    {"proxy_start_time", State#proxy_state.start_time},
+    {"current_time", date_util:now_to_seconds()},
     {"local_port", State#proxy_state.local_port},
     {"connection_timeout", (State#proxy_state.conn_timeout / 1000)},
     {"activity_timeout", (State#proxy_state.act_timeout / 1000)}
