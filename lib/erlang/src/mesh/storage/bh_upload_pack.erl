@@ -30,12 +30,10 @@ handle(Sock, Host, Header) ->
 
 % Extract the repo from the header.
 extract_repo_path(Sock, Host, Header) ->
-  io:format("extract_repo_path Header: ~s~n", [Header]),
   case re:run(Header, " /(.*.git)") of
     {match, Matches} ->
       {Start, Length} = hd(lists:reverse(Matches)),
       Path = string:substr(Header, Start + 1, Length),
-      io:format("Path: ~s~n", [Path]),
       convert_path(Sock, Host, Path);
     _Else ->
       invalid
@@ -43,13 +41,20 @@ extract_repo_path(Sock, Host, Header) ->
 
 % Convert the repo path to an absolute path as specified by the config file.
 convert_path(Sock, Host, Path) ->
-  case conf:convert_path(Host, Path) of
+  case map_to_path(Host, Path) of
     {ok, FullPath} ->
       repo_existence(Sock, Host, Path, FullPath);
-    {error, nomatch} ->
-       error_logger:info_msg("no repo match: ~p~n", [Path]),
+    {error, not_a_repos} ->
        gen_tcp:send(Sock, "003b\n*********'\n\nNo matching repositories found.\n\n*********"),
        ok = gen_tcp:close(Sock)
+  end.
+
+map_to_path(_Host, Path) ->
+  BasePath = config:search_for_application_value(git_repos_path, "./repos", storage),
+  FullPath = filename:join([BasePath, Path]),
+  case filelib:is_file(FullPath) of
+    true -> {ok, FullPath};
+    false -> {error, not_a_repos}
   end.
 
 % Ensure that the repo exists.
