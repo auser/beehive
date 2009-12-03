@@ -3,3 +3,4 @@ ebin/*.boot
 ebin/*.rel
 ebin/*.script
 *.log
+repos

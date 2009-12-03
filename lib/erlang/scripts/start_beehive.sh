@@ -27,6 +27,7 @@ OPTIONS
 	-i, --initial_bees 	Initial bees to start the bee_srv
 	-t, --type		Type of node to start (default: router)
 	-g, --strategy		Strategy to choose a bee. (default: random)
+	-z, --repos_path		Git repos path
 	-d			Daemonize the process
 	-v			Verbose
 	-h, --help		Show this screen
@@ -57,10 +58,10 @@ REST="true"
 VERBOSE=false
 STRATEGY="random"
 PATHS="-pa $PWD/ebin -pa $PWD/include"
-ERL_OPTS="-s reloader"
+ERL_OPTS="-s reloader +Bc +K true -smp enable"
 
-SHORTOPTS="hm:n:dp:t:g:r:s:vi:a:c:q:l:"
-LONGOPTS="help,version,port,type,strategy,rest,seed,mnesia_dir,daemonize,initial_bees,additional_path,callback_module,bee_picker,log_path"
+SHORTOPTS="hm:n:dp:t:g:r:s:vi:a:c:q:l:z:"
+LONGOPTS="help,version,port,type,strategy,rest,seed,mnesia_dir,daemonize,initial_bees,additional_path,callback_module,bee_picker,log_path,repos_path"
 
 if $(getopt -T >/dev/null 2>&1) ; [ $? = 4 ] ; then # New longopts getopt.
 	OPTS=$(getopt -o "$SHORTOPTS" --longoptions "$LONGOPTS" -n "$progname" -- "$@")
@@ -124,6 +125,9 @@ while [ $# -gt 0 ]; do
 			DAEMONIZE_ARGS="-detached -heart"
 			ERL_OPTS=""
 			shift;;
+		-z|--repos_path)
+			STORAGE_OPTS="$STORAGE_OPTS git_repos_path '$2'"
+			shift 2;;
 		-v)
 			VERBOSE=true
 			shift;;
