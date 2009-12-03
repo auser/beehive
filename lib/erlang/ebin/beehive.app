@@ -4,20 +4,14 @@
   {vsn, "0.1"},
   {id, "beehive_srv"},
   {modules,      []},
-  {registered,   [tcp_socket_server, bee_srv]},
+  {registered,   []},
   {applications, [kernel, stdlib, sasl]},
   {mod, {beehive, []}},
   {env, [
-    {client_port, 8080},
-    {routing_parameter, 'Host'},
-    {run_rest, true},
     {node_type, router},
     {seed, []},
-    {beehive_app_port, 4999},
-    {bees, undefined},
-    {bee_picker, undefined},
     {user_defined_event_handler, undefined},
-    {log_path, "/var/logs/beehive.log"}
+    {log_path, undefined}
   ]}
  ]
 }.

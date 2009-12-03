@@ -20,7 +20,7 @@
   request_to_terminate_all_bees/1,
   get_host/0, get_seed/0,
   set_seed/1,
-  get_routers/0, get_nodes/0,
+  get_routers/0, get_nodes/0, get_storage/0,
   dump/1,
   join/1,
   can_deploy_new_app/0
@@ -39,6 +39,7 @@
 -define(SERVER, ?MODULE).
 -define (ROUTER_SERVERS, 'ROUTER SERVERS').
 -define (NODE_SERVERS, 'NODE SERVERS').
+-define (STORAGE_SERVERS, 'STORAGE SERVERS').
 -define (APP_HANDLER, app_handler).
 
 %%====================================================================
@@ -52,6 +53,7 @@ start_link() ->
   Seed = config:search_for_application_value(seed, node(), beehive),
   case config:search_for_application_value(node_type, router, beehive) of
     router -> start_link(router, Seed);
+    storage -> start_link(storage, Seed);
     node -> start_link(node, Seed)
   end.
   
@@ -64,7 +66,17 @@ start_link(router, Seed) ->
     Else ->
       ?LOG(error, "Could not start router link: ~p~n", [Else])
   end;
-  
+
+start_link(storage, Seed) ->
+  case gen_server:start_link({local, ?MODULE}, ?MODULE, [storage, Seed], []) of
+    {ok, Pid} ->
+      pg2:create(?STORAGE_SERVERS),
+      ok = pg2:join(?STORAGE_SERVERS, Pid),
+      {ok, Pid};
+    Else ->
+      ?LOG(error, "Could not start router link: ~p~n", [Else])
+  end;  
+
 start_link(node, Seed) -> 
   case gen_server:start_link({local, ?MODULE}, ?MODULE, [node, Seed], []) of
     {ok, Pid} ->
@@ -91,7 +103,11 @@ get_routers() ->
 get_nodes() -> 
   pg2:create(?NODE_SERVERS),
   pg2:get_members(?NODE_SERVERS).
-  
+
+get_storage() ->
+  pg2:create(?STORAGE_SERVERS),
+  pg2:get_members(?STORAGE_SERVERS).  
+
 request_to_start_new_bee(Name) -> 
   gen_server:cast(?SERVER, {request_to_start_new_bee, Name}).
 
@@ -140,6 +156,8 @@ init([Type, Seed]) ->
           ?LOG(info, "Initializing slave db: ~p", [Seed]),
           mesh_util:init_db_slave(Seed)
       end;
+    storage ->
+      ok;
     node ->
       % Node initialization stuff
       ok
@@ -176,6 +194,7 @@ handle_call({get_seed}, _From, #state{seed = Seed} = State) ->
 handle_call({set_seed, SeedPid}, _From, #state{type = Type} = State) ->
   ListType = case Type of
     router -> ?ROUTER_SERVERS;
+    storage -> ?STORAGE_SERVERS;
     node -> ?NODE_SERVERS
   end,
   pg2:create(ListType),
@@ -328,7 +347,7 @@ start_new_instance_by_name(Name) ->
       App = apps:find_by_name(Name),
       case App#app.type of
         static -> ok;
-        T ->
+        _T ->
           spawn_to_start_new_instance(App, Host)
       end
   end.
@@ -341,6 +360,7 @@ spawn_to_start_new_instance(Name, Host) ->
 get_other_nodes(Type) ->
   case Type of
     node -> get_nodes();
+    storage -> get_storage();
     router -> get_routers()
   end.
 

@@ -13,6 +13,7 @@
 
 %% API
 -export([start_link/1]).
+-export ([start_internal_supervisors/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -27,7 +28,12 @@
 %% Description: Starts the supervisor
 %%--------------------------------------------------------------------
 start_link(Args) ->
-  supervisor:start_link({local, ?SERVER}, ?MODULE, Args).
+  case supervisor:start_link({local, ?SERVER}, ?MODULE, Args) of
+    {ok, Pid} ->
+      {ok, Pid};
+    Else ->
+      io:format("There was an error: ~p~n", [Else])
+  end.
 
 %%====================================================================
 %% Supervisor callbacks
@@ -41,22 +47,20 @@ start_link(Args) ->
 %% to find out about restart strategy, maximum restart frequency and child
 %% specifications.
 %%--------------------------------------------------------------------
-init(_Args) ->
+init(Args) ->
   NodeManager = {the_node_manager, {node_manager, start_link, []}, permanent, 2000, worker, dynamic},
   EventManager = {the_app_event_manager, {?EVENT_MANAGER, start_link, []}, permanent, 2000, worker, dynamic},
-  AppSrv = {the_bee_srv_sup, {bee_srv_sup, start_link, []}, permanent,2000,worker,dynamic},
-  HttpCl = {the_socket_server, {socket_server_sup, start_link, []}, permanent,2000,worker,dynamic},
-  StatSrv = {the_stats_srv, {stats_srv, start_link, []}, permanent,2000,worker,dynamic},
-  AppManagerSrv  = {the_app_manager,{app_manager, start_link,[]}, permanent, 2000, worker, dynamic},
-  AppHandler  = {the_app_handler,{app_handler, start_link,[]}, permanent, 2000, worker, dynamic},
+  RoleSupervisors = {the_roles, {?MODULE, start_internal_supervisors, [Args]}, permanent, 2000, worker, dynamic},
   
-  AppsToStart = case config:search_for_application_value(node_type, node, beehive) of
-    node -> [EventManager,NodeManager, AppHandler];
-    router -> [EventManager,NodeManager,AppManagerSrv,AppSrv,HttpCl, StatSrv]
-  end,
-  
-  {ok,{{one_for_one,5,10}, AppsToStart}}.
+  {ok,{{one_for_one,5,10}, [EventManager, NodeManager, RoleSupervisors]}}.
 
 %%====================================================================
 %% Internal functions
 %%====================================================================
+
+start_internal_supervisors(Args) ->
+  case config:search_for_application_value(node_type, router, beehive) of
+    node -> supervisor:start_link({local, bh_node_sup}, bh_node_sup, Args);
+    storage -> supervisor:start_link({local, bh_storage_sup}, bh_storage_sup, Args);
+    router -> supervisor:start_link({local, bh_router_sup}, bh_router_sup, Args)
+  end.

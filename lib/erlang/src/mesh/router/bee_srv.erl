@@ -146,7 +146,7 @@ handle_call({Pid, get_bee, Hostname}, From, State) ->
   % and bee_srv. 
   case Hostname of
     base ->
-      Port = config:search_for_application_value(beehive_app_port, 4999, beehive), 
+      Port = config:search_for_application_value(beehive_app_port, 4999, router), 
       Host = {127,0,0,1},
       Id = {Hostname, Host, Port},
       
@@ -157,8 +157,8 @@ handle_call({Pid, get_bee, Hostname}, From, State) ->
     _ ->
       {AppMod, MetaParam} = case apps:find_by_name(Hostname) of
         [] ->
-          M = config:search_for_application_value(bee_picker, bee_strategies, beehive),
-          Meta = config:search_for_application_value(bee_strategy, random, beehive),
+          M = config:search_for_application_value(bee_picker, bee_strategies, router),
+          Meta = config:search_for_application_value(bee_strategy, random, router),
           {M, Meta};
         App ->
           pick_mod_and_meta_from_app(App)
@@ -297,7 +297,7 @@ choose_bee({Hostname, AppMod, RoutingParameter}) ->
 % be used
 choose_from_bees([], _AppMod, _RoutingParameter) -> ?MUST_WAIT_MSG;
 choose_from_bees(Backends, Mod, AppRoutingParam) ->
-  PreferredStrategy = config:search_for_application_value(bee_strategy, random, beehive),
+  PreferredStrategy = config:search_for_application_value(bee_strategy, random, router),
   Fun = case AppRoutingParam of
     undefined -> PreferredStrategy;
     F -> F
@@ -334,7 +334,7 @@ maybe_handle_next_waiting_client(Name, State) ->
 % Basic configuration stuff
 % Add apps from a configuration file
 add_bees_from_config() ->
-  case config:search_for_application_value(bees, undefined, beehive) of
+  case config:search_for_application_value(bees, undefined, router) of
     undefined -> ok;
     RawPath ->
       case (catch file_utils:abs_or_relative_filepath(RawPath)) of
@@ -362,11 +362,11 @@ add_bees_from_config() ->
 % Defaults to bee_strategies:random if none are specified on the app
 pick_mod_and_meta_from_app(App) ->
   Mod = case App#app.bee_picker of
-    undefined -> config:search_for_application_value(bee_picker, bee_strategies, beehive);
+    undefined -> config:search_for_application_value(bee_picker, bee_strategies, router);
     E -> E
   end,
   R = case App#app.routing_param of
-    undefined -> config:search_for_application_value(bee_strategy, random, beehive);
+    undefined -> config:search_for_application_value(bee_strategy, random, router);
     El -> El
   end,
   {Mod, R}.

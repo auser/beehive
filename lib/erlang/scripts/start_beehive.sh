@@ -22,6 +22,7 @@ OPTIONS
 	-c, --callback_module	Module name of the callback module
 	-q, --bee_picker	Name of the method that contains the bee chooser
 	-s, --seed		Pass in the seed node
+	-l, --log_path		Path of the logs
 	-p, --port		Port to run the router
 	-i, --initial_bees 	Initial bees to start the bee_srv
 	-t, --type		Type of node to start (default: router)
@@ -45,7 +46,12 @@ EOF
 HOSTNAME=`hostname -f`
 MNESIA_DIR="./db"
 DAEMONIZE_ARGS=""
-ROUTER_OPTS="-beehive"
+
+BEEHIVE_OPTS="-beehive"
+ROUTER_OPTS="-router"
+NODE_OPTS="-node"
+STORAGE_OPTS="-storage"
+
 TYPE="router"
 REST="true"
 VERBOSE=false
@@ -53,8 +59,8 @@ STRATEGY="random"
 PATHS="-pa $PWD/ebin -pa $PWD/include"
 ERL_OPTS="-s reloader"
 
-SHORTOPTS="hm:n:dp:t:g:r:s:vi:a:c:q:"
-LONGOPTS="help,version,port,type,strategy,rest,seed,mnesia_dir,daemonize,initial_bees,additional_path,callback_module,bee_picker"
+SHORTOPTS="hm:n:dp:t:g:r:s:vi:a:c:q:l:"
+LONGOPTS="help,version,port,type,strategy,rest,seed,mnesia_dir,daemonize,initial_bees,additional_path,callback_module,bee_picker,log_path"
 
 if $(getopt -T >/dev/null 2>&1) ; [ $? = 4 ] ; then # New longopts getopt.
 	OPTS=$(getopt -o "$SHORTOPTS" --longoptions "$LONGOPTS" -n "$progname" -- "$@")
@@ -84,14 +90,17 @@ while [ $# -gt 0 ]; do
 		-m|--mnesia_dir)
 			MNESIA_DIR=$2
 			shift 2;;
+		-l|--log_path)
+			BEEHIVE_OPTS="$BEEHIVE_OPTS log_path '$2'"
+			shift 2;;
 		-r|--rest)
-			ROUTER_OPTS="$ROUTER_OPTS run_rest_server $2"
+			ROUTER_OPTS="$BEEHIVE_OPTS run_rest_server $2"
 			shift 2;;
 		-p|--port)
 			ROUTER_OPTS="$ROUTER_OPTS client_port $2"
 			shift 2;;
 		-s|--seed)
-			ROUTER_OPTS="$ROUTER_OPTS seed '$2'"
+			ROUTER_OPTS="$BEEHIVE_OPTS seed '$2'"
 			shift 2;;
 		-q|--bee_picker)
 			ROUTER_OPTS="$ROUTER_OPTS bee_picker '$2'"
@@ -100,7 +109,7 @@ while [ $# -gt 0 ]; do
 			PATHS="$PATHS -pa $2"
 			shift 2;;
 		-c|--callback_module)
-			ROUTER_OPTS="$ROUTER_OPTS user_defined_event_handler $2"
+			ROUTER_OPTS="$BEEHIVE_OPTS user_defined_event_handler $2"
 			shift 2;;
 		-i|--initial_bees)
 			ROUTER_OPTS="$ROUTER_OPTS bees '$2'"
@@ -135,7 +144,15 @@ if [ $TYPE != 'router' ]; then
 	ROUTER_OPTS="$ROUTER_OPTS run_rest_server false"
 fi
 
-ROUTER_OPTS="$ROUTER_OPTS node_type $TYPE "
+BEEHIVE_OPTS="$BEEHIVE_OPTS node_type $TYPE "
+
+if [ $TYPE == 'router' ]; then
+	APP_OPTS=$ROUTER_OPTS
+elif [ $TYPE == 'node' ]; then
+	APP_OPTS=$NODE_OPTS
+elif [ $TYPE == 'storage' ]; then
+	APP_OPTS=$STORAGE_OPTS
+fi
 
 if $VERBOSE; then
 cat <<EOF
@@ -143,7 +160,8 @@ cat <<EOF
 		Erlang opts: $ERL_OPTS
 		Mnesia dir: '$MNESIA_DIR'
 		Name: 		'$NAME'
-		Router opts:	$ROUTER_OPTS
+		Beehive opts: $BEEHIVE_OPTS
+		App opts: $APP_OPTS
 		Paths: $PATHS
 EOF
 fi
@@ -153,6 +171,7 @@ erl $PATHS \
     $ERL_OPTS \
 		-mnesia dir \'$MNESIA_DIR\' \
 		-name $NAME \
-		$ROUTER_OPTS \
+		$BEEHIVE_OPTS \
+		$APP_OPTS \
 		$DAEMONIZE_ARGS \
     -boot beehive-$version
