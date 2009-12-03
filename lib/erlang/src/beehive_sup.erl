@@ -59,6 +59,8 @@ init(Args) ->
 %%====================================================================
 
 start_internal_supervisors(Args) ->
+  NodeType = config:search_for_application_value(node_type, router, beehive),
+  application:load(NodeType),
   case config:search_for_application_value(node_type, router, beehive) of
     node -> supervisor:start_link({local, bh_node_sup}, bh_node_sup, Args);
     storage -> supervisor:start_link({local, bh_storage_sup}, bh_storage_sup, Args);

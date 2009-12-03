@@ -26,16 +26,18 @@
 %% this function is called to initialize the event handler.
 %%--------------------------------------------------------------------
 init([]) ->
-  FileName = config:search_for_application_value(log_path, "/tmp/router.log", beehive),
+  LogPath = misc_utils:to_list(config:search_for_application_value(log_path, "./logs", beehive)),
   % Get the full path for the file
-  FullFilepath = case (catch file_utils:abs_or_relative_filepath(FileName)) of
-    {error, _} -> 
-      LogName = config:search_for_application_value(node_type, node, beehive),
-      lists:append([erlang:atom_to_list(LogName), ".log"]);
-    P -> P
-  end,
+  LogName = config:search_for_application_value(node_type, node, beehive),
+  FullFilepath = filename:join([LogPath, lists:append([erlang:atom_to_list(LogName), ".log"])]),
   
-  {ok, Fd} = file:open(FullFilepath, [append]),
+  Fd = case (catch file:open(FullFilepath, [append])) of
+    {ok, F} -> F;
+    _E ->
+      io:format("FullFilepath: ~p~n", [FullFilepath]),
+      {ok, F} = file:open(FullFilepath, [write]),
+      F
+  end,
   
   {ok, #state{filename = FullFilepath, log_handle = Fd}}.
 
@@ -103,4 +105,3 @@ write(Level, Message, #state{log_handle = Fd} = _State) ->
   Msg = io_lib:format("[~s] [~s] ~s\r\n", [httpd_util:rfc1123_date(), Level, Message]),
   io:format("~s", [Msg]),     % write to console 
   io:format(Fd, "~s", [Msg]). % write to file
-  
