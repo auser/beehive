@@ -21,7 +21,8 @@
   terminate_app_instances/1,
   add_application/1,
   spawn_update_bee_status/3,
-  load_static_configs/0
+  load_static_configs/0,
+  request_to_start_new_bee/1
 ]).
 
 %% gen_server callbacks
@@ -52,7 +53,10 @@ terminate_app_instances(Appname) ->
   
 add_application(ConfigProplist) ->
   gen_server:call(?SERVER, {add_application_by_configuration, ConfigProplist}).
-  
+
+request_to_start_new_bee(Name) ->
+  gen_server:cast(?SERVER, {request_to_start_new_bee, Name}).
+
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
@@ -126,6 +130,17 @@ handle_call(_Request, _From, State) ->
 %   bee_srv:store(instances, AppName, []),
 %   {noreply, State};
 
+handle_cast({request_to_start_new_bee, Name}, State) ->
+  io:format("handle cast: request_to_start_new_bee ~p~n", [Name]),
+  Backends = bees:find_all_by_name(Name),
+  % Don't start a new bee if there is a pending one
+  PendingBackends = lists:filter(fun(B) -> B#bee.status =:= pending end, Backends),
+  case length(PendingBackends) > 0 of
+    false -> start_new_instance_by_name(Name);
+    true -> ok
+  end,
+  {noreply, State};
+
 handle_cast(_Msg, State) ->
   {noreply, State}.
 
@@ -135,6 +150,11 @@ handle_cast(_Msg, State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------  
+handle_info({bee_terminated, Bee}, State) ->
+  RealBee = bees:find_by_id(Bee#bee.id),
+  bees:update(RealBee#bee{status = terminated}),
+  {noreply, State};
+
 handle_info({clean_up}, State) ->
   {noreply, State};
 
@@ -228,9 +248,7 @@ update_app_configuration(ConfigProplist, App, State) ->
   Timeout   = update_app_configuration_param(timeout, 3600, ConfigProplist, App),
   MaxInst   = update_app_configuration_param(max_instances, 2, ConfigProplist, App),
   MinInst   = update_app_configuration_param(min_instances, 1, ConfigProplist, App),
-  User      = update_app_configuration_param(user, "beehive", ConfigProplist, App),
-  Group     = update_app_configuration_param(group, "beehive", ConfigProplist, App),
-  
+    
   NewApp = App#app{
     start_command = StartCmd, stop_command = StopCmd, url = Url, name = Name, 
     path = Path, updated_at = UpdatedAt,
@@ -238,9 +256,7 @@ update_app_configuration(ConfigProplist, App, State) ->
     timeout = misc_utils:to_integer(Timeout), 
     sticky = Sticky,
     max_instances = misc_utils:to_integer(MaxInst),
-    min_instances = misc_utils:to_integer(MinInst), 
-    user = User,
-    group = Group
+    min_instances = misc_utils:to_integer(MinInst)
   },
   
   apps:create(NewApp),
@@ -375,3 +391,60 @@ cleanup_bee(B) ->
 % Turn the priplists into atoms
 atomize([], Acc) -> Acc;
 atomize([{K,V}|Rest], Acc) -> atomize(Rest, [{misc_utils:to_atom(K), V}|Acc]).
+
+% Starting
+% Call spawn to start new instance if the app is not defined as static and
+% there is an available host to start the bee on
+start_new_instance_by_name(Name) ->
+  case node_manager:get_next_available_host() of
+    false -> false;
+    Host ->
+      App = apps:find_by_name(Name),
+      case App#app.type of
+        static -> ok;
+        _T ->
+          spawn_to_start_new_instance(App, Host)
+      end
+  end.
+% Start with the app_launcher_fsm
+spawn_to_start_new_instance(Name, Host) ->
+  {ok, P} = app_launcher_fsm:start_link(Name, Host),
+  app_launcher_fsm:launch(P, self()).
+
+% Lookup the chrooted squashed repos
+handle_lookup_squashed_repos(Name) ->
+  case node_manager:get_storage() of
+    [] ->
+      ?LOG(error, "No storage backends to lookup repos", []);
+    Pid ->
+      Node = node(Pid),
+      case apps:find_by_name(Name) of
+        App when is_record(App, app) ->
+          case rpc:call(Node, bh_storage_srv, lookup_squashed_repos, [App]) of
+            {ok, Path} -> Path;
+            E -> E
+          end;
+        _Else ->
+          ?LOG(error, "Could not find the git repos of name: ~p", [Name]),
+          false
+      end
+  end.
+
+% Lookup the git repos
+handle_lookup_git_repos(Name) ->
+  case node_manager:get_storage() of
+    [] ->
+      ?LOG(error, "No storage backends to lookup repos", []);
+    Pid ->
+      Node = node(Pid),
+      case apps:find_by_name(Name) of
+        App when is_record(App, app) ->
+          case rpc:call(Node, bh_storage_srv, locate_git_repo, [App]) of
+            {ok, Url} -> Url;
+            E -> E
+          end;
+        _Else ->
+          ?LOG(error, "Could not find the git repos of name: ~p", [Name]),
+          false
+      end
+  end.

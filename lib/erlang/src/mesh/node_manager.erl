@@ -15,7 +15,6 @@
 -export([
   start_link/0,
   start_link/2,
-  request_to_start_new_bee/1,
   request_to_terminate_bee/1,
   request_to_terminate_all_bees/1,
   get_host/0, get_seed/0,
@@ -23,7 +22,8 @@
   get_routers/0, get_nodes/0, get_storage/0,
   dump/1,
   join/1,
-  can_deploy_new_app/0
+  can_deploy_new_app/0, can_pull_new_app/0,
+  get_next_available_host/0, get_next_available_storage/0
 ]).
 
 %% gen_server callbacks
@@ -40,7 +40,9 @@
 -define (ROUTER_SERVERS, 'ROUTER SERVERS').
 -define (NODE_SERVERS, 'NODE SERVERS').
 -define (STORAGE_SERVERS, 'STORAGE SERVERS').
+% Other modules
 -define (APP_HANDLER, app_handler).
+-define (STORAGE_SRV, bh_storage_srv).
 
 %%====================================================================
 %% API
@@ -108,9 +110,6 @@ get_storage() ->
   pg2:create(?STORAGE_SERVERS),
   pg2:get_members(?STORAGE_SERVERS).  
 
-request_to_start_new_bee(Name) -> 
-  gen_server:cast(?SERVER, {request_to_start_new_bee, Name}).
-
 request_to_terminate_bee(Bee) ->
   gen_server:cast(?SERVER, {request_to_terminate_bee, Bee}).
 
@@ -119,7 +118,7 @@ request_to_terminate_all_bees(Name) ->
 
 dump(Pid) ->
   gen_server:call(?SERVER, {dump, Pid}).
-
+  
 get_seed() ->
   gen_server:call(?SERVER, {get_seed}).
   
@@ -129,6 +128,9 @@ set_seed(SeedPid) ->
 can_deploy_new_app() ->
   gen_server:call(?SERVER, {can_deploy_new_app}).
     
+can_pull_new_app() ->
+  gen_server:call(?SERVER, {can_pull_new_app}).
+  
 %%====================================================================
 %% gen_server callbacks
 %%====================================================================
@@ -184,13 +186,23 @@ init([Type, Seed]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
+% Global can deploy new app
 handle_call({can_deploy_new_app}, _From, State) ->
   Nodes = lists:map(fun(N) -> node(N) end, get_nodes()),
   {Responses, _} = rpc:multicall(Nodes, ?APP_HANDLER, can_deploy_new_app, [], timer:seconds(3)),
   Reply = lists:member(true, Responses),
   {reply, Reply, State};
+
+% Global can pull new app
+handle_call({can_pull_new_app}, _From, State) ->
+  Nodes = lists:map(fun(N) -> node(N) end, get_storage()),
+  {Responses, _} = rpc:multicall(Nodes, ?STORAGE_SRV, can_pull_new_app, [], timer:seconds(3)),
+  Reply = lists:member(true, Responses),
+  {reply, Reply, State};
+
 handle_call({get_seed}, _From, #state{seed = Seed} = State) ->
   {reply, Seed, State};
+
 handle_call({set_seed, SeedPid}, _From, #state{type = Type} = State) ->
   ListType = case Type of
     router -> ?ROUTER_SERVERS;
@@ -249,15 +261,6 @@ handle_cast({request_to_terminate_bee, Bee}, State) ->
   end, Nodes),
   {noreply, State};
   
-handle_cast({request_to_start_new_bee, Name}, State) ->
-  Backends = bees:find_all_by_name(Name),
-  % Don't start a new bee if there is a pending one
-  PendingBackends = lists:filter(fun(B) -> B#bee.status =:= pending end, Backends),
-  case length(PendingBackends) > 0 of
-    false -> start_new_instance_by_name(Name);
-    true -> ok
-  end,
-  {noreply, State};
 handle_cast(_Msg, State) ->
   {noreply, State}.
 
@@ -270,11 +273,6 @@ handle_cast(_Msg, State) ->
 handle_info({stopped_bee, Bee}, State) ->
   RealBee = bees:find_by_id(Bee#bee.id),
   bees:update(RealBee#bee{status = down}),
-  {noreply, State};
-
-handle_info({bee_terminated, Bee}, State) ->
-  RealBee = bees:find_by_id(Bee#bee.id),
-  bees:update(RealBee#bee{status = terminated}),
   {noreply, State};
   
 handle_info({stay_connected_to_seed}, #state{seed = SeedNode, type = Type} = State) ->
@@ -322,40 +320,26 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
+% Appropriate here... I think
 get_next_available_host() ->
-  case (catch mesh_util:get_random_pid(?NODE_SERVERS)) of
+  get_next_available(?NODE_SERVERS, ?APP_HANDLER, can_deploy_new_app, []).
+
+get_next_available_storage() ->
+  get_next_available(?STORAGE_SERVERS, ?STORAGE_SRV, can_pull_new_app, []).
+
+% internal
+get_next_available(Group, M, F, A) ->
+  case (catch mesh_util:get_random_pid(Group)) of
     {ok, Pid} ->
       Node = node(Pid),
-      case rpc:call(Node, ?MODULE, can_deploy_new_app, []) of
-        true ->
-          ?LOG(info, "Available host: ~p", [Node]),
-          Node;
-        false -> get_next_available_host()
+      case rpc:call(Node, M, F, A) of
+        true -> Node;
+        false -> get_next_available(Group, M, F, A)
       end;
-    {'EXIT', _} ->
-      ?LOG(error, "Could not start a new bee because there are no nodes to start", []),
-      false;
-    {error, Reason} ->
-      ?LOG(error, "Could not start a new app because: ~p", [Reason]),
-      false
+    {'EXIT', _} -> false;
+    {error, _Reason} -> false
   end.
-
-start_new_instance_by_name(Name) ->
-  case get_next_available_host() of
-    false -> false;
-    Host ->
-      App = apps:find_by_name(Name),
-      case App#app.type of
-        static -> ok;
-        _T ->
-          spawn_to_start_new_instance(App, Host)
-      end
-  end.
-% Start with the app_launcher_fsm
-spawn_to_start_new_instance(Name, Host) ->
-  {ok, P} = app_launcher_fsm:start_link(Name, Host),
-  app_launcher_fsm:launch(P, self()).
-
+  
 % Get the next nodes of the same type
 get_other_nodes(Type) ->
   case Type of
