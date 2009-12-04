@@ -2,6 +2,7 @@
 
 progdir=$(dirname $0)
 progname=$(basename $0)
+grep=$(which grep)
 version="0.1"
 
 if [ ! -f ebin/beehive-*.boot ]; then
@@ -101,7 +102,12 @@ while [ $# -gt 0 ]; do
 			ROUTER_OPTS="$ROUTER_OPTS client_port $2"
 			shift 2;;
 		-s|--seed)
-			ROUTER_OPTS="$BEEHIVE_OPTS seed '$2'"
+			if [ $(echo $2 | $grep '@') ]; then
+				SEED=$2
+			else
+				SEED="$2@$HOSTNAME"
+			fi
+			BEEHIVE_OPTS="$BEEHIVE_OPTS seed $SEED"
 			shift 2;;
 		-q|--bee_picker)
 			ROUTER_OPTS="$ROUTER_OPTS bee_picker '$2'"
@@ -140,6 +146,7 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
+# Sanity checks
 if [ -z $NAME ]; then
 	NAME="$TYPE@$HOSTNAME"
 fi
