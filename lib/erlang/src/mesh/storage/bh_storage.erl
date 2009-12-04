@@ -6,7 +6,7 @@
 %%% Created :  Thu Dec  3 01:05:11 PST 2009
 %%%-------------------------------------------------------------------
 
--module (storage).
+-module (bh_storage).
 
 -include ("beehive.hrl").
 -behaviour(application).
