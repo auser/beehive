@@ -79,8 +79,6 @@
   min_instances,
   max_instances,
   updated_at,
-  user,
-  group,
   start_command,
   stop_command
 }).
