@@ -6,10 +6,13 @@
   {modules,      []},
   {registered,   []},
   {applications, [kernel, stdlib, sasl]},
-  {mod, {beehive, []}},
+  {mod, {bh_storage, []}},
   {env, [
     {git_port, undefined},
-    {git_repos_path, undefined}
+    {git_repos_path, undefined},
+    {git_store, offsite},
+    {squashed_storage, "./squashed"},
+    {scratch_disk, "/tmp/squashed"}
   ]}
  ]
 }.
