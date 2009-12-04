@@ -25,6 +25,7 @@
 %% this function is called to initialize the event handler.
 %%--------------------------------------------------------------------
 init([]) ->
+  ?QSTORE:start_link(?WAIT_DB),
   {ok, 500}.
 
 %%--------------------------------------------------------------------
@@ -42,11 +43,10 @@ handle_event({app, updated, App}, State) ->
   {ok, State};
 
 handle_event({app, request_to_start_new_bee, Hostname}, State) ->
-  node_manager:request_to_start_new_bee(Hostname),
+  app_manager:request_to_start_new_bee(Hostname),
   {ok, State};
   
 handle_event({bee_srv, init}, State) ->
-  ?QSTORE:start_link(?WAIT_DB),
   {ok, State};
   
 handle_event(_Event, State) ->
