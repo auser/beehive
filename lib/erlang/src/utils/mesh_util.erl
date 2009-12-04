@@ -21,7 +21,11 @@ init_db_slave(SeedNode) ->
   [mnesia:add_table_copy(Tab, node(), disc_copies) || Tab <- Tabs].
 
 get_random_pid(Name) ->
-  L = case pg2:get_members(Name) of
+  L = case (catch pg2:get_members(Name)) of
+    {'EXIT'} ->
+      pg2:create(Name),
+      timer:sleep(100),
+      pg2:get_members(Name);
     {error, _} ->
       timer:sleep(100),
       pg2:get_members(Name);
