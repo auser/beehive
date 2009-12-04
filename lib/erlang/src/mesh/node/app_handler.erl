@@ -9,6 +9,7 @@
 -module (app_handler).
 -include ("beehive.hrl").
 -include ("common.hrl").
+-include ("git.hrl").
 -behaviour(gen_server).
 
 %% API
@@ -164,12 +165,12 @@ handle_cast(_Msg, State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
-handle_info({'EXIT', Pid, _Reason}, State) ->
-  ?LOG(info, "Pid exited: ~p", [Pid]),
-  {noreply, handle_pid_exit(Pid, State)};
+handle_info({'EXIT', Pid, Reason}, State) ->
+  ?LOG(info, "Pid exited: ~p because ~p", [Pid, Reason]),
+  {noreply, handle_pid_exit(Pid, Reason, State)};
 handle_info({port_closed, Pid}, State) ->
   ?LOG(info, "Port closed: ~p", [Pid]),
-  {noreply, handle_pid_exit(Pid, State)};
+  {noreply, State};
 handle_info(Info, State) ->
   ?LOG(info, "~p caught info: ~p", [?MODULE, Info]),
   {noreply, State}.
@@ -201,16 +202,14 @@ internal_start_new_instance(App, Port, AppLauncher, From) ->
   ?LOG(info, "App ~p", [App]),
   
   TemplateCommand = App#app.start_command,  
-  RealCmd = template_command_string(TemplateCommand, [
-                                                        {"[[PORT]]", misc_utils:to_list(Port)},
-                                                        {"[[GROUP]]", App#app.group},
-                                                        {"[[USER]]", App#app.user}
+  RealCmd = string_utils:template_command_string(TemplateCommand, [
+                                                        {"[[PORT]]", misc_utils:to_list(Port)}
                                                       ]),
   % START INSTANCE
   % port_handler:start("thin -R beehive.ru --port 5000 start", "/Users/auser/Development/erlang/mine/router/test/fixtures/apps").
-  ?LOG(info, "Starting on port ~p as ~p:~p with ~p", [Port, App#app.group, App#app.user, RealCmd]),
+  ?LOG(info, "Starting on port ~p as with ~p", [Port, RealCmd]),
   process_flag(trap_exit, true),
-  Pid = port_handler:start(RealCmd, App#app.path, self()),
+  Pid = port_handler:start(RealCmd, App#app.path, self(), [nouse_stdio, {packet, 4}]),
   Host = host:myip(),
   Id = {App#app.name, Host, Port},
   
@@ -231,10 +230,8 @@ internal_start_new_instance(App, Port, AppLauncher, From) ->
 
 % kill the instance of the application  
 internal_stop_instance(Backend, App, From) when is_record(App, app) ->
-  RealCmd = template_command_string(App#app.stop_command, [
-                                                        {"[[PORT]]", erlang:integer_to_list(Backend#bee.port)},
-                                                        {"[[GROUP]]", App#app.group},
-                                                        {"[[USER]]", App#app.user}
+  RealCmd = string_utils:template_command_string(App#app.stop_command, [
+                                                        {"[[PORT]]", erlang:integer_to_list(Backend#bee.port)}
                                                       ]),
 
   Backend#bee.pid ! {stop, RealCmd},
@@ -247,17 +244,8 @@ internal_stop_instance(Backend, App, From) when is_record(App, app) ->
   end,
   From ! {bee_terminated, Backend}.
 
-% turn the command string from the comand string with the values
-% of [[KEY]] replaced by the corresponding proplist element of
-% the format:
-%   {[[PORT]], "80"}
-template_command_string(OriginalCommand, []) -> OriginalCommand;
-template_command_string(OriginalCommand, [{Str, Replace}|T]) ->
-  NewCommand = string_utils:gsub(OriginalCommand, Str, Replace),
-  template_command_string(NewCommand, T).
-
 % Handle pid exiting
-handle_pid_exit(Pid, #state{current_bees = CurrBackends, available_ports = AvailablePorts} = State) ->
+handle_pid_exit(Pid, _Code, #state{current_bees = CurrBackends, available_ports = AvailablePorts} = State) ->
   case find_pid_in_pid_table(Pid) of
     false -> 
       State;
