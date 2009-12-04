@@ -407,8 +407,8 @@ start_new_instance_by_name(Name) ->
       end
   end.
 % Start with the app_launcher_fsm
-spawn_to_start_new_instance(Name, Host) ->
-  {ok, P} = app_launcher_fsm:start_link(Name, Host),
+spawn_to_start_new_instance(App, Host) when is_record(App, launching_app_state) ->
+  {ok, P} = app_launcher_fsm:start_link(App, Host),
   app_launcher_fsm:launch(P, self()).
 
 % Lookup the chrooted squashed repos

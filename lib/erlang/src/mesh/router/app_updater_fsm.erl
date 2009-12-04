@@ -36,18 +36,6 @@
 -define (APP_HANDLER, app_handler).
 -define (STORAGE_SRV, bh_storage_srv).
 
--record (state, {
-  app,
-  temp_name,
-  commit_hash,
-  bee_size,
-  dir_size,
-  storage_node,
-  host_node,
-  id,
-  port,
-  bee
-}).
 
 %%====================================================================
 %% API
@@ -81,7 +69,7 @@ start_link(App) ->
 %%--------------------------------------------------------------------
 init([App]) ->
   TempName = lists:append([App#app.name, "-", misc_utils:to_list(erlang:phash2(make_ref()))]),
-  {ok, pulling, #state{app = App, temp_name = TempName}}.
+  {ok, pulling, #launching_app_state{app = App, temp_name = TempName}}.
 
 %%--------------------------------------------------------------------
 %% Function:
@@ -95,25 +83,25 @@ init([App]) ->
 %% the current state name StateName is called to handle the event. It is also
 %% called if a timeout occurs.
 %%--------------------------------------------------------------------
-pulling({go, _From}, #state{app = App, temp_name = TempName} = State) ->
+pulling({go, _From}, #launching_app_state{app = App, temp_name = TempName} = State) ->
   Node = node_manager:get_next_available_storage(),
   Opts = [
     {temp_name, TempName}
   ],
   rpc:call(Node, ?STORAGE_SRV, pull_repos, [App, Opts, self()]),
-  {next_state, squashing, State#state{storage_node = Node}};
+  {next_state, squashing, State#launching_app_state{storage_node = Node}};
   
 pulling(Event, State) ->
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, pulling]),
   {next_state, launching, State}.
 
-squashing({pulled, Info}, #state{app = App, storage_node = Node, temp_name = TempName} = State) ->
+squashing({pulled, Info}, #launching_app_state{app = App, storage_node = Node, temp_name = TempName} = State) ->
   Opts = [
     {temp_name, TempName}
   ],
   rpc:call(Node, ?STORAGE_SRV, build_bee, [App, Opts, self()]),
   [Sha|_Rest] = Info,
-  {next_state, starting, State#state{commit_hash = Sha}};
+  {next_state, starting, State#launching_app_state{commit_hash = Sha}};
 
 squashing({error, Code}, State) ->
   {stop, Code, State};
@@ -122,7 +110,7 @@ squashing(Event, State) ->
   io:format("squashing: ~p~n", [Event]),
   {next_state, squashing, State}.
 
-starting({bee_built, [Info]}, #state{app = App} = State) ->
+starting({bee_built, [Info]}, #launching_app_state{app = App} = State) ->
   % Return is bee_size dir_size
   [BeeSize|Rest] = string:tokens(Info, " "),
   [DirSize1|_Rest1] = Rest,
@@ -135,7 +123,7 @@ starting({bee_built, [Info]}, #state{app = App} = State) ->
   {ok, P} = app_launcher_fsm:start_link(App, Node),
   app_launcher_fsm:launch(P, self()),
   
-  NewState = State#state{bee_size = BeeSize, dir_size = DirSize, host_node = Node},
+  NewState = State#launching_app_state{bee_size = BeeSize, dir_size = DirSize, host_node = Node},
   {next_state, success, NewState};
 
 starting(Event, State) ->

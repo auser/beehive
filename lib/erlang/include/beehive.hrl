@@ -83,6 +83,20 @@
   stop_command
 }).
 
+% Launching app record
+-record (launching_app_state, {
+  app,
+  temp_name,
+  commit_hash,
+  bee_size,
+  dir_size,
+  storage_node,
+  host_node,
+  id,
+  port,
+  bee
+}).
+
 % User levels
 -define (ADMIN_USER_LEVEL, 1).
 -define (REGULAR_USER_LEVEL, 2).

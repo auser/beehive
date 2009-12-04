@@ -1,2 +1,3 @@
 TODO:
 * Add config file for configuration at the command-line
+* Investigate other databases as the distributed DB is not as "crucial" as speed of access
