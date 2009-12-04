@@ -43,9 +43,10 @@ start_link(Args) ->
 %% specifications.
 %%--------------------------------------------------------------------
 init(_Args) ->
-  GitServer  = {the_git_server,{bh_git_srv, start_link,[]}, permanent, 2000, worker, dynamic},
+  GitStorageSrv = {the_storage_server, {bh_storage_srv, start_link, []}, permanent, 2000, worker, dynamic},
+  _GitServer  = {the_git_server,{bh_git_srv, start_link,[]}, permanent, 2000, worker, dynamic},
   
-  {ok,{{one_for_one,5,10}, [GitServer]}}.
+  {ok,{{one_for_one,5,10}, [GitStorageSrv]}}.
 
 %%====================================================================
 %% Internal functions
