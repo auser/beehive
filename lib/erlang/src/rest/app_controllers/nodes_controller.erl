@@ -14,7 +14,8 @@
 get(_) -> 
   {struct, [
     {"routers", [format_nodes(fun node_manager:get_routers/0)]},
-    {"nodes", format_nodes(fun node_manager:get_nodes/0)}
+    {"nodes", format_nodes(fun node_manager:get_nodes/0)},
+    {"storage", format_nodes(fun node_manager:get_storage/0)}
     ]
   }.
   
