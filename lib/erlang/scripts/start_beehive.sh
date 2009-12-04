@@ -59,7 +59,7 @@ REST="true"
 VERBOSE=false
 STRATEGY="random"
 PATHS="-pa $PWD/ebin -pa $PWD/include"
-ERL_OPTS="-s reloader +Bc +K true -smp enable"
+ERL_OPTS="-s reloader"
 
 SHORTOPTS="hm:n:dp:t:g:r:s:vi:a:c:q:l:z:"
 LONGOPTS="help,version,port,type,strategy,rest,seed,mnesia_dir,daemonize,initial_bees,additional_path,callback_module,bee_picker,log_path,repos_path"
