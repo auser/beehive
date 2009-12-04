@@ -13,6 +13,10 @@ This will start the basic router with the default options. The default node type
 
     ./scripts/start_beehive.sh -t node -n bob@mymac.local -s router@mymac.local
 
+You also need to start some storage backends to store the squashed bees. This is easy to do with the ./scripts/start_beehive.sh script:
+
+    ./scripts/start_beehive.sh -t storage -s router@mymac.local
+
 There are many options to starting the router, for more information and options, type:
 
     ./scripts/start_beehive.sh -h
@@ -69,6 +73,13 @@ All operations can be handled in a RESTful interface.
 For instance, to terminate and restart the application in the beehive, issue a request such as:
 
     curl -i -XPOST http://beehive.com:8080/apps/[app_name]/restart
+
+## Storage nodes
+To store the distributable bees, you must start a storage backend. Beehive makes this easy again by using the start script:
+
+    ./scripts/start_beehive.sh -t storage
+
+Note, these storage backends must have git installed (currently the only supported scm) because they will clone the url repos (off-site for now) and squash the filesystem.
 
 ## Nodes
 Beehive is a distributed system. You can add multiple nodes in the router. The node_manager handles the node connections.
