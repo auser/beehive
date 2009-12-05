@@ -4,8 +4,6 @@
           start/4
         ]).
 
-% P = port_handler:start("thin -R beehive.ru --port 5000 start", "/Users/auser/Development/erlang/mine/router/test/fixtures/apps").
-
 start(Cmd, WorkingDir, From, Opts) ->
   process_flag(trap_exit, true),
   spawn_link(fun() ->

@@ -13,6 +13,7 @@
          get_random_pid/1
         ]).
 
+init_db_slave([]) -> ok; % safeguard
 init_db_slave(SeedNode) ->
   db:start(),
   mnesia:change_config(extra_db_nodes, [SeedNode]),

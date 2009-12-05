@@ -23,7 +23,8 @@
   dump/1,
   join/1,
   can_deploy_new_app/0, can_pull_new_app/0,
-  get_next_available_host/0, get_next_available_storage/0
+  get_next_available_host/0, get_next_available_storage/0,
+  find_application_location/1
 ]).
 
 %% gen_server callbacks
@@ -131,6 +132,15 @@ can_deploy_new_app() ->
 can_pull_new_app() ->
   gen_server:call(?SERVER, {can_pull_new_app}).
   
+get_next_available_host() ->
+  get_next_available(?NODE_SERVERS, ?APP_HANDLER, can_deploy_new_app, []).
+
+get_next_available_storage() ->
+  get_next_available(?STORAGE_SERVERS, ?STORAGE_SRV, can_pull_new_app, []).
+
+find_application_location(AppName) ->
+  get_next_available(?STORAGE_SRV, ?STORAGE_SRV, find_app, [AppName]).  
+
 %%====================================================================
 %% gen_server callbacks
 %%====================================================================
@@ -144,28 +154,32 @@ can_pull_new_app() ->
 %%--------------------------------------------------------------------
 init([Type, Seed]) ->
   process_flag(trap_exit, true),  
+  join(Seed),
   
-  case Type of
+  SlaveDb = case Type of
     router ->
       case Seed of
         [] -> 
           % Initializing root router
           case db:already_initialized() of
-            true -> ok;
-            false -> db:init()
+            true -> false;
+            false -> db:init(), false
           end;
-        _ -> 
-          ?LOG(info, "Initializing slave db: ~p", [Seed]),
-          mesh_util:init_db_slave(Seed)
+        _ -> true
       end;
-    storage ->
-      ok;
+    storage -> true;
     node ->
       % Node initialization stuff
-      ok
+      true
   end,
   
-  join(Seed),
+  case SlaveDb of
+    true ->
+      ?LOG(info, "Initializing slave db: ~p", [Seed]),
+      mesh_util:init_db_slave(Seed);
+    false -> ok
+  end,
+  
   timer:send_interval(timer:seconds(10), {stay_connected_to_seed}),
   % timer:send_interval(timer:minutes(1), {update_node_pings}),
   
@@ -321,12 +335,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 % Appropriate here... I think
-get_next_available_host() ->
-  get_next_available(?NODE_SERVERS, ?APP_HANDLER, can_deploy_new_app, []).
-
-get_next_available_storage() ->
-  get_next_available(?STORAGE_SERVERS, ?STORAGE_SRV, can_pull_new_app, []).
-
 % internal
 get_next_available(Group, M, F, A) ->
   case (catch mesh_util:get_random_pid(Group)) of
