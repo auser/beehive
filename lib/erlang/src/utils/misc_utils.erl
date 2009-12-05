@@ -1,4 +1,5 @@
 -module (misc_utils).
+-include ("common.hrl").
 -compile (export_all).
 
 -define (ADJECTIVES, [
@@ -24,7 +25,36 @@ random_word(List, Length, Acc) ->
   
 random_word(List) ->
   lists:nth(random:uniform(erlang:length(List)), List).
-  
+
+shell_fox(Name, Proplist) -> 
+  Templated = ?TEMPLATE_SHELL_SCRIPT(Name, Proplist),
+  Self = self(),
+  Ref = erlang:phash2(make_ref()),
+  spawn(fun() -> 
+      Port = open_port({spawn, Templated}, [exit_status, {cd, file_utils:relative_path("/tmp")}, use_stdio]),
+      wait_for_port(Port, Ref, Self)
+    end),
+  receive
+    {ok, Ref, E} -> E
+  end.
+
+wait_for_port(Port, Ref, AppUpdatorPid) ->
+  receive
+    {Port, {data, Info}} ->
+      ListofStrings = case io_lib:char_list(Info) of
+        true -> [Info];
+        false -> Info
+      end,
+      Tokens = string:tokens(string:join(ListofStrings, "\n"), "\n"),
+      O = lists:flatten(lists:map(fun(List) ->
+        element(1, lists:foldr(fun (X,{As,[]}) -> {As,[X]}; (X,{As,[Y]}) ->
+          {[{erlang:list_to_atom(X),Y}|As],[]} end, {[],[]},  string:tokens(List, " "))) end, Tokens)),
+      AppUpdatorPid ! {ok, Ref, O};
+    E -> E
+  after timer:seconds(60) ->
+    ok
+  end.
+
 to_list(Bin) when is_binary(Bin) -> erlang:binary_to_list(Bin);
 to_list(Atom) when is_atom(Atom) -> erlang:atom_to_list(Atom);
 to_list(Float) when is_float(Float) -> erlang:float_to_list(Float);
