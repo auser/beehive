@@ -36,6 +36,7 @@ send(Node, Filename, As) ->
   {ok, B} = prim_file:read_file(Filename),
   rpc:call(Node, ?MODULE, save, [B, As]).
 
+% Get the file from the node and save it
 get(Node, Filename, To) ->
   rpc:call(Node, ?MODULE, send, [node(), Filename, To]).
 
