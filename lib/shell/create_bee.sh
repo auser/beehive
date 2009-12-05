@@ -12,20 +12,20 @@ function create_chroot_env {
   cd $CHROOT_DIR
   
   if [ -d /lib64 ]; then
-    mkdir -p lib64/
+    mkdir -p lib64/ >/dev/null 2>&1
   fi
   if [ ! -e dev/null ]; then
-    sudo mknod dev/null c 1 3
+    mknod dev/null c 1 3 >/dev/null 2>&1
   fi
   if [ ! -e dev/zero ]; then
-    sudo mknod dev/zero c 1 5
+    mknod dev/zero c 1 5 >/dev/null 2>&1
   fi
 }
 function install_from_files {  
   GEM_FILE=$1/.gems
   if [ -f $GEM_FILE ]; then
     for line in $(cat $1/.gems); do
-      sudo gem install $line --no-ri --no-rdoc; 
+      gem install $line --no-ri --no-rdoc; 
     done
   fi
 }
@@ -60,7 +60,9 @@ function build_from_env {
   
   dir_size=`du -h -s $APP_DIR | awk '{print $1}'`
   bee_size=`du -h -s $OUTFILE | awk '{print $1}'`
-  echo "$bee_size $dir_size"
+  echo "bee_size $bee_size"
+	echo "dir_size $dir_size"
+	echo "outdir $OUTFILE"
   
   # Cleanup
 	rm -rf $APP_DIR
