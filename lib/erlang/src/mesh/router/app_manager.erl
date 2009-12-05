@@ -239,11 +239,9 @@ update_app_configuration(ConfigProplist, App, State) ->
   StopCmd   = update_app_configuration_param(stop_command, DefaultStopCmd, ConfigProplist, App),
   % TODO: Define app base...
   Name      = update_app_configuration_param(name, App#app.name, ConfigProplist, App),
-  Path      = update_app_configuration_param(path, "./", ConfigProplist, App),
   Url       = update_app_configuration_param(url, "", ConfigProplist, App),
   Sticky    = update_app_configuration_param(sticky, false, ConfigProplist, App),
   UpdatedAt = update_app_configuration_param(updated_at, date_util:now_to_seconds(), ConfigProplist, App),
-  CC        = update_app_configuration_param(concurrency, 1, ConfigProplist, App),
   % Hostnames = update_app_configuration_param(hostname, Name, ConfigProplist, App),
   Timeout   = update_app_configuration_param(timeout, 3600, ConfigProplist, App),
   MaxInst   = update_app_configuration_param(max_instances, 2, ConfigProplist, App),
@@ -251,8 +249,7 @@ update_app_configuration(ConfigProplist, App, State) ->
     
   NewApp = App#app{
     start_command = StartCmd, stop_command = StopCmd, url = Url, name = Name, 
-    path = Path, updated_at = UpdatedAt,
-    concurrency = misc_utils:to_integer(CC),
+    updated_at = UpdatedAt,
     timeout = misc_utils:to_integer(Timeout), 
     sticky = Sticky,
     max_instances = misc_utils:to_integer(MaxInst),
