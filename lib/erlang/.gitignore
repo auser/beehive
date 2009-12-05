@@ -4,3 +4,4 @@ ebin/*.rel
 ebin/*.script
 *.log
 repos
+apps/
