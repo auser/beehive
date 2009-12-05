@@ -50,9 +50,15 @@
   id,                       % tuple id of the app_name, host and port {app_name, host, port}
   app_name,                 % name of the app this bee supports
   host,
+  host_node,
   port,
   meta_data,                % meta data on the bee allows for more granualar abstract parameters
                             % should be a tuple, e.g. {ports: 2}
+  temp_name,
+  commit_hash,
+  bee_size,
+  dir_size,
+  storage_node,
   start_time    = 0,        % starting time
   pid,                      % pid of os port process
   sticky        = false,    % keep this bee around, don't remove it from the bee list if it dies
@@ -68,9 +74,7 @@
 % Application configuration
 -record (app, {
   name,
-  path,
   url,
-  concurrency,
   type = dynamic,                   % dynamic | static (if this is set to static, we cannot launch a new one)
   routing_param = undefined,        % determine the method of choosing the backend
   bee_picker = bee_strategies,      % Defined the bee picker module (defaults to bee_strategies)
@@ -147,14 +151,4 @@
 -record (node, {
   name,               % name of the node
   host                % host of the node (ip)
-}).
-
--record (http_request, {
-  client_socket,
-  version = {1,1},
-  headers = [],
-  body = [],
-  method,
-  path,
-  length = 0
 }).
