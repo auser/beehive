@@ -1,3 +1,5 @@
 TODO:
 * Add config file for configuration at the command-line
-* Investigate other databases as the distributed DB is not as "crucial" as speed of access
+* Investigate other databases as the distributed DB is not as "crucial" as speed of access (such as couchdb)
+* Clean up generally
+* Add more finely grained ACL
