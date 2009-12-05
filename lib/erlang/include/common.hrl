@@ -22,3 +22,8 @@ end).
   erlang:binary_to_list(Binary)
  end()
 ).
+-define (TEMPLATE_SHELL_SCRIPT (Name, Params), fun() ->
+    string_utils:template_command_string(?SHELL_SCRIPT(Name), Params)
+  end()
+).
+-define (TEMPLATE_SHELL_SCRIPT_PARSED (Name, Params), misc_utils:shell_fox(Name, Params)).
