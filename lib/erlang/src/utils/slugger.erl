@@ -48,5 +48,4 @@ save(Contents, To) ->
       filelib:ensure_dir(FullPath),
       FullPath
   end,
-  io:format("Save to: ~p~n", [FullFilePath]),
   prim_file:write_file(FullFilePath, Contents).
