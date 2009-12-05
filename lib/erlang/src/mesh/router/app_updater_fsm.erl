@@ -59,174 +59,185 @@ start_link(App) ->
 %% gen_fsm callbacks
 %%====================================================================
 %%--------------------------------------------------------------------
-%% Function: init(Args) -> {ok, StateName, State} |
-%%                         {ok, StateName, State, Timeout} |
+%% Function: init(Args) -> {ok, BeeName, Bee} |
+%%                         {ok, BeeName, Bee, Timeout} |
 %%                         ignore                              |
 %%                         {stop, StopReason}
 %% Description:Whenever a gen_fsm is started using gen_fsm:start/[3,4] or
 %% gen_fsm:start_link/3,4, this function is called by the new process to
 %% initialize.
 %%--------------------------------------------------------------------
-init([App]) ->
-  TempName = lists:append([App#app.name, "-", misc_utils:to_list(erlang:phash2(make_ref()))]),
-  {ok, pulling, #launching_app_state{app = App, temp_name = TempName}}.
+init([App]) when is_record(App, app) ->
+  init([App#app.name]);
+
+init([AppName])  ->
+  {ok, pulling, #bee{app_name = AppName}}.
 
 %%--------------------------------------------------------------------
 %% Function:
-%% state_name(Event, State) -> {next_state, NextStateName, NextState}|
-%%                             {next_state, NextStateName,
-%%                                NextState, Timeout} |
-%%                             {stop, Reason, NewState}
+%% state_name(Event, Bee) -> {next_state, NextBeeName, NextBee}|
+%%                             {next_state, NextBeeName,
+%%                                NextBee, Timeout} |
+%%                             {stop, Reason, NewBee}
 %% Description:There should be one instance of this function for each possible
 %% state name. Whenever a gen_fsm receives an event sent using
 %% gen_fsm:send_event/2, the instance of this function with the same name as
-%% the current state name StateName is called to handle the event. It is also
+%% the current state name BeeName is called to handle the event. It is also
 %% called if a timeout occurs.
 %%--------------------------------------------------------------------
-pulling({go, _From}, #launching_app_state{app = App, temp_name = TempName} = State) ->
+pulling({go, _From}, #bee{app_name = AppName} = Bee) ->
   Node = node_manager:get_next_available_storage(),
-  Opts = [
-    {temp_name, TempName}
-  ],
-  rpc:call(Node, ?STORAGE_SRV, pull_repos, [App, Opts, self()]),
-  {next_state, squashing, State#launching_app_state{storage_node = Node}};
+  rpc:call(Node, ?STORAGE_SRV, pull_repos, [AppName, self()]),
+  {next_state, squashing, Bee#bee{storage_node = Node}};
   
-pulling(Event, State) ->
+pulling(Event, Bee) ->
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, pulling]),
-  {next_state, launching, State}.
+  {next_state, pulling, Bee}.
 
-squashing({pulled, Info}, #launching_app_state{app = App, storage_node = Node, temp_name = TempName} = State) ->
-  Opts = [
-    {temp_name, TempName}
-  ],
-  rpc:call(Node, ?STORAGE_SRV, build_bee, [App, Opts, self()]),
-  [Sha|_Rest] = Info,
-  {next_state, starting, State#launching_app_state{commit_hash = Sha}};
+squashing({pulled, Info}, #bee{app_name = Name, storage_node = Node} = Bee) ->
+  io:format("Info: ~p~n", [Info]),
+  rpc:call(Node, ?STORAGE_SRV, build_bee, [Name, self()]),
+  Sha = proplists:get_value(sha, Info),
+  {next_state, starting, Bee#bee{commit_hash = Sha}};
 
-squashing({error, Code}, State) ->
-  {stop, Code, State};
+squashing({error, Code}, Bee) ->
+  io:format("Error: ~p~n", [Code]),
+  {stop, Code, Bee};
 
-squashing(Event, State) ->
-  io:format("squashing: ~p~n", [Event]),
-  {next_state, squashing, State}.
+squashing(_Event, Bee) ->
+  {next_state, squashing, Bee}.
 
-starting({bee_built, [Info]}, #launching_app_state{app = App} = State) ->
+starting({bee_built, Info}, #bee{app_name = AppName} = Bee) ->
   % Return is bee_size dir_size
-  [BeeSize|Rest] = string:tokens(Info, " "),
-  [DirSize1|_Rest1] = Rest,
   % Strip off the last newline... stupid bash
-  DirSize = hd(string:tokens(DirSize1, "\n")),
+  BeeSize = proplists:get_value(bee_size, Info),
+  DirSize = proplists:get_value(dir_size, Info),
   
   Node = node_manager:get_next_available_host(),
   
-  % rpc:call(Node, ?STORAGE_SRV, build_bee, [App, Opts, self()]),
+  App = apps:find_by_name(AppName),
   {ok, P} = app_launcher_fsm:start_link(App, Node),
   app_launcher_fsm:launch(P, self()),
   
-  NewState = State#launching_app_state{bee_size = BeeSize, dir_size = DirSize, host_node = Node},
-  {next_state, success, NewState};
+  NewBee = Bee#bee{bee_size = BeeSize, dir_size = DirSize, host_node = Node},
+  {next_state, success, NewBee};
 
-starting(Event, State) ->
+starting(Event, Bee) ->
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, starting]),
-  {next_state, launching, State}.
+  {next_state, launching, Bee}.
 
-success(Event, State) ->
+success({bee_started_normally, StartedBee}, #bee{app_name = Name} = Bee) ->
+  io:format("bee_started_normally: ~p~n", [Name]),
+  case bees:find_all_by_name(Name) of
+    [] ->
+      bees:save(StartedBee),
+      {stop, normal, Bee};
+    CurrentBees ->
+      OldBees = lists:filter(fun(B) -> bees:is_the_same_as(StartedBee, B) =:= false end, CurrentBees),
+      lists:map(fun(B) ->
+        io:format("Terminating old bee: ~p~n", [B]),
+        node_manager:request_to_terminate_bee(B)
+      end, OldBees),
+      {stop, normal, Bee}
+  end;
+
+success(Event, Bee) ->
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, success]),
-  {stop, normal, State}.
+  {stop, normal, Bee}.
   
-state_name(Event, State) ->
+state_name(Event, Bee) ->
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, state_name]),
-  {next_state, state_name, State}.
+  {next_state, state_name, Bee}.
 
 %%--------------------------------------------------------------------
 %% Function:
-%% state_name(Event, From, State) -> {next_state, NextStateName, NextState} |
-%%                                   {next_state, NextStateName,
-%%                                     NextState, Timeout} |
-%%                                   {reply, Reply, NextStateName, NextState}|
-%%                                   {reply, Reply, NextStateName,
-%%                                    NextState, Timeout} |
-%%                                   {stop, Reason, NewState}|
-%%                                   {stop, Reason, Reply, NewState}
+%% state_name(Event, From, Bee) -> {next_state, NextBeeName, NextBee} |
+%%                                   {next_state, NextBeeName,
+%%                                     NextBee, Timeout} |
+%%                                   {reply, Reply, NextBeeName, NextBee}|
+%%                                   {reply, Reply, NextBeeName,
+%%                                    NextBee, Timeout} |
+%%                                   {stop, Reason, NewBee}|
+%%                                   {stop, Reason, Reply, NewBee}
 %% Description: There should be one instance of this function for each
 %% possible state name. Whenever a gen_fsm receives an event sent using
 %% gen_fsm:sync_send_event/2,3, the instance of this function with the same
-%% name as the current state name StateName is called to handle the event.
+%% name as the current state name BeeName is called to handle the event.
 %%--------------------------------------------------------------------
-state_name(Event, _From, State) ->
+state_name(Event, _From, Bee) ->
   Reply = ok,
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, state_name]),
-  {reply, Reply, state_name, State}.
+  {reply, Reply, state_name, Bee}.
 
 %%--------------------------------------------------------------------
 %% Function:
-%% handle_event(Event, StateName, State) -> {next_state, NextStateName,
-%%                                                NextState} |
-%%                                          {next_state, NextStateName,
-%%                                                NextState, Timeout} |
-%%                                          {stop, Reason, NewState}
+%% handle_event(Event, BeeName, Bee) -> {next_state, NextBeeName,
+%%                                                NextBee} |
+%%                                          {next_state, NextBeeName,
+%%                                                NextBee, Timeout} |
+%%                                          {stop, Reason, NewBee}
 %% Description: Whenever a gen_fsm receives an event sent using
 %% gen_fsm:send_all_state_event/2, this function is called to handle
 %% the event.
 %%--------------------------------------------------------------------
-handle_event(Event, StateName, State) ->
-  io:format("Uncaught event: ~p while in state: ~p ~n", [Event, StateName]),
-  {next_state, StateName, State}.
+handle_event(Event, BeeName, Bee) ->
+  io:format("Uncaught event: ~p while in state: ~p ~n", [Event, BeeName]),
+  {next_state, BeeName, Bee}.
 
 %%--------------------------------------------------------------------
 %% Function:
-%% handle_sync_event(Event, From, StateName,
-%%                   State) -> {next_state, NextStateName, NextState} |
-%%                             {next_state, NextStateName, NextState,
+%% handle_sync_event(Event, From, BeeName,
+%%                   Bee) -> {next_state, NextBeeName, NextBee} |
+%%                             {next_state, NextBeeName, NextBee,
 %%                              Timeout} |
-%%                             {reply, Reply, NextStateName, NextState}|
-%%                             {reply, Reply, NextStateName, NextState,
+%%                             {reply, Reply, NextBeeName, NextBee}|
+%%                             {reply, Reply, NextBeeName, NextBee,
 %%                              Timeout} |
-%%                             {stop, Reason, NewState} |
-%%                             {stop, Reason, Reply, NewState}
+%%                             {stop, Reason, NewBee} |
+%%                             {stop, Reason, Reply, NewBee}
 %% Description: Whenever a gen_fsm receives an event sent using
 %% gen_fsm:sync_send_all_state_event/2,3, this function is called to handle
 %% the event.
 %%--------------------------------------------------------------------
-handle_sync_event(_Event, _From, StateName, State) ->
+handle_sync_event(_Event, _From, BeeName, Bee) ->
   Reply = ok,
-  {reply, Reply, StateName, State}.
+  {reply, Reply, BeeName, Bee}.
 
 %%--------------------------------------------------------------------
 %% Function:
-%% handle_info(Info,StateName,State)-> {next_state, NextStateName, NextState}|
-%%                                     {next_state, NextStateName, NextState,
+%% handle_info(Info,BeeName,Bee)-> {next_state, NextBeeName, NextBee}|
+%%                                     {next_state, NextBeeName, NextBee,
 %%                                       Timeout} |
-%%                                     {stop, Reason, NewState}
+%%                                     {stop, Reason, NewBee}
 %% Description: This function is called by a gen_fsm when it receives any
 %% other message than a synchronous or asynchronous event
 %% (or a system message).
 %%--------------------------------------------------------------------
-handle_info({get_state}, _StateName, State) ->
-  {reply, State, State};
-handle_info({stop}, _StateName, State) ->
-  {stop, normal, State};
-handle_info(Info, StateName, State) ->
-  apply(?MODULE, StateName, [Info, State]).
-  % {next_state, StateName, State}.
+handle_info({get_state}, _BeeName, Bee) ->
+  {reply, Bee, Bee};
+handle_info({stop}, _BeeName, Bee) ->
+  {stop, normal, Bee};
+handle_info(Info, BeeName, Bee) ->
+  apply(?MODULE, BeeName, [Info, Bee]).
+  % {next_state, BeeName, Bee}.
 
 %%--------------------------------------------------------------------
-%% Function: terminate(Reason, StateName, State) -> void()
+%% Function: terminate(Reason, BeeName, Bee) -> void()
 %% Description:This function is called by a gen_fsm when it is about
 %% to terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_fsm terminates with
 %% Reason. The return value is ignored.
 %%--------------------------------------------------------------------
-terminate(_Reason, _StateName, _State) ->
+terminate(_Reason, _BeeName, _Bee) ->
   ok.
 
 %%--------------------------------------------------------------------
 %% Function:
-%% code_change(OldVsn, StateName, State, Extra) -> {ok, StateName, NewState}
+%% code_change(OldVsn, BeeName, Bee, Extra) -> {ok, BeeName, NewBee}
 %% Description: Convert process state when code is changed
 %%--------------------------------------------------------------------
-code_change(_OldVsn, StateName, State, _Extra) ->
-  {ok, StateName, State}.
+code_change(_OldVsn, BeeName, Bee, _Extra) ->
+  {ok, BeeName, Bee}.
 
 %%--------------------------------------------------------------------
 %%% Internal functions

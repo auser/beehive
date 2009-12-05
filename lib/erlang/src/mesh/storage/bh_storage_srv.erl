@@ -16,10 +16,11 @@
 -export([
   start_link/0,
   can_pull_new_app/0,
-  pull_repos/3,
-  build_bee/3,
+  pull_repos/2,
+  build_bee/2,
   locate_git_repo/1,
-  lookup_squashed_repos/1
+  lookup_squashed_repos/1,
+  has_squashed_repos/1
 ]).
 
 %% gen_server callbacks
@@ -31,6 +32,7 @@
 }).
 
 -define(SERVER, ?MODULE).
+-define (TAB_NAME_TO_PATH, 'name_to_path_table').
 
 %%====================================================================
 %% API
@@ -39,17 +41,23 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-pull_repos(App, Proplist, AppUpdatorPid) ->
-  gen_server:call(?SERVER, {pull_repos, App, Proplist, AppUpdatorPid}).
+pull_repos(AppName, Caller) ->
+  gen_server:call(?SERVER, {pull_repos, AppName, Caller}).
 
-build_bee(App, Opts, AppUpdatorPid) ->
-  gen_server:call(?SERVER, {build_bee, App, Opts, AppUpdatorPid}).
+build_bee(AppName, Caller) ->
+  gen_server:call(?SERVER, {build_bee, AppName, Caller}).
 
 locate_git_repo(Name) ->
   gen_server:call(?SERVER, {locate_git_repo, Name}).
 
 lookup_squashed_repos(Name) ->
-  gen_server:call(?SERVER, {lookup_squashed_repos, Name}).
+  handle_lookup_squashed_repos(Name).
+
+has_squashed_repos(Name) ->
+  case handle_lookup_squashed_repos(Name) of
+    [] -> false;
+    E -> E
+  end.
 
 % get_next_available_storage
 can_pull_new_app() ->
@@ -70,6 +78,9 @@ start_link() ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
+  Opts = [named_table, set],
+  ets:new(?TAB_NAME_TO_PATH, Opts),
+  
   {ok, #state{
     scratch_disk = config:search_for_application_value(scratch_disk, "/tmp/squashed", storage)
   }}.
@@ -87,39 +98,49 @@ handle_call({can_pull_new_app}, _From, State) ->
   {reply, true, State};
   
 % pull a repos url
-handle_call({pull_repos, App, Proplist, AppUpdatorPid}, _From, #state{scratch_disk = ScratchDisk} = State) ->
-  {ok, ReposUrl} = handle_repos_lookup(App),
-  TempName = lists:append([proplists:get_value(temp_name, Proplist), "/home/app"]),
-  Templated = string_utils:template_command_string(?SHELL_SCRIPT("pull-git-repos"),
-        [
-          {"[[GIT_REPOS]]", ReposUrl},
-          {"[[DESTINATION]]", TempName}
-        ]),
-      
-  Port = port_handler:start(Templated, ScratchDisk, self(), [use_stdio]),
-  
-  Reply = wait_for_port(Port, AppUpdatorPid, pulled, ?COULD_NOT_PULL_GIT_ERROR, []),
-  {reply, Reply, State};
+handle_call({pull_repos, AppName, Caller}, _From, State) ->
+  case handle_repos_lookup(AppName) of
+    {ok, ReposUrl} -> 
+      App = apps:find_by_name(AppName), % YES, I know this needs to be optminized
+      TempName = lists:append([handle_find_application_location(App, State), "/home/app"]),
+      Proplists = ?TEMPLATE_SHELL_SCRIPT_PARSED("pull-git-repos", [
+        {"[[GIT_REPOS]]", ReposUrl},
+        {"[[DESTINATION]]", TempName}
+      ]),
+      Reply = case proplists:is_defined(sha, Proplists) of
+        true -> {pulled, Proplists};
+        false -> {error, ?COULD_NOT_PULL_GIT_ERROR}
+      end,
+      Caller ! Reply,
+      {reply, Reply, State};
+    _Else ->
+      Reply = {error, "Not git url specified"},
+      Caller ! Reply,
+      {reply, Reply, State}
+  end;
 
-handle_call({build_bee, _App, Proplist, AppUpdatorPid}, _From, #state{scratch_disk = ScratchDisk} = State) ->
-  TempName = proplists:get_value(temp_name, Proplist),
-  OutFile = filename:join([ScratchDisk, lists:append([TempName, ".iso"])]),
-  Templated = string_utils:template_command_string(?SHELL_SCRIPT("create_bee"),
-        [
-          {"[[WORKING_DIRECTORY]]", ScratchDisk},
-          {"[[APP_NAME]]", proplists:get_value(temp_name, Proplist)},
-          {"[[OUTFILE]]", OutFile}
-        ]),
-      
-  Port = port_handler:start(Templated, ScratchDisk, self(), [use_stdio]),
-  Reply = wait_for_port(Port, AppUpdatorPid, bee_built, ?COULD_NOT_CREATE_BEE_ERROR, []),
+handle_call({build_bee, AppName, Caller}, _From, #state{scratch_disk = ScratchDisk} = State) ->
+  App = apps:find_by_name(AppName),
+  OutFile = lists:append([handle_find_application_location(App, State), ".iso"]),
+  Proplists = ?TEMPLATE_SHELL_SCRIPT_PARSED("create_bee", [
+    {"[[WORKING_DIRECTORY]]", ScratchDisk},
+    {"[[APP_NAME]]", apps:build_on_disk_app_name(App)},
+    {"[[OUTFILE]]", OutFile}
+  ]),
+  io:format("Proplists: ~p~n", [Proplists]),
+  Reply = case proplists:is_defined(bee_size, Proplists) of
+    true -> 
+      Path = proplists:get_value(outdir, Proplists),
+      ets:insert(?TAB_NAME_TO_PATH, {AppName, Path}),
+      {bee_built, Proplists};
+    false -> 
+      {error, ?COULD_NOT_CREATE_BEE_ERROR}
+  end,
+  Caller ! Reply,
   {reply, Reply, State};
 
 handle_call({locate_git_repo, App}, _From, State) ->
   Reply = handle_repos_lookup(App),
-  {reply, Reply, State};
-handle_call({lookup_squashed_repos, Name}, _From, State) ->
-  Reply = handle_lookup_squashed_repos(Name),
   {reply, Reply, State};
 handle_call(_Request, _From, State) ->
   Reply = ok,
@@ -163,28 +184,26 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-handle_repos_lookup(App) when is_record(App, app) ->
+handle_repos_lookup(AppName) ->
   case config:search_for_application_value(git_store, offsite, storage) of
     offsite -> 
-      {ok, handle_offsite_repos_lookup(App)};
+      {ok, handle_offsite_repos_lookup(AppName)};
     _ -> 
       io:format("Looking in local repos not yet supported~n"),
       {error, not_found}
   end.
 
-handle_offsite_repos_lookup(App) ->
-  App#app.url.
+handle_offsite_repos_lookup(App) when is_record(App, app) ->
+  App#app.url;
+handle_offsite_repos_lookup(AppName) ->
+  handle_offsite_repos_lookup(apps:find_by_name(AppName)).
 
-handle_lookup_squashed_repos(_Name) ->
-  ok.
-  
-wait_for_port(Port, AppUpdatorPid, SuccessMsg, ErrCode, Acc) ->
-  receive
-    {data, Data} ->
-      wait_for_port(Port, AppUpdatorPid, SuccessMsg, ErrCode, [Data|Acc]);
-    {port_exited, _Code} ->
-      io:format("Data: ~p~n", [Acc]),
-      AppUpdatorPid ! {error, ErrCode};
-    {port_closed, _Pid} ->
-      AppUpdatorPid ! {SuccessMsg, lists:reverse(Acc)}
-  end.
+handle_lookup_squashed_repos(Name) ->
+  case ets:lookup(?TAB_NAME_TO_PATH, Name) of
+    [{_Key, Path}] -> Path;
+    _ -> []
+  end.  
+
+handle_find_application_location(App, #state{scratch_disk = ScratchDisk} = _State) ->
+  AppName = apps:build_on_disk_app_name(App),
+  filename:join([ScratchDisk, AppName]).
