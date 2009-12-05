@@ -17,8 +17,11 @@
   all/0,
   exist/1,
   create/1,
-  update/1, update_by_name/1,
-  delete/1, new/1
+  update/2, 
+  update_by_name/1,
+  delete/1, new/1, 
+  update_proplist_for_app/2,
+  build_on_disk_app_name/1
 ]).
 
 % Find the first application named Name
@@ -45,7 +48,7 @@ create(App) when is_record(App, app) ->
     true -> ?NOTIFY({app, updated, App});
     false -> ?NOTIFY({app, created, App})
   end,
-  db:write(App),
+  save(App),
   App;
 create(NewProps) ->
   create(new(NewProps)).
@@ -56,8 +59,13 @@ update_by_name(Name) ->
     App -> {ok, create(App#app{updated_at = date_util:now_to_seconds()})}
   end.
 
-update(NewProps) ->
-  update(new(NewProps)).
+update([], _) -> ok;
+update(App, NewProps) when is_record(App, app) ->
+  NewApp = update_proplist_for_app(App, NewProps),
+  save(NewApp);
+update(Name, NewProps) ->
+  App = find_by_name(Name),
+  update(App, NewProps).
 
 delete(App) when is_record(App, app) -> db:delete_object(App);
 delete(Name) ->
@@ -65,9 +73,19 @@ delete(Name) ->
 
 all() ->
   db:find(qlc:q([ B || B <- mnesia:table(app) ])).
+
+save(App) when is_record(App, app) ->
+  db:write(App).
   
 new(NewProps) ->
   PropList = ?rec_info(app, #app{}),
+  FilteredProplist1 = misc_utils:filter_proplist(PropList, NewProps, []),
+  FilteredProplist2 = misc_utils:new_or_previous_value(FilteredProplist1, PropList, []),
+  FilteredProplist = validate_app_proplists(FilteredProplist2),
+  list_to_tuple([app|[proplists:get_value(X, FilteredProplist) || X <- record_info(fields, app)]]).
+
+update_proplist_for_app(App, NewProps) ->
+  PropList = ?rec_info(app, App),
   FilteredProplist1 = misc_utils:filter_proplist(PropList, NewProps, []),
   FilteredProplist2 = misc_utils:new_or_previous_value(FilteredProplist1, PropList, []),
   FilteredProplist = validate_app_proplists(FilteredProplist2),
@@ -95,3 +113,8 @@ generate_unique_name() ->
     [] -> NewName;
     _ -> generate_unique_name()
   end.
+  
+build_on_disk_app_name(App) ->
+  lists:flatten([
+    lists:append([App#app.name, misc_utils:to_list(App#app.updated_at)])
+  ]).
