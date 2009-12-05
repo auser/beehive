@@ -30,7 +30,10 @@
   create/1,
   update/1, transactional_update/1,
   delete/1, delete/3,
-  all/0, new/1
+  all/0, 
+  new/1,
+  save/1,
+  is_the_same_as/2
 ]).
 
 find_by_name(Hostname) ->
@@ -70,6 +73,9 @@ create(Backend) when is_record(Backend, bee) ->
 create(NewProps) ->
   create(new(NewProps)).
 
+save(Bee) ->
+  db:write(Bee).
+
 % Grrr update!
 transactional_update(F) ->
   db:transaction(F()).
@@ -84,6 +90,11 @@ delete(Name, Host, Port) ->
 
 all() ->
   db:find(qlc:q([ B || B <- mnesia:table(bee) ])).
+
+% There has got to be a better way?
+is_the_same_as(Bee, Otherbee) ->
+  Bee#bee.app_name == Otherbee#bee.app_name andalso
+  Bee#bee.id == Otherbee#bee.id.
 
 % INERNAL
 new(NewProps) ->
