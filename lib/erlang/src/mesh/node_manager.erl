@@ -133,13 +133,13 @@ can_pull_new_app() ->
   gen_server:call(?SERVER, {can_pull_new_app}).
   
 get_next_available_host() ->
-  get_next_available(?NODE_SERVERS, ?APP_HANDLER, can_deploy_new_app, []).
+  get_next_available(?NODE_SERVERS, length(get_nodes()), ?APP_HANDLER, can_deploy_new_app, []).
 
 get_next_available_storage() ->
-  get_next_available(?STORAGE_SERVERS, ?STORAGE_SRV, can_pull_new_app, []).
+  get_next_available(?STORAGE_SERVERS, length(get_storage()), ?STORAGE_SRV, can_pull_new_app, []).
 
 find_application_location(AppName) ->
-  get_next_available(?STORAGE_SRV, ?STORAGE_SRV, find_app, [AppName]).  
+  get_next_available(?STORAGE_SRV, length(get_storage()), ?STORAGE_SRV, find_app, [AppName]).  
 
 %%====================================================================
 %% gen_server callbacks
@@ -336,13 +336,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 % Appropriate here... I think
 % internal
-get_next_available(Group, M, F, A) ->
+get_next_available(_, 0, _, _, _) -> false;
+get_next_available(Group, Count, M, F, A) ->
   case (catch mesh_util:get_random_pid(Group)) of
     {ok, Pid} ->
       Node = node(Pid),
       case rpc:call(Node, M, F, A) of
         true -> Node;
-        false -> get_next_available(Group, M, F, A)
+        false -> get_next_available(Group, Count - 1, M, F, A)
       end;
     {'EXIT', _} -> false;
     {error, _Reason} -> false
