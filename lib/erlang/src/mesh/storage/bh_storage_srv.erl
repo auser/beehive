@@ -9,7 +9,6 @@
 -module (bh_storage_srv).
 -include ("beehive.hrl").
 -include ("common.hrl").
--include ("git.hrl").
 -behaviour(gen_server).
 
 %% API
@@ -107,9 +106,10 @@ handle_call({pull_repos, AppName, Caller}, _From, State) ->
         {"[[GIT_REPOS]]", ReposUrl},
         {"[[DESTINATION]]", TempName}
       ]),
+      io:format("Proplists: ~p~n", [Proplists]),
       Reply = case proplists:is_defined(sha, Proplists) of
         true -> {pulled, Proplists};
-        false -> {error, ?COULD_NOT_PULL_GIT_ERROR}
+        false -> {error, "Could not pull git repos"}
       end,
       Caller ! Reply,
       {reply, Reply, State};
@@ -121,20 +121,20 @@ handle_call({pull_repos, AppName, Caller}, _From, State) ->
 
 handle_call({build_bee, AppName, Caller}, _From, #state{scratch_disk = ScratchDisk} = State) ->
   App = apps:find_by_name(AppName),
-  OutFile = lists:append([handle_find_application_location(App, State), ".iso"]),
+  OutFile = lists:append([handle_find_application_location(App, State), ".squashfs"]),
+  io:format("WORKING_DIRECTORY: ~p and APP_NAME: ~p and OutFile: ~p~n", [ScratchDisk, apps:build_on_disk_app_name(App), OutFile]),
   Proplists = ?TEMPLATE_SHELL_SCRIPT_PARSED("create_bee", [
     {"[[WORKING_DIRECTORY]]", ScratchDisk},
     {"[[APP_NAME]]", apps:build_on_disk_app_name(App)},
     {"[[OUTFILE]]", OutFile}
   ]),
-  io:format("Proplists: ~p~n", [Proplists]),
   Reply = case proplists:is_defined(bee_size, Proplists) of
     true -> 
       Path = proplists:get_value(outdir, Proplists),
       ets:insert(?TAB_NAME_TO_PATH, {AppName, Path}),
       {bee_built, Proplists};
     false -> 
-      {error, ?COULD_NOT_CREATE_BEE_ERROR}
+      {error, "Could not create bee"}
   end,
   Caller ! Reply,
   {reply, Reply, State};
