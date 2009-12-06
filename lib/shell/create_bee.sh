@@ -1,6 +1,5 @@
-#!/bin/bash
+#!/bin/sh
 
-COMPRESSED_BIN=$(which mkisofs)
 BASE_DIR=[[WORKING_DIRECTORY]]
 
 function create_chroot_env {
@@ -41,7 +40,7 @@ function build_from_env {
 	
 	APP_DIR=[[WORKING_DIRECTORY]]/$APP_NAME	
   GIT_REPOS=$APP_DIR/home/app
-  
+	
   create_chroot_env $APP_DIR
   
   # Install from files
@@ -49,7 +48,7 @@ function build_from_env {
   install_from_files $GIT_REPOS
 	
   # Make the squashfs filesystem
-	mkisofs -o $OUTFILE $APP_DIR
+	mksquashfs $APP_DIR $OUTFILE >/dev/null 2>&1
 	
 	if [ $? != 0 ]; then
 		exit 1
