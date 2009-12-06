@@ -12,7 +12,7 @@
     {git_repos_path, undefined},
     {git_store, offsite},
     {squashed_storage, "./squashed"},
-    {scratch_disk, "/tmp/squashed"}
+    {scratch_disk, "/opt/beehive/squashed"}
   ]}
  ]
 }.
