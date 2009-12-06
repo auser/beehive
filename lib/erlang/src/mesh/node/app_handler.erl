@@ -9,7 +9,6 @@
 -module (app_handler).
 -include ("beehive.hrl").
 -include ("common.hrl").
--include ("git.hrl").
 -behaviour(gen_server).
 
 %% API
@@ -37,7 +36,6 @@
 -define (STORAGE_SRV, bh_storage_srv).
 -define (TAB_ID_TO_BEE, 'id_to_bee_table').
 -define (TAB_PID_TO_BEE, 'port_to_bee_table').
--define (TAB_NAME_TO_PATH, 'app_name_to_path_table').
 
 %%====================================================================
 %% API
@@ -84,7 +82,6 @@ init([]) ->
   Opts = [named_table, set],
   ets:new(?TAB_ID_TO_BEE, Opts),
   ets:new(?TAB_PID_TO_BEE, Opts),
-  ets:new(?TAB_NAME_TO_PATH, Opts),
   
   MaxBackends     = ?MAX_BACKENDS_PER_HOST,
   % set a list of ports that the node can use to deploy applications
@@ -111,7 +108,7 @@ handle_call({start_new_instance, App, AppLauncher, From}, _From, #state{
     [] -> ?STARTING_PORT;
     [P|_] -> P
   end,
-  % ?LOG(info, "internal_start_new_instance(~p, ~p, ~p)", [App, Port, From]),
+  ?LOG(info, "internal_start_new_instance(~p, ~p, ~p)", [App, Port, From]),
   Bee = internal_start_new_instance(App, Port, AppLauncher, From),
   NewAvailablePorts = lists:delete(Port, AvailablePorts),
   {reply, ok, State#state{
@@ -198,19 +195,41 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
+% Start new instance
+internal_start_new_instance(App, Port, AppLauncher, From) ->
+  io:format("internal_start_new_instance: ~p, ~p, ~p, ~p~n", [App, Port, AppLauncher, From]),
+  case find_and_transfer_bee(App) of
+    {ok, Node, LocalPath} ->
+      io:format("find_and_transfer_bee: ~p, ~p~n", [Node, LocalPath]),
+      case mount_bee_from_path(App, LocalPath) of
+        {ok, Path} ->
+          io:format("Starting bee in: ~p~n", [Path]),
+          case run_application_on_port_in_path(App, Port, Path, From) of
+            Bee when is_record(Bee, bee) ->
+              AppLauncher ! {started_bee, Bee},
+              Bee#bee{storage_node = Node};
+            E -> E
+          end;
+        E -> E
+      end;
+    E -> 
+      io:format("Error: ~p~n", [E]),
+      E
+  end.
 
 % Find and transfer the bee
 find_and_transfer_bee(App) ->
   Nodes = lists:map(fun(N) -> node(N) end, node_manager:get_storage()),
   Path = next_free_honeycomb(App),
-  LocalPath = filename:join([filename:absname(""), lists:append([Path, "app.iso"])]),
+  LocalPath = filename:join([filename:absname(""), lists:append([Path, "/", "app.squashfs"])]),
   case find_bee_on_storage_nodes(App#app.name, Nodes) of
     {ok, Node, RemotePath} ->
-      slugger:get(Node, RemotePath, LocalPath);
-    {error, _} -> error
-  end,
-  {ok, Path, LocalPath}.
-  
+      slugger:get(Node, RemotePath, LocalPath),
+      {ok, Node, LocalPath};
+    E -> E
+  end.
+
+% Look on the node and see if it has the 
 find_bee_on_storage_nodes(_, []) -> {error, not_found};
 find_bee_on_storage_nodes(Name, [Node|Rest]) ->
   case rpc:call(Node, ?STORAGE_SRV, has_squashed_repos, [Name]) of
@@ -218,22 +237,33 @@ find_bee_on_storage_nodes(Name, [Node|Rest]) ->
     Path -> {ok, Node, Path}
   end.
 
+% Mount the bee
+mount_bee_from_path(App, ImagePath) ->
+  Proplist = ?TEMPLATE_SHELL_SCRIPT_PARSED("mount-bee", [
+    {"[[APP_NAME]]", App#app.name},
+    {"[[BEE_IMAGE]]", ImagePath}
+  ]),
+  io:format("Mount bee: ~p~n", [Proplist]),
+  case proplists:get_value(path, Proplist) of
+    undefined -> {error, not_mounted};
+    Path ->
+      {ok, Path}
+  end.
+
 % Start a new instance of the application
-internal_start_new_instance(App, Port, AppLauncher, From) ->
-  ?LOG(info, "App ~p", [App]),
-  {ok, Path, LocalPath} = find_and_transfer_bee(App),
-  
+run_application_on_port_in_path(App, Port, AppRootPath, From) ->  
   TemplateCommand = App#app.start_command,  
   RealCmd = string_utils:template_command_string(TemplateCommand, [
                                                         {"[[PORT]]", misc_utils:to_list(Port)}
                                                       ]),
   % START INSTANCE
-  % port_handler:start("thin -R beehive.ru --port 5000 start", "/Users/auser/Development/erlang/mine/router/test/fixtures/apps").
-  ?LOG(info, "Starting on port ~p as with ~p", [Port, RealCmd]),
   process_flag(trap_exit, true),
-  io:format("STarting in path: ~p~n", [Path]),
   
-  Pid = port_handler:start(RealCmd, Path, self(), [nouse_stdio, {packet, 4}]),
+  io:format("new path, ~p~n", [AppRootPath]),
+  AppPath = filename:join([AppRootPath, "home", "app"]),
+  ?LOG(info, "Starting on port ~p as with ~p in ~p", [Port, RealCmd, AppPath]),
+  
+  Pid = port_handler:start(RealCmd, AppPath, self(), [nouse_stdio, {packet, 4}]),
   Host = host:myip(),
   Id = {App#app.name, Host, Port},
   
@@ -242,17 +272,16 @@ internal_start_new_instance(App, Port, AppLauncher, From) ->
     app_name                = App#app.name,
     host                    = Host,
     host_node               = node(self()),
+    path                    = AppPath,
     port                    = Port,
     status                  = pending,
     pid                     = Pid,
     start_time              = date_util:now_to_seconds()
   },
   
-  AppLauncher ! {started_bee, Backend},
-  
+  % Store the app in the local ets table
   ets:insert(?TAB_ID_TO_BEE, {Id, Backend}),
   ets:insert(?TAB_PID_TO_BEE, {Pid, Backend, App, From}),
-  ets:insert(?TAB_NAME_TO_PATH, {App#app.name, Path}),
   
   Backend.
 
