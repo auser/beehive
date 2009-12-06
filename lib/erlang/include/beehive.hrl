@@ -52,6 +52,7 @@
   host,
   host_node,
   port,
+  path,                     % path of app on hostnode
   meta_data,                % meta data on the bee allows for more granualar abstract parameters
                             % should be a tuple, e.g. {ports: 2}
   temp_name,
