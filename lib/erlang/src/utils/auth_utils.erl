@@ -38,14 +38,28 @@ run_if_authorized(F, Emails, Data) ->
 % If the user is defined by the token and the user is an admin, then
 % call the function With the authorized user record
 run_if_admin(F, Data) ->
-  case get_authorized_user(Data) of
-    false -> misc_utils:to_bin("Unauthorized");
-    ReqUser ->
-      case is_admin_user(ReqUser) of
+  case are_there_users() of
+    false ->
+      F([]);
+    true ->
+      case get_authorized_user(Data) of
         false -> misc_utils:to_bin("Unauthorized");
-        true -> F(ReqUser)
+        ReqUser ->
+          case is_admin_user(ReqUser) of
+            false -> misc_utils:to_bin("Unauthorized");
+            true -> F(ReqUser)
+          end
       end
   end.
+
+% Check to make sure there are actually users in the system. If there aren't, 
+% any commands will do
+are_there_users() ->
+  case length(users:all()) of
+    0 -> false;
+    _ -> true
+  end.
+
 
 is_admin_user(User) ->
   User#user.level < ?REGULAR_USER_LEVEL.

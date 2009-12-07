@@ -25,6 +25,7 @@ get(_) ->
 
 post(["new"], Data) ->
   auth_utils:run_if_admin(fun(_) ->
+    io:format("Running... ~p~n", [Data]),
     case users:create(Data) of
       User when is_record(User, user) -> 
         {struct, ?BINIFY([{"user", misc_utils:to_bin(User#user.email)}])};

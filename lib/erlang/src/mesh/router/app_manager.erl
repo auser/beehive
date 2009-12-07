@@ -79,7 +79,7 @@ init([]) ->
   % Try to make sure the pending bees are taken care of by either turning them broken or ready
   % timer:send_interval(timer:seconds(5), {manage_pending_bees}),
   % Run maintenance
-  timer:send_interval(timer:seconds(20), {ping_bees}),
+  % timer:send_interval(timer:seconds(20), {ping_bees}),
   timer:send_interval(timer:minutes(10), {garbage_collection}),
   
   timer:send_interval(timer:minutes(2), {clean_up_apps}),
