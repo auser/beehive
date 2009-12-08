@@ -11,7 +11,7 @@
 -include ("http.hrl").
 -export ([get/1, post/2, put/2, delete/2]).
 
-get(_) -> 
+get([]) -> 
   All = apps:all(),
   {struct, [{
     "apps",
@@ -23,7 +23,8 @@ get(_) ->
 
 post(["new"], Data) ->
   case auth_utils:get_authorized_user(Data) of
-    false -> misc_utils:to_bin("No user defined or invalid token");
+    false -> 
+      {struct, [{"error", misc_utils:to_bin("No user defined or invalid token")}]};
     ReqUser ->
       case apps:create(Data) of
         App when is_record(App, app) -> 
