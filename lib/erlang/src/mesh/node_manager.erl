@@ -341,11 +341,11 @@ get_next_available(Group, Count, M, F, A) ->
   case (catch mesh_util:get_random_pid(Group)) of
     {ok, Pid} ->
       Node = node(Pid),
-      case rpc:call(Node, M, F, A) of
+      case rpc:call(Node, M, F, A, 1000) of
+        {badrpc, _} -> get_next_available(Group, Count - 1, M, F, A);
         true -> Node;
         false -> get_next_available(Group, Count - 1, M, F, A)
       end;
-    {'EXIT', _} -> false;
     {error, _Reason} -> false
   end.
   
