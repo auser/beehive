@@ -4,7 +4,8 @@ cd /tmp
 sudo apt-get update
 sudo apt-get install -y build-essential m4 libssl-dev libncurses5 libncurses5-dev
 sudo apt-get install -y erlang
-sudo apt-get install ruby rubygems ruby-dev -y
+sudo apt-get install -y git git-core
+sudo apt-get install -y squashfs-tools
 sudo apt-get autoremove -y
 
 wget http://www.erlang.org/download/otp_src_R13B03.tar.gz
