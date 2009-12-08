@@ -3,3 +3,6 @@ TODO:
 * Investigate other databases as the distributed DB is not as "crucial" as speed of access (such as couchdb)
 * Clean up generally
 * Add more finely grained ACL
+* Update master mnesia node from seed node and distribute
+* Take a nice long look at the permissions of the chroot environment on the node layer
+* Add sample starting environments
