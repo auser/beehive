@@ -3,11 +3,11 @@
 -compile (export_all).
 
 -define (ADJECTIVES, [
-  "fast", "quick", "clean", "positive", "generous", "silly", "enjoyable", "friendly", "flighty", "handsome"
+  "fast", "quick", "clean", "positive", "generous", "silly", "enjoyable", "friendly", "flighty", "handsome", "hot", "adorable", "cool", "cold", "odd"
 ]).
 
 -define (NOUNS, [
-  "giant", "bee", "queenbee", "sound", "music", "honey", "smile", "balloon", "bird", "wind", "dog", "cat"
+  "giant", "bee", "queenbee", "sound", "music", "honey", "smile", "balloon", "bird", "wind", "dog", "cat", "duck", "moose", "fish", "guitar", "sparrow", "buzz"
 ]).
 
 -define (LETTERS, "abcdefghijklmnopqrstuvwxyz0123456789").
@@ -26,32 +26,54 @@ random_word(List, Length, Acc) ->
 random_word(List) ->
   lists:nth(random:uniform(erlang:length(List)), List).
 
+% Take a proplist and a name of a shell script, replace the
+% variables set in the proplist, write the "new" shell script
+% out and run it, while waiting for it
 shell_fox(Name, Proplist) -> 
   Templated = ?TEMPLATE_SHELL_SCRIPT(Name, Proplist),
   Self = self(),
   Ref = erlang:phash2(make_ref()),
+  Tempfile = filename:join(["/tmp", lists:append([to_list(Ref), ".sh"])]),
+  
+  % Write to the temp file
+  {ok, Fd} = file:open(Tempfile, [write]),
+  file:write(Fd, Templated),
+  file:close(Fd),
+  % Make it executable
+  os:cmd(io_lib:format("chmod 0700 ~s", [Tempfile])),
+  
   spawn(fun() -> 
-      Port = open_port({spawn, Templated}, [exit_status, {cd, file_utils:relative_path("/tmp")}, use_stdio]),
-      wait_for_port(Port, Ref, Self)
+      Port = open_port({spawn, Tempfile}, [exit_status, {cd, file_utils:relative_path("/tmp")}, use_stdio]),
+      wait_for_port(Port, Tempfile, Self, [])
     end),
   receive
-    {ok, Ref, E} -> E
+    {ok, Tempfile, E} -> E
+  after timer:seconds(60) ->
+    {error, timeout}
   end.
 
-wait_for_port(Port, Ref, AppUpdatorPid) ->
+% Wait (up to 60 seconds) for a response from the shell script
+% for a response. Then send the response to the caller
+wait_for_port(Port, Tempfile, AppUpdatorPid, Acc) ->
   receive
     {Port, {data, Info}} ->
-      ListofStrings = case io_lib:char_list(Info) of
-        true -> [Info];
-        false -> Info
+      wait_for_port(Port, Tempfile, AppUpdatorPid, [Info|Acc]);
+    {Port, {exit_status, _}} ->
+      ListofStrings = case io_lib:char_list(Acc) of
+        true -> [Acc];
+        false -> lists:reverse(Acc)
       end,
       Tokens = string:tokens(string:join(ListofStrings, "\n"), "\n"),
       O = lists:flatten(lists:map(fun(List) ->
         element(1, lists:foldr(fun (X,{As,[]}) -> {As,[X]}; (X,{As,[Y]}) ->
           {[{erlang:list_to_atom(X),Y}|As],[]} end, {[],[]},  string:tokens(List, " "))) end, Tokens)),
-      AppUpdatorPid ! {ok, Ref, O};
-    E -> E
+      AppUpdatorPid ! {ok, Tempfile, O},
+      file:delete(Tempfile);
+    E ->
+      file:delete(Tempfile),
+      E
   after timer:seconds(60) ->
+    file:delete(Tempfile),
     ok
   end.
 
@@ -104,9 +126,10 @@ new_or_previous_value(NewProplist, [{K,V}|Rest], Acc) ->
       new_or_previous_value(NewProplist, Rest, [{K, V}|Acc])
   end.
 
-% From rabbitmq
+% name of the local node
 localnode(Name) ->
   list_to_atom(lists:append([atom_to_list(Name), "@", nodehost(node())])).
 
+% Get the name of the local node
 nodehost(Node) ->
   tl(lists:dropwhile(fun (E) -> E =/= $@ end, atom_to_list(Node))).
