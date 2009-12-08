@@ -21,6 +21,7 @@ random( Backends ) ->
   RandNum = random:uniform(length(Backends)),
   lists:nth(RandNum, Backends).
 
+% Get the least loaded bee
 least_loaded(Backends) ->
   ListsOfBees = lists:map(fun(B) ->
     #bee_stat{current = CurrentReq} = case stats_srv:bee_dump(B#bee.id) of

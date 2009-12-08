@@ -11,7 +11,9 @@
 -include ("beehive.hrl").
 
 -export ([
-  init/0, start/0,
+  init/0, 
+  start/0,
+  stop/0,
   write/1,
   delete/2,
   delete_object/1,
@@ -28,6 +30,7 @@
 
 init() -> schema:install().
 start() -> mnesia:start().
+stop() -> mnesia:stop().
 
 already_initialized() ->
   schema:initialized().

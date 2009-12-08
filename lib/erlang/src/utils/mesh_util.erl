@@ -15,6 +15,16 @@
 
 init_db_slave([]) -> ok; % safeguard
 init_db_slave(SeedNode) ->
+  case (catch(add_db_slave(SeedNode))) of
+    {'EXIT', _} ->
+      db:stop(),
+      mnesia:delete_schema([node()]),
+      add_db_slave(SeedNode);
+    _ -> ok
+  end.
+
+% Add an schema node
+add_db_slave(SeedNode) ->
   db:start(),
   mnesia:change_config(extra_db_nodes, [SeedNode]),
   mnesia:change_table_copy_type(schema, node(), disc_copies),

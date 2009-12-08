@@ -121,9 +121,11 @@ handle_call({pull_repos, AppName, Caller}, _From, State) ->
 
 handle_call({build_bee, AppName, Caller}, _From, #state{scratch_disk = ScratchDisk} = State) ->
   App = apps:find_by_name(AppName),
+  {ok, ReposUrl} = handle_repos_lookup(AppName),
   OutFile = lists:append([handle_find_application_location(App, State), ".squashfs"]),
-  io:format("WORKING_DIRECTORY: ~p and APP_NAME: ~p and OutFile: ~p~n", [ScratchDisk, apps:build_on_disk_app_name(App), OutFile]),
-  Proplists = ?TEMPLATE_SHELL_SCRIPT_PARSED("create_bee", [
+  
+  Proplists = ?TEMPLATE_SHELL_SCRIPT_PARSED("create-bee", [
+    {"[[GIT_REPOS]]", ReposUrl},
     {"[[WORKING_DIRECTORY]]", ScratchDisk},
     {"[[APP_NAME]]", apps:build_on_disk_app_name(App)},
     {"[[OUTFILE]]", OutFile}

@@ -44,6 +44,20 @@ The user table stores information about the users associated with the system.
 
 The user_app table stores the mappings between users and their apps
 
+## Configuration
+
+There are multiple methods of configuration. If you are going to configure the router the same way every time, the recommended method is to write a configuration file and pass in the location of the configuration file at the start command with the -c option, like so:
+
+    ./scripts/start_beehive.sh -c "/path/to/configuration/file"
+    
+The configuration file must be in the following format:
+    
+    {parameter_name, value}.
+    
+These are erlang tuples, which is how beehive parses the configuration file. For samples, check out the sample configuration files here: [https://github.com/auser/beehive/tree/master/lib/erlang/config](https://github.com/auser/beehive/tree/master/lib/erlang/config).
+
+All of the available variables that can be overridden can be overridden on the command-line as well. To see all of the available variables, run ./start_beehive.sh with the '-h' switch.
+
 ## Proxy
 
 The proxy can be hot-loaded with new routes simply with a RESTful interface. The name (the routing key), the endpoint host and the port of the bee need to be included. For instance:

@@ -11,7 +11,7 @@
 -include ("http.hrl").
 -export ([get/1, post/2, put/2, delete/2]).
 
-get(_) -> 
+get([]) -> 
   All = apps:all(),
   {struct, [{
     "apps",

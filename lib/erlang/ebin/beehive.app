@@ -9,6 +9,7 @@
   {mod, {beehive, []}},
   {env, [
     {node_type, router},
+    {config_file, undefined},
     {seed, []},
     {user_defined_event_handler, undefined},
     {log_path, undefined}

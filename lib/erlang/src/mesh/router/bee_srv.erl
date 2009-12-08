@@ -42,9 +42,9 @@
 %%%----------------------------------------------------------------------
 
 start_link() ->
-  LocalPort   = config:search_for_application_value(client_port, 8080, local_port),
-  ConnTimeout = config:search_for_application_value(client_port, 120*1000, local_port),
-  ActTimeout  = config:search_for_application_value(client_port, 120*1000, local_port),
+  LocalPort   = config:search_for_application_value(client_port, 8080,     router),
+  ConnTimeout = config:search_for_application_value(client_port, 120*1000, router),
+  ActTimeout  = config:search_for_application_value(client_port, 120*1000, router),
   
   start_link(LocalPort, ConnTimeout, ActTimeout).
   
