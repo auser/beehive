@@ -38,7 +38,11 @@ send(Node, Filename, As) ->
 
 % Get the file from the node and save it
 get(Node, Filename, To) ->
-  rpc:call(Node, ?MODULE, send, [node(), Filename, To]).
+  case rpc:call(Node, ?MODULE, send, [node(), Filename, To]) of
+    {badrpc, _} ->
+      io:format("ERROR SAVING ~p to ~p~n", [Filename, To]);
+    E -> E
+  end.
 
 % Save the file contents to
 save(Contents, To) ->
@@ -49,4 +53,5 @@ save(Contents, To) ->
       filelib:ensure_dir(FullPath),
       FullPath
   end,
+  io:format("in slugger, save to ~p~n", [FullFilePath]),
   prim_file:write_file(FullFilePath, Contents).

@@ -55,6 +55,12 @@ if [ -f $GEM_FILE ]; then
   done
 fi
 
+# Set some fun environment variables here
+echo "
+SUPERMAN='a hero'
+" > $APP_DIR/.bashrc
+
+
 # Make sure this directory doesn't exist
 rm $OUTFILE
 
