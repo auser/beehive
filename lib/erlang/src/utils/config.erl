@@ -14,7 +14,7 @@ search_for_application_value(Param, Default, App) ->
 search_for_application_value_from_config(Param, Default) ->
 	case config:get(Param) of
 		{error, _} -> search_for_application_value_from_environment(Param, Default);
-		V -> V
+		{ok, V} -> V
 	end.
 
 search_for_application_value_from_environment(Param, Default) ->
@@ -30,7 +30,11 @@ search_for_application_value_from_environment(Param, Default) ->
 %% Description: Read the configuration data
 %%--------------------------------------------------------------------
 read() ->
-  case read_1(?CONFIG_FILE) of
+  ConfigFile = case application:get_env(beehive, config_file) of
+    undefined -> ?CONFIG_FILE;
+    {ok, Cf} -> Cf
+  end,
+  case read_1(ConfigFile) of
     {ok, C} -> {ok, C};
     {error, _} -> [];
     Err -> Err

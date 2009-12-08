@@ -11,27 +11,31 @@ fi
 
 print_usage() {
 cat <<EOF
+
 Usage: $progname options
 
-Start beehive
+Start beehive. This will start the different types of servers for the different layers of beehive. Pass the type of the server 
+to start with the '-t' flag. If the server is going to join an existing beehive, make sure you pass the node name of the beehive
+server with the '-s' flag.
 
 OPTIONS
-	-m			Mnesia directory (defaults to ./db)
-	-n 			Name of the erlang process (useful for multiple nodes on the same instance)
-	-r, --rest		Run the rest server (boolean)
-	-a, --additional_path	Additional paths for the beehive runtime
-	-c, --callback_module	Module name of the callback module
-	-q, --bee_picker	Name of the method that contains the bee chooser
-	-s, --seed		Pass in the seed node
-	-l, --log_path		Path of the logs
-	-p, --port		Port to run the router
-	-i, --initial_bees 	Initial bees to start the bee_srv
-	-t, --type		Type of node to start (default: router)
-	-g, --strategy		Strategy to choose a bee. (default: random)
-	-z, --repos_path		Git repos path
-	-d			Daemonize the process
-	-v			Verbose
-	-h, --help		Show this screen
+	-m                                  Mnesia directory (defaults to ./db)
+	-c, --config_file                   Config file
+	-n                                  Name of the erlang process (useful for multiple nodes on the same instance)
+	-r, --run_rest_server               Run the rest server (boolean)
+	-a, --additional_path               Additional paths for the beehive runtime
+	-c, --user_defined_event_handler    Module name of the callback module
+	-q, --bee_picker                    Name of the method that contains the bee chooser
+	-s, --seed                          Pass in the seed node
+	-l, --log_path                      Path of the logs
+	-p, --client_port                   Port to run the router
+	-i, --initial_bees                  Initial bees to start the bee_srv
+	-t, --type                          Type of node to start (default: router)
+	-g, --bee_strategy                  Strategy to choose a bee. (default: random)
+	-z, --git_repos_path                Git repos path
+	-d                                  Daemonize the process
+	-v                                  Verbose
+	-h, --help                          Show this screen
 	
 EOF
 }
@@ -61,8 +65,9 @@ STRATEGY="random"
 PATHS="-pa $PWD/ebin -pa $PWD/include"
 ERL_OPTS="-s reloader"
 
-SHORTOPTS="hm:n:dp:t:g:r:s:vi:a:c:q:l:z:"
-LONGOPTS="help,version,port,type,strategy,rest,seed,mnesia_dir,daemonize,initial_bees,additional_path,callback_module,bee_picker,log_path,repos_path"
+SHORTOPTS="hm:n:dp:t:g:r:s:vi:a:b:q:l:z:c:"
+LONGOPTS="help,version,client_port,type,bee_strategy,run_rest_server,seed,mnesia_dir,daemonize"
+LONGOPTS="$LONGOPTS,initial_bees,additional_path,user_defined_event_handler,bee_picker,log_path,git_repos_path,config"
 
 if $(getopt -T >/dev/null 2>&1) ; [ $? = 4 ] ; then # New longopts getopt.
 	OPTS=$(getopt -o "$SHORTOPTS" --longoptions "$LONGOPTS" -n "$progname" -- "$@")
@@ -95,10 +100,10 @@ while [ $# -gt 0 ]; do
 		-l|--log_path)
 			BEEHIVE_OPTS="$BEEHIVE_OPTS log_path '$2'"
 			shift 2;;
-		-r|--rest)
+		-r|--run_rest_server)
 			ROUTER_OPTS="$BEEHIVE_OPTS run_rest_server $2"
 			shift 2;;
-		-p|--port)
+		-p|--client_port)
 			ROUTER_OPTS="$ROUTER_OPTS client_port $2"
 			shift 2;;
 		-s|--seed)
@@ -112,10 +117,13 @@ while [ $# -gt 0 ]; do
 		-q|--bee_picker)
 			ROUTER_OPTS="$ROUTER_OPTS bee_picker '$2'"
 			shift 2;;
+		-c|--config_file)
+			BEEHIVE_OPTS="$BEEHIVE_OPTS config_file '$2'"
+			shift 2;;
 		-a|--additional_path)
 			PATHS="$PATHS -pa $2"
 			shift 2;;
-		-c|--callback_module)
+		-b|--user_defined_event_handler)
 			ROUTER_OPTS="$BEEHIVE_OPTS user_defined_event_handler $2"
 			shift 2;;
 		-i|--initial_bees)
@@ -124,14 +132,14 @@ while [ $# -gt 0 ]; do
 		-t|--type)
 			TYPE=$2
 			shift 2;;
-    -g|--strategy)
+    -g|--bee_strategy)
 			ROUTER_OPTS="$ROUTER_OPTS bee_strategy '$2'"
       shift 2;;
 		-d|--daemonize)
 			DAEMONIZE_ARGS="-detached -heart"
 			ERL_OPTS=""
 			shift;;
-		-z|--repos_path)
+		-z|--git_repos_path)
 			STORAGE_OPTS="$STORAGE_OPTS git_repos_path '$2'"
 			shift 2;;
 		-v)

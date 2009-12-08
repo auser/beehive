@@ -8,10 +8,10 @@
   {applications, [kernel, stdlib, sasl]},
   {mod, {beehive, []}},
   {env, [
-    {client_port, 8080},
-    {routing_parameter, 'Host'},
-    {run_rest, true},
-    {beehive_app_port, 4999},
+    {client_port, undefined},
+    {routing_parameter, undefined},
+    {run_rest, undefined},
+    {beehive_app_port, undefined},
     {bees, undefined},
     {bee_picker, undefined},
     {bee_strategy, undefined}
