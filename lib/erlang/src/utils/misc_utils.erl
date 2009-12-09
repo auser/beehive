@@ -47,7 +47,7 @@ shell_fox(Name, Proplist) ->
       wait_for_port(Port, Tempfile, Self, [])
     end),
   receive
-    {ok, Tempfile, E} -> E
+    {ok, Tempfile, E, Status} -> {E, Status}
   after timer:seconds(60) ->
     {error, timeout}
   end.
@@ -58,7 +58,7 @@ wait_for_port(Port, Tempfile, AppUpdatorPid, Acc) ->
   receive
     {Port, {data, Info}} ->
       wait_for_port(Port, Tempfile, AppUpdatorPid, [Info|Acc]);
-    {Port, {exit_status, _}} ->
+    {Port, {exit_status, Status}} ->
       ListofStrings = case io_lib:char_list(Acc) of
         true -> [Acc];
         false -> lists:reverse(Acc)
@@ -67,7 +67,7 @@ wait_for_port(Port, Tempfile, AppUpdatorPid, Acc) ->
       O = lists:flatten(lists:map(fun(List) ->
         element(1, lists:foldr(fun (X,{As,[]}) -> {As,[X]}; (X,{As,[Y]}) ->
           {[{erlang:list_to_atom(X),Y}|As],[]} end, {[],[]},  string:tokens(List, " "))) end, Tokens)),
-      AppUpdatorPid ! {ok, Tempfile, O},
+      AppUpdatorPid ! {ok, Tempfile, O, Status},
       file:delete(Tempfile);
     E ->
       file:delete(Tempfile),
