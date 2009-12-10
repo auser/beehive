@@ -48,3 +48,6 @@ $(TEST_EBIN_DIR):
 clean:
 	echo $(TEST_EBIN_DIR)
 	rm -rf $(EBIN)/*.beam $(EBIN)/erl_crash.dump erl_crash.dump $(EBIN)/*.boot $(EBIN)/*.rel $(EBIN)/*.script $(TEST_EBIN_DIR)/*.beam $(EBIN)/$(APP)-*.tar.gz *.log
+
+clean_deps:
+	@(cd deps/mochiweb; $(MAKE) clean)

@@ -68,7 +68,10 @@ find_all_grouped_by_host1(#bee{host=Host} = B, Acc) ->
 create(Backend) when is_record(Backend, bee) -> 
   case db:write(Backend) of
     ok -> {ok, Backend};
-    _ -> {error, did_not_write}
+    {'EXIT',{aborted,{no_exists,_}}} -> {error, database_not_initialized};
+    E ->
+        io:format("Unknown error: ~p~n", [E]),
+      {error, did_not_write}
   end;
 create(NewProps) ->
   create(new(NewProps)).

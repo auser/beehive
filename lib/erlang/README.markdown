@@ -54,7 +54,7 @@ The configuration file must be in the following format:
     
     {parameter_name, value}.
     
-These are erlang tuples, which is how beehive parses the configuration file. For samples, check out the sample configuration files here: [https://github.com/auser/beehive/tree/master/lib/erlang/config](https://github.com/auser/beehive/tree/master/lib/erlang/config).
+These are erlang tuples, which is how beehive parses the configuration file. For samples, check out the sample configuration files here: [http://github.com/auser/beehive/tree/master/lib/erlang/config](http://github.com/auser/beehive/tree/master/lib/erlang/config).
 
 All of the available variables that can be overridden can be overridden on the command-line as well. To see all of the available variables, run ./start_beehive.sh with the '-h' switch.
 

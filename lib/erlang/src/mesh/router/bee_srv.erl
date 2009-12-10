@@ -280,9 +280,13 @@ choose_bee({Hostname, AppMod, RoutingParameter}) ->
       AvailableBackends = lists:filter(fun(B) -> (catch B#bee.status =:= ready) end, Backends),
       case choose_from_bees(AvailableBackends, AppMod, RoutingParameter) of
         ?MUST_WAIT_MSG ->
-          % This might not be appropriate... not sure yet
-          ?NOTIFY({app, request_to_start_new_bee, Hostname}),
-          ?MUST_WAIT_MSG;
+          case apps:exist(Hostname) of
+            false ->
+              {error, unknown_app};
+            true ->
+              ?NOTIFY({app, request_to_start_new_bee, Hostname}),
+              ?MUST_WAIT_MSG
+          end;
         E -> E
       end
   end.
