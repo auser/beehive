@@ -141,7 +141,8 @@ run_controller(Req, ControllerAtom, Meth, Args) ->
     {'EXIT', E} -> 
       ?LOG(error, "(~p:~p) Error in rest server: ~p~n", [?MODULE, ?LINE, E]),
       Req:not_found();
-    Body -> Req:ok({"text/json", ?JSONIFY(Body)})
+    Body -> 
+      Req:ok({"text/json", ?JSONIFY(Body)})
   end.
 
 % Find the method used as a request. 

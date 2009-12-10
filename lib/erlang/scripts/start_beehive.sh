@@ -50,7 +50,7 @@ EOF
 
 # Defaults
 HOSTNAME=`hostname -f`
-MNESIA_DIR="./db"
+MNESIA_DIR="/opt/beehive/db"
 DAEMONIZE_ARGS=""
 
 BEEHIVE_OPTS="-beehive"

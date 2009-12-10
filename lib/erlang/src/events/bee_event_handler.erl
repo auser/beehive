@@ -39,11 +39,13 @@ init([]) ->
 handle_event({bee, create, Bee}, State) when is_record(Bee, bee) ->
   bees:create(Bee),
   {ok, State};
-  
+
+% Caught when a connection has been established to the bee
 handle_event({bee, used, Backend}, State) when is_record(Backend, bee) ->
   stats_srv:bee_stat({request_begin, Backend#bee.id}),
   {ok, State};
-  
+
+% Caught when a connection has disconnected
 handle_event({bee, ready, Bee}, State) when is_record(Bee, bee) ->
   bee_srv:maybe_handle_next_waiting_client(Bee#bee.app_name),
   bees:transactional_update(fun() ->
@@ -52,6 +54,7 @@ handle_event({bee, ready, Bee}, State) when is_record(Bee, bee) ->
   end),
   {ok, State};
 
+% Caught when a bee is marked as down
 handle_event({bee, bee_down, Bee}, State) ->
   bees:transactional_update(fun() ->
     RealBee = bees:find_by_id(Bee#bee.id),
@@ -59,6 +62,7 @@ handle_event({bee, bee_down, Bee}, State) ->
   end),
   {ok, State};
 
+% Caught when a bee is terminated
 handle_event({bee, bee_terminated, Bee}, State) when is_record(Bee, bee) ->
   bees:transactional_update(fun() ->
     RealBee = bees:find_by_id(Bee#bee.id),
@@ -66,6 +70,7 @@ handle_event({bee, bee_terminated, Bee}, State) when is_record(Bee, bee) ->
   end),
   {ok, State};
 
+% Catch a cannot connect error
 handle_event({bee, cannot_connect, Bee}, State) ->
   bees:transactional_update(fun() ->
     RealBee = bees:find_by_id(Bee#bee.id),

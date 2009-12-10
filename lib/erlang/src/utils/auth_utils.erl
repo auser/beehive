@@ -60,6 +60,6 @@ are_there_users() ->
     _ -> true
   end.
 
-
+% Is the user's level that of an admin
 is_admin_user(User) ->
   User#user.level < ?REGULAR_USER_LEVEL.

@@ -131,7 +131,6 @@ handle_call(_Request, _From, State) ->
 %   {noreply, State};
 
 handle_cast({request_to_start_new_bee, Name}, State) ->
-  io:format("handle cast: request_to_start_new_bee ~p~n", [Name]),
   Backends = bees:find_all_by_name(Name),
   % Don't start a new bee if there is a pending one
   PendingBackends = lists:filter(fun(B) -> B#bee.status =:= pending end, Backends),
