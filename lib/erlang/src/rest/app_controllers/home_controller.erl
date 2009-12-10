@@ -12,6 +12,9 @@
 
 get(_) -> 
   {struct, [{"beehive", <<"app, node, bees, stats">>}]}.
-post(_Path, _Data) -> "unhandled".
-put(_Path, _Data) -> "unhandled".
-delete(_Path, _Data) -> "unhandled".
+post(_Path, _Data) -> error("unhandled").
+put(_Path, _Data) -> error("unhandled").
+delete(_Path, _Data) -> error("unhandled").
+
+error(Msg) ->
+  {struct, [{error, misc_utils:to_bin(Msg)}]}.

@@ -22,7 +22,7 @@ OPTIONS
 	-m                                  Mnesia directory (defaults to ./db)
 	-c, --config_file                   Config file
 	-n                                  Name of the erlang process (useful for multiple nodes on the same instance)
-	-r, --run_rest_server               Run the rest server (boolean)
+	-r, --routing_parameter             Route on the routing parameter (defaults to 'Host')
 	-a, --additional_path               Additional paths for the beehive runtime
 	-c, --user_defined_event_handler    Module name of the callback module
 	-q, --bee_picker                    Name of the method that contains the bee chooser
@@ -66,7 +66,7 @@ PATHS="-pa $PWD/ebin -pa $PWD/include"
 ERL_OPTS="-s reloader"
 
 SHORTOPTS="hm:n:dp:t:g:r:s:vi:a:b:q:l:z:c:"
-LONGOPTS="help,version,client_port,type,bee_strategy,run_rest_server,seed,mnesia_dir,daemonize"
+LONGOPTS="help,version,client_port,type,bee_strategy,routing_parameter,seed,mnesia_dir,daemonize"
 LONGOPTS="$LONGOPTS,initial_bees,additional_path,user_defined_event_handler,bee_picker,log_path,git_repos_path,config"
 
 if $(getopt -T >/dev/null 2>&1) ; [ $? = 4 ] ; then # New longopts getopt.
@@ -100,8 +100,8 @@ while [ $# -gt 0 ]; do
 		-l|--log_path)
 			BEEHIVE_OPTS="$BEEHIVE_OPTS log_path '$2'"
 			shift 2;;
-		-r|--run_rest_server)
-			ROUTER_OPTS="$BEEHIVE_OPTS run_rest_server $2"
+		-r|--routing_parameter)
+			ROUTER_OPTS="$ROUTER_OPTS routing_parameter '$2'"
 			shift 2;;
 		-p|--client_port)
 			ROUTER_OPTS="$ROUTER_OPTS client_port $2"

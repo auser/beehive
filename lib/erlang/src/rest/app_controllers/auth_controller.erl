@@ -16,6 +16,7 @@ get(_) ->
   {struct, [{"beehive", <<"app, node, bees, stats">>}]}.
 
 post([], Data) ->
+  io:format("Data: ~p~n", [Data]),
   case proplists:is_defined(email, Data) of
     false -> error("No email in auth request");
     true ->
@@ -39,4 +40,4 @@ put(_Path, _Data) -> "unhandled".
 delete(_Path, _Data) -> "unhandled".
 
 error(Msg) ->
-  misc_utils:to_bin(Msg).
+  {struct, [{error, misc_utils:to_bin(Msg)}]}.

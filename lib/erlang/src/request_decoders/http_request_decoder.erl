@@ -77,6 +77,7 @@ headers_to_list(Headers) ->
 
 % HTTP
 % We strip off the port, just in case
+parse_subdomain(undefined) -> base;
 parse_subdomain(HostName) ->
   [NoPortHostname|_] = string:tokens(HostName, ":"),
   O = string:tokens(NoPortHostname, "."),
