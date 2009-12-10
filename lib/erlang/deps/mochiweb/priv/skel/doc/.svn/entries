@@ -1,7 +1,7 @@
-8
+10
 
 dir
-104
+113
 http://mochiweb.googlecode.com/svn/trunk/priv/skel/doc
 http://mochiweb.googlecode.com/svn
 
@@ -12,7 +12,7 @@ http://mochiweb.googlecode.com/svn
 bob.ippolito
 
 
-svn:special svn:externals svn:needs-lock
+
 
 
 

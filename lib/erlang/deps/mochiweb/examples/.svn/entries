@@ -2,13 +2,13 @@
 
 dir
 113
-http://mochiweb.googlecode.com/svn/trunk/priv/skel/deps
+http://mochiweb.googlecode.com/svn/trunk/examples
 http://mochiweb.googlecode.com/svn
 
 
 
-2007-12-07T08:01:25.065212Z
-30
+2009-09-28T07:10:40.337458Z
+107
 bob.ippolito
 
 
@@ -25,4 +25,7 @@ bob.ippolito
 
 
 583d1f64-3c3e-0410-8459-0f15fcd77d59
+
+keepalive
+dir
 
