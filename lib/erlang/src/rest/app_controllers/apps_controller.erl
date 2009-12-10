@@ -44,6 +44,16 @@ post([Name, "restart"], _Data) ->
     
 post(_Path, _Data) -> "unhandled".
 put(_Path, _Data) -> "unhandled".
+
+delete([Name], _Data) ->
+  case apps:delete(Name) of
+    ok -> 
+      Message = misc_utils:to_bin(lists:append(["Deleted app ", Name])),
+      {struct, [{"message", Message}]};
+    _ -> 
+      {struct, [{"error", misc_utils:to_bin("There was an error deleting the application")}]}
+  end;
+
 delete(_Path, _Data) -> "unhandled".
 
 % Internal
