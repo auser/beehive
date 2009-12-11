@@ -53,6 +53,7 @@ create(App) when is_record(App, app) ->
       end,
       {ok, App};
     {'EXIT',{aborted,{no_exists,_}}} -> 
+      ?NOTIFY({db, database_not_initialized, app}),
       {error, database_not_initialized};
     E ->
       io:format("Unknown error: ~p~n", [E]),
