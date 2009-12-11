@@ -51,8 +51,8 @@ exist(Name) ->
 % Insert a new user
 create(User) when is_record(User, user) ->
   case db:write(User) of
-    {'EXIT', {aborted, {no_exists, user}}} -> false;
-    {'EXIT', _} -> false;
+    {'EXIT', {aborted, {no_exists, user}}} -> no_exists;
+    {'EXIT', _} -> unknown_error;
     _ -> 
       case exist(User#user.email) of
         true -> ?NOTIFY({user, updated, User});
