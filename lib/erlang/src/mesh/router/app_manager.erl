@@ -403,6 +403,6 @@ start_new_instance_by_name(Name) ->
       end
   end.
 % Start with the app_launcher_fsm
-spawn_to_start_new_instance(App, Host) when is_record(App, launching_app_state) ->
+spawn_to_start_new_instance(App, Host) when is_record(App, app) ->
   {ok, P} = app_launcher_fsm:start_link(App, Host),
   app_launcher_fsm:launch(P, self()).
