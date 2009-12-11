@@ -24,6 +24,15 @@ module Beehive
           password: #{password}
         EOE
       end
+      
+      def new_app
+        r = post("apps/new", {  "name" => name,
+                                "start_command" => start_command,
+                                "stop_command" => stop_command,
+                                "path" => path,
+                                "token" => @token })
+        raise r["error"] if r["error"]
+      end
             
     end
     

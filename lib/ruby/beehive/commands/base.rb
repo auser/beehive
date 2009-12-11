@@ -1,4 +1,11 @@
+Dir.glob(File.join(File.dirname(__FILE__), "..", "vendor", "gems", "*", "lib")).each do |lib|
+  $LOAD_PATH.unshift(File.expand_path(lib))
+end
+
+require 'rest_client'
 require "yaml"
+require "json"
+
 module Beehive
   module Command
     
@@ -63,6 +70,31 @@ module Beehive
       
       def host
         @host ||= config["host"]
+      end
+      
+      # REST Methods
+      def get(url)
+        r = RestClient.get("http://#{host}/#{url}")
+        JSON.parse(r)
+      end
+      
+      def post(url, params={})
+        r = RestClient.post("http://#{host}/#{url}", params.to_json)
+        JSON.parse(r)
+      end
+      
+      def put(url)
+        
+      end
+      
+      def delete(url)
+        
+      end
+      
+      def get_token
+        creds = {"email" => user, "password" => password}
+        r = post("auth", creds)
+        raise r["error"] unless @token = r["token"]
       end
       
       private
