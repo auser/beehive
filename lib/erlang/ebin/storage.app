@@ -10,9 +10,9 @@
   {env, [
     {git_port, undefined},
     {git_repos_path, undefined},
-    {git_store, offsite},
-    {squashed_storage, "./squashed"},
-    {scratch_disk, "/opt/beehive/squashed"}
+    {git_store, undefined},
+    {squashed_storage, "/opt/beehive/squashed"},
+    {scratch_disk, "/opt/beehive/tmp"}
   ]}
  ]
 }.

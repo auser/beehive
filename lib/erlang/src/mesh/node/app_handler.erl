@@ -108,7 +108,6 @@ handle_call({start_new_instance, App, AppLauncher, From}, _From, #state{
     [] -> ?STARTING_PORT;
     [P|_] -> P
   end,
-  ?LOG(info, "internal_start_new_instance(~p, ~p, ~p)", [App, Port, From]),
   Bee = internal_start_new_instance(App, Port, AppLauncher, From),
   NewAvailablePorts = lists:delete(Port, AvailablePorts),
   {reply, ok, State#state{
@@ -197,10 +196,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 % Start new instance
 internal_start_new_instance(App, Port, AppLauncher, From) ->
-  io:format("internal_start_new_instance: ~p, ~p, ~p, ~p~n", [App, Port, AppLauncher, From]),
   case find_and_transfer_bee(App) of
     {ok, Node, LocalPath} ->
-      io:format("find_and_transfer_bee: ~p, ~p~n", [Node, LocalPath]),
       case mount_bee_from_path(App, LocalPath) of
         {ok, Path} ->
           io:format("Starting bee in: ~p~n", [Path]),
@@ -222,7 +219,7 @@ find_and_transfer_bee(App) ->
   Nodes = lists:map(fun(N) -> node(N) end, node_manager:get_storage()),
   Path = next_free_honeycomb(App),
   LocalPath = filename:join([filename:absname(""), lists:append([Path, "/", "app.squashfs"])]),
-  case find_bee_on_storage_nodes(App#app.name, Nodes) of
+  case find_bee_on_storage_nodes(App, Nodes) of
     {ok, Node, RemotePath} ->
       slugger:get(Node, RemotePath, LocalPath),
       {ok, Node, LocalPath};
@@ -230,15 +227,20 @@ find_and_transfer_bee(App) ->
   end.
 
 % Look on the node and see if it has the 
-find_bee_on_storage_nodes(_, []) -> {error, not_found};
-find_bee_on_storage_nodes(Name, [Node|Rest]) ->
-  case rpc:call(Node, ?STORAGE_SRV, has_squashed_repos, [Name]) of
-    false -> find_bee_on_storage_nodes(Name, Rest);
+find_bee_on_storage_nodes(App, []) -> 
+  % ?NOTIFY({app, app_not_squashed, Name}),
+  {ok, P} = app_updater_fsm:start_link(App),
+  app_updater_fsm:go(P, self()),
+  {error, not_found};
+find_bee_on_storage_nodes(App, [Node|Rest]) ->
+  case rpc:call(Node, ?STORAGE_SRV, has_squashed_repos, [App#app.name]) of
+    false -> find_bee_on_storage_nodes(App, Rest);
     Path -> {ok, Node, Path}
   end.
 
 % Mount the bee
 mount_bee_from_path(App, ImagePath) ->
+  io:format("mount_bee_from_path(~p, ~p)~n", [App#app.name, ImagePath]),
   {Proplist, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("mount-bee", [
     {"[[APP_NAME]]", App#app.name},
     {"[[BEE_IMAGE]]", ImagePath}

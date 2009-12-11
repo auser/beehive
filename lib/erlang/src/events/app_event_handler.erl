@@ -42,7 +42,13 @@ handle_event({app, updated, App}, State) ->
   node_manager:request_to_terminate_all_bees(App#app.name),
   {ok, State};
 
+% Fired when the squashed app has not been found
+handle_event({app, app_not_squashed, Name}, State) ->
+  ?LOG(info, "app_not_squashed yet: ~p", [Name]),
+  {ok, State};
+
 handle_event({app, request_to_start_new_bee, Hostname}, State) ->
+  ?LOG(info, "request_to_start_new_bee: ~p~n", [Hostname]),
   app_manager:request_to_start_new_bee(Hostname),
   {ok, State};
   
