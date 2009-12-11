@@ -30,17 +30,8 @@ random_word(List) ->
 % variables set in the proplist, write the "new" shell script
 % out and run it, while waiting for it
 shell_fox(Name, Proplist) -> 
-  Templated = ?TEMPLATE_SHELL_SCRIPT(Name, Proplist),
+  Tempfile = create_templated_tempfile(Name, Proplist),
   Self = self(),
-  Ref = erlang:phash2(make_ref()),
-  Tempfile = filename:join(["/tmp", lists:append([to_list(Ref), ".sh"])]),
-  
-  % Write to the temp file
-  {ok, Fd} = file:open(Tempfile, [write]),
-  file:write(Fd, Templated),
-  file:close(Fd),
-  % Make it executable
-  os:cmd(io_lib:format("chmod 0700 ~s", [Tempfile])),
   
   spawn(fun() -> 
       Port = open_port({spawn, Tempfile}, [exit_status, {cd, file_utils:relative_path("/tmp")}, use_stdio]),
@@ -51,6 +42,23 @@ shell_fox(Name, Proplist) ->
   after timer:seconds(60) ->
     {error, timeout}
   end.
+
+% create a temp file templated with the proplist
+% This creates a unique
+create_templated_tempfile(Name, Proplist) -> create_templated_tempfile(Name, "/tmp", Proplist).
+create_templated_tempfile(Name, Dest, Proplist) ->
+  Templated = ?TEMPLATE_SHELL_SCRIPT(Name, Proplist),
+  Ref = erlang:phash2(make_ref()),
+  Tempfile = filename:join([Dest, lists:append([to_list(Ref), ".sh"])]),
+  
+  % Write to the temp file
+  {ok, Fd} = file:open(Tempfile, [write]),
+  file:write(Fd, Templated),
+  file:close(Fd),
+  % Make it executable
+  os:cmd(io_lib:format("chmod 0700 ~s", [Tempfile])),
+  Tempfile.
+  
 
 % Wait (up to 60 seconds) for a response from the shell script
 % for a response. Then send the response to the caller
