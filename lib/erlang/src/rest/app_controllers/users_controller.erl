@@ -28,7 +28,9 @@ post(["new"], Data) ->
     case users:create(Data) of
       User when is_record(User, user) -> 
         {struct, ?BINIFY([{"user", misc_utils:to_bin(User#user.email)}])};
-      _ -> "There was an error adding bee\n"
+      E -> 
+        io:format("Error: ~p~n", [E]),
+        error("There was an error adding bee")
     end
   end, Data);
       
@@ -45,3 +47,6 @@ delete([], Data) ->
     end
   end, Data);
 delete(_Path, _Data) -> "unhandled".
+
+error(Msg) ->
+  {struct, [{error, misc_utils:to_bin(Msg)}]}.
