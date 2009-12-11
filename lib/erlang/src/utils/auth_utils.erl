@@ -26,12 +26,16 @@ get_authorized_user(Data) ->
 % found and their email is in the list of given emails
 % otherwise chuck out as unauthorized
 run_if_authorized(F, Emails, Data) ->
-  case get_authorized_user(Data) of
-    false -> misc_utils:to_bin("No user defined or invalid token");
-    ReqUser ->
-      case lists:member(ReqUser#user.email, Emails) of
-        false -> misc_utils:to_bin("Unauthorized user");
-        true -> F(ReqUser)
+  case are_there_users() of
+    false -> F([]);
+    true ->
+      case get_authorized_user(Data) of
+        false -> error("No user defined or invalid token");
+        ReqUser ->
+          case lists:member(ReqUser#user.email, Emails) of
+            false -> error("Unauthorized user");
+            true -> F(ReqUser)
+          end
       end
   end.
 
@@ -43,10 +47,10 @@ run_if_admin(F, Data) ->
       F([]);
     true ->
       case get_authorized_user(Data) of
-        false -> misc_utils:to_bin("Unauthorized");
+        false -> error("Unauthorized");
         ReqUser ->
           case is_admin_user(ReqUser) of
-            false -> misc_utils:to_bin("Unauthorized");
+            false -> error("Unauthorized");
             true -> F(ReqUser)
           end
       end
@@ -63,3 +67,6 @@ are_there_users() ->
 % Is the user's level that of an admin
 is_admin_user(User) ->
   User#user.level < ?REGULAR_USER_LEVEL.
+
+error(Msg) ->
+  {struct, [{error, misc_utils:to_bin(Msg)}]}.

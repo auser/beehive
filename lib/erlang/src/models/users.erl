@@ -50,12 +50,17 @@ exist(Name) ->
 
 % Insert a new user
 create(User) when is_record(User, user) ->
-  case exist(User#user.email) of
-    true -> ?NOTIFY({user, updated, User});
-    false -> ?NOTIFY({user, created, User})
-  end,
-  db:write(User),
-  User;
+  case db:write(User) of
+    {'EXIT', {aborted, {no_exists, user}}} -> false;
+    {'EXIT', _} -> false;
+    _ -> 
+      case exist(User#user.email) of
+        true -> ?NOTIFY({user, updated, User});
+        false -> ?NOTIFY({user, created, User})
+      end,
+      User
+  end;
+  
 create(NewProps) ->
   create(new(NewProps)).
 

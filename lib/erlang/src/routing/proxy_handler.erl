@@ -17,13 +17,14 @@
 ]).
 
 -record(state, {
-  subdomain,        % subdomain of the app to look for
-  bee,              % Backend
-  request,          % client request
-  start_time,       % time proxy started
-  client_socket,    % client socket
-  server_socket,    % server socket
-  timeout           % timeout
+  subdomain,            % subdomain of the app to look for
+  bee,                  % Backend
+  request,              % client request
+  start_time,           % time proxy started
+  client_socket,        % client socket
+  server_socket,        % server socket
+  should_close = false, % Is the socket due to close
+  timeout               % timeout
 }).
 
 % Start the proxy by spawning off an init with the socket.
@@ -114,7 +115,7 @@ engage_bee(ClientSock, _RequestPid, Hostname, _ForwardReq, _Req, Else) ->
   ).
 
 % Handle all the proxy functions here
-proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
+proxy_loop(#state{client_socket = CSock, server_socket = SSock, should_close = _ShouldClose} = State) ->
   receive
 	  {tcp, CSock, Data} ->
       % Received data from the client
@@ -124,6 +125,9 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
       % Received info from the server
       gen_tcp:send(CSock, Data),
       inet:setopts(SSock, [{active, once}]),
+      proxy_loop(State);
+    {client_socket_closed, CSock} ->
+      gen_tcp:close(CSock),
       proxy_loop(State);
     {tcp_closed, CSock} ->
   	  terminate(normal, State);
@@ -177,5 +181,5 @@ handle_streaming_data(ClientSock, Req, From, Timeout) ->
       From ! {tcp, ClientSock, D},
       handle_streaming_data(ClientSock, Req, From, Timeout);
     {error, _Error} ->
-      From ! {tcp_closed, ClientSock}
+      From ! {client_socket_closed, ClientSock}
   end.

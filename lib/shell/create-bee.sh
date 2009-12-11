@@ -56,7 +56,7 @@ rm -rf $GIT_REPOS_DIR/.git
 GEM_FILE=$GIT_REPOS_DIR/.gems
 if [ -f $GEM_FILE ]; then
   for line in $(cat $1/.gems); do
-    gem install $line --no-ri --no-rdoc; 
+    gem install $line --no-ri --no-rdoc;
   done
 fi
 echo "installed gems"

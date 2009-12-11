@@ -16,7 +16,6 @@ get(_) ->
   {struct, [{"beehive", <<"app, node, bees, stats">>}]}.
 
 post([], Data) ->
-  io:format("Data: ~p~n", [Data]),
   case proplists:is_defined(email, Data) of
     false -> error("No email in auth request");
     true ->
