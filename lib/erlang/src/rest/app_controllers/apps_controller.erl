@@ -27,7 +27,7 @@ post(["new"], Data) ->
       {struct, [{"error", misc_utils:to_bin("No user defined or invalid token")}]};
     ReqUser ->
       case apps:create(Data) of
-        App when is_record(App, app) -> 
+        {ok, App} when is_record(App, app) -> 
           user_apps:create(ReqUser, App),
           {struct, ?BINIFY([{"app", misc_utils:to_bin(App#app.name)}])};
         _ -> "There was an error adding bee\n"

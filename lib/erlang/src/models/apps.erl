@@ -44,12 +44,20 @@ exist(Name) ->
 
 % Insert a new app
 create(App) when is_record(App, app) ->
-  case exist(App#app.name) of
-    true -> ?NOTIFY({app, updated, App});
-    false -> ?NOTIFY({app, created, App})
-  end,
-  save(App),
-  App;
+
+  case db:write(App) of
+    ok -> 
+      case exist(App#app.name) of
+        true -> ?NOTIFY({app, updated, App});
+        false -> ?NOTIFY({app, created, App})
+      end,
+      {ok, App};
+    {'EXIT',{aborted,{no_exists,_}}} -> 
+      {error, database_not_initialized};
+    E ->
+      io:format("Unknown error: ~p~n", [E]),
+      {error, did_not_write}
+  end;
 create(NewProps) ->
   create(new(NewProps)).
 
