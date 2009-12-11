@@ -9,7 +9,7 @@
 -define (RUN_INSTANCE_TIME_PERIOD, 3600).
 
 % Max bees available on every host
--define (MAX_BACKENDS_PER_HOST, 3).
+-define (MAX_BACKENDS_PER_HOST, 100).
 
 % Get the fields of a record into a proplist
 -define(rec_info(T,R),lists:zip(record_info(fields,T),tl(tuple_to_list(R)))). 
