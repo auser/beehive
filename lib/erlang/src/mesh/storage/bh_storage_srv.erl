@@ -102,7 +102,7 @@ handle_call({pull_repos, AppName, Caller}, _From, State) ->
     {ok, ReposUrl} -> 
       App = apps:find_by_name(AppName), % YES, I know this needs to be optminized
       TempName = lists:append([handle_find_application_location(App, State), "/home/app"]),
-      Proplists = ?TEMPLATE_SHELL_SCRIPT_PARSED("pull-git-repos", [
+      {Proplists, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("pull-git-repos", [
         {"[[GIT_REPOS]]", ReposUrl},
         {"[[DESTINATION]]", TempName}
       ]),
@@ -124,7 +124,7 @@ handle_call({build_bee, AppName, Caller}, _From, #state{scratch_disk = ScratchDi
   {ok, ReposUrl} = handle_repos_lookup(AppName),
   OutFile = lists:append([handle_find_application_location(App, State), ".squashfs"]),
   
-  Proplists = ?TEMPLATE_SHELL_SCRIPT_PARSED("create-bee", [
+  {Proplists, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("create-bee", [
     {"[[GIT_REPOS]]", ReposUrl},
     {"[[WORKING_DIRECTORY]]", ScratchDisk},
     {"[[APP_NAME]]", apps:build_on_disk_app_name(App)},

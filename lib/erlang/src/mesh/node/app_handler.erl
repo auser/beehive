@@ -239,7 +239,7 @@ find_bee_on_storage_nodes(Name, [Node|Rest]) ->
 
 % Mount the bee
 mount_bee_from_path(App, ImagePath) ->
-  Proplist = ?TEMPLATE_SHELL_SCRIPT_PARSED("mount-bee", [
+  {Proplist, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("mount-bee", [
     {"[[APP_NAME]]", App#app.name},
     {"[[BEE_IMAGE]]", ImagePath}
   ]),
@@ -325,7 +325,7 @@ find_pid_in_pid_table(Port) ->
 next_free_honeycomb(App) ->
   BaseDir = config:search_for_application_value(squashed_storage, "./apps", storage),
   UniqueName = apps:build_on_disk_app_name(App),
-  Proplists = ?TEMPLATE_SHELL_SCRIPT_PARSED("next-free-honeycomb", [
+  {Proplists, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("next-free-honeycomb", [
     {"[[APP_NAME]]", App#app.name},
     {"[[SLOT_DIR]]", md5:hex(UniqueName)},
     {"[[DESTINATION]]", BaseDir}
