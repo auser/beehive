@@ -112,7 +112,7 @@ while [ $# -gt 0 ]; do
 			else
 				SEED="$2@$HOSTNAME"
 			fi
-			BEEHIVE_OPTS="$BEEHIVE_OPTS seed $SEED"
+			BEEHIVE_OPTS="$BEEHIVE_OPTS seed '$SEED'"
 			shift 2;;
 		-q|--bee_picker)
 			ROUTER_OPTS="$ROUTER_OPTS bee_picker '$2'"
