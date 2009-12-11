@@ -254,27 +254,25 @@ mount_bee_from_path(App, ImagePath) ->
 
 % Start a new instance of the application
 run_application_on_port_in_path(App, Port, AppRootPath, From) ->  
-  TemplateCommand = App#app.start_command,  
-  RealCmd = string_utils:template_command_string(TemplateCommand, [
-                                                        {"[[PORT]]", misc_utils:to_list(Port)}
-                                                      ]),
-  % START INSTANCE
-  process_flag(trap_exit, true),
-  
-  io:format("new path, ~p~n", [AppRootPath]),
-  AppPath = filename:join([AppRootPath, "home", "app"]),
-  ?LOG(info, "Starting on port ~p as with ~p in ~p", [Port, RealCmd, AppPath]),
-  
-  Pid = port_handler:start(RealCmd, AppPath, self(), [nouse_stdio, {packet, 4}]),
   Host = host:myip(),
   Id = {App#app.name, Host, Port},
   
-  Backend  = #bee{
+  Tempfile = misc_utils:create_templated_tempfile("start-bee", [
+    {"[[PORT]]", misc_utils:to_list(Port)},
+    {"[[APP_HOME]]", AppRootPath},
+    {"[[APP_NAME]]", App#app.name}
+  ]),
+    
+  RealCmd = lists:append(["/bin/sh ", misc_utils:to_list(Tempfile)]),
+  io:format("RealCmd: ~p~n", [RealCmd]),
+  Pid = port_handler:start(RealCmd, AppRootPath, self(), [nouse_stdio, {packet, 4}]),
+  
+  Bee  = #bee{
     id                      = Id,
     app_name                = App#app.name,
     host                    = Host,
     host_node               = node(self()),
-    path                    = AppPath,
+    path                    = AppRootPath,
     port                    = Port,
     status                  = pending,
     pid                     = Pid,
@@ -282,10 +280,41 @@ run_application_on_port_in_path(App, Port, AppRootPath, From) ->
   },
   
   % Store the app in the local ets table
-  ets:insert(?TAB_ID_TO_BEE, {Id, Backend}),
-  ets:insert(?TAB_PID_TO_BEE, {Pid, Backend, App, From}),
+  ets:insert(?TAB_ID_TO_BEE, {Id, Bee}),
+  ets:insert(?TAB_PID_TO_BEE, {Pid, Bee, App, From}),
+  Bee.
+  % TemplateCommand = App#app.start_command,  
+  % RealCmd = string_utils:template_command_string(TemplateCommand, [
+  %                                                       {"[[PORT]]", misc_utils:to_list(Port)}
+  %                                                     ]),
+  % % START INSTANCE
+  % process_flag(trap_exit, true),
+  % 
+  % io:format("new path, ~p~n", [AppRootPath]),
+  % AppPath = filename:join([AppRootPath, "home", "app"]),
+  % ?LOG(info, "Starting on port ~p as with ~p in ~p", [Port, RealCmd, AppPath]),
+  % 
+  % Pid = port_handler:start(RealCmd, AppPath, self(), [nouse_stdio, {packet, 4}]),
+  % Host = host:myip(),
+  % Id = {App#app.name, Host, Port},
+  % 
+  % Backend  = #bee{
+  %   id                      = Id,
+  %   app_name                = App#app.name,
+  %   host                    = Host,
+  %   host_node               = node(self()),
+  %   path                    = AppPath,
+  %   port                    = Port,
+  %   status                  = pending,
+  %   pid                     = Pid,
+  %   start_time              = date_util:now_to_seconds()
+  % },
+  % 
+  % % Store the app in the local ets table
+  % ets:insert(?TAB_ID_TO_BEE, {Id, Backend}),
+  % ets:insert(?TAB_PID_TO_BEE, {Pid, Backend, App, From}),
   
-  Backend.
+  % Backend.
 
 % kill the instance of the application  
 internal_stop_instance(Backend, App, From) when is_record(App, app) ->
