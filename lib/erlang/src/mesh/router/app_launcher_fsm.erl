@@ -79,6 +79,7 @@ init([App, Host]) ->
 %%--------------------------------------------------------------------
 launching({launch, From}, #state{app = App, host = Host} = State) ->
   Self = self(),
+  io:format("Calling ~p, app_handler:start_new_instance~n", [Host]),
   rpc:call(Host, app_handler, start_new_instance, [App, Self, From]),
   {next_state, launching, State#state{from = From}};
 

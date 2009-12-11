@@ -133,13 +133,13 @@ can_pull_new_app() ->
   gen_server:call(?SERVER, {can_pull_new_app}).
   
 get_next_available_host() ->
-  get_next_available(?NODE_SERVERS, length(get_nodes()), ?APP_HANDLER, can_deploy_new_app, []).
+  get_next_available(?NODE_SERVERS, length(get_nodes())+1, ?APP_HANDLER, can_deploy_new_app, []).
 
 get_next_available_storage() ->
-  get_next_available(?STORAGE_SERVERS, length(get_storage()), ?STORAGE_SRV, can_pull_new_app, []).
+  get_next_available(?STORAGE_SERVERS, length(get_storage())+1, ?STORAGE_SRV, can_pull_new_app, []).
 
 find_application_location(AppName) ->
-  get_next_available(?STORAGE_SRV, length(get_storage()), ?STORAGE_SRV, find_app, [AppName]).  
+  get_next_available(?STORAGE_SRV, length(get_storage())+1, ?STORAGE_SRV, find_app, [AppName]).  
 
 %%====================================================================
 %% gen_server callbacks

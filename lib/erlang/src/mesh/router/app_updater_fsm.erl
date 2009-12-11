@@ -87,18 +87,23 @@ init([AppName])  ->
 %%--------------------------------------------------------------------
 pulling({go, _From}, #bee{app_name = AppName} = Bee) ->
   Node = node_manager:get_next_available_storage(),
-  rpc:call(Node, ?STORAGE_SRV, pull_repos, [AppName, self()]),
-  {next_state, squashing, Bee#bee{storage_node = Node}};
+  case apps:find_by_name(AppName) of
+    App when is_record(App, app) ->
+      % rpc:call(Node, ?STORAGE_SRV, pull_repos, [App, self()]);
+      rpc:call(Node, ?STORAGE_SRV, build_bee, [App, self()]),
+      {next_state, squashing, Bee#bee{storage_node = Node}};
+    _ ->
+      io:format("Error?~n"),
+      {error, no_app, Bee}
+  end;
   
 pulling(Event, Bee) ->
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, pulling]),
   {next_state, pulling, Bee}.
 
-squashing({pulled, Info}, #bee{app_name = Name, storage_node = Node} = Bee) ->
+squashing({pulled, Info}, Bee) ->
   io:format("Info: ~p~n", [Info]),
-  rpc:call(Node, ?STORAGE_SRV, build_bee, [Name, self()]),
-  Sha = proplists:get_value(sha, Info),
-  {next_state, starting, Bee#bee{commit_hash = Sha}};
+  {next_state, starting, Bee};
 
 squashing({error, Code}, Bee) ->
   io:format("Error: ~p~n", [Code]),
@@ -112,6 +117,7 @@ starting({bee_built, Info}, #bee{app_name = AppName} = Bee) ->
   % Strip off the last newline... stupid bash
   BeeSize = proplists:get_value(bee_size, Info),
   DirSize = proplists:get_value(dir_size, Info),
+  Sha = proplists:get_value(sha, Info),
   
   Node = node_manager:get_next_available_host(),
   
@@ -119,7 +125,7 @@ starting({bee_built, Info}, #bee{app_name = AppName} = Bee) ->
   {ok, P} = app_launcher_fsm:start_link(App, Node),
   app_launcher_fsm:launch(P, self()),
   
-  NewBee = Bee#bee{bee_size = BeeSize, dir_size = DirSize, host_node = Node},
+  NewBee = Bee#bee{bee_size = BeeSize, dir_size = DirSize, host_node = Node, commit_hash = Sha},
   {next_state, success, NewBee};
 
 starting(Event, Bee) ->
