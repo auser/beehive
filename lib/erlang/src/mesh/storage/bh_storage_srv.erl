@@ -27,7 +27,8 @@
          terminate/2, code_change/3]).
 
 -record(state, {
-  scratch_disk
+  scratch_disk,
+  squashed_disk
 }).
 
 -define(SERVER, ?MODULE).
@@ -41,10 +42,10 @@
 %% Description: Starts the server
 %%--------------------------------------------------------------------
 pull_repos(AppName, Caller) ->
-  gen_server:call(?SERVER, {pull_repos, AppName, Caller}).
+  gen_server:cast(?SERVER, {pull_repos, AppName, Caller}).
 
 build_bee(AppName, Caller) ->
-  gen_server:call(?SERVER, {build_bee, AppName, Caller}).
+  gen_server:cast(?SERVER, {build_bee, AppName, Caller}).
 
 locate_git_repo(Name) ->
   gen_server:call(?SERVER, {locate_git_repo, Name}).
@@ -81,7 +82,8 @@ init([]) ->
   ets:new(?TAB_NAME_TO_PATH, Opts),
   
   {ok, #state{
-    scratch_disk = config:search_for_application_value(scratch_disk, "/tmp/squashed", storage)
+    scratch_disk = config:search_for_application_value(scratch_disk, "/opt/beehive/tmp", storage),
+    squashed_disk = config:search_for_application_value(squashed_storage, "/opt/beehive/squashed", storage)
   }}.
 
 %%--------------------------------------------------------------------
@@ -95,52 +97,6 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({can_pull_new_app}, _From, State) ->
   {reply, true, State};
-  
-% pull a repos url
-handle_call({pull_repos, AppName, Caller}, _From, State) ->
-  case handle_repos_lookup(AppName) of
-    {ok, ReposUrl} -> 
-      App = apps:find_by_name(AppName), % YES, I know this needs to be optminized
-      TempName = lists:append([handle_find_application_location(App, State), "/home/app"]),
-      {Proplists, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("pull-git-repos", [
-        {"[[GIT_REPOS]]", ReposUrl},
-        {"[[DESTINATION]]", TempName}
-      ]),
-      io:format("Proplists: ~p~n", [Proplists]),
-      Reply = case proplists:is_defined(sha, Proplists) of
-        true -> {pulled, Proplists};
-        false -> {error, "Could not pull git repos"}
-      end,
-      Caller ! Reply,
-      {reply, Reply, State};
-    _Else ->
-      Reply = {error, "Not git url specified"},
-      Caller ! Reply,
-      {reply, Reply, State}
-  end;
-
-handle_call({build_bee, AppName, Caller}, _From, #state{scratch_disk = ScratchDisk} = State) ->
-  App = apps:find_by_name(AppName),
-  {ok, ReposUrl} = handle_repos_lookup(AppName),
-  OutFile = lists:append([handle_find_application_location(App, State), ".squashfs"]),
-  
-  {Proplists, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("create-bee", [
-    {"[[GIT_REPOS]]", ReposUrl},
-    {"[[WORKING_DIRECTORY]]", ScratchDisk},
-    {"[[APP_NAME]]", apps:build_on_disk_app_name(App)},
-    {"[[OUTFILE]]", OutFile}
-  ]),
-  Reply = case proplists:is_defined(bee_size, Proplists) of
-    true -> 
-      Path = proplists:get_value(outdir, Proplists),
-      ets:insert(?TAB_NAME_TO_PATH, {AppName, Path}),
-      {bee_built, Proplists};
-    false -> 
-      {error, "Could not create bee"}
-  end,
-  Caller ! Reply,
-  {reply, Reply, State};
-
 handle_call({locate_git_repo, App}, _From, State) ->
   Reply = handle_repos_lookup(App),
   {reply, Reply, State};
@@ -154,6 +110,50 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
+handle_cast({pull_repos, App, Caller}, State) ->
+  case handle_repos_lookup(App) of
+    {ok, _ReposUrl} -> 
+      % TempName = lists:append([handle_find_application_location(App, State), "/home/app"]),
+      % {Proplists, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("pull-git-repos", [
+      %   {"[[GIT_REPOS]]", ReposUrl},
+      %   {"[[DESTINATION]]", TempName}
+      % ]),
+      % io:format("Proplists: ~p~n", [Proplists]),
+      % Reply = case proplists:is_defined(sha, Proplists) of
+      %   true -> {pulled, Proplists};
+      %   false -> {error, "Could not pull git repos"}
+      % end,
+      Reply = {pulled, []},
+      Caller ! Reply,
+      {noreply, State};
+    _Else ->
+      Reply = {error, "Not git url specified"},
+      Caller ! Reply,
+      {noreply, State}
+  end;
+
+handle_cast({build_bee, App, Caller}, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} = State) ->
+  {ok, ReposUrl} = handle_repos_lookup(App),
+  OutFile = lists:append([handle_find_application_location(App, State), ".squashfs"]),
+  
+  {Proplists, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("create-bee", [
+    {"[[GIT_REPOS]]", ReposUrl},
+    {"[[WORKING_DIRECTORY]]", ScratchDisk},
+    {"[[SQUASHED_DIRECTORY]]", SquashedDisk},
+    {"[[APP_NAME]]", App#app.name},
+    {"[[OUTFILE]]", OutFile}
+  ]),
+  io:format("Proplists: ~p~n", [Proplists]),
+  Reply = case proplists:is_defined(bee_size, Proplists) of
+    true -> 
+      Path = proplists:get_value(outdir, Proplists),
+      ets:insert(?TAB_NAME_TO_PATH, {App, Path}),
+      {bee_built, Proplists};
+    false -> 
+      {error, "Could not create bee"}
+  end,
+  Caller ! Reply,
+  {noreply, State};
 handle_cast(_Msg, State) ->
   {noreply, State}.
 
@@ -195,15 +195,29 @@ handle_repos_lookup(AppName) ->
       {error, not_found}
   end.
 
+handle_offsite_repos_lookup([]) -> false;
 handle_offsite_repos_lookup(App) when is_record(App, app) ->
   App#app.url;
 handle_offsite_repos_lookup(AppName) ->
-  handle_offsite_repos_lookup(apps:find_by_name(AppName)).
+  case apps:find_by_name(AppName) of
+    App when is_record(App, app) -> 
+      handle_offsite_repos_lookup(App);
+    _ -> false
+  end.
 
 handle_lookup_squashed_repos(Name) ->
   case ets:lookup(?TAB_NAME_TO_PATH, Name) of
     [{_Key, Path}] -> Path;
-    _ -> []
+    _ -> 
+      SquashedDir = config:search_for_application_value(squashed_storage, "/opt/beehive/squashed", storage),
+      {ok, Folders} = file:list_dir(SquashedDir),
+      case lists:member(Name, Folders) of
+        true ->
+          Dir = filename:join([SquashedDir, Name]),
+          filename:join([Dir, lists:append([Name, ".squashfs"])]);
+        false ->
+          false
+      end
   end.  
 
 handle_find_application_location(App, #state{scratch_disk = ScratchDisk} = _State) ->
