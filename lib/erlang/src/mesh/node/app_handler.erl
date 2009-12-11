@@ -267,6 +267,7 @@ run_application_on_port_in_path(App, Port, AppRootPath, From) ->
   io:format("RealCmd: ~p~n", [RealCmd]),
   Pid = port_handler:start(RealCmd, AppRootPath, self(), [nouse_stdio, {packet, 4}]),
   
+  io:format("Started port_handler: ~p~n", [Pid]),
   Bee  = #bee{
     id                      = Id,
     app_name                = App#app.name,
@@ -283,54 +284,29 @@ run_application_on_port_in_path(App, Port, AppRootPath, From) ->
   ets:insert(?TAB_ID_TO_BEE, {Id, Bee}),
   ets:insert(?TAB_PID_TO_BEE, {Pid, Bee, App, From}),
   Bee.
-  % TemplateCommand = App#app.start_command,  
-  % RealCmd = string_utils:template_command_string(TemplateCommand, [
-  %                                                       {"[[PORT]]", misc_utils:to_list(Port)}
-  %                                                     ]),
-  % % START INSTANCE
-  % process_flag(trap_exit, true),
-  % 
-  % io:format("new path, ~p~n", [AppRootPath]),
-  % AppPath = filename:join([AppRootPath, "home", "app"]),
-  % ?LOG(info, "Starting on port ~p as with ~p in ~p", [Port, RealCmd, AppPath]),
-  % 
-  % Pid = port_handler:start(RealCmd, AppPath, self(), [nouse_stdio, {packet, 4}]),
-  % Host = host:myip(),
-  % Id = {App#app.name, Host, Port},
-  % 
-  % Backend  = #bee{
-  %   id                      = Id,
-  %   app_name                = App#app.name,
-  %   host                    = Host,
-  %   host_node               = node(self()),
-  %   path                    = AppPath,
-  %   port                    = Port,
-  %   status                  = pending,
-  %   pid                     = Pid,
-  %   start_time              = date_util:now_to_seconds()
-  % },
-  % 
-  % % Store the app in the local ets table
-  % ets:insert(?TAB_ID_TO_BEE, {Id, Backend}),
-  % ets:insert(?TAB_PID_TO_BEE, {Pid, Backend, App, From}),
-  
-  % Backend.
 
 % kill the instance of the application  
-internal_stop_instance(Backend, App, From) when is_record(App, app) ->
-  RealCmd = string_utils:template_command_string(App#app.stop_command, [
-                                                        {"[[PORT]]", erlang:integer_to_list(Backend#bee.port)}
-                                                      ]),
-
-  Backend#bee.pid ! {stop, RealCmd},
-  os:cmd(RealCmd),
-  case ets:lookup(?TAB_ID_TO_BEE, {App#app.name, Backend#bee.host, Backend#bee.port}) of
-    [{Key, _B}] ->
-      ets:delete(?TAB_PID_TO_BEE, Backend#bee.pid),
-      ets:delete(?TAB_ID_TO_BEE, Key);
-    _ -> true
-  end,
-  From ! {bee_terminated, Backend}.
+internal_stop_instance(Bee, App, From) when is_record(App, app) ->
+  Port = Bee#bee.port,
+  AppRootPath = Bee#bee.path,
+  
+  {Proplist, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("stop-bee", [
+    {"[[PORT]]", misc_utils:to_list(Port)},
+    {"[[APP_HOME]]", AppRootPath},
+    {"[[APP_NAME]]", App#app.name}
+  ]),
+  
+  case proplists:get_value(stopped, Proplist) of
+    undefined -> {error, not_stopped};
+    _Else ->
+      case ets:lookup(?TAB_ID_TO_BEE, {App#app.name, Bee#bee.host, Bee#bee.port}) of
+        [{Key, _B}] ->
+          ets:delete(?TAB_PID_TO_BEE, Bee#bee.pid),
+          ets:delete(?TAB_ID_TO_BEE, Key);
+        _ -> true
+      end,
+      From ! {bee_terminated, Bee}
+  end.
 
 % Handle pid exiting
 handle_pid_exit(Pid, _Code, #state{current_bees = CurrBackends, available_ports = AvailablePorts} = State) ->

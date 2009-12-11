@@ -17,6 +17,7 @@
   start_link/2,
   request_to_terminate_bee/1,
   request_to_terminate_all_bees/1,
+  add_slave_node/1,
   get_host/0, get_seed/0,
   set_seed/1,
   get_routers/0, get_nodes/0, get_storage/0,
@@ -94,7 +95,7 @@ get_host() -> gen_server:call(?SERVER, {get_host}).
 
 join([]) -> ok;
 join(SeedNode) ->
-  case net_adm:ping(SeedNode) of
+  case net_adm:ping(misc_utils:to_atom(SeedNode)) of
     pong -> ok;
     pang -> error
   end.
@@ -141,6 +142,10 @@ get_next_available_storage() ->
 find_application_location(AppName) ->
   get_next_available(?STORAGE_SRV, length(get_storage())+1, ?STORAGE_SRV, find_app, [AppName]).  
 
+add_slave_node(SlaveNode) ->
+  join(SlaveNode),
+  mesh_util:add_db_slave(slave, SlaveNode).
+
 %%====================================================================
 %% gen_server callbacks
 %%====================================================================
@@ -152,18 +157,22 @@ find_application_location(AppName) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([Type, Seed]) ->
+init([Type, SeedList]) ->
   process_flag(trap_exit, true),  
+  
+  Seed = misc_utils:to_atom(SeedList),
   join(Seed),
   
   SlaveDb = case Type of
     router ->
-      case Seed of
+      case SeedList of
         [] -> 
           % Initializing root router
           case db:already_initialized() of
             true -> false;
-            false -> db:init(), false
+            false -> 
+              db:init(), 
+              false
           end;
         _ -> true
       end;
@@ -175,7 +184,7 @@ init([Type, Seed]) ->
   
   case SlaveDb of
     true ->
-      ?LOG(info, "Initializing slave db: ~p", [Seed]),
+      ?LOG(info, "Initializing slave db from seed: ~p", [Seed]),
       mesh_util:init_db_slave(Seed);
     false -> ok
   end,
