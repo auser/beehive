@@ -20,7 +20,9 @@ init_db_slave(SeedNode) ->
       db:stop(),
       mnesia:delete_schema([node()]),
       add_db_slave(SeedNode);
-    _ -> ok
+    E -> 
+      io:format("E: ~p~n", [E]),
+      ok
   end.
 
 % Add an schema node
