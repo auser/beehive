@@ -28,13 +28,14 @@
 
 -record(state, {
   max_bees,             % maximum number of bees on this host
-  available_ports,          % available ports on this node
-  current_bees  = []    % bees hosted on this app_handler
+  available_ports          % available ports on this node
 }).
 -define(SERVER, ?MODULE).
 
 -define (STORAGE_SRV, bh_storage_srv).
+
 -define (TAB_ID_TO_BEE, 'id_to_bee_table').
+-define (TAB_NAME_TO_BEE, 'name_to_bee_table').
 -define (TAB_PID_TO_BEE, 'port_to_bee_table').
 
 %%====================================================================
@@ -56,8 +57,8 @@ can_deploy_new_app() ->
 start_new_instance(App, AppLauncher, From) ->
   gen_server:call(?SERVER, {start_new_instance, App, AppLauncher, From}).
 
-stop_instance(Backend, App, From) ->
-  gen_server:call(?SERVER, {stop_instance, Backend, App, From}).
+stop_instance(Bee, App, From) ->
+  gen_server:call(?SERVER, {stop_instance, Bee, App, From}).
 
 has_app_named(Name) ->
   gen_server:call(?SERVER, {has_app_named, Name}).
@@ -82,6 +83,7 @@ init([]) ->
   Opts = [named_table, set],
   ets:new(?TAB_ID_TO_BEE, Opts),
   ets:new(?TAB_PID_TO_BEE, Opts),
+  ets:new(?TAB_NAME_TO_BEE, Opts),
   
   MaxBackends     = ?MAX_BACKENDS_PER_HOST,
   % set a list of ports that the node can use to deploy applications
@@ -102,35 +104,33 @@ init([]) ->
 %% Description: Handling call messages
 %%-------------------------------------------------------------------- 
 handle_call({start_new_instance, App, AppLauncher, From}, _From, #state{
-                                      current_bees = CurrBackends,
                                       available_ports = AvailablePorts} = State) ->
   Port = case AvailablePorts of
     [] -> ?STARTING_PORT;
     [P|_] -> P
   end,
-  Bee = internal_start_new_instance(App, Port, AppLauncher, From),
+  internal_start_new_instance(App, Port, AppLauncher, From),
   NewAvailablePorts = lists:delete(Port, AvailablePorts),
   {reply, ok, State#state{
-    current_bees = [Bee|CurrBackends], 
     available_ports = NewAvailablePorts
   }};
 
-handle_call({stop_instance, Backend, App, From}, _From, #state{current_bees = CurrBackends, available_ports = AvailablePorts} = State) ->
+handle_call({stop_instance, Backend, App, From}, _From, #state{available_ports = AvailablePorts} = State) ->
   Port = Backend#bee.port,
   internal_stop_instance(Backend, App, From),
-  NewBackends = lists:keydelete(Backend#bee.id, 1, CurrBackends),
   NewAvailablePorts = [Port|AvailablePorts],
-  {reply, ok, State#state{current_bees = NewBackends, available_ports = NewAvailablePorts}};
+  {reply, ok, State#state{available_ports = NewAvailablePorts}};
 
-handle_call({has_app_named, Name}, _From, #state{current_bees = Curr} = State) ->
-  BackendsOfAppNamed = lists:takewhile(fun(Backend) ->
-      Backend#bee.app_name =:= Name
-    end, Curr),
-  Reply = length(BackendsOfAppNamed) =/= 0,
+handle_call({has_app_named, Name}, _From, State) ->
+  Reply = case ets:lookup(?TAB_NAME_TO_BEE, Name) of
+      [{Name, _Bee}] -> true;
+      _ -> false
+    end,
   {reply, Reply, State};
 
 % Check if this node can deploy a new application or not
-handle_call({can_deploy_new_app}, _From, #state{current_bees = Curr, max_bees = Max} = State) ->
+handle_call({can_deploy_new_app}, _From, #state{max_bees = Max} = State) ->
+  Curr = ets:match(?TAB_NAME_TO_BEE, '$1'),
   Reply = (length(Curr) < Max),
   {reply, Reply, State};
 handle_call(_Request, _From, State) ->
@@ -144,16 +144,16 @@ handle_call(_Request, _From, State) ->
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
 % Good spot for optimization
-handle_cast({stop_app, App, From}, #state{current_bees = CurrBackends} = State) ->
-  BackendOfApp = lists:filter(fun(Backend) -> Backend#bee.app_name =:= App#app.name end, CurrBackends),
+handle_cast({stop_app, App, From}, State) ->
+  AppBees = ets:match(?TAB_NAME_TO_BEE, {App#app.name, '_'}),
   
-  lists:map(fun(Backend) ->
-    internal_stop_instance(Backend, App, From)
-  end, BackendOfApp),
+  io:format("AppBees: ~p~n", [AppBees]),
+  lists:map(fun(Bee) ->
+    internal_stop_instance(Bee, App, From)
+  end, AppBees),
   
-  NewBackends = lists:subtract(CurrBackends, BackendOfApp),
-  NewAvailablePorts = lists:map(fun(B) -> B#bee.port end, NewBackends),
-  {noreply, State#state{current_bees = NewBackends, available_ports = NewAvailablePorts}};
+  NewAvailablePorts = lists:map(fun(B) -> B#bee.port end, AppBees),
+  {noreply, State#state{available_ports = NewAvailablePorts}};
   
 handle_cast(_Msg, State) ->
   {noreply, State}.
@@ -167,8 +167,19 @@ handle_cast(_Msg, State) ->
 handle_info({'EXIT', Pid, Reason}, State) ->
   ?LOG(info, "Pid exited: ~p because ~p", [Pid, Reason]),
   {noreply, handle_pid_exit(Pid, Reason, State)};
-handle_info({port_closed, Pid}, State) ->
+handle_info({port_closed, Pid, 0}, State) ->
+  case find_pid_in_pid_table(Pid) of
+    {Pid, Bee, _App, _From} ->
+      ?NOTIFY({bee, cannot_connect, Bee}),
+      ets:delete(?TAB_PID_TO_BEE, Pid),
+      ets:delete(?TAB_ID_TO_BEE, Bee#bee.id);
+    _ -> ok
+  end,
   ?LOG(info, "Port closed: ~p", [Pid]),
+  {noreply, State};
+handle_info({port_exited, Pid, 1}, State) ->
+  Tuple = find_pid_in_pid_table(Pid),
+  ?LOG(info, "Port exited: ~p for ~p", [Pid, Tuple]),
   {noreply, State};
 handle_info(Info, State) ->
   ?LOG(info, "~p caught info: ~p", [?MODULE, Info]),
@@ -218,6 +229,7 @@ internal_start_new_instance(App, Port, AppLauncher, From) ->
 find_and_transfer_bee(App) ->
   Nodes = lists:map(fun(N) -> node(N) end, node_manager:get_storage()),
   Path = next_free_honeycomb(App),
+  io:format("next_free_honeycomb: ~p~n", [Path]),
   LocalPath = filename:join([filename:absname(""), lists:append([Path, "/", "app.squashfs"])]),
   case find_bee_on_storage_nodes(App, Nodes) of
     {ok, Node, RemotePath} ->
@@ -256,16 +268,18 @@ mount_bee_from_path(App, ImagePath) ->
 run_application_on_port_in_path(App, Port, AppRootPath, From) ->  
   Host = host:myip(),
   Id = {App#app.name, Host, Port},
+  StartedAt = date_util:now_to_seconds(),
   
   Tempfile = misc_utils:create_templated_tempfile("start-bee", [
     {"[[PORT]]", misc_utils:to_list(Port)},
     {"[[APP_HOME]]", AppRootPath},
+    {"[[START_TIME]]", StartedAt},
     {"[[APP_NAME]]", App#app.name}
   ]),
     
   RealCmd = lists:append(["/bin/sh ", misc_utils:to_list(Tempfile)]),
   io:format("RealCmd: ~p~n", [RealCmd]),
-  Pid = port_handler:start(RealCmd, AppRootPath, self(), [nouse_stdio, {packet, 4}]),
+  Pid = port_handler:start(RealCmd, AppRootPath, self(), [stderr_to_stdout, {packet, 4}]),
   
   io:format("Started port_handler: ~p~n", [Pid]),
   Bee  = #bee{
@@ -277,47 +291,45 @@ run_application_on_port_in_path(App, Port, AppRootPath, From) ->
     port                    = Port,
     status                  = pending,
     pid                     = Pid,
-    start_time              = date_util:now_to_seconds()
+    start_time              = StartedAt
   },
   
   % Store the app in the local ets table
   ets:insert(?TAB_ID_TO_BEE, {Id, Bee}),
+  ets:insert(?TAB_NAME_TO_BEE, {App#app.name, Bee}),
   ets:insert(?TAB_PID_TO_BEE, {Pid, Bee, App, From}),
   Bee.
 
 % kill the instance of the application  
 internal_stop_instance(Bee, App, From) when is_record(App, app) ->
+  io:format("internal_stop_instance(~p)~n", [Bee]),
   Port = Bee#bee.port,
   AppRootPath = Bee#bee.path,
   
-  {Proplist, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("stop-bee", [
+  {_Proplist, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("stop-bee", [
     {"[[PORT]]", misc_utils:to_list(Port)},
     {"[[APP_HOME]]", AppRootPath},
     {"[[APP_NAME]]", App#app.name}
   ]),
   
-  case proplists:get_value(stopped, Proplist) of
-    undefined -> {error, not_stopped};
-    _Else ->
-      case ets:lookup(?TAB_ID_TO_BEE, {App#app.name, Bee#bee.host, Bee#bee.port}) of
-        [{Key, _B}] ->
-          ets:delete(?TAB_PID_TO_BEE, Bee#bee.pid),
-          ets:delete(?TAB_ID_TO_BEE, Key);
-        _ -> true
-      end,
-      From ! {bee_terminated, Bee}
-  end.
+  case ets:lookup(?TAB_ID_TO_BEE, {App#app.name, Bee#bee.host, Bee#bee.port}) of
+    [{Key, _B}] ->
+      ets:delete(?TAB_NAME_TO_BEE, App#app.name),
+      ets:delete(?TAB_PID_TO_BEE, Bee#bee.pid),
+      ets:delete(?TAB_ID_TO_BEE, Key);
+    _ -> true
+  end,
+  From ! {bee_terminated, Bee}.
 
 % Handle pid exiting
-handle_pid_exit(Pid, _Code, #state{current_bees = CurrBackends, available_ports = AvailablePorts} = State) ->
+handle_pid_exit(Pid, _Code, #state{available_ports = AvailablePorts} = State) ->
   case find_pid_in_pid_table(Pid) of
     false -> 
       State;
     {Bee, App, From} -> 
       NewPorts = lists:delete(Bee#bee.port, AvailablePorts),
-      NewBackends = lists:delete(Bee, CurrBackends),
       internal_stop_instance(Bee, App, From),
-      State#state{available_ports = NewPorts, current_bees = NewBackends}
+      State#state{available_ports = NewPorts}
   end.
 
 % Look up the pid in the ets table
