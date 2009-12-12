@@ -5,4 +5,13 @@ THIN_APP="$GEM_ENV/thin"
 
 echo "thin $THIN_APP"
 cd [[APP_HOME]]
-$THIN_APP -R home/app/config.ru --log tmp/beehive.log --pid tmp/beehive-5001.pid --port [[PORT]] stop
+
+sudo /usr/sbin/chroot [[APP_HOME]] /usr/bin/env -i \
+        HOME=[[APP_HOME]]
+        TERM=$TERM PS1='\u:\w\$ ' \
+        HI="hi" \
+				PATH=$PATH:$GEM_ENV \
+				APP_NAME=[[APP_NAME]] \
+				GEM_PATH=[[APP_HOME]]/.gems:$GEM_PATHS \
+				/bin/bash -c \
+				"thin -R home/app/config.ru --log tmp/[[APP_NAME]].log --pid tmp/[[APP_NAME]]-[[PORT]].pid --port [[PORT]] stop"
