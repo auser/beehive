@@ -119,6 +119,16 @@ while [ $# -gt 0 ]; do
 			shift 2;;
 		-c|--config_file)
 			BEEHIVE_OPTS="$BEEHIVE_OPTS config_file '$2'"
+			# UGLY. maybe fix this up with something better?
+			# We do this so that our config file can define things that we need at the start up time
+			ANAME=$(erl -eval "{ok, C} = file:consult(filename:join([filename:absname(''), '$2'])), case proplists:get_value(name, C) of undefined -> ok; V -> io:format('~s', [V]) end"  -s init stop -noshell)
+			if [ ! -z $ANAME ]; then
+				NAME=$ANAME
+			fi
+			AMNESIA_DIR=$(erl -eval "{ok, C} = file:consult(filename:join([filename:absname(''), '$2'])), case proplists:get_value(mnesia_dir, C) of undefined -> ok; V -> io:format('~s', [V]) end"  -s init stop -noshell)
+			if [ ! -z $AMNESIA_DIR ]; then
+				MNESIA_DIR=$AMNESIA_DIR
+			fi
 			shift 2;;
 		-a|--additional_path)
 			PATHS="$PATHS -pa $2"
