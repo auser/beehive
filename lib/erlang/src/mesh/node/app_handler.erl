@@ -181,6 +181,8 @@ handle_info({port_exited, Pid, 1}, State) ->
   Tuple = find_pid_in_pid_table(Pid),
   ?LOG(info, "Port exited: ~p for ~p", [Pid, Tuple]),
   {noreply, State};
+handle_info({data, _}, State) ->
+  {noreply, State};
 handle_info(Info, State) ->
   ?LOG(info, "~p caught info: ~p", [?MODULE, Info]),
   {noreply, State}.
@@ -241,6 +243,7 @@ find_and_transfer_bee(App) ->
 % Look on the node and see if it has the 
 find_bee_on_storage_nodes(App, []) -> 
   % ?NOTIFY({app, app_not_squashed, Name}),
+  io:format("App not found: ~p~n", [App]),
   {ok, P} = app_updater_fsm:start_link(App),
   app_updater_fsm:go(P, self()),
   {error, not_found};
@@ -276,10 +279,10 @@ run_application_on_port_in_path(App, Port, AppRootPath, From) ->
     {"[[START_TIME]]", StartedAt},
     {"[[APP_NAME]]", App#app.name}
   ]),
-    
+  
   RealCmd = lists:append(["/bin/sh ", misc_utils:to_list(Tempfile)]),
   io:format("RealCmd: ~p~n", [RealCmd]),
-  Pid = port_handler:start(RealCmd, AppRootPath, self(), [stderr_to_stdout, {packet, 4}]),
+  Pid = port_handler:start(RealCmd, AppRootPath, self(), [stderr_to_stdout]), % stderr_to_stdout
   
   io:format("Started port_handler: ~p~n", [Pid]),
   Bee  = #bee{
@@ -304,13 +307,21 @@ run_application_on_port_in_path(App, Port, AppRootPath, From) ->
 internal_stop_instance(Bee, App, From) when is_record(App, app) ->
   io:format("internal_stop_instance(~p)~n", [Bee]),
   Port = Bee#bee.port,
+  Pid = Bee#bee.pid,
   AppRootPath = Bee#bee.path,
+  
+  Pid ! {stop},
   
   {_Proplist, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("stop-bee", [
     {"[[PORT]]", misc_utils:to_list(Port)},
     {"[[APP_HOME]]", AppRootPath},
     {"[[APP_NAME]]", App#app.name}
   ]),
+  
+  % {_AnotherProplist, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("unmount-bee", [
+  %   {"[[APP_HOME]]", AppRootPath},
+  %   {"[[APP_NAME]]", App#app.name}
+  % ]),
   
   case ets:lookup(?TAB_ID_TO_BEE, {App#app.name, Bee#bee.host, Bee#bee.port}) of
     [{Key, _B}] ->

@@ -7,7 +7,6 @@ MOUNT_BASE=$PREFIX/mnt
 APP_NAME=[[APP_NAME]]
 MOUNT_LOCATION=$MOUNT_BASE/$APP_NAME
 LOOP_DEVICE=/dev/$APP_NAME
-MOUNT_FILE=[[BEE_IMAGE]]
 
 # Unmount the device if it's already mounted
 MOUNTED=$(mount | grep $APP_NAME | awk '{a[i++]=$3} END {for (j=i-1; j>=0;) print a[j--] }')

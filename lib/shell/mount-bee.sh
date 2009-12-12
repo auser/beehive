@@ -6,7 +6,7 @@ MOUNT_BASE=$PREFIX/mnt
 # mount a bee!
 APP_NAME=[[APP_NAME]]
 MOUNT_LOCATION=$MOUNT_BASE/$APP_NAME
-LOOP_DEVICE=/dev/$APP_NAME
+LOOP_DEVICE=/dev/loop$APP_NAME
 MOUNT_FILE=[[BEE_IMAGE]]
 
 # Unmount the device if it's already mounted
@@ -17,7 +17,7 @@ done
 sudo umount $LOOP_DEVICE >/dev/null 2>&1
 
 if [ ! -e $LOOP_DEVICE ]; then
-  mknod -m 600 $LOOP_DEVICE b 7 0
+  mknod -m 0600 $LOOP_DEVICE b 7 0
 fi
 
 if [ ! -d $MOUNT_LOCATION ]; then
@@ -35,7 +35,7 @@ else
 fi
 
 # Mount it! loop=$LOOP_DEVICE
-mount $MOUNT_FILE $MOUNT_LOCATION -t squashfs -o ro -o loop
+mount $MOUNT_FILE $MOUNT_LOCATION -t squashfs -o ro -o loop=$LOOP_DEVICE
 
 # Create a tmp directory
 mkdir -p /tmp/$APP_NAME

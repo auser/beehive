@@ -272,16 +272,11 @@ handle_cast({request_to_terminate_all_bees, Name}, State) ->
   end, Nodes),
   {noreply, State};
 
+% Kill a bee, yo
 handle_cast({request_to_terminate_bee, Bee}, State) ->
   App = apps:find_by_name(Bee#bee.app_name),
-  Nodes = lists:map(fun(N) -> node(N) end, get_nodes()),
-  lists:map(fun(Node) ->
-    case rpc:call(Node, ?APP_HANDLER, has_app_named, [Bee#bee.app_name]) of
-      true -> 
-        rpc:call(Node, ?APP_HANDLER, stop_instance, [Bee, App, self()]);
-      false -> ok
-    end
-  end, Nodes),
+  Node = Bee#bee.host_node,
+  rpc:call(Node, ?APP_HANDLER, stop_instance, [Bee, App, self()]),
   {noreply, State};
   
 handle_cast(_Msg, State) ->
@@ -318,6 +313,11 @@ handle_info({stay_connected_to_seed}, #state{seed = SeedNode, type = Type} = Sta
           {noreply, State#state{seed = RespondingSeed}}
       end
   end;
+  
+handle_info({bee_terminated, Bee}, State) ->
+  RealBee = bees:find_by_id(Bee#bee.id),
+  bees:update(RealBee#bee{status = terminated}),
+  {noreply, State};
   
 handle_info(Info, State) ->
   ?LOG(info, "handle_info: ~p ~p", [?MODULE, Info]),

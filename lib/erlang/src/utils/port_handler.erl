@@ -16,9 +16,9 @@ port_loop(Port, Cmd, WorkingDir, From) ->
     {Port, {data, Data}} ->
       From ! {data, Data},
       port_loop(Port, Cmd, WorkingDir, From);
-	  {stop, StopCommand} -> 
-	    _ClosePort = open_port({spawn, StopCommand}, [{packet, 4}, in, {cd, WorkingDir}]),
-      % port_close(Port), port_close(ClosePort),
+	  {stop} -> 
+      port_close(Port),
+      From ! {port_closed, self(), 0},
 	    ok;
 	  {'EXIT',Port,_Reason} -> 
 	    ok;

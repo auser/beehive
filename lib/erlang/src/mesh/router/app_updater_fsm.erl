@@ -121,6 +121,8 @@ starting({bee_built, Info}, #bee{app_name = AppName} = Bee) ->
   
   Node = node_manager:get_next_available_host(),
   
+  io:format("bee_built: ~p~nGoing into app_launcher_fsm on node: ~p~n", [Info, Node]),
+  
   App = apps:find_by_name(AppName),
   {ok, P} = app_launcher_fsm:start_link(App, Node),
   app_launcher_fsm:launch(P, self()),

@@ -1,5 +1,6 @@
 #!/bin/sh
 
+echo "stopped true"
 GEM_ENV=$(gem env | grep "EXECUTABLE DIRECTORY" | awk '{print $4}')
 THIN_APP="$GEM_ENV/thin"
 
