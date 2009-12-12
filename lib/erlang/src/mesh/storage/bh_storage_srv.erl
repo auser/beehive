@@ -143,7 +143,7 @@ handle_cast({build_bee, App, Caller}, #state{scratch_disk = ScratchDisk, squashe
     {"[[APP_NAME]]", App#app.name},
     {"[[OUTFILE]]", OutFile}
   ]),
-  io:format("Proplists: ~p~n", [Proplists]),
+  % io:format("Proplists: ~p~n", [Proplists]),
   Reply = case proplists:is_defined(bee_size, Proplists) of
     true -> 
       Path = proplists:get_value(outdir, Proplists),

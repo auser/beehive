@@ -25,10 +25,10 @@ port_loop(Port, Cmd, WorkingDir, From) ->
 	  {Port, {exit_status, 0}} -> 
       % io:format("Port decided to exit for sane reasons~n"),
       % (catch port_close(Port)),
-	    From ! {port_closed, 0};
+	    From ! {port_closed, self(), 0};
     {Port, {exit_status, Code}} ->
       % io:format("Port decided to exit for some reason: ~p~n", [Code]),
-	    From ! {port_exited, Code};
+	    From ! {port_exited, self(), Code};
 	  Else ->
 	    io:format("Port unknowingly received: ~p~n", [Else]),
 	    port_loop(Port, Cmd, WorkingDir, From)

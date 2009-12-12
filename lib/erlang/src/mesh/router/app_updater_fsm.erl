@@ -91,7 +91,7 @@ pulling({go, _From}, #bee{app_name = AppName} = Bee) ->
     App when is_record(App, app) ->
       % rpc:call(Node, ?STORAGE_SRV, pull_repos, [App, self()]);
       rpc:call(Node, ?STORAGE_SRV, build_bee, [App, self()]),
-      {next_state, squashing, Bee#bee{storage_node = Node}};
+      {next_state, starting, Bee#bee{storage_node = Node}};
     _ ->
       io:format("Error?~n"),
       {error, no_app, Bee}
@@ -101,15 +101,15 @@ pulling(Event, Bee) ->
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, pulling]),
   {next_state, pulling, Bee}.
 
-squashing({pulled, Info}, Bee) ->
-  io:format("Info: ~p~n", [Info]),
+squashing({pulled, _Info}, Bee) ->
   {next_state, starting, Bee};
 
 squashing({error, Code}, Bee) ->
   io:format("Error: ~p~n", [Code]),
   {stop, Code, Bee};
 
-squashing(_Event, Bee) ->
+squashing(Event, Bee) ->
+  io:format("Received: ~p~n", [Event]),
   {next_state, squashing, Bee}.
 
 starting({bee_built, Info}, #bee{app_name = AppName} = Bee) ->
@@ -133,7 +133,6 @@ starting(Event, Bee) ->
   {next_state, launching, Bee}.
 
 success({bee_started_normally, StartedBee}, #bee{app_name = Name} = Bee) ->
-  io:format("bee_started_normally: ~p~n", [Name]),
   case bees:find_all_by_name(Name) of
     [] ->
       bees:save(StartedBee),

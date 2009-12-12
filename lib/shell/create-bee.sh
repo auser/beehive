@@ -26,6 +26,7 @@ mkdir -p $APP_DIR/lib
 mkdir -p $APP_DIR/usr
 mkdir -p $APP_DIR/usr/bin
 mkdir -p $APP_DIR/dev
+mkdir -p $APP_DIR/var
 mkdir -p $APP_DIR/tmp
 mkdir -p $APP_DIR/proc
 

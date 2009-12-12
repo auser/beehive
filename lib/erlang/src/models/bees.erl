@@ -98,7 +98,6 @@ all() ->
 
 % There has got to be a better way?
 is_the_same_as(Bee, Otherbee) ->
-  Bee#bee.app_name == Otherbee#bee.app_name andalso
   Bee#bee.id == Otherbee#bee.id.
 
 % INERNAL

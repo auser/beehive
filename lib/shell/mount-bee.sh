@@ -37,27 +37,24 @@ fi
 # Mount it! loop=$LOOP_DEVICE
 mount $MOUNT_FILE $MOUNT_LOCATION -t squashfs -o ro -o loop
 
+# Create a tmp directory
+mkdir -p /tmp/$APP_NAME
+
 # Bind mount the system
 mount --bind /bin $MOUNT_LOCATION/bin -o ro
 mount --bind /etc $MOUNT_LOCATION/etc -o ro
 mount --bind /usr $MOUNT_LOCATION/usr -o ro
 mount --bind /lib $MOUNT_LOCATION/lib -o ro
 mount --bind /dev $MOUNT_LOCATION/dev -o ro
+mount --bind /var $MOUNT_LOCATION/var -o ro
 mount -t proc /proc $MOUNT_LOCATION/proc
-mount --bind /tmp $MOUNT_LOCATION/tmp -o rw
+mount --bind /tmp/$APP_NAME $MOUNT_LOCATION/tmp -o rw
 # Consider adding logs
 
 # If there is a lib64 directory 
 if [ -d /lib64 ]; then
   sudo mount --bind /lib64 $MOUNT_LOCATION/lib64 -o ro
 fi
-
-sudo /usr/sbin/chroot $MOUNT_LOCATION /usr/bin/env -i \
-         HOME=$MOUNT_LOCATION \
-         TERM=$TERM PS1='\u:\w\$ ' \
-         HI="hi" \
-       	/bin/bash --login -c "echo 'Welcome!'";
-
 
 echo "app_name [[APP_NAME]]"
 echo "path $MOUNT_LOCATION"

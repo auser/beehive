@@ -17,7 +17,9 @@
 ]).
 
 -record(state, {
-  subdomain,            % subdomain of the app to look for
+  routing_key,          % subdomain of the app to look for
+  host,                 % host
+  port,                 % port
   bee,                  % Backend
   request,              % client request
   start_time,           % time proxy started
@@ -57,9 +59,7 @@ proxy_init(ClientSock) ->
 % If the bee cannot be reached, send an alert through the event handler that we could not reach
 % the bee and try to find a new bee
 engage_bee(ClientSock, RequestPid, Hostname, ForwardReq, Req, {ok, #bee{host = Host, port = Port} = Bee}) ->
-  SockOpts = [  binary,
-				        {active, false}
-			       ],
+  SockOpts = [  binary, {active, false}, {packet, 0} ],
   case gen_tcp:connect(Host, Port, SockOpts, ?CONNECT_TIMEOUT) of
     {ok, ServerSock} ->
       ?NOTIFY({bee, used, Bee}),
@@ -77,7 +77,9 @@ engage_bee(ClientSock, RequestPid, Hostname, ForwardReq, Req, {ok, #bee{host = H
                   client_socket = ClientSock, 
                   server_socket = ServerSock, 
                   request = Req,
-                  subdomain = Hostname,
+                  routing_key = Hostname,
+                  host = Host,
+                  port = Port,
                   timeout = Timeout,
                   bee = Bee}
                 );
@@ -127,11 +129,13 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock, should_close = _
       inet:setopts(SSock, [{active, once}]),
       proxy_loop(State);
     {client_socket_closed, CSock} ->
-      gen_tcp:close(CSock),
-      proxy_loop(State);
+      io:format("client_socket_closed: ~p~n", [CSock]),
+      proxy_loop(State#state{should_close = true});
     {tcp_closed, CSock} ->
+      io:format("tcp_closed for client: ~p~n", [CSock]),
   	  terminate(normal, State);
 		{tcp_closed, SSock} ->
+		  io:format("tcp_closed for server: ~p on ~p:~p~n", [CSock, State#state.host, State#state.port]),
   	  terminate(normal, State);
   	{tcp_error, SSock} ->
   	  ?LOG(error, "tcp_error on server: ~p", [SSock]),
