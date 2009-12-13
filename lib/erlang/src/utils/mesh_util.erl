@@ -40,7 +40,7 @@ add_db_slave(slave, SlaveNode) ->
 add_db_slave(seed, SeedNode) ->
   (catch db:start()),
   mnesia:set_master_nodes([SeedNode]),
-  rpc:call(SeedNode, node_manager, add_slave_node, [node()]).
+  rpc:call(SeedNode, ?MODULE, add_db_slave, [slave, node()]).
 
 clean_mnesia_from(SlaveNode) ->
   rpc:call(SlaveNode, db, stop, []),

@@ -173,6 +173,17 @@ if [ $TYPE != 'router' ]; then
 	ROUTER_OPTS="$ROUTER_OPTS run_rest_server false"
 fi
 
+if [ ! -d $MNESIA_DIR ]; then
+	echo "
+--- There was an error ---
+The database directory $MNESIA_DIR does not exist
+Either make the directory manually or specify a different one in a
+config file or at the command-line with the '-m' swtich.
+Exiting...
+	"
+	exit 2
+fi
+
 BEEHIVE_OPTS="$BEEHIVE_OPTS node_type $TYPE "
 
 if [ $TYPE == 'router' ]; then

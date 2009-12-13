@@ -10,7 +10,7 @@
 -module (stats_srv).
 
 -include ("beehive.hrl").
--behaviour(gen_server2).
+-behaviour(gen_server).
 
 %% API
 -export([
