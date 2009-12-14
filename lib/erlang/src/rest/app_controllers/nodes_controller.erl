@@ -11,6 +11,21 @@
 -include ("http.hrl").
 -export ([get/1, post/2, put/2, delete/2]).
 
+get([Name]) ->  
+  {struct, ?BINIFY([
+      {"node", Name},
+      {"cpu", stats_srv:node_dump(cpu, 10)},
+      {"memory", stats_srv:node_dump(mem, 10)}
+    ]
+  )};
+get([Name, RangeList]) ->  
+  Range = misc_utils:to_integer(RangeList),
+  {struct, ?BINIFY([
+      {"node", Name},
+      {"cpu", stats_srv:node_dump(cpu, Range)},
+      {"memory", stats_srv:node_dump(mem, Range)}
+    ]
+  )};
 get(_) -> 
   {struct, [
     {"routers", [format_nodes(fun node_manager:get_routers/0)]},
