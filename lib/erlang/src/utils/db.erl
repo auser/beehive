@@ -25,7 +25,8 @@
   match/1,
   transaction/1,
   table/1,
-  already_initialized/0
+  already_initialized/0,
+  info/1
 ]).
 
 init() -> schema:install().
@@ -34,6 +35,9 @@ stop() -> mnesia:stop().
 
 already_initialized() ->
   schema:initialized().
+
+info(Key) ->
+  mnesia:system_info(Key).
 
 new_id(Key) ->
 	mnesia:dirty_update_counter({counter, Key}, 1).

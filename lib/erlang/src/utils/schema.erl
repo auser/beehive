@@ -26,7 +26,9 @@ initialized() ->
     false
   end.
 
-install() -> install([node()]).
+install() -> 
+  install([node()]).
+  
 remove(Node) ->
   (catch mnesia:stop()),
   mnesia:del_table_copy(app, Node).
@@ -48,15 +50,16 @@ install_app(Nodes) ->
     mnesia:table_info(app, type)
   catch
     exit:_Why ->
-      io:format("Creating table app\n"),
-      mnesia:create_table(app,[
-        {attributes, record_info(fields, app)},
-        {type, set},
-        {disc_copies, Nodes}
-      ]);
-    Error ->
-      io:format("Error creating mnesia table: ~p\n", [Error]),
-      throw(Error)
+      ?LOG(info, "Creating table app", []),
+      case mnesia:create_table(app,[{attributes, record_info(fields, app)}, {type, set}, {disc_copies, Nodes}]) of
+        {aborted, Error} ->
+          ?LOG(error, "There was an error creating the table you requested: ~p", [Error]),
+          erlang:throw({db, could_not_create, app});
+        {atomic, ok} -> ok;
+        E -> 
+          ?LOG(info, "Got else: ~p", [E])
+      end;
+    Error -> throw(Error)
   end.
   
 install_bee(Nodes) ->
@@ -64,15 +67,16 @@ install_bee(Nodes) ->
     mnesia:table_info(bee, type)
   catch
     exit:_Why ->
-      io:format("Creating table bee\n"),
-      mnesia:create_table(bee,[
-        {attributes, record_info(fields, bee)},
-        {type, set},
-        {disc_copies, Nodes}
-      ]);
-    Error ->
-      io:format("Error creating mnesia table: ~p", [Error]),
-      throw(Error)
+      ?LOG(info, "Creating table bee", []),
+      case mnesia:create_table(bee,[{attributes, record_info(fields, bee)},{type, set},{disc_copies, Nodes}]) of
+        {aborted, Error} ->
+          ?LOG(error, "There was an error creating the table you requested: ~p", [Error]),
+          erlang:throw({db, could_not_create, app});
+        {atomic, ok} -> ok;
+        E -> 
+          ?LOG(info, "Got else: ~p", [E])
+      end;
+    Error -> throw(Error)
   end.
 
 install_user(Nodes) ->
@@ -81,20 +85,22 @@ install_user(Nodes) ->
     mnesia:table_info(user_app, type)
   catch
     exit:_Why ->
-      io:format("Creating table user\n"),
-      mnesia:create_table(user,[
-        {attributes, record_info(fields, user)},
-        {type, set},
-        {disc_copies, Nodes}
-      ]),
-      io:format("Creating table user_app\n"),
-      mnesia:create_table(user_app, [
-        {attributes, record_info(fields, user_app)},
-        {type, set},
-        {disc_copies, Nodes}
-      ]),
+      ?LOG(info, "Creating table user", []),
+      case mnesia:create_table(user,[{attributes, record_info(fields, user)},{type, set},{disc_copies, Nodes}]) of
+        {aborted, Error1} ->
+          ?LOG(error, "There was an error creating the table you requested: ~p", [Error1]),
+          erlang:throw({db, could_not_create, app});
+        {atomic, ok} -> ok;
+        E1 -> ?LOG(info, "Got else: ~p", [E1])
+      end,
+      ?LOG(info, "Creating table user_app", []),
+      case mnesia:create_table(user_app, [{attributes, record_info(fields, user_app)},{type, set},{disc_copies, Nodes}]) of
+        {aborted, Error} ->
+          ?LOG(error, "There was an error creating the table you requested: ~p", [Error]),
+          erlang:throw({db, could_not_create, app});
+        {atomic, ok} -> ok;
+        E -> ?LOG(info, "Got else: ~p", [E])
+      end,
       users:add_root_user();
-    Error ->
-      io:format("Error creating mnesia table: ~p", [Error]),
-      throw(Error)
+    Error -> throw(Error)
   end.

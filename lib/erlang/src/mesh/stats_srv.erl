@@ -10,7 +10,7 @@
 -module (stats_srv).
 
 -include ("beehive.hrl").
--behaviour(gen_server2).
+-behaviour(gen_server).
 
 %% API
 -export([
@@ -18,7 +18,12 @@
   bee_dump/0,
   bee_dump/1,
   bee_stat/1,
-  new_bee_stat/0
+  new_bee_stat/0,
+  % Nodes
+  node_stat/1,
+  node_dump/0,
+  node_dump/1,
+  node_dump/2
 ]).
 
 %% gen_server callbacks
@@ -26,6 +31,7 @@
          terminate/2, code_change/3]).
 
 -record(state, {
+  node_stats,   % dict of the node stats
   bee_stats     % dict of the bees and their stats
 }).
 
@@ -41,6 +47,12 @@ bee_stat({socket, Key, SocketVals})  -> gen_server:cast(?SERVER, {bee_stat, sock
 
 bee_dump(Key) -> gen_server:call(?SERVER, {bee_dump, Key}).
 bee_dump()    -> gen_server:call(?SERVER, {bee_dump}).
+
+
+node_stat({node_stat, Key, Value, Time})        -> gen_server:cast(?SERVER, {node_stat, Key, Value, Time}).
+node_dump() -> gen_server:call(?SERVER, {node_dump}).
+node_dump(Key) -> gen_server:call(?SERVER, {node_dump, Key}).
+node_dump(Key, Range) -> gen_server:call(?SERVER, {node_dump, Key, Range}).
 
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
@@ -63,10 +75,15 @@ start_link() ->
 init([]) ->
   process_flag(trap_exit, true),
   
+  application:start(os_mon),
+  
   % Opts = [named_table, ordered_set],
   % ets:new(bee_stat_total, Opts),
   
-  State = #state{ bee_stats = dict:new() },
+  State = #state{
+    node_stats  = dict:new(),
+    bee_stats = dict:new() 
+  },
   
   {ok, State}.
 
@@ -86,7 +103,25 @@ handle_call({bee_dump, Name}, _From, #state{bee_stats = Dict} = State) ->
 handle_call({bee_dump}, _From, #state{bee_stats = Dict} = State) ->
   Dict1 = dict:filter(fun(_,_) -> true end, Dict),
   {reply, dict:to_list(Dict1), State};
+
+handle_call({node_dump}, _From, #state{node_stats = Dict} = State) ->
+  {reply, dict:to_list(Dict), State};
   
+handle_call({node_dump, Key}, _From, #state{node_stats = Dict} = State) ->
+  Reply = case dict:find(Key, Dict) of
+    error -> {};
+    {ok, E} -> E
+  end,
+  {reply, Reply, State};
+
+handle_call({node_dump, Key, Range}, _From, #state{node_stats = Dict} = State) ->
+  StatsList = case dict:find(Key, Dict) of
+    error -> {};
+    {ok, E} -> E
+  end,
+  Reply = lists:sublist(StatsList, Range),
+  {reply, Reply, State};
+
 handle_call(_Request, _From, State) ->
   Reply = ok,
   {reply, Reply, State}.
@@ -137,7 +172,14 @@ handle_cast({bee_stat, socket, Key, SocketVals}, #state{bee_stats = Dict} = Stat
   
   NewDict = dict:store(Key, NewBackendStat, ADict),
   {noreply, State#state{bee_stats = NewDict}};
-  
+
+handle_cast({node_stat, Key, Value, Time}, #state{node_stats = Dict} = State) ->
+  NewDict = case dict:find(Key, Dict) of
+    error -> dict:store(Key, [{Time, Value}], Dict);
+    {ok, CurrentVal} -> dict:store(Key, [{Time, Value}|CurrentVal], Dict)
+  end,
+  {noreply, State#state{node_stats = NewDict}};
+
 handle_cast(_Msg, State) ->
   {noreply, State}.
 

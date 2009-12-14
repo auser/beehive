@@ -7,3 +7,4 @@ TODO:
 * Take a nice long look at the permissions of the chroot environment on the node layer
 * Add sample starting environments
 * Throw error message when db cannot be created
+* Add stats dumping to file

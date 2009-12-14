@@ -17,6 +17,7 @@
 -define(SERVER, ?MODULE).
 -define (EVENT_HANDLERS, [
   log_event_handler, 
+  node_event_handler,
   app_event_handler, 
   proxy_event_handler, 
   bee_event_handler, 

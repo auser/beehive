@@ -48,19 +48,22 @@ start_link(Args) ->
 %% specifications.
 %%--------------------------------------------------------------------
 init(Args) ->
+  NodeType = config:search_for_application_value(node_type, router, beehive),
+  application:load(NodeType),
+  sanity_checks:check(NodeType),
+  
   NodeManager = {the_node_manager, {node_manager, start_link, []}, permanent, 2000, worker, dynamic},
   EventManager = {the_app_event_manager, {?EVENT_MANAGER, start_link, []}, permanent, 2000, worker, dynamic},
+  StatSrv = {the_stats_srv, {stats_srv, start_link, []}, permanent,2000,worker,dynamic},
   RoleSupervisors = {the_roles, {?MODULE, start_internal_supervisors, [Args]}, permanent, 2000, worker, dynamic},
   
-  {ok,{{one_for_one,5,10}, [EventManager, NodeManager, RoleSupervisors]}}.
+  {ok,{{one_for_one,5,10}, [EventManager, StatSrv, NodeManager, RoleSupervisors]}}.
 
 %%====================================================================
 %% Internal functions
 %%====================================================================
 
 start_internal_supervisors(Args) ->
-  NodeType = config:search_for_application_value(node_type, router, beehive),
-  application:load(NodeType),
   case config:search_for_application_value(node_type, router, beehive) of
     node -> supervisor:start_link({local, bh_node_sup}, bh_node_sup, Args);
     storage -> supervisor:start_link({local, bh_storage_sup}, bh_storage_sup, Args);
