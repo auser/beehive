@@ -50,7 +50,7 @@ run_multi_comparison_graph() {
 	" >> $PLOT_OUTPUT_SCRIPT
 	
 	echo "Benchmarking..."
-	REMOTE_URL="http://$PROXY_URL:$PORT$URL"
+	REMOTE_URL="http://$NAMED_PROXY_URL:$PORT$URL"
 	echo "---- PROXY : $REMOTE_URL ----"
 	echo "$TOTAL HTTP requests 1/3";
 	$AB -n $TOTAL -g /tmp/graph-proxy.data1 $REMOTE_URL > /dev/null
@@ -75,7 +75,7 @@ run_proxy_graph() {
 	" >> $PLOT_OUTPUT_SCRIPT
 	
 	echo "Benchmarking..."
-	REMOTE_URL="http://$PROXY_URL:$PORT$URL"
+	REMOTE_URL="http://$NAMED_PROXY_URL:$PORT$URL"
 	echo "---- PROXY : $REMOTE_URL ($TOTAL/$CONCURRENT) ----"
 	$AB -n $TOTAL -c $CONCURRENT -g /tmp/graph-proxy $REMOTE_URL > /dev/null
 }
@@ -87,7 +87,7 @@ run_comparison_graph() {
 	" >> $PLOT_OUTPUT_SCRIPT
 	
 	echo "Benchmarking..."
-	REMOTE_URL="http://$PROXY_URL:$PORT$URL"
+	REMOTE_URL="http://$NAMED_PROXY_URL:$PORT$URL"
 	echo "---- PROXY : $REMOTE_URL ----"
 	echo "$TOTAL HTTP requests";
 	$AB -n $TOTAL -c $CONCURRENT -g /tmp/graph-proxy.data $REMOTE_URL > /dev/null
@@ -202,6 +202,8 @@ echo "Testing proxy at url: http://$PROXY_URL"
 echo "Adding bees: "
 echo "curl -i -XPOST -d\"{\"app_name\":\"$NAME\", \"host\":\"$RAW_URL\", \"port\":\"$RAW_PORT\"}\" http://$PROXY_URL:$PORT/bees/new"
 curl -i -XPOST -d"{\"app_name\":\"$NAME\", \"host\":\"$RAW_URL\", \"port\":\"$RAW_PORT\"}" http://$PROXY_URL:$PORT/bees/new > /dev/null
+
+NAMED_PROXY_URL=$NAME.$PROXY_URL
 
 case $TYPE in
 	"multi")
