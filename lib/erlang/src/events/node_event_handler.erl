@@ -47,8 +47,8 @@ handle_event({update_node_stats, Time}, State) ->
   Total         = (FreeMem/TotalMem)*100,
   
   % Store!
-  stats_srv:node_stat({node_stat, cpu, CpuAvg, Time}),
-  stats_srv:node_stat({node_stat, mem, Total, Time}),
+  bh_node_stats_srv:node_stat({node_stat, cpu, CpuAvg, Time}),
+  bh_node_stats_srv:node_stat({node_stat, mem, Total, Time}),
   
   {ok, State};
   

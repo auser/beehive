@@ -82,14 +82,14 @@ handle_call({node_dump}, _From, #state{node_stats = Dict} = State) ->
   
 handle_call({node_dump, Key}, _From, #state{node_stats = Dict} = State) ->
   Reply = case dict:find(Key, Dict) of
-    error -> {};
+    error -> [];
     {ok, E} -> E
   end,
   {reply, Reply, State};
 
 handle_call({node_dump, Key, Range}, _From, #state{node_stats = Dict} = State) ->
   StatsList = case dict:find(Key, Dict) of
-    error -> {};
+    error -> [];
     {ok, E} -> E
   end,
   Reply = lists:sublist(StatsList, Range),

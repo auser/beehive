@@ -26,7 +26,7 @@ least_loaded(Backends) ->
   ListsOfBees = lists:map(fun(B) ->
     #bee_stat{current = CurrentReq} = case bh_bee_stats_srv:bee_dump(B#bee.id) of
       [{_Name, Q}|_] -> Q;
-      _ -> stats_srv:new_bee_stat()
+      _ -> bh_bee_stats_srv:new_bee_stat()
     end,
     {CurrentReq, B}
   end, Backends),
