@@ -25,7 +25,6 @@
   start_time,           % time proxy started
   client_socket,        % client socket
   server_socket,        % server socket
-  should_close = false, % Is the socket due to close
   timeout               % timeout
 }).
 
@@ -59,7 +58,7 @@ proxy_init(ClientSock) ->
 % If the bee cannot be reached, send an alert through the event handler that we could not reach
 % the bee and try to find a new bee
 engage_bee(ClientSock, RequestPid, Hostname, ForwardReq, Req, {ok, #bee{host = Host, port = Port} = Bee}) ->
-  SockOpts = [  binary, {active, false}, {packet, 0} ],
+  SockOpts = [binary, {active, false}, {packet, raw} ],
   case gen_tcp:connect(Host, Port, SockOpts, ?CONNECT_TIMEOUT) of
     {ok, ServerSock} ->
       ?NOTIFY({bee, used, Bee}),
@@ -67,12 +66,9 @@ engage_bee(ClientSock, RequestPid, Hostname, ForwardReq, Req, {ok, #bee{host = H
       gen_tcp:send(ServerSock, ForwardReq),
       
       Timeout = timer:seconds(10),
-      inet:setopts(ClientSock, [{active, false}]),
       ProxyPid = self(),
-      spawn(fun() -> handle_streaming_data(ClientSock, Req, ProxyPid, Timeout) end),
       
-      inet:setopts(ServerSock, [{active, once}]),
-      proxy_loop(#state{
+      State = #state{
                   start_time = date_util:now_to_seconds(),
                   client_socket = ClientSock, 
                   server_socket = ServerSock, 
@@ -81,8 +77,12 @@ engage_bee(ClientSock, RequestPid, Hostname, ForwardReq, Req, {ok, #bee{host = H
                   host = Host,
                   port = Port,
                   timeout = Timeout,
-                  bee = Bee}
-                );
+                  bee = Bee},
+      
+      spawn(fun() -> handle_streaming_data(client, ProxyPid, State) end),
+      spawn(fun() -> handle_streaming_data(server, ProxyPid, State) end),
+      
+      proxy_loop(State);
     {error, emfile} ->
       ?LOG(error, "Maximum number of sockets open. Die instead", []),
       ?NOTIFY({bee, cannot_connect, Bee}),
@@ -117,25 +117,19 @@ engage_bee(ClientSock, _RequestPid, Hostname, _ForwardReq, _Req, Else) ->
   ).
 
 % Handle all the proxy functions here
-proxy_loop(#state{client_socket = CSock, server_socket = SSock, should_close = _ShouldClose} = State) ->
+proxy_loop(#state{client_socket = CSock, server_socket = SSock} = State) ->
   receive
 	  {tcp, CSock, Data} ->
       % Received data from the client
-	    gen_tcp:send(SSock, Data),
+      gen_tcp:send(SSock, Data),
 	    proxy_loop(State);
   	{tcp, SSock, Data} ->
       % Received info from the server
       gen_tcp:send(CSock, Data),
-      inet:setopts(SSock, [{active, once}]),
       proxy_loop(State);
-    {client_socket_closed, CSock} ->
-      io:format("client_socket_closed: ~p~n", [CSock]),
-      proxy_loop(State#state{should_close = true});
     {tcp_closed, CSock} ->
-      io:format("tcp_closed for client: ~p~n", [CSock]),
   	  terminate(normal, State);
 		{tcp_closed, SSock} ->
-		  io:format("tcp_closed for server: ~p on ~p:~p~n", [CSock, State#state.host, State#state.port]),
   	  terminate(normal, State);
   	{tcp_error, SSock} ->
   	  ?LOG(error, "tcp_error on server: ~p", [SSock]),
@@ -143,12 +137,10 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock, should_close = _
     ?BACKEND_TIMEOUT_MSG ->
       % ?LOG(info, "Backend timeout message", []),
       terminate(timeout, State);
-  	Msg ->
-	    ?LOG(info, "~s:proxy_loop: unexpectedly recieved ~w\n", [?MODULE, Msg]),
-	    proxy_loop(State)
-  % If there is no activity for 2 minutes and the socket has not already closed, 
+  	_Else -> proxy_loop(State)
+  % If there is no activity for a while and the socket has not already closed, 
   % we'll assume that the connection is tired and should close, so we'll close it
-  after 120000 ->
+  after 3000 ->
     ?LOG(info, "Terminating open proxy connection because of timeout", []),
     terminate(normal, State)
   end.
@@ -158,6 +150,8 @@ send_and_terminate(ClientSock, Reason, Data) ->
   gen_tcp:send(ClientSock, Data),
   gen_tcp:close(ClientSock),
   exit(Reason).
+
+% We'll be mindful of the state of the proxy
 
 % Close the connection.
 % First, fetch the stats on the sockets and the elapsed_time for the bckend activity
@@ -179,11 +173,19 @@ terminate(Reason, #state{server_socket = SSock, client_socket = CSock, start_tim
 
 % Because we want to treat the proxy as a tcp proxy, we are just going to 
 % try to receive data on the client socket and pass it onto the proxy
-handle_streaming_data(ClientSock, Req, From, Timeout) ->
-  case gen_tcp:recv(ClientSock, 0, Timeout) of
+handle_streaming_data(client, From, #state{client_socket = CSock, timeout = Timeout} = State) ->
+  case gen_tcp:recv(CSock, 0, Timeout) of
     {ok, D} ->
-      From ! {tcp, ClientSock, D},
-      handle_streaming_data(ClientSock, Req, From, Timeout);
+      From ! {tcp, CSock, D},
+      handle_streaming_data(client, From, State);
     {error, _Error} ->
-      From ! {client_socket_closed, ClientSock}
+      From ! {tcp_closed, CSock}
+  end;
+handle_streaming_data(server, From, #state{server_socket = SSock, timeout = Timeout} = State) ->
+  case gen_tcp:recv(SSock, 0, Timeout) of
+    {ok, D} ->
+      From ! {tcp, SSock, D},
+      handle_streaming_data(server, From, State);
+    {error, _Error} ->
+      From ! {tcp_closed, SSock}
   end.

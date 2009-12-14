@@ -8,4 +8,5 @@ TODO:
 * Add sample starting environments
 * Throw error message when db cannot be created
 * Add stats dumping to file
+* Remove needless db queries in proxy process
 * Throw error for creating duplicate users/apps/bees
