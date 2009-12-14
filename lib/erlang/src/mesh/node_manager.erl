@@ -190,6 +190,7 @@ init([Type, SeedList]) ->
   end,
   
   timer:send_interval(timer:seconds(10), {stay_connected_to_seed}),
+  timer:send_interval(timer:seconds(30), {update_node_stats}),
   % timer:send_interval(timer:minutes(1), {update_node_pings}),
   
   LocalHost = host:myip(),
@@ -314,6 +315,10 @@ handle_info({stay_connected_to_seed}, #state{seed = SeedNode, type = Type} = Sta
       end
   end;
   
+handle_info({update_node_stats}, State) ->
+  ?NOTIFY({update_node_stats, date_util:now_to_seconds()}),
+  {noreply, State};
+
 handle_info({bee_terminated, Bee}, State) ->
   RealBee = bees:find_by_id(Bee#bee.id),
   bees:update(RealBee#bee{status = terminated}),

@@ -45,10 +45,9 @@ start_link(Args) ->
 init(_Args) ->
   AppSrv = {the_bee_srv_sup, {bee_srv_sup, start_link, []}, permanent,2000,worker,dynamic},
   HttpCl = {the_socket_server, {socket_server_sup, start_link, []}, permanent,2000,worker,dynamic},
-  StatSrv = {the_stats_srv, {stats_srv, start_link, []}, permanent,2000,worker,dynamic},
   AppManagerSrv  = {the_app_manager,{app_manager, start_link,[]}, permanent, 2000, worker, dynamic},
   
-  AppsToStart = [AppManagerSrv,AppSrv,HttpCl,StatSrv],
+  AppsToStart = [AppManagerSrv,AppSrv,HttpCl],
   
   {ok,{{one_for_one,5,10}, AppsToStart}}.
 
