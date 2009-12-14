@@ -166,7 +166,7 @@ parse_controller_path(CleanPath) ->
 clean_path(Path) ->
   case string:str(Path, "?") of
     0 -> Path;
-    N -> string:substr(Path, 1, string:len(Path) - (N+1))
+    N -> string:substr(Path, 1, N - 1)
   end.
 
 % Query about the top level request path is
