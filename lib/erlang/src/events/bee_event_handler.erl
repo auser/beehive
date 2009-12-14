@@ -42,7 +42,7 @@ handle_event({bee, create, Bee}, State) when is_record(Bee, bee) ->
 
 % Caught when a connection has been established to the bee
 handle_event({bee, used, Backend}, State) when is_record(Backend, bee) ->
-  stats_srv:bee_stat({request_begin, Backend#bee.id}),
+  bh_bee_stats_srv:bee_stat({request_begin, Backend#bee.id}),
   {ok, State};
 
 % Caught when a connection has disconnected
@@ -82,13 +82,13 @@ handle_event({bee, closing_stats, #bee{id = Id} = Backend, StatsProplist}, State
   % When the bee socket connection closes, let's save this data
   case proplists:get_value(socket, StatsProplist) of
     undefined -> ok;
-    Val -> stats_srv:bee_stat({socket, Id, Val})
+    Val -> bh_bee_stats_srv:bee_stat({socket, Id, Val})
   end,
   case proplists:get_value(elapsed_time, StatsProplist) of
     undefined -> ok;
-    Time -> stats_srv:bee_stat({elapsed_time, Id, Time})
+    Time -> bh_bee_stats_srv:bee_stat({elapsed_time, Id, Time})
   end,
-  stats_srv:bee_stat({request_complete, Id}),
+  bh_bee_stats_srv:bee_stat({request_complete, Id}),
   
   bee_srv:maybe_handle_next_waiting_client(Backend#bee.app_name),
   {ok, State};

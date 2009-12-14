@@ -14,16 +14,16 @@
 get([Name]) ->  
   {struct, ?BINIFY([
       {"node", Name},
-      {"cpu", stats_srv:node_dump(cpu, 10)},
-      {"memory", stats_srv:node_dump(mem, 10)}
+      {"cpu", bh_node_stats_srv:node_dump(cpu, 10)},
+      {"memory", bh_node_stats_srv:node_dump(mem, 10)}
     ]
   )};
 get([Name, RangeList]) ->  
   Range = misc_utils:to_integer(RangeList),
   {struct, ?BINIFY([
       {"node", Name},
-      {"cpu", stats_srv:node_dump(cpu, Range)},
-      {"memory", stats_srv:node_dump(mem, Range)}
+      {"cpu", bh_node_stats_srv:node_dump(cpu, Range)},
+      {"memory", bh_node_stats_srv:node_dump(mem, Range)}
     ]
   )};
 get(_) -> 

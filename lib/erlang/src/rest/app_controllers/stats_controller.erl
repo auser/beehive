@@ -94,9 +94,9 @@ format_bee_list([B|Bs], Acc) ->
     packet_count = PacketCount,
     bytes_received = RecvBytes
   } = 
-    _BackendStat = case stats_srv:bee_dump(B#bee.id) of
+    _BackendStat = case bh_bee_stats_srv:bee_dump(B#bee.id) of
     [{_Name, Q}|_] -> Q;
-    _ -> stats_srv:new_bee_stat()
+    _ -> bh_bee_stats_srv:new_bee_stat()
   end,
 
   % PidList = bee_pids:lookup(B#bee.app_name),
