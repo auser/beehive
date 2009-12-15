@@ -30,6 +30,9 @@ boot:
 compile: $(TEST_EBIN_DIR)
 	@$(ERL) -pa $(EBIN_DIRS) -pa $(EBIN) -noinput +B -eval 'case make:all() of up_to_date -> halt(0); error -> halt(1) end.'
 	
+debug: $(TEST_EBIN_DIR)
+	@$(ERL) -pa $(EBIN_DIRS) -pa $(EBIN) -noinput +B -eval 'case make:all([{d, debug}]) of up_to_date -> halt(0); error -> halt(1) end.'
+	
 test: compile
 	$(ERL) 	-noshell -pa $(EBIN) \
 					-pa deps/*/ebin \
