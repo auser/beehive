@@ -34,17 +34,12 @@ read() ->
     undefined -> ?CONFIG_FILE;
     {ok, Cf} -> Cf
   end,
-  case read_1(ConfigFile) of
-    {ok, C} -> {ok, C};
+  case file:consult(ConfigFile) of
+    {ok, C} -> C;
     {error, _} -> [];
     Err -> Err
   end.
  
-read_1(Location) ->
-  case file:consult(Location) of
-    {ok, C} -> C;
-    O -> O
-  end.
 %%--------------------------------------------------------------------
 %% Function: get (Key, Config) -> {error, not_found} |
 %%                                {ok, Value}
