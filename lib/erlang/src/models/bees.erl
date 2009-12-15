@@ -112,6 +112,10 @@ new(NewProps) ->
 
 % Make an id
 make_id_from_proplists(PropList) ->
+  Name = case proplists:get_value(name, PropList) of
+    undefined -> proplists:get_value(app_name, PropList);
+    E -> E
+  end,
   Name = proplists:get_value(app_name, PropList, proplists:get_value(name, PropList)),
   Host = proplists:get_value(host, PropList),
   Port = proplists:get_value(port, PropList),
@@ -121,6 +125,7 @@ validate_bee_proplists(PropList) ->
   lists:map(fun({Key, Val}) ->
     case Key of
       port -> {Key, misc_utils:to_integer(Val)};
+      name -> {app_name, Val};
       meta_param -> {Key, Val};
       _ -> {Key, Val}
     end
