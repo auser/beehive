@@ -14,7 +14,7 @@
 get([Name]) ->  
   {struct, ?BINIFY([
       {"node", Name},
-      {"cpu", bh_node_stats_srv:node_dump(cpu, 10)},
+      {"cpu", lists:reverse(bh_node_stats_srv:node_dump(cpu, 10))},
       {"memory", bh_node_stats_srv:node_dump(mem, 10)}
     ]
   )};
