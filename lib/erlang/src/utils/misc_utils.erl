@@ -141,3 +141,8 @@ localnode(Name) ->
 % Get the name of the local node
 nodehost(Node) ->
   tl(lists:dropwhile(fun (E) -> E =/= $@ end, atom_to_list(Node))).
+
+
+% Turn the proplists into atoms
+atomize([], Acc) -> Acc;
+atomize([{K,V}|Rest], Acc) -> atomize(Rest, [{misc_utils:to_atom(K), V}|Acc]).

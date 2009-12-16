@@ -34,7 +34,9 @@ post(["new"], Data) ->
     end
   end, Data);
       
-post(_Path, _Data) -> "unhandled".
+post(Path, _Data) -> 
+  io:format("Path: ~p~n", [Path]),
+  error("unhandled").
 put(_Path, _Data) -> "unhandled".
 
 delete([], Data) ->

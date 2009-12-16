@@ -35,7 +35,7 @@ else
 fi
 
 # Mount it! loop=$LOOP_DEVICE
-mount $MOUNT_FILE $MOUNT_LOCATION -t squashfs -o ro -o loop=$LOOP_DEVICE
+mount $MOUNT_FILE $MOUNT_LOCATION -t squashfs -o ro -o loop
 
 # Create a tmp directory
 mkdir -p /tmp/$APP_NAME

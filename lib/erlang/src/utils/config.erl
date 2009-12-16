@@ -34,12 +34,15 @@ read() ->
     undefined -> ?CONFIG_FILE;
     {ok, Cf} -> Cf
   end,
-  case file:consult(ConfigFile) of
-    {ok, C} -> C;
+  read(ConfigFile).
+
+read(ConfigFile) ->
+  case (catch yaml:parse_file(ConfigFile)) of
+    {'EXIT', _} -> [];
     {error, _} -> [];
-    Err -> Err
+    C -> misc_utils:atomize(C, [])
   end.
- 
+  
 %%--------------------------------------------------------------------
 %% Function: get (Key, Config) -> {error, not_found} |
 %%                                {ok, Value}
