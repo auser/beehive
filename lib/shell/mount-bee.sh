@@ -35,19 +35,12 @@ else
 fi
 
 # Mount it! loop=$LOOP_DEVICE
-mount $MOUNT_FILE $MOUNT_LOCATION -t squashfs -o ro -o loop
+mount $MOUNT_FILE $MOUNT_LOCATION -t squashfs -o ro -o loop=$LOOP_DEVICE
 
 # Create a tmp directory
 mkdir -p /tmp/$APP_NAME
 
-# Bind mount the system
-mount --bind /bin $MOUNT_LOCATION/bin -o ro
-mount --bind /etc $MOUNT_LOCATION/etc -o ro
-mount --bind /usr $MOUNT_LOCATION/usr -o ro
-mount --bind /lib $MOUNT_LOCATION/lib -o ro
-mount --bind /dev $MOUNT_LOCATION/dev -o ro
-mount --bind /var $MOUNT_LOCATION/var -o ro
-mount -t proc /proc $MOUNT_LOCATION/proc
+# Bind mount the read/write directories
 mount --bind /tmp/$APP_NAME $MOUNT_LOCATION/tmp -o rw
 # Consider adding logs
 

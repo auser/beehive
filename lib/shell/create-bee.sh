@@ -18,29 +18,8 @@ GIT_REPOS_DIR=$APP_DIR/home/app
 echo "app_dir $APP_DIR"
 rm -rf $APP_DIR
 
-mkdir -p $APP_DIR
-mkdir -p $APP_DIR/home
-mkdir -p $APP_DIR/etc
-mkdir -p $APP_DIR/bin
-mkdir -p $APP_DIR/lib
-mkdir -p $APP_DIR/usr
-mkdir -p $APP_DIR/usr/bin
-mkdir -p $APP_DIR/dev
-mkdir -p $APP_DIR/var
-mkdir -p $APP_DIR/tmp
-mkdir -p $APP_DIR/proc
-
-cd $APP_DIR
-
-if [ -d /lib64 ]; then
-  mkdir -p lib64/ >/dev/null 2>&1
-fi
-if [ ! -e dev/null ]; then
-  mknod dev/null c 1 3 >/dev/null 2>&1
-fi
-if [ ! -e dev/zero ]; then
-  mknod dev/zero c 1 5 >/dev/null 2>&1
-fi
+# Here we are creating the chroot jail
+OUT=$(create-chroot.sh $APP_NAME [[WORKING_DIRECTORY]])
 
 # Yes, this is redundant, but... will do for now
 git clone --depth 0 [[GIT_REPOS]] $GIT_REPOS_DIR >/dev/null 2>&1
@@ -61,12 +40,6 @@ if [ -f $GEM_FILE ]; then
   done
 fi
 echo "installed gems"
-
-# Set some fun environment variables here
-echo "
-SUPERMAN='a hero'
-" > $APP_DIR/.profile
-
 
 # Make sure this directory doesn't exist
 if [ -f $OUTFILE ]; then
