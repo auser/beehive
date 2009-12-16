@@ -19,7 +19,7 @@ port_loop(Port, Cmd, WorkingDir, From) ->
 	  {stop} -> 
       port_close(Port),
       From ! {port_closed, self(), 0},
-	    ok;
+	    exit(normal);
 	  {'EXIT',Port,_Reason} -> 
 	    ok;
 	  {Port, {exit_status, 0}} -> 

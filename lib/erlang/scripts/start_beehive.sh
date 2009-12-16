@@ -23,7 +23,7 @@ OPTIONS
 	-c, --config_file                   Config file
 	-n                                  Name of the erlang process (useful for multiple nodes on the same instance)
 	-r, --routing_parameter             Route on the routing parameter (defaults to 'Host')
-	-a, --additional_path               Additional paths for the beehive runtime
+	-e, --erlang_opts                   Additional erlang options
 	-c, --user_defined_event_handler    Module name of the callback module
 	-q, --bee_picker                    Name of the method that contains the bee chooser
 	-s, --seed                          Pass in the seed node
@@ -62,12 +62,12 @@ TYPE="router"
 REST="true"
 VERBOSE=false
 STRATEGY="random"
-PATHS="-pa $PWD/ebin -pa $PWD/include"
-ERL_OPTS="-s reloader"
+RELOADER_OPTS="-s reloader"
+ERL_OPTS="-pa $PWD/ebin -pa $PWD/include -pz $PWD/deps/*/ebin"
 
-SHORTOPTS="hm:n:dp:t:g:r:s:vi:a:b:q:l:z:c:"
+SHORTOPTS="hm:n:dp:t:g:r:s:vi:e:b:q:l:z:c:"
 LONGOPTS="help,version,client_port,type,bee_strategy,routing_parameter,seed,mnesia_dir,daemonize"
-LONGOPTS="$LONGOPTS,initial_bees,additional_path,user_defined_event_handler,bee_picker,log_path,git_repos_path,config"
+LONGOPTS="$LONGOPTS,initial_bees,erlang_opts,user_defined_event_handler,bee_picker,log_path,git_repos_path,config"
 
 if $(getopt -T >/dev/null 2>&1) ; [ $? = 4 ] ; then # New longopts getopt.
 	OPTS=$(getopt -o "$SHORTOPTS" --longoptions "$LONGOPTS" -n "$progname" -- "$@")
@@ -83,7 +83,7 @@ if [ $? -ne 0 ]; then
 	exit 1
 fi
 
-eval set -- "$OPTS"
+# eval set -- "$OPTS"
 while [ $# -gt 0 ]; do
    : debug: $1
    case "$1" in
@@ -98,6 +98,7 @@ while [ $# -gt 0 ]; do
 			MNESIA_DIR=$2
 			shift 2;;
 		-l|--log_path)
+			LOG_PATH=$2
 			BEEHIVE_OPTS="$BEEHIVE_OPTS log_path '$2'"
 			shift 2;;
 		-r|--routing_parameter)
@@ -112,26 +113,17 @@ while [ $# -gt 0 ]; do
 			else
 				SEED="$2@$HOSTNAME"
 			fi
-			BEEHIVE_OPTS="$BEEHIVE_OPTS seed '$SEED'"
 			shift 2;;
 		-q|--bee_picker)
 			ROUTER_OPTS="$ROUTER_OPTS bee_picker '$2'"
 			shift 2;;
 		-c|--config_file)
-			BEEHIVE_OPTS="$BEEHIVE_OPTS config_file '$2'"
-			# UGLY. maybe fix this up with something better?
-			# We do this so that our config file can define things that we need at the start up time
-			ANAME=$(erl -eval "{ok, C} = file:consult(filename:join([filename:absname(''), '$2'])), case proplists:get_value(name, C) of undefined -> ok; V -> io:format('~s', [V]) end"  -s init stop -noshell)
-			if [ ! -z $ANAME ]; then
-				NAME=$ANAME
-			fi
-			AMNESIA_DIR=$(erl -eval "{ok, C} = file:consult(filename:join([filename:absname(''), '$2'])), case proplists:get_value(mnesia_dir, C) of undefined -> ok; V -> io:format('~s', [V]) end"  -s init stop -noshell)
-			if [ ! -z $AMNESIA_DIR ]; then
-				MNESIA_DIR=$AMNESIA_DIR
-			fi
+			CONFIG_FILE=$2
+			BEEHIVE_OPTS="$BEEHIVE_OPTS config_file '$CONFIG_FILE'"
 			shift 2;;
-		-a|--additional_path)
-			PATHS="$PATHS -pa $2"
+		-e|--erlang_opts)
+			echo "Erlang opts: $*"
+			ERL_OPTS="$ERL_OPTS $2"
 			shift 2;;
 		-b|--user_defined_event_handler)
 			ROUTER_OPTS="$BEEHIVE_OPTS user_defined_event_handler $2"
@@ -147,7 +139,7 @@ while [ $# -gt 0 ]; do
       shift 2;;
 		-d|--daemonize)
 			DAEMONIZE_ARGS="-detached -heart"
-			ERL_OPTS=""
+			RELOADER_OPTS=""
 			shift;;
 		-z|--git_repos_path)
 			STORAGE_OPTS="$STORAGE_OPTS git_repos_path '$2'"
@@ -184,6 +176,45 @@ Exiting...
 	exit 2
 fi
 
+# Set config file options
+# This means a config file has been set, so let's find out more file fun
+if [ ! -z $CONFIG_FILE ]; then	
+	# Set some erlang options, if they are in the config file
+	MORE_ERL_OPTS=$(erl -pa ./ebin -run beehive_control get_config_option "$CONFIG_FILE" erlang_opts -s init stop -noshell)
+	if [ ! -z "$MORE_ERL_OPTS" ]; then
+		ERL_OPTS="$ERL_OPTS $MORE_ERL_OPTS"
+	fi
+	
+	MORE_TYPE=$(erl -pa ./ebin -run beehive_control get_config_option "$CONFIG_FILE" type -s init stop -noshell)
+	if [ ! -z "$MORE_TYPE" ]; then
+		TYPE="$MORE_TYPE"
+	fi
+	
+	# UGLY. maybe fix this up with something better?
+	# We do this so that our config file can define things that we need at the start up time
+	ANAME=$(erl -pa ./ebin -run beehive_control get_config_option "$CONFIG_FILE" name -s init stop -noshell)
+	if [ ! -z "$ANAME" ]; then
+		NAME=$ANAME
+	fi
+	
+	AMNESIA_DIR=$(erl -pa ./ebin -run beehive_control get_config_option "$CONFIG_FILE" mnesia_dir -s init stop -noshell)
+	if [ ! -z "$AMNESIA_DIR" ]; then
+		MNESIA_DIR=$AMNESIA_DIR
+	fi
+	
+	ASEED=$(erl -pa ./ebin -run beehive_control get_config_option "$CONFIG_FILE" seed -s init stop -noshell)
+	if [ ! -z "$ASEED" ]; then
+		if [ $(echo $ASEED | $grep '@') ]; then
+			SEED=$ASEED
+		else
+			SEED="$ASEED@$HOSTNAME"
+		fi
+		
+		BEEHIVE_OPTS="$BEEHIVE_OPTS seed '$SEED' "
+	fi
+	
+fi
+
 BEEHIVE_OPTS="$BEEHIVE_OPTS node_type $TYPE "
 
 if [ $TYPE == 'router' ]; then
@@ -197,18 +228,16 @@ fi
 if $VERBOSE; then
 cat <<EOF
 	Running with:
-		Erlang opts: $ERL_OPTS
-		Mnesia dir: '$MNESIA_DIR'
-		Name: 		'$NAME'
-		Beehive opts: $BEEHIVE_OPTS
-		App opts: $APP_OPTS
-		Paths: $PATHS
+    Erlang opts:     $ERL_OPTS
+    Mnesia dir:      '$MNESIA_DIR'
+    Name: 		       '$NAME'
+    Beehive opts:    $BEEHIVE_OPTS
+    App opts:        $APP_OPTS
 EOF
 fi
 
-erl $PATHS \
-    -pz $PWD/deps/*/ebin \
-    $ERL_OPTS \
+erl $ERL_OPTS \
+    $RELOADER_OPTS \
 		-mnesia dir \'$MNESIA_DIR\' \
 		-name $NAME \
 		$BEEHIVE_OPTS \

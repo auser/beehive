@@ -15,8 +15,17 @@
 
 -record (state, {
   filename,
+  log_level,
   log_handle
 }).
+
+% Log levels
+%   0 - quiet (no logs)
+%   1 - error messages only
+%   2 - verbose
+%   3 - full logs with debugging messages
+%   4 - heavy logging with speed
+
 %%====================================================================
 %% gen_event callbacks
 %%====================================================================
@@ -26,20 +35,16 @@
 %% this function is called to initialize the event handler.
 %%--------------------------------------------------------------------
 init([]) ->
-  LogPath = misc_utils:to_list(config:search_for_application_value(log_path, "./logs", beehive)),
+  LogPath  = misc_utils:to_list(config:search_for_application_value(log_path, "./logs", beehive)),
+  LogLevel = misc_utils:to_list(config:search_for_application_value(log_level, info, beehive)),
   % Get the full path for the file
-  LogName = config:search_for_application_value(node_type, node, beehive),
-  FullFilepath = filename:join([LogPath, lists:append([erlang:atom_to_list(LogName), ".log"])]),
+  LogName1 = misc_utils:to_list(config:search_for_application_value(node_type, node, beehive)),
+  LogName = lists:append([LogName1, ".", misc_utils:to_list(LogLevel)]),
+  FullFilepath = filename:join([LogPath, lists:append([LogName, ".log"])]),
   
-  Fd = case (catch file:open(FullFilepath, [append])) of
-    {ok, F} -> F;
-    _E ->
-      io:format("FullFilepath: ~p~n", [FullFilepath]),
-      {ok, F} = file:open(FullFilepath, [write]),
-      F
-  end,
+  Fd = ensure_logfile_exists(FullFilepath),
   
-  {ok, #state{filename = FullFilepath, log_handle = Fd}}.
+  {ok, #state{filename = FullFilepath, log_handle = Fd, log_level = LogLevel}}.
 
 %%--------------------------------------------------------------------
 %% Function:
@@ -50,9 +55,9 @@ init([]) ->
 %% gen_event:notify/2 or gen_event:sync_notify/2, this function is called for
 %% each installed event handler to handle the event.
 %%--------------------------------------------------------------------
-handle_event({log, LogLevel, LogFormat, LogArgs}, State) ->
-  write(LogLevel, io_lib:format(LogFormat, LogArgs), State),
-  {ok, State};
+handle_event({log, LogLevel, LogFormat, LogArgs, File, Line}, State) ->
+  NewState = write(LogLevel, File, Line, io_lib:format(LogFormat, LogArgs), State),
+  {ok, NewState};
 handle_event(_Event, State) ->
   {ok, State}.
 
@@ -100,8 +105,30 @@ code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
   
 % INTERNAL FUNCTIONS
-write(Level, Message, #state{log_handle = Fd} = _State) ->
-  % Check levels here, eventually
+
+ensure_logfile_exists(FullFilepath) ->
+  case (catch file:open(FullFilepath, [append])) of
+    {ok, F} -> F;
+    _E -> 
+      {ok, F} = file:open(FullFilepath, [write]),
+      F
+  end.
+
+% write(LogLevel, File, Line, io_lib:format(LogFormat, LogArgs), State),
+write(error, _File, _Line, Message, #state{log_handle = Fd, log_level = debug} = State) ->
+  Msg = io_lib:format("! [~s] [~s] ~s\r\n", [httpd_util:rfc1123_date(), error, Message]),
+  write_to_console(Msg),
+  write_to_file(Fd, Msg),
+  State;
+write(debug, File, Line, Message, #state{log_level = debug} = State) ->
+  Msg = io_lib:format("[~s:~p] [~s] [~s] ~s\r\n", [File, Line, httpd_util:rfc1123_date(), debug, Message]),
+  write_to_console(Msg),
+  State;
+write(Level, _File, _Line, Message, #state{log_handle = Fd} = State) ->
   Msg = io_lib:format("[~s] [~s] ~s\r\n", [httpd_util:rfc1123_date(), Level, Message]),
-  io:format("~s", [Msg]),     % write to console 
-  io:format(Fd, "~s", [Msg]). % write to file
+  write_to_console(Msg),
+  write_to_file(Fd, Msg),
+  State.
+
+write_to_console(Msg) -> io:format("~s", [Msg]).
+write_to_file(Fd, Msg) -> io:format(Fd, "~s", [Msg]).

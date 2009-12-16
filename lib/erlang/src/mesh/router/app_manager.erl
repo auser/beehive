@@ -339,7 +339,7 @@ load_static_configs() ->
 
 load_app_config_from_yaml_file(Filepath, Ext) ->
   O1 = yaml:parse_file(Filepath),
-  O = atomize(O1, []),
+  O = misc_utils:atomize(O1, []),
   Name = case proplists:is_defined(name, O) of
     true  -> proplists:get_value(name, O);
     false -> filename:basename(Filepath, Ext)
@@ -383,10 +383,6 @@ try_to_reconnect_to_bee(B, Num) ->
 cleanup_bee(B) ->
   ?QSTORE:delete_queue(?WAIT_DB, B#bee.app_name),
   bees:delete(B).
-
-% Turn the priplists into atoms
-atomize([], Acc) -> Acc;
-atomize([{K,V}|Rest], Acc) -> atomize(Rest, [{misc_utils:to_atom(K), V}|Acc]).
 
 % Starting
 % Call spawn to start new instance if the app is not defined as static and

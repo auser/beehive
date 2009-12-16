@@ -1,10 +1,21 @@
--define(LOG(Log_Level, Log_Format, Log_Args), 
+-define(LOG(LogLevel, LogFormat, LogArgs), 
         % try
-        case event_manager:notify({log, Log_Level, Log_Format, Log_Args}) of
+        case event_manager:notify({log, LogLevel, LogFormat, LogArgs, ?FILE, ?LINE}) of
           ok -> ok;
           {error, _} -> throw({error, logging_exception})
         end
         ).
+
+-ifdef (debug).
+-define (BENCHMARK_LOG (Msg, Mod, Fun, Args), fun() ->
+  {Time, Value} = timer:tc(Mod, Fun, Args),
+  ?LOG(debug, "~p microseconds ~p ~p:~p/~p", [Time, Msg, Mod, Fun, erlang:length(Args)]),
+  Value
+end()).
+-else.
+-define (BENCHMARK_LOG (_Msg, Mod, Fun, Args),
+  erlang:apply(Mod, Fun, Args)).
+-endif.
 
 -define (CONFIG_FILE, case os:getenv("ROUTER_CONFIG") of
 	undefined -> "include/config.cfg";
