@@ -312,7 +312,7 @@ internal_stop_instance(Bee, App, From) when is_record(App, app) ->
   
   Pid ! {stop},
   
-  {_Proplist, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("stop-bee", [
+  {Proplist, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("stop-bee", [
     {"[[PORT]]", misc_utils:to_list(Port)},
     {"[[APP_HOME]]", AppRootPath},
     {"[[APP_NAME]]", App#app.name}
@@ -322,6 +322,8 @@ internal_stop_instance(Bee, App, From) when is_record(App, app) ->
   %   {"[[APP_HOME]]", AppRootPath},
   %   {"[[APP_NAME]]", App#app.name}
   % ]),
+  
+  io:format("Proplist: ~p~n", [Proplist]),
   
   case ets:lookup(?TAB_ID_TO_BEE, {App#app.name, Bee#bee.host, Bee#bee.port}) of
     [{Key, _B}] ->
@@ -353,7 +355,7 @@ find_pid_in_pid_table(Port) ->
 
 % Get a new honeycomb location for the new bee
 next_free_honeycomb(App) ->
-  BaseDir = config:search_for_application_value(squashed_storage, "./apps", storage),
+  BaseDir = config:search_for_application_value(squashed_storage, "/opt/beehive/apps", storage),
   UniqueName = apps:build_on_disk_app_name(App),
   {Proplists, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("next-free-honeycomb", [
     {"[[APP_NAME]]", App#app.name},
