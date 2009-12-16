@@ -19,7 +19,7 @@ if [ -z "$ERL" ]; then
 fi
 
 # Beehive specific stuff
-if [ $(sudo cat /etc/passwd | grep beehive | grep -v "#" | wc -l) -eq 0 ]; then
+if [ $(sudo cat /etc/passwd | grep ^beehive | grep -v "#" | wc -l) -eq 0 ]; then
 	sudo useradd -s /bin/bash -b /opt/beehive -d /opt/beehive -c "beehive user" -g users beehive;
 fi
 
