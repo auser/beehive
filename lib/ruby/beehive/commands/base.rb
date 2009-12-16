@@ -5,6 +5,7 @@ end
 require 'rest_client'
 require "yaml"
 require "json"
+require "pp"
 
 module Beehive
   module Command
@@ -79,8 +80,14 @@ module Beehive
       end
       
       def post(url, params={})
-        r = RestClient.post("http://#{host}/#{url}", params.to_json)
-        JSON.parse(r)
+        j = RestClient.post("http://#{host}/#{url}", params.to_json)
+        r = JSON.parse(j)
+
+        if r["error"]
+          raise r["error"] 
+        else
+          return r
+        end
       end
       
       def put(url)
@@ -94,7 +101,10 @@ module Beehive
       def get_token
         creds = {"email" => user, "password" => password}
         r = post("auth", creds)
-        raise r["error"] unless @token = r["token"]
+        
+        unless @token = r["token"]
+          raise r["error"] 
+        end
       end
       
       private

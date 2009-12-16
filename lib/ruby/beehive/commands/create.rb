@@ -12,26 +12,22 @@ module Beehive
       def run
         parse_args do |opts|
           opts.on('-n name', '--name name') {|n| @app_name = n}
-          opts.on('-t type', '--type type') {|t| @type = t }
         end
         
-        @app_name ||= @args[0]
-        @type     ||= :rack
+        get_token unless @token
+        n = new_app
         
         puts <<-EOE
           host: #{host}
           user: #{user}
           password: #{password}
+          #{n}
         EOE
       end
       
       def new_app
-        r = post("apps/new", {  "name" => name,
-                                "start_command" => start_command,
-                                "stop_command" => stop_command,
-                                "path" => path,
+        r = post("apps/new", {  "name" => @app_name,
                                 "token" => @token })
-        raise r["error"] if r["error"]
       end
             
     end

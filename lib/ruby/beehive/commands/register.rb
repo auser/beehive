@@ -16,10 +16,8 @@ module Beehive
           opts.on("-l level", "--level level") {|u| @new_level = u }
         end
         
-        unless @token
-          get_token
-        end
         
+        get_token @token
         r = new_user
       
         puts <<-EOE
@@ -38,7 +36,6 @@ module Beehive
                                 "password" => @new_password,
                                 "level" => @new_level,
                                 "token" => @token} )
-        raise r["error"] if r["error"]
       end
            
     end
