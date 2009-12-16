@@ -9,7 +9,7 @@ sudo apt-get autoremove -y
 
 ERL=$(which erl)
 
-if [ -z $ERL ]; then
+if [ -z "$ERL" ]; then
 	wget http://www.erlang.org/download/otp_src_R13B03.tar.gz
 	tar -zxf otp_src_R13B02-1.tar.gz
 	cd otp_src_R13B02-1
