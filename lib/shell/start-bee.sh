@@ -7,12 +7,14 @@ THIN_APP="$GEM_ENV/thin"
 echo "thin $THIN_APP"
 cd [[APP_HOME]]
 
-sudo /usr/sbin/chroot [[APP_HOME]] /usr/bin/env -i \
-        HOME=[[APP_HOME]]
-        TERM=$TERM PS1='\u:\w\$ ' \
-        HI="hi" \
-				PATH=$PATH:$GEM_ENV \
-				APP_NAME=[[APP_NAME]] \
-				GEM_PATH=[[APP_HOME]]/.gems:$GEM_PATHS \
-				/bin/bash -c \
-				"thin -R home/app/config.ru --log tmp/[[APP_NAME]].log --pid tmp/[[APP_NAME]]-[[PORT]].pid --port [[PORT]] start 2>&1 > tmp/status"
+/usr/sbin/chroot [[APP_HOME]] \
+  /usr/bin/env -i \
+  HOME=/ \
+  HI="Hello world" \
+  PATH=$PATH:$GEM_ENV \
+  WHOAMI=[[APP_NAME]] \
+  APP_NAME=[[APP_NAME]] \
+  GEM_PATH=[[APP_HOME]]/.gems:$GEM_PATHS \
+  /bin/su -m [[APP_NAME]] \
+  /bin/bash -c \
+  "thin -R home/app/config.ru --log tmp/[[APP_NAME]].log --pid tmp/[[APP_NAME]]-[[PORT]].pid --port [[PORT]] start"

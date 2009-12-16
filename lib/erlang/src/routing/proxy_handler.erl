@@ -88,7 +88,9 @@ engage_bee(ClientSock, RequestPid, RoutingKey, ForwardReq, Req, {ok, #bee{host =
       ClientPid = spawn(fun() -> handle_streaming_data(client, ProxyPid, State) end),
       ServerPid = spawn(fun() -> handle_streaming_data(server, ProxyPid, State) end),
       
-      proxy_loop(State#state{server_pid = ServerPid, client_pid = ClientPid});
+      NewState = State#state{server_pid = ServerPid, client_pid = ClientPid},
+      
+      proxy_loop(NewState);
     {error, emfile} ->
       ?LOG(error, "Maximum number of sockets open. Die instead", []),
       ?NOTIFY({bee, cannot_connect, Bee}),
