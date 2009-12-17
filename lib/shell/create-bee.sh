@@ -30,7 +30,6 @@ fi
 
 SKEL_DIR="$BASE_DIR/../base_skel"
 
-APP_DIR="$BASE_DIR/$APP_NAME"
 mkdir -p $APP_DIR
 
 # If we have a skeleton directory, then we'll use this as a base, rather

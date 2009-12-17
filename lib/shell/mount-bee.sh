@@ -11,10 +11,12 @@ MOUNT_FILE=[[BEE_IMAGE]]
 
 # Unmount the device if it's already mounted
 MOUNTED=$(mount | grep $APP_NAME | awk '{a[i++]=$3} END {for (j=i-1; j>=0;) print a[j--] }')
-for i in $MOUNTED; do
-  sudo umount $i -f >/dev/null 2>&1
-done
-sudo umount $LOOP_DEVICE >/dev/null 2>&1
+if [ ! -z "$MOUNTED" ]; then
+  for i in $MOUNTED; do
+    umount $i
+  done
+  umount $LOOP_DEVICE >/dev/null 2>&1
+fi
 
 if [ ! -e $LOOP_DEVICE ]; then
   mknod -m 0600 $LOOP_DEVICE b 7 0
@@ -35,6 +37,10 @@ else
 fi
 
 # Mount it! loop=$LOOP_DEVICE
+if [ $(sudo cat /etc/fstab | grep ^$LOOP_DEVICE | wc -l) -eq 0 ]; then
+  sudo echo "$LOOP_DEVICE  $MOUNT_LOCATION squashfs defaults,owner,noauto  0 0" >> /etc/fstab
+fi
+
 mount $MOUNT_FILE $MOUNT_LOCATION -t squashfs -o ro -o loop=$LOOP_DEVICE
 
 # Create a tmp directory
@@ -50,6 +56,8 @@ mount --bind /var $MOUNT_LOCATION/var -o ro
 mount -t proc /proc $MOUNT_LOCATION/proc
 mount --bind /tmp/$APP_NAME $MOUNT_LOCATION/tmp -o rw
 # Consider adding logs
+
+chown $CHROOT_USER $MOUNT_LOCATION/tmp
 
 # If there is a lib64 directory 
 if [ -d /lib64 ]; then

@@ -1,5 +1,4 @@
 -module (port_handler).
--include ("common.hrl").
 -export([
           start/4
         ]).
@@ -26,11 +25,9 @@ port_loop(Port, Cmd, WorkingDir, From) ->
 	  {Port, {exit_status, 0}} -> 
       io:format("Port decided to exit for sane reasons~n"),
       (catch port_close(Port)),
-	    From ! {port_closed, self(), 0},
 	    exit(normal);
     {Port, {exit_status, Code}} ->
       io:format("Port decided to exit for some reason: ~p~n", [Code]),
-	    From ! {port_exited, self(), Code},
 	    exit({exit_status, Code});
 	  Else ->
 	    io:format("Port unknowingly received: ~p~n", [Else]),

@@ -12,7 +12,7 @@
     {config_file, undefined},
     {seed, []},
     {user_defined_event_handler, undefined},
-    {log_level, info},
+    {log_level, 0},
     {log_path, undefined}
   ]}
  ]

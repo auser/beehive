@@ -7,7 +7,7 @@ THIN_APP="$GEM_ENV/thin"
 echo "thin $THIN_APP"
 cd [[APP_HOME]]
 
-OUT=$(/usr/sbin/chroot [[APP_HOME]] \
+/usr/sbin/chroot [[APP_HOME]] \
   /usr/bin/env -i \
   HOME=/ \
   HI="Hello world" \
@@ -17,10 +17,4 @@ OUT=$(/usr/sbin/chroot [[APP_HOME]] \
   GEM_PATH=[[APP_HOME]]/.gems:$GEM_PATHS \
   /bin/su -m [[APP_NAME]] \
   /bin/bash -c \
-  "thin -d -R home/app/config.ru --log tmp/[[APP_NAME]].log --pid tmp/[[APP_NAME]]-[[PORT]].pid --port [[PORT]] start")
-
-if [ $? -neq 0 ]; then
-  echo "error $OUT"
-else
-  echo "started true"
-fi
+  "thin -R home/app/config.ru --log tmp/[[APP_NAME]].log --pid tmp/[[APP_NAME]]-[[PORT]].pid --port [[PORT]] start"

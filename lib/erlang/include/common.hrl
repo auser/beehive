@@ -9,7 +9,7 @@
 -ifdef (debug).
 -define (BENCHMARK_LOG (Msg, Mod, Fun, Args), fun() ->
   {Time, Value} = timer:tc(Mod, Fun, Args),
-  ?LOG(debug, "~p microseconds ~p ~p:~p/~p", [Time, Msg, Mod, Fun, erlang:length(Args)]),
+  ?LOG(benchmark, "~p microseconds ~p ~p:~p/~p", [Time, Msg, Mod, Fun, erlang:length(Args)]),
   Value
 end()).
 -else.
