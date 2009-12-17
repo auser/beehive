@@ -1,12 +1,12 @@
 module Beehive
   module Command
     
-    class Create < Base
+    class Restart < Base
       
       attr_reader :app_name
       
       def self.description
-        "Create a new app"
+        "Restart an app"
       end
             
       def run
@@ -15,19 +15,12 @@ module Beehive
         end
         
         get_token unless @token
-        n = new_app
-        
-        puts <<-EOE
-          host: #{host}
-          user: #{user}
-          password: #{password}
-          #{n}
-        EOE
+        n = restart_app
+        p n
       end
       
-      def new_app
-        r = post("apps/new", {  "app_name" => @app_name,
-                                "token" => @token })
+      def restart_app
+        post("apps/#{@app_name}/restart", { "token" => @token })
       end
             
     end

@@ -30,7 +30,7 @@ module Beehive
       end
       
       def new_bee
-        r = post("bees/new", {  "name" => @app_name,
+        r = post("bees/new", {  "app_name" => @app_name,
                                 "host" => @app_host,
                                 "port" => @app_port,
                                 "token" => @token })
