@@ -93,8 +93,8 @@ launching(Event, State) ->
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, launching]),
   {next_state, launching, State}.
 
-pending({updated_bee_status, _BackendStatus}, #state{app = App, bee = Bee, from = From} = State) ->
-  ?LOG(info, "Application started normally: ~p", [App#app.name]),
+pending({updated_bee_status, BackendStatus}, #state{app = App, bee = Bee, from = From} = State) ->
+  ?LOG(info, "Application started ~p: ~p", [BackendStatus, App#app.name]),
   % App started normally
   From ! {bee_started_normally, Bee},
   {stop, normal, State};

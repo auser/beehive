@@ -1,8 +1,6 @@
 -module (string_utils).
--author("Serge: onerlang.blogspot.com").
--purpose("string replace functionality").
 
--export([sub/3,gsub/3,test/0]).
+-export([sub/3, gsub/3]).
 
 % Mine
 -export ([template_command_string/2]).
@@ -39,16 +37,3 @@ template_command_string(OriginalCommand, []) -> OriginalCommand;
 template_command_string(OriginalCommand, [{Str, Replace}|T]) ->
   NewCommand = string_utils:gsub(OriginalCommand, Str, Replace),
   template_command_string(NewCommand, T).
-
-
-test() ->
-   io:format("~p ~p ~p ~p ~p ~p ~p ~n",
-     [
-      "SELECT * FROM people WHERE first='John' OR last='John'" =:=
-  gsub("SELECT * FROM people WHERE first=$1 OR last=$1","$1","'John'"),
-      "aBc" =:= sub("abc","b","B"),
-      "Abc" =:= sub("abc","a","A"),
-      "abC" =:= sub("abc","c","C"),
-      "aac" =:= gsub("bbc","b","a"),
-      "abc" =:= gsub("abc","d","C"),
-      "abc" =:= sub("abc","d","D")]).

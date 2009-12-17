@@ -1,8 +1,9 @@
 -module (test_suite).
 
 -include_lib("eunit/include/eunit.hrl").
-
+ 
 all_test_() ->
   [
-    {module, router_srv_test}
+    {module, md5_test},
+    {module, string_test}
   ].

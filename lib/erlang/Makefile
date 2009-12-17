@@ -37,7 +37,6 @@ test: compile
 	$(ERL) 	-noshell -pa $(EBIN) \
 					-pa deps/*/ebin \
 					-pa $(TEST_EBIN_DIR) \
-					-pa test/include/gen_server_mock/ebin \
 					-s test_suite test \
 					-s init stop
 	
