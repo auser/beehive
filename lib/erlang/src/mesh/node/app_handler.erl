@@ -177,10 +177,6 @@ handle_info({port_closed, Pid, 0}, State) ->
   end,
   ?LOG(info, "Port closed: ~p", [Pid]),
   {noreply, State};
-handle_info({port_exited, Pid, 1}, State) ->
-  Tuple = find_pid_in_pid_table(Pid),
-  ?LOG(info, "Port exited: ~p for ~p", [Pid, Tuple]),
-  {noreply, State};
 handle_info({data, _}, State) ->
   {noreply, State};
 handle_info(Info, State) ->
@@ -280,9 +276,9 @@ run_application_on_port_in_path(App, Port, AppRootPath, From) ->
     {"[[APP_NAME]]", App#app.name}
   ]),
   
-  RealCmd = lists:append(["/bin/sh ", misc_utils:to_list(Tempfile)]),
+  RealCmd = lists:append(["/bin/bash ", misc_utils:to_list(Tempfile)]),
   io:format("RealCmd: ~p~n", [RealCmd]),
-  Pid = port_handler:start(RealCmd, AppRootPath, self(), [stderr_to_stdout]), % stderr_to_stdout
+  Pid = port_handler:start(RealCmd, AppRootPath, self(), []), % stderr_to_stdout
   
   io:format("Started port_handler: ~p~n", [Pid]),
   Bee  = #bee{
