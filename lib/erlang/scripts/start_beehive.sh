@@ -34,7 +34,9 @@ OPTIONS
 	-g, --bee_strategy                  Strategy to choose a bee. (default: random)
 	-z, --git_repos_path                Git repos path
 	-d                                  Daemonize the process
-	-v                                  Verbose
+	-v, --verbose                       Verbose
+	-vv                                 Very verbose
+	-vvv                                Debug level logging
 	-h, --help                          Show this screen
 	
 EOF
@@ -60,7 +62,7 @@ STORAGE_OPTS="-storage"
 
 TYPE="router"
 REST="true"
-VERBOSE=false
+VERBOSE=0
 STRATEGY="random"
 RELOADER_OPTS="-s reloader"
 ERL_OPTS="-pa $PWD/ebin -pa $PWD/include -pz $PWD/deps/*/ebin"
@@ -145,8 +147,14 @@ while [ $# -gt 0 ]; do
 			STORAGE_OPTS="$STORAGE_OPTS git_repos_path '$2'"
 			shift 2;;
 		-v)
-			VERBOSE=true
+			VERBOSE=1
 			shift;;
+		-vv)
+		  VERBOSE=2
+		  shift ;;
+		-vvv)
+		  VERBOSE=3
+		  shift ;;
 		--)
 			shift
 			break;;
@@ -216,16 +224,17 @@ if [ ! -z $CONFIG_FILE ]; then
 fi
 
 BEEHIVE_OPTS="$BEEHIVE_OPTS node_type $TYPE "
+BEEHIVE_OPTS="$BEEHIVE_OPTS log_level $VERBOSE "
 
-if [ $TYPE == 'router' ]; then
+if [ "$TYPE" == 'router' ]; then
 	APP_OPTS=$ROUTER_OPTS
-elif [ $TYPE == 'node' ]; then
+elif [ "$TYPE" == 'node' ]; then
 	APP_OPTS=$NODE_OPTS
-elif [ $TYPE == 'storage' ]; then
+elif [ "$TYPE" == 'storage' ]; then
 	APP_OPTS=$STORAGE_OPTS
 fi
 
-if $VERBOSE; then
+if [ $VERBOSE -gt 0 ]; then
 cat <<EOF
 	Running with:
     Erlang opts:     $ERL_OPTS
