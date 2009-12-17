@@ -65,7 +65,10 @@ create(NewProps) ->
 update_by_name(Name) ->
   case find_by_name(Name) of
     [] -> {error, "Cannot find app to update"};
-    App -> {ok, create(App#app{updated_at = date_util:now_to_seconds()})}
+    App -> 
+      NewApp = App#app{updated_at = date_util:now_to_seconds()},
+      ?NOTIFY({app, updated, NewApp}),
+      {ok, create(NewApp)}
   end.
 
 update([], _) -> ok;

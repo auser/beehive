@@ -109,6 +109,16 @@ handle_call({start_new_instance, App, AppLauncher, From}, _From, #state{
     [] -> ?STARTING_PORT;
     [P|_] -> P
   end,
+  % first, stop all the bees that are running with this app name
+  AppBees = ets:match(?TAB_NAME_TO_BEE, {App#app.name, '_'}),
+  
+  case AppBees of
+    [] -> ok;
+    _ ->
+      lists:map(fun(Bee) -> internal_stop_instance(Bee, App, From) end, AppBees)
+  end,
+  
+  % Then start it :)
   internal_start_new_instance(App, Port, AppLauncher, From),
   NewAvailablePorts = lists:delete(Port, AvailablePorts),
   {reply, ok, State#state{
@@ -177,11 +187,8 @@ handle_info({port_closed, Pid, 0}, State) ->
   end,
   ?LOG(info, "Port closed: ~p", [Pid]),
   {noreply, State};
-handle_info({port_exited, Pid, 1}, State) ->
-  Tuple = find_pid_in_pid_table(Pid),
-  ?LOG(info, "Port exited: ~p for ~p", [Pid, Tuple]),
-  {noreply, State};
-handle_info({data, _}, State) ->
+handle_info({data, _Data}, State) ->
+  % io:format("Received data from a port: ~p~n", [Data]),
   {noreply, State};
 handle_info(Info, State) ->
   ?LOG(info, "~p caught info: ~p", [?MODULE, Info]),
@@ -280,7 +287,7 @@ run_application_on_port_in_path(App, Port, AppRootPath, From) ->
     {"[[APP_NAME]]", App#app.name}
   ]),
   
-  RealCmd = lists:append(["/bin/sh ", misc_utils:to_list(Tempfile)]),
+  RealCmd = lists:append(["/bin/bash ", misc_utils:to_list(Tempfile)]),
   io:format("RealCmd: ~p~n", [RealCmd]),
   Pid = port_handler:start(RealCmd, AppRootPath, self(), [stderr_to_stdout]), % stderr_to_stdout
   
