@@ -26,7 +26,7 @@ module Beehive
       end
       
       def new_app
-        r = post("apps/new", {  "app_name" => @app_name,
+        r = post("apps/new", {  "name" => @app_name,
                                 "token" => @token })
       end
             
