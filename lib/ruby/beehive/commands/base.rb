@@ -32,18 +32,18 @@ module Beehive
           opts.on('-d', '--debugging') {|v| Beehive.debugging = true}
           opts.on('-r', '--very_debugging') {|v| Beehive.very_debugging = true}
           
-          block.call(opts) if block
-          
           opts.on("-o host", "--host host", 'The remote host') {|u| @host = u }
           opts.on("-u user", "--user user", 'The user') {|u| @user = u }
           opts.on("-p prefix", "--prefix prefix") {|u| @prefix = u }
           opts.on("-k keypair", "--keypair keypair") {|u| @keypair = Keypair.new(u) }
-
+          
           opts.banner = "Usage: beehive [options]"
           opts.on( '-h', '--help', 'Display this screen' ) do
             puts opts
             exit
           end
+          
+          block.call(opts) if block
         }.parse! @args
         
         opts

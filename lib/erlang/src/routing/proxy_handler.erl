@@ -36,7 +36,7 @@
 % Compatible with the supervisor behaviour
 start_link(ClientSock) ->
   Fun = fun() -> proxy_init(ClientSock) end,
-  Pid = ?BENCHMARK_LOG("Spawn-linking proxy_init", erlang, spawn_link, [Fun]),
+  Pid = ?BENCHMARK_LOG("------Spawn-linking proxy_init------", erlang, spawn_link, [Fun]),
   {ok, Pid}.
 
 % Receive the initial request and socket. Use the packet_decoder (http for now) to decode the
@@ -152,7 +152,6 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock, server_pid = SPi
   % If there is no activity for a while and the socket has not already closed, 
   % we'll assume that the connection is tired and should close, so we'll close it
   after 3000 ->
-    ?LOG(info, "Terminating open proxy connection because of timeout", []),
     terminate(normal, State)
   end.
 
@@ -170,7 +169,7 @@ send_and_terminate(ClientSock, Reason, Data) ->
 % this bee. Finally, close the two sockets and leave the process. This way we can be assured
 % that the process closes itself.
 terminate(Reason, State) ->
-  ?BENCHMARK_LOG("Terminating proxy", ?MODULE, terminate1, [Reason, State]).
+  ?BENCHMARK_LOG("------Terminating proxy------", ?MODULE, terminate1, [Reason, State]).
   
 terminate1(Reason, #state{server_socket = SSock, client_socket = CSock, start_time = STime, bee = Bee} = _State) ->
   StatsProplist1 = [{elapsed_time, date_util:now_to_seconds() - STime}],

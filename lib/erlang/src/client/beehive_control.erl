@@ -11,7 +11,9 @@
 -module (beehive_control).
 
 % Command-line interface
--export ([get_config_option/1]).
+-export ([
+  get_config_option/1
+]).
 
 -export ([start/0]).
 

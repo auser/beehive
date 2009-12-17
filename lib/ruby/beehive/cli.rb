@@ -15,10 +15,10 @@ module Beehive
       rescue LoadError => e
         error "Unknown command. Run 'beehive help' for more information"
       rescue NameError => e
-        p [:exception, e.inspect]
+        # p [:exception, e.inspect]
         Beehive::Command::Help.new.run(:msg => "<red>Unknown command: #{command}</red>\n")
       rescue Exception => e
-        p [:exception, e.inspect]
+        # p [:exception, e.inspect]
       end
     end
     

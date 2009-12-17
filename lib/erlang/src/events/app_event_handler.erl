@@ -39,7 +39,8 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_event({app, updated, App}, State) ->
   % app_manager:update_app(App),
-  node_manager:request_to_terminate_all_bees(App#app.name),
+  {ok, P} = app_updater_fsm:start_link(App),
+  app_updater_fsm:go(P, self()),
   {ok, State};
 
 % Fired when the squashed app has not been found

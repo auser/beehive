@@ -14,6 +14,16 @@ module Beehive
           opts.on("-m email", "--email email", 'User\'s email') {|u| @new_email = u }
           opts.on("-a password", "--password password") {|u| @new_password = u }
           opts.on("-l level", "--level level") {|u| @new_level = u }
+          opts.on( '-h', '--help', 'Display this screen' ) do
+            puts <<-EOE
+
+Usage: 
+Register a new user. Use this to register a new user for your own beehive.
+
+            EOE
+            puts opts
+            exit
+          end
         end
         
         
