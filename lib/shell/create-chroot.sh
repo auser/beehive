@@ -5,10 +5,10 @@ if [ $# -lt 1 ]; then
   exit 1
 fi
 
-APP_NAME=$1
-BASE_DIR=$2
+APP_NAME=[[APP_NAME]]
+BASE_DIR=[[BASE_DIR]]
 
-APPS="/bin/sh /bin/bash /bin/cp /bin/ls /bin/mkdir /bin/mv"
+APPS="/bin/sh /bin/bash /bin/cp /bin/ls /bin/mkdir /bin/mv /usr/bin/env"
 APPS="$APPS /bin/pwd /bin/rm /bin/rmdir /usr/bin/id /usr/bin/ssh /bin/ping /usr/bin/vi"
 
 if [ -z "$BASE_DIR" ]; then

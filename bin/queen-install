@@ -13,8 +13,8 @@ Usage: $progname options [ACTION]
 Manage beehive
 
 ACTIONS
-  start                         Installs beehive
-  stop                          Removes beehive from the system
+  install                       Installs beehive
+  remove                        Removes beehive from the system
 
 OPTIONS
   -t, --type                    Type of node to install on beehive [router]|node|storage
@@ -89,12 +89,12 @@ ERROR! Unknown type of node. Must be one of the following
 		--)
 			shift
 			break;;
-		start)
-		  ACTION="start"
+		install)
+		  ACTION="install"
 		  shift 1
 		  ;;
-		stop)
-		  ACTION="stop"
+		remove)
+		  ACTION="remove"
 		  shift 1
 		  ;;
 		*)
@@ -108,12 +108,26 @@ SETUP_SCRIPTS_DIR="$progdir/../config/user-data"
 ERL_SRC_DIR="$progdir/../lib/erlang/"
 
 case $ACTION in
-  "start" )
-    echo "Starting beehive ($TYPE)"
+  "install" )
+    echo "Installing beehive ($TYPE) into $PREFIX"
+    mkdir -p $SRC_DIR
+    # Beehive specific stuff
+    # Add a beehive user
+    if [ $(sudo cat /etc/passwd | grep ^beehive | grep -v "#" | wc -l) -eq 0 ]; then
+    	sudo useradd -s /bin/bash -b /opt/beehive -d /opt/beehive -c "beehive user" -g users beehive;
+    fi
+    /bin/bash $SETUP_SCRIPTS_DIR/erlang.sh
+    cp -R $ERL_SRC_DIR $SRC_DIR
+    sudo chown -R beehive $PREFIX
+    /usr/bin/env -i PREFIX=$PREFIX \
+    /bin/bash $SETUP_SCRIPTS_DIR/$TYPE.sh
     ;;
-  "stop" )
-    echo "Stopping beehive"
+  "remove" )
+    echo "Removing beehive from $PREFIX"
+    rm -rf $SRC_DIR
     ;;
   *)
     echo "Unknown action"
 esac
+
+export PATH=$PATH:/

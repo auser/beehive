@@ -1,5 +1,7 @@
 #!/bin/sh
 
+progdir=$(dirname $0)
+
 BASE_DIR=[[WORKING_DIRECTORY]]
 GIT_REPOS=[[LOCAL_GIT_REPOS]]
 SQUASHED_DIR=[[SQUASHED_DIRECTORY]]
@@ -19,7 +21,71 @@ echo "app_dir $APP_DIR"
 rm -rf $APP_DIR
 
 # Here we are creating the chroot jail
-OUT=$(create-chroot.sh $APP_NAME [[WORKING_DIRECTORY]])
+APP_NAME=[[APP_NAME]]
+BASE_DIR=[[WORKING_DIRECTORY]]
+
+if [ -z "$BASE_DIR" ]; then
+  BASE_DIR="/opt/beehive/bees"
+fi
+
+SKEL_DIR="$BASE_DIR/../base_skel"
+
+APP_DIR="$BASE_DIR/$APP_NAME"
+mkdir -p $APP_DIR
+
+# If we have a skeleton directory, then we'll use this as a base, rather
+# than (re)creating it every time
+if [ ! -d "$SKEL_DIR" ]; then
+  # Make a base chroot directory
+  mkdir -p $SKEL_DIR
+  mkdir -p $SKEL_DIR/home
+  mkdir -p $SKEL_DIR/etc
+  mkdir -p $SKEL_DIR/bin
+  mkdir -p $SKEL_DIR/lib
+  mkdir -p $SKEL_DIR/usr
+  mkdir -p $SKEL_DIR/dev
+  mkdir -p $SKEL_DIR/var
+  mkdir -p $SKEL_DIR/tmp
+  mkdir -p $SKEL_DIR/proc
+
+  cd $SKEL_DIR
+
+  if [ -d /lib64 ]; then
+    mkdir -p lib64/ >/dev/null 2>&1
+  fi
+  if [ ! -e dev/null ]; then
+    mknod dev/null c 1 3 >/dev/null 2>&1
+  fi
+  if [ ! -e dev/zero ]; then
+    mknod dev/zero c 1 5 >/dev/null 2>&1
+  fi
+
+  chmod 666 dev/null
+  chmod 666 dev/zero
+  
+  touch etc/passwd
+  grep /etc/passwd -e "^root" > etc/passwd
+  
+  grep /etc/group -e "^root" -e "^users" > etc/group
+  
+  mkdir -p $APP_DIR
+fi
+
+if [ ! -d $APP_DIR/home ]; then
+  cp -R $SKEL_DIR/* $APP_DIR/
+fi
+
+if [ $(cat /etc/passwd | grep $APP_NAME | grep -v "#" | wc -l) -eq 0 ]; then
+  useradd -m -p "testlogin" -s /bin/bash -d $APP_DIR/./home -c "$APP_NAME user" -g users $APP_NAME;
+  grep /etc/passwd -e "^$APP_NAME" >> $APP_DIR/etc/passwd
+	echo "added_user $APP_NAME"
+else
+  echo "user_exists $APP_NAME";
+fi
+
+echo "done $APP_DIR"
+
+# 
 
 # Yes, this is redundant, but... will do for now
 git clone --depth 0 [[GIT_REPOS]] $GIT_REPOS_DIR >/dev/null 2>&1
