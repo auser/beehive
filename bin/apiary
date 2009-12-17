@@ -14,11 +14,13 @@ Manage beehive
 
 ACTIONS
   install                       Installs beehive
+  remote_install                Install on a remote machine (host option required)
   remove                        Removes beehive from the system
 
 OPTIONS
   -t, --type                    Type of node to install on beehive [router]|node|storage
   -p, --prefix                  The root directory (default: /opt/beehive)
+  -o, --host                    Host to install (only for remote_install)
   -V, --version                 Print the version
   -h, --help                    Show this screen
 	
@@ -36,9 +38,11 @@ EOF
 # Defaults
 PREFIX="/opt/beehive"
 TYPE="router"
+HOST=false
+
 # Opts
-SHORTOPTS="hp:t:"
-LONGOPTS="help,version,prefix,type"
+SHORTOPTS="hp:t:o:"
+LONGOPTS="help,version,prefix,type,host"
 
 if $(getopt -T >/dev/null 2>&1) ; [ $? = 4 ] ; then # New longopts getopt.
 	OPTS=$(getopt -o "$SHORTOPTS" --longoptions "$LONGOPTS" -n "$progname" -- "$@")
@@ -86,11 +90,19 @@ ERROR! Unknown type of node. Must be one of the following
 		  esac
 		  shift 2
 		  ;;
+		-o|--host)
+		  HOST=$2
+		  shift 2
+		  ;;
 		--)
 			shift
 			break;;
 		install)
 		  ACTION="install"
+		  shift 1
+		  ;;
+		remote_install)
+		  ACTION="remote_install"
 		  shift 1
 		  ;;
 		remove)
@@ -106,23 +118,50 @@ done
 SRC_DIR="$PREFIX/sys"
 SETUP_SCRIPTS_DIR="$progdir/../config/user-data"
 ERL_SRC_DIR="$progdir/../lib/erlang/"
+WHOAMI=$(whoami)
 
 case $ACTION in
   "install" )
+    if [ "$WHOAMI" != "root" ]; then
+      echo "
+      Error! You must be root to install beehive.
+      "
+      exit 1
+    fi
     echo "Installing beehive ($TYPE) into $PREFIX"
     mkdir -p $SRC_DIR
     # Beehive specific stuff
     # Add a beehive user
     if [ $(sudo cat /etc/passwd | grep ^beehive | grep -v "#" | wc -l) -eq 0 ]; then
-    	sudo useradd -s /bin/bash -b /opt/beehive -d /opt/beehive -c "beehive user" -g users beehive;
+    	useradd -s /bin/bash -b /opt/beehive -d /opt/beehive -c "beehive user" -g users beehive;
     fi
-    /bin/bash $SETUP_SCRIPTS_DIR/erlang.sh
     cp -R $ERL_SRC_DIR $SRC_DIR
-    sudo chown -R beehive $PREFIX
-    /usr/bin/env -i PREFIX=$PREFIX \
-    /bin/bash $SETUP_SCRIPTS_DIR/$TYPE.sh
+    chown -R beehive $PREFIX
+    mkdir $PREFIX/db
+    /usr/bin/env -i PREFIX=$PREFIX /bin/bash $SETUP_SCRIPTS_DIR/$TYPE.sh
+    /bin/bash $SETUP_SCRIPTS_DIR/erlang.sh
+    ;;
+  "remote_install" )
+    if [ $HOST != false ]; then
+      RSYNC=$(which rsync)
+      SSH=$(which ssh)
+      echo "Installing on $HOST"
+      $RSYNC -va --exclude=".git" $progdir/../ $HOST:~/bh
+      $SSH $HOST "cd ~/bh && sudo ./bin/apiary install -t $TYPE; rm -rf ~/bh"
+    else
+      echo "
+You must pass a host when installing on a remote machine"
+      print_usage
+      exit 1
+    fi
     ;;
   "remove" )
+    if [ "$WHOAMI" != "root" ]; then
+      echo "
+      Error! You must be root to install beehive.
+      "
+      exit 1
+    fi
     echo "Removing beehive from $PREFIX"
     rm -rf $SRC_DIR
     ;;

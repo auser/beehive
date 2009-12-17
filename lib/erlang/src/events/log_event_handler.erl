@@ -14,9 +14,8 @@
 -export([init/1, handle_event/2, handle_call/2, handle_info/2, terminate/2, code_change/3]).
 
 -record (state, {
-  filename,
   log_level,
-  log_handle
+  log_handles
 }).
 
 % Log levels
@@ -25,6 +24,16 @@
 %   2 - verbose
 %   3 - full logs with debugging messages
 %   4 - heavy logging with speed
+-ifdef (debug). 
+-define (LOG_LEVELS, [info, debug, error, benchmark]).
+-else.
+-define (LOG_LEVELS, [info, debug, error]).
+-endif.
+
+-define (QUIET, 0).
+-define (VERBOSE, 1).
+-define (DEBUG, 2).
+-define (BENCHMARK, 3).
 
 %%====================================================================
 %% gen_event callbacks
@@ -36,15 +45,15 @@
 %%--------------------------------------------------------------------
 init([]) ->
   LogPath  = misc_utils:to_list(config:search_for_application_value(log_path, "./logs", beehive)),
-  LogLevel = misc_utils:to_list(config:search_for_application_value(log_level, info, beehive)),
+  LogLevel = misc_utils:to_list(config:search_for_application_value(log_level, ?VERBOSE, beehive)),
   % Get the full path for the file
   LogName1 = misc_utils:to_list(config:search_for_application_value(node_type, node, beehive)),
-  LogName = lists:append([LogName1, ".", misc_utils:to_list(LogLevel)]),
-  FullFilepath = filename:join([LogPath, lists:append([LogName, ".log"])]),
   
-  Fd = ensure_logfile_exists(FullFilepath),
+  LogHandles = lists:map(fun(Level) ->
+    make_log_for_level(LogPath, LogName1, Level) 
+  end, ?LOG_LEVELS),
   
-  {ok, #state{filename = FullFilepath, log_handle = Fd, log_level = LogLevel}}.
+  {ok, #state{log_handles = LogHandles, log_level = LogLevel}}.
 
 %%--------------------------------------------------------------------
 %% Function:
@@ -93,8 +102,8 @@ handle_info(_Info, State) ->
 %% this function is called. It should be the opposite of Module:init/1 and
 %% do any necessary cleaning up.
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{log_handle = LH} = _State) ->
-  file:close(LH),
+terminate(_Reason, #state{log_handles = ProplistsOfHandles} = _State) ->
+  lists:map(fun(_, Fd) -> file:close(Fd) end, ProplistsOfHandles),
   ok.
 
 %%--------------------------------------------------------------------
@@ -114,21 +123,23 @@ ensure_logfile_exists(FullFilepath) ->
       F
   end.
 
-% write(LogLevel, File, Line, io_lib:format(LogFormat, LogArgs), State),
-write(error, _File, _Line, Message, #state{log_handle = Fd, log_level = debug} = State) ->
-  Msg = io_lib:format("! [~s] [~s] ~s\r\n", [httpd_util:rfc1123_date(), error, Message]),
-  write_to_console(Msg),
-  write_to_file(Fd, Msg),
-  State;
-write(debug, File, Line, Message, #state{log_level = debug} = State) ->
-  Msg = io_lib:format("[~s:~p] [~s] [~s] ~s\r\n", [File, Line, httpd_util:rfc1123_date(), debug, Message]),
-  write_to_console(Msg),
-  State;
-write(Level, _File, _Line, Message, #state{log_handle = Fd} = State) ->
-  Msg = io_lib:format("[~s] [~s] ~s\r\n", [httpd_util:rfc1123_date(), Level, Message]),
-  write_to_console(Msg),
-  write_to_file(Fd, Msg),
+write(Level, _File, _Line, Message, #state{log_handles = ProplistsOfHandles, log_level = LogLevel} = State) ->
+  Msg = io_lib:format("[~s] [~p] ~s\r\n", [httpd_util:rfc1123_date(), Level, Message]),
+  case proplists:get_value(Level, ProplistsOfHandles) of
+    undefined -> ok;
+    Fd -> write_to_file(Fd, Msg)
+  end,
+  case LogLevel of
+    0 -> ok;
+    _ -> write_to_console(Msg)
+  end,
   State.
 
 write_to_console(Msg) -> io:format("~s", [Msg]).
 write_to_file(Fd, Msg) -> io:format(Fd, "~s", [Msg]).
+
+make_log_for_level(LogPath, LogName, Level) ->
+  LogName1 = lists:append([LogName, ".", misc_utils:to_list(Level)]),
+  FullFilepath = filename:join([LogPath, lists:append([LogName1, ".log"])]),
+  
+  {Level, ensure_logfile_exists(FullFilepath)}.
