@@ -77,7 +77,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->   
   % Try to make sure the pending bees are taken care of by either turning them broken or ready
-  % timer:send_interval(timer:seconds(5), {manage_pending_bees}),
+  timer:send_interval(timer:seconds(5), {manage_pending_bees}),
   % Run maintenance
   % timer:send_interval(timer:seconds(20), {ping_bees}),
   timer:send_interval(timer:minutes(10), {garbage_collection}),
@@ -134,6 +134,7 @@ handle_cast({request_to_start_new_bee, Name}, State) ->
   Backends = bees:find_all_by_name(Name),
   % Don't start a new bee if there is a pending one
   PendingBackends = lists:filter(fun(B) -> B#bee.status =:= pending end, Backends),
+  io:format("PendingBackends: ~p~n", [PendingBackends]),
   case length(PendingBackends) > 0 of
     false -> start_new_instance_by_name(Name);
     true -> ok
@@ -158,10 +159,10 @@ handle_info({clean_up}, State) ->
   {noreply, State};
 
 handle_info({manage_pending_bees}, State) ->
-  PendingBackends = lists:filter(fun(B) -> B#bee.status == pending end, apps:all(bees)),
+  PendingBackends = lists:filter(fun(B) -> B#bee.status == pending end, bees:all()),
   lists:map(fun(B) ->
-      BackendStatus = try_to_connect_to_new_instance(B, 10),
-      bee_srv:update_bee_status(B, BackendStatus)
+      Status = try_to_connect_to_new_instance(B, 10),
+      ?NOTIFY({bee, update_status, B, Status})
     % lists:map(fun(B) ->
       % ?LOG(info, "Garbage cleaning up on: ~p", [Backends#bee.app_name])
     % end, Backends)
@@ -388,6 +389,7 @@ cleanup_bee(B) ->
 % Call spawn to start new instance if the app is not defined as static and
 % there is an available host to start the bee on
 start_new_instance_by_name(Name) ->
+  io:format("start_new_instance_by_name(~p)~n", [Name]),
   case node_manager:get_next_available_host() of
     false -> false;
     Host ->
@@ -400,5 +402,10 @@ start_new_instance_by_name(Name) ->
   end.
 % Start with the app_launcher_fsm
 spawn_to_start_new_instance(App, Host) when is_record(App, app) ->
-  {ok, P} = app_launcher_fsm:start_link(App, Host),
-  app_launcher_fsm:launch(P, self()).
+  case App#app.sha of
+    undefined ->
+      ?NOTIFY({app, app_not_squashed, App});
+    Sha ->
+      io:format("spawn_to_start_new_instance: ~p~n", [App]),
+      ?NOTIFY({app, request_to_start_new_bee, App, Host, Sha})
+  end.

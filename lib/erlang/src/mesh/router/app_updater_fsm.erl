@@ -86,15 +86,21 @@ init([AppName])  ->
 %% called if a timeout occurs.
 %%--------------------------------------------------------------------
 pulling({go, _From}, #bee{app_name = AppName} = Bee) ->
-  Node = node_manager:get_next_available_storage(),
-  case apps:find_by_name(AppName) of
-    App when is_record(App, app) ->
-      % rpc:call(Node, ?STORAGE_SRV, pull_repos, [App, self()]);
-      rpc:call(Node, ?STORAGE_SRV, build_bee, [App, self()]),
-      {next_state, starting, Bee#bee{storage_node = Node}};
-    _ ->
-      io:format("Error?~n"),
-      {error, no_app, Bee}
+  PendingBees = lists:filter(fun(B) -> B#bee.status =:= pending end, bees:find_all_by_name(AppName)),
+  case length(PendingBees) > 0 of
+    true -> 
+      {stop, already_pending_bees, Bee};
+    false -> 
+      Node = node_manager:get_next_available_storage(),
+      case apps:find_by_name(AppName) of
+        App when is_record(App, app) ->
+          % rpc:call(Node, ?STORAGE_SRV, pull_repos, [App, self()]);
+          rpc:call(Node, ?STORAGE_SRV, build_bee, [App, self()]),
+          {next_state, starting, Bee#bee{storage_node = Node}};
+        _ ->
+          io:format("Error?~n"),
+          {error, no_app, Bee}
+      end
   end;
   
 pulling(Event, Bee) ->
@@ -122,27 +128,40 @@ starting({bee_built, Info}, #bee{app_name = AppName} = Bee) ->
   Node = node_manager:get_next_available_host(),
   
   App = apps:find_by_name(AppName),
-  {ok, P} = app_launcher_fsm:start_link(App, Node),
+  io:format("app_launcher_fsm for node: ~p~n", [Node]),
+  {ok, P} = app_launcher_fsm:start_link(App, Node, Sha),
   app_launcher_fsm:launch(P, self()),
   
   NewBee = Bee#bee{bee_size = BeeSize, dir_size = DirSize, host_node = Node, commit_hash = Sha},
+  io:format("bee_built: ~p for new hash: ~p~n", [NewBee, Sha]),
   {next_state, success, NewBee};
 
 starting(Event, Bee) ->
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, starting]),
   {next_state, launching, Bee}.
 
-success({bee_started_normally, StartedBee}, #bee{app_name = Name} = Bee) ->
+success({bee_started_normally, StartedBee, App}, #bee{app_name = Name, commit_hash = Sha} = Bee) ->
+  io:format("bee_started_normally: ~p for new hash: ~p~n", [StartedBee, Sha]),
+  
   case bees:find_all_by_name(Name) of
     [] ->
-      bees:save(StartedBee),
+      apps:create(App#app{sha = Sha}),
+      bees:save(StartedBee#bee{commit_hash = Sha}),
       {stop, normal, Bee};
     CurrentBees ->
-      OldBees = lists:filter(fun(B) -> bees:is_the_same_as(StartedBee, B) =:= false end, CurrentBees),
       lists:map(fun(B) ->
-        io:format("Terminating old bee: ~p~n", [B]),
-        node_manager:request_to_terminate_bee(B)
-      end, OldBees),
+        case B#bee.id =:= StartedBee#bee.id of
+          true -> skip;
+          false ->
+            io:format("Terminating old bee: ~p~n", [B]),
+            node_manager:request_to_terminate_bee(B),
+            bees:save(B#bee{status = terminated})
+        end
+      end, CurrentBees),
+      
+      apps:create(App#app{sha = Sha}),
+      bees:save(StartedBee#bee{commit_hash = Sha}),
+      
       {stop, normal, Bee}
   end;
 

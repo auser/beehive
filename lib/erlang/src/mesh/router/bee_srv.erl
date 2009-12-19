@@ -265,6 +265,7 @@ choose_bee({Hostname, AppMod, RoutingParameter}) ->
         false ->
           {error, unknown_app};
         true ->
+          % {app, request_to_start_new_bee, App, Host, Sha}
           ?NOTIFY({app, request_to_start_new_bee, Hostname}),
           ?MUST_WAIT_MSG
       end;
