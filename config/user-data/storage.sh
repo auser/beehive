@@ -19,7 +19,7 @@ cd gitosis
 
 sudo python setup.py install
 
-sudo adduser --system --shell /bin/sh --gecos 'git version control' --group --disabled-password --home /home/git git
+sudo adduser --system --shell /bin/bash --gecos 'git version control' --group --disabled-password --home /home/git git
 sudo -H -u git mkdir /home/git/.ssh
 
 if [ -f /tmp/id_rsa.pub ]; then
