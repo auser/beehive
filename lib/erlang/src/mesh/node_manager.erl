@@ -277,7 +277,10 @@ handle_cast({request_to_terminate_all_bees, Name}, State) ->
 handle_cast({request_to_terminate_bee, Bee}, State) ->
   App = apps:find_by_name(Bee#bee.app_name),
   Node = Bee#bee.host_node,
-  rpc:call(Node, ?APP_HANDLER, stop_instance, [Bee, App, self()]),
+  
+  RealBee = bees:find_by_id(Bee#bee.id),
+  io:format("request_to_terminate_bee: ~p~n", [RealBee]),
+  rpc:call(Node, ?APP_HANDLER, stop_instance, [RealBee, App, self()]),
   {noreply, State};
   
 handle_cast(_Msg, State) ->
