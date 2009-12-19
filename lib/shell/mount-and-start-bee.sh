@@ -42,7 +42,8 @@ mount $MOUNT_FILE $MOUNT_LOCATION -t squashfs -o ro -o loop
 if [ $? != 0 ]; then exit $COULD_NOT_MOUNT_APP; fi
   
 # Create a tmp directory
-mkdir -p $MOUNT_LOCATION/tmp
+mkdir -p /tmp/$APP_NAME/$SHA
+chown $CHROOT_USER /tmp/$APP_NAME/$SHA
 
 # Bind mount the system
 mount --bind /bin $MOUNT_LOCATION/bin -o ro
@@ -52,10 +53,7 @@ mount --bind /lib $MOUNT_LOCATION/lib -o ro
 mount --bind /dev $MOUNT_LOCATION/dev -o ro
 mount --bind /var $MOUNT_LOCATION/var -o ro
 mount -t proc /proc $MOUNT_LOCATION/proc
-mount --bind /tmp/$APP_NAME $MOUNT_LOCATION/tmp -o rw
-
-# Consider adding logs
-chown $CHROOT_USER $MOUNT_LOCATION/tmp
+mount --bind /tmp/$APP_NAME/$SHA $MOUNT_LOCATION/tmp -o rw
 
 # If there is a lib64 directory 
 if [ -d /lib64 ]; then
@@ -72,7 +70,7 @@ THIN_APP="$GEM_ENV/thin"
 
 echo "thin $THIN_APP"
 
-PIDS_DIR=/tmp/$APP_NAME
+PIDS_DIR=/tmp/$APP_NAME/$SHA
 PID_NAME=$APP_NAME-$SHA-$PORT.pid
 
 # Kill the previous thin process, just in case
@@ -94,6 +92,7 @@ fi
   PATH=$PATH:$GEM_ENV \
   WHOAMI=$APP_NAME \
   APP_NAME=$APP_NAME \
+  COMMIT_HASH=$SHA \
   GEM_PATH=$MOUNT_LOCATION/.gems:$GEM_PATHS \
   /bin/su -m $APP_NAME \
   /bin/bash -c \

@@ -65,21 +65,20 @@ find_all_grouped_by_host1(#bee{host=Host} = B, [{Host, Backends, Sum} | Acc]) ->
 find_all_grouped_by_host1(#bee{host=Host} = B, Acc) ->
   [{Host, [B], 1}|Acc].
 
-create(Backend) when is_record(Backend, bee) -> 
-  case db:write(Backend) of
-    ok -> {ok, Backend};
+create(Backend) when is_record(Backend, bee) -> save(Backend);
+create(NewProps) ->
+  create(new(NewProps)).
+
+save(Bee) ->
+  case db:write(Bee) of
+    ok -> {ok, Bee};
     {'EXIT',{aborted,{no_exists,_}}} -> 
       ?NOTIFY({db, database_not_initialized, bee}),
       {error, database_not_initialized};
     E ->
         io:format("Unknown error: ~p~n", [E]),
       {error, did_not_write}
-  end;
-create(NewProps) ->
-  create(new(NewProps)).
-
-save(Bee) ->
-  db:write(Bee).
+  end.
 
 % Grrr update!
 transactional_update(F) ->

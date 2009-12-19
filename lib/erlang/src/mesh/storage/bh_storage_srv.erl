@@ -18,8 +18,8 @@
   pull_repos/2,
   build_bee/2,
   locate_git_repo/1,
-  lookup_squashed_repos/1,
-  has_squashed_repos/1
+  lookup_squashed_repos/2,
+  has_squashed_repos/2
 ]).
 
 %% gen_server callbacks
@@ -50,11 +50,11 @@ build_bee(AppName, Caller) ->
 locate_git_repo(Name) ->
   gen_server:call(?SERVER, {locate_git_repo, Name}).
 
-lookup_squashed_repos(Name) ->
-  handle_lookup_squashed_repos(Name).
+lookup_squashed_repos(App, Sha) ->
+  handle_lookup_squashed_repos(App, Sha).
 
-has_squashed_repos(Name) ->
-  case handle_lookup_squashed_repos(Name) of
+has_squashed_repos(App, Sha) ->
+  case handle_lookup_squashed_repos(App, Sha) of
     [] -> false;
     E -> E
   end.
@@ -136,24 +136,36 @@ handle_cast({build_bee, App, Caller}, #state{scratch_disk = ScratchDisk, squashe
   {ok, ReposUrl} = handle_repos_lookup(App),
   OutFile = lists:append([handle_find_application_location(App, State), ".squashfs"]),
   
-  {Proplists, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("create-bee", [
+  io:format("creating bee: ~p~n", [ReposUrl]),
+  {Proplists, Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("create-bee", [
     {"[[GIT_REPOS]]", ReposUrl},
     {"[[WORKING_DIRECTORY]]", ScratchDisk},
     {"[[SQUASHED_DIRECTORY]]", SquashedDisk},
     {"[[APP_NAME]]", App#app.name},
     {"[[OUTFILE]]", OutFile}
   ]),
-  io:format("Proplists: ~p~n", [Proplists]),
-  Reply = case proplists:is_defined(bee_size, Proplists) of
-    true -> 
-      Path = proplists:get_value(outdir, Proplists),
-      ets:insert(?TAB_NAME_TO_PATH, {App, Path}),
-      {bee_built, Proplists};
-    false -> 
-      {error, "Could not create bee"}
-  end,
-  Caller ! Reply,
-  {noreply, State};
+  case Status of
+    0 ->
+      io:format("Proplists: ~p~n", [Proplists]),
+      Reply = case proplists:is_defined(bee_size, Proplists) of
+        true -> 
+          Path = proplists:get_value(outdir, Proplists),
+          ets:insert(?TAB_NAME_TO_PATH, {App, Path}),
+          {bee_built, Proplists};
+        false -> 
+          {error, "Could not create bee"}
+      end,
+      Caller ! Reply,
+      {noreply, State};
+    1 ->
+      Reply = {error, could_not_pull_bee},
+      Caller ! Reply,
+      {noreply, State};
+    _ ->
+      Reply = {error, unknown_error},
+      Caller ! Reply,
+      {noreply, State}
+  end;
 handle_cast(_Msg, State) ->
   {noreply, State}.
 
@@ -205,8 +217,10 @@ handle_offsite_repos_lookup(AppName) ->
     _ -> false
   end.
 
-handle_lookup_squashed_repos(Name) ->
-  case ets:lookup(?TAB_NAME_TO_PATH, Name) of
+handle_lookup_squashed_repos(App, Sha) when is_record(App, app) ->
+  handle_lookup_squashed_repos(App#app.name, Sha);
+handle_lookup_squashed_repos(Name, Sha) ->
+  case ets:lookup(?TAB_NAME_TO_PATH, lists:append([Name, Sha])) of
     [{_Key, Path}] -> Path;
     _ -> 
       SquashedDir = config:search_for_application_value(squashed_storage, "/opt/beehive/squashed", storage),
@@ -214,7 +228,11 @@ handle_lookup_squashed_repos(Name) ->
       case lists:member(Name, Folders) of
         true ->
           Dir = filename:join([SquashedDir, Name]),
-          filename:join([Dir, lists:append([Name, ".squashfs"])]);
+          FullFilePath = filename:join([Dir, lists:append([Name, ".", Sha, ".squashfs"])]),
+          case filelib:is_file(FullFilePath) of
+            true -> FullFilePath;
+            false -> false
+          end;
         false ->
           false
       end

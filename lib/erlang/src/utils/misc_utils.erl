@@ -38,7 +38,9 @@ shell_fox(Name, Proplist) ->
       wait_for_port(Port, Tempfile, Self, [])
     end),
   receive
-    {ok, Tempfile, E, Status} -> {E, Status}
+    {ok, Tempfile, E, Status} -> 
+      file:delete(Tempfile),
+      {E, Status}
   after timer:seconds(60) ->
     {error, timeout}
   end.

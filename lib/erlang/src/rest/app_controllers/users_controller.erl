@@ -23,6 +23,25 @@ get(_) ->
     end, All)
   }]}.
 
+post([Name, "keys", "new"], Data) ->
+  auth_utils:run_if_admin(fun(_) ->
+    case proplists:get_value(key, Data) of
+      undefined -> error("No key defined");
+      Key ->
+        case users:find_by_email(Name) of
+          User when is_record(User, user) ->
+            case users:create(User#user{key = Key}) of
+              User when is_record(User, user) -> 
+                {struct, ?BINIFY([{"user", User#user.email}, {"key", "added key"}])};
+              _Else -> 
+                error("There was an error adding bee")
+            end;
+          _E ->
+            error("Error finding user")
+        end
+      end
+    end, Data);
+  
 post(["new"], Data) ->
   auth_utils:run_if_admin(fun(_) ->
     case users:create(Data) of

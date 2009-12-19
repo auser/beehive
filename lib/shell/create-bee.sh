@@ -2,31 +2,26 @@
 
 progdir=$(dirname $0)
 
-BASE_DIR=[[WORKING_DIRECTORY]]
-GIT_REPOS=[[LOCAL_GIT_REPOS]]
+GIT_REPOS=[[GIT_REPOS]]
 SQUASHED_DIR=[[SQUASHED_DIRECTORY]]
-
-if [ ! -d [[WORKING_DIRECTORY]] ]; then
-	mkdir -p [[WORKING_DIRECTORY]]
-fi
-cd [[WORKING_DIRECTORY]]
-
+# Here we are creating the chroot jail
 APP_NAME=[[APP_NAME]]
-OUTFILE=$SQUASHED_DIR/$APP_NAME/$APP_NAME.squashfs
+BASE_DIR=[[SQUASHED_DIRECTORY]]
+WORKING_DIRECTORY=[[WORKING_DIRECTORY]]
 
-APP_DIR=[[WORKING_DIRECTORY]]/$APP_NAME	
+# MESSAGES
+COULD_NOT_PULL_BEE=1
+
+if [ ! -d $WORKING_DIRECTORY ]; then
+	mkdir -p $WORKING_DIRECTORY
+fi
+cd $WORKING_DIRECTORY
+
+APP_DIR=$WORKING_DIRECTORY/$APP_NAME	
 GIT_REPOS_DIR=$APP_DIR/home/app
 
 echo "app_dir $APP_DIR"
 rm -rf $APP_DIR
-
-# Here we are creating the chroot jail
-APP_NAME=[[APP_NAME]]
-BASE_DIR=[[WORKING_DIRECTORY]]
-
-if [ -z "$BASE_DIR" ]; then
-  BASE_DIR="/opt/beehive/bees"
-fi
 
 SKEL_DIR="$BASE_DIR/../base_skel"
 
@@ -61,12 +56,7 @@ if [ ! -d "$SKEL_DIR" ]; then
 
   chmod 666 dev/null
   chmod 666 dev/zero
-  
-  touch etc/passwd
-  grep /etc/passwd -e "^root" > etc/passwd
-  
-  grep /etc/group -e "^root" -e "^users" > etc/group
-  
+    
   mkdir -p $APP_DIR
 fi
 
@@ -74,20 +64,13 @@ if [ ! -d $APP_DIR/home ]; then
   cp -R $SKEL_DIR/* $APP_DIR/
 fi
 
-if [ $(cat /etc/passwd | grep $APP_NAME | grep -v "#" | wc -l) -eq 0 ]; then
-  useradd -m -p "testlogin" -s /bin/bash -d $APP_DIR/./home -c "$APP_NAME user" -g users $APP_NAME;
-  grep /etc/passwd -e "^$APP_NAME" >> $APP_DIR/etc/passwd
-	echo "added_user $APP_NAME"
-else
-  echo "user_exists $APP_NAME";
-fi
-
 echo "done $APP_DIR"
 
-# 
 
 # Yes, this is redundant, but... will do for now
-git clone --depth 0 [[GIT_REPOS]] $GIT_REPOS_DIR >/dev/null 2>&1
+git clone --depth 0 $GIT_REPOS $GIT_REPOS_DIR
+if [ $? != 0 ]; then exit $COULD_NOT_PULL_BEE; fi
+  
 cd $GIT_REPOS_DIR
 SHA=$(git log --max-count=1 | awk '/commit/ {print $2}')
 echo "sha $SHA"
@@ -99,12 +82,19 @@ rm -rf $GIT_REPOS_DIR/.git
 
 # Install from files
 GEM_FILE=$GIT_REPOS_DIR/.gems
+
+mkdir -p $APP_DIR/.gems
+export GEM_HOME="$APP_DIR/.gems"
+export GEM_PATH="$APP_DIR/.gems"
 if [ -f $GEM_FILE ]; then
-  for line in $(cat $1/.gems); do
+  for line in $(cat $GIT_REPOS_DIR/.gems); do
+    echo "installing $line"
     gem install $line --no-ri --no-rdoc;
   done
 fi
 echo "installed gems"
+
+OUTFILE=$SQUASHED_DIR/$APP_NAME/$APP_NAME.$SHA.squashfs
 
 # Make sure this directory doesn't exist
 if [ -f $OUTFILE ]; then
