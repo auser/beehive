@@ -54,6 +54,15 @@ handle_event({bee, ready, Bee}, State) when is_record(Bee, bee) ->
   end),
   {ok, State};
 
+% Handle generic status update
+handle_event({bee, update_status, Bee, Status}, State) ->
+  bees:transactional_update(fun() ->
+    RealBee = bees:find_by_id(Bee#bee.id),
+    bees:update(RealBee#bee{status = Status})
+  end),
+  {ok, State};
+
+
 % Caught when a bee is marked as down
 handle_event({bee, bee_down, Bee}, State) ->
   bees:transactional_update(fun() ->

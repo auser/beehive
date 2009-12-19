@@ -16,6 +16,13 @@
 %% gen_event callbacks
 -export([init/1, handle_event/2, handle_call/2, handle_info/2, terminate/2, code_change/3]).
 
+-define (LAUNCHERS_APP_TO_PID, 'launchers_app_to_pid').
+-define (LAUNCHERS_PID_TO_APP, 'launchers_pid_to_app').
+-define (UPDATERS_PID_TO_APP, 'updaters_pid_to_app').
+-define (UPDATERS_APP_TO_PID, 'updaters_app_to_pid').
+
+-record (state, {}).
+
 %%====================================================================
 %% gen_event callbacks
 %%====================================================================
@@ -26,7 +33,16 @@
 %%--------------------------------------------------------------------
 init([]) ->
   ?QSTORE:start_link(?WAIT_DB),
-  {ok, 500}.
+  process_flag(trap_exit, true),
+  
+  Opts = [named_table, set],
+  ets:new(?UPDATERS_PID_TO_APP, Opts),
+  ets:new(?UPDATERS_APP_TO_PID, Opts),
+  
+  ets:new(?LAUNCHERS_PID_TO_APP, Opts),
+  ets:new(?LAUNCHERS_APP_TO_PID, Opts),
+  
+  {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% Function:
@@ -38,24 +54,24 @@ init([]) ->
 %% each installed event handler to handle the event.
 %%--------------------------------------------------------------------
 handle_event({app, updated, App}, State) ->
-  % app_manager:update_app(App),
-  {ok, P} = app_updater_fsm:start_link(App),
-  app_updater_fsm:go(P, self()),
+  handle_updating_app(App),
   {ok, State};
-
+  
 % Fired when the squashed app has not been found
-handle_event({app, app_not_squashed, Name}, State) ->
-  ?LOG(info, "app_not_squashed yet: ~p", [Name]),
+handle_event({app, app_not_squashed, App}, State) ->
+  ?LOG(info, "app_not_squashed yet: ~p", [App#app.name]),
+  handle_updating_app(App),
   {ok, State};
 
 handle_event({app, request_to_start_new_bee, Hostname}, State) ->
-  ?LOG(info, "request_to_start_new_bee: ~p~n", [Hostname]),
   app_manager:request_to_start_new_bee(Hostname),
   {ok, State};
   
-handle_event({bee_srv, init}, State) ->
+handle_event({app, request_to_start_new_bee, App, Host, Sha}, State) ->
+  ?LOG(info, "request_to_start_new_bee: ~p~n", [App]),
+  handle_launch_app(App, Host, Sha),
   {ok, State};
-  
+
 handle_event(_Event, State) ->
   {ok, State}.
 
@@ -82,6 +98,21 @@ handle_call(_Request, State) ->
 %% an event manager receives any other message than an event or a synchronous
 %% request (or a system message).
 %%--------------------------------------------------------------------
+handle_info({'EXIT', Pid, _Reason}, State) ->
+  io:format("Pid exited: ~p~n", [Pid]),
+  case ets:lookup(?UPDATERS_PID_TO_APP, Pid) of
+    [{Pid, App}] ->
+      ets:delete(?UPDATERS_PID_TO_APP, Pid),
+      ets:delete(?UPDATERS_APP_TO_PID, App);
+    _ -> 
+      case ets:lookup(?LAUNCHERS_PID_TO_APP, Pid) of
+        [{Pid, App}] ->
+          ets:delete(?LAUNCHERS_PID_TO_APP, Pid),
+          ets:delete(?LAUNCHERS_APP_TO_PID, App);
+        _ -> true
+      end
+  end,
+  {ok, State};
 handle_info(_Info, State) ->
   {ok, State}.
 
@@ -102,3 +133,23 @@ code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
   
 % INTERNAL METHODS
+
+handle_updating_app(App) ->  
+  case ets:lookup(?UPDATERS_APP_TO_PID, App) of
+    [{_App, _Pid}] -> ok;
+    _ -> 
+      {ok, P} = app_updater_fsm:start_link(App),
+      app_updater_fsm:go(P, self()),
+      ets:insert(?UPDATERS_APP_TO_PID, {App, P}),
+      ets:insert(?UPDATERS_PID_TO_APP, {P, App})
+  end.
+
+handle_launch_app(App, Host, Sha) ->
+  case ets:lookup(?LAUNCHERS_APP_TO_PID, App) of
+    [{_App, _Pid}] -> ok;
+    _ -> 
+      {ok, P} = app_launcher_fsm:start_link(App, Host, Sha),
+      app_launcher_fsm:launch(P, self()),
+      ets:insert(?LAUNCHERS_APP_TO_PID, {App, P}),
+      ets:insert(?LAUNCHERS_PID_TO_APP, {P, App})
+  end.
