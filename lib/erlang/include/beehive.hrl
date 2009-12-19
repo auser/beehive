@@ -83,6 +83,7 @@
   sticky        = false,            % if an app is sticky, the apps are not requested after timeout time
   min_instances,
   max_instances,
+  sha,                              % sha of the latest working push
   updated_at,
   start_command,
   stop_command
