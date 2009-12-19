@@ -10,3 +10,4 @@ TODO:
 * Add stats dumping to file
 * Remove needless db queries in proxy process
 * Throw error for creating duplicate users/apps/bees
+* Add job-queue to handle tasks -> queue-driven

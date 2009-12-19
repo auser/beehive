@@ -135,9 +135,11 @@ case $ACTION in
     if [ $(sudo cat /etc/passwd | grep ^beehive | grep -v "#" | wc -l) -eq 0 ]; then
     	useradd -s /bin/bash -b /opt/beehive -d /opt/beehive -c "beehive user" -g users beehive;
     fi
+    ALL_NODES_HAVE_THESE_APPS="curl"
     cp -R $ERL_SRC_DIR $SRC_DIR
     chown -R beehive $PREFIX
     mkdir $PREFIX/db
+    apt-get install -y $ALL_NODES_HAVE_THESE_APPS
     /usr/bin/env -i PREFIX=$PREFIX /bin/bash $SETUP_SCRIPTS_DIR/$TYPE.sh
     /bin/bash $SETUP_SCRIPTS_DIR/erlang.sh
     ;;
@@ -146,6 +148,7 @@ case $ACTION in
       RSYNC=$(which rsync)
       SSH=$(which ssh)
       echo "Installing on $HOST"
+      $SCP "~/.ssh/id_rsa.pub" $HOST:/tmp/id_rsa.pub
       $RSYNC -va --exclude=".git" $progdir/../ $HOST:~/bh
       $SSH $HOST "cd ~/bh && sudo ./bin/apiary install -t $TYPE; rm -rf ~/bh"
     else
