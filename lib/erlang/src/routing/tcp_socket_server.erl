@@ -25,6 +25,7 @@
 %%====================================================================
 %% API
 %%====================================================================
+% TODO: Move to proc_lib:start_link
 start_link()          -> init().
 % Start listening on the application port
 init()                -> init(config:search_for_application_value(client_port, 8080, router)).
