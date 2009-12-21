@@ -101,8 +101,16 @@ ERROR! Unknown type of node. Must be one of the following
 		  ACTION="install"
 		  shift 1
 		  ;;
+		upgrade)
+		  ACTION="upgrade"
+		  shift 1
+		  ;;
 		remote_install)
 		  ACTION="remote_install"
+		  shift 1
+		  ;;
+		remote_upgrade)
+		  ACTION="remote_upgrade"
 		  shift 1
 		  ;;
 		remove)
@@ -117,8 +125,10 @@ done
 
 SRC_DIR="$PREFIX/sys"
 SETUP_SCRIPTS_DIR="$progdir/../config/user-data"
-ERL_SRC_DIR="$progdir/../lib/erlang/"
+BH_SRC_DIR="$progdir/../lib/*"
 WHOAMI=$(whoami)
+RSYNC=$(which rsync)
+SSH=$(which ssh)
 
 case $ACTION in
   "install" )
@@ -136,19 +146,27 @@ case $ACTION in
     	useradd -s /bin/bash -b /opt/beehive -d /opt/beehive -c "beehive user" -g users beehive;
     fi
     ALL_NODES_HAVE_THESE_APPS="curl"
-    cp -R $ERL_SRC_DIR $SRC_DIR
+    cp -R $BH_SRC_DIR $SRC_DIR
     chown -R beehive $PREFIX
     mkdir $PREFIX/db
     apt-get install -y $ALL_NODES_HAVE_THESE_APPS
     /usr/bin/env -i PREFIX=$PREFIX /bin/bash $SETUP_SCRIPTS_DIR/$TYPE.sh
     /bin/bash $SETUP_SCRIPTS_DIR/erlang.sh
     ;;
+  "upgrade" )
+      mkdir -p $SRC_DIR
+      cp -R $BH_SRC_DIR $SRC_DIR
+      cd $SRC_DIR/erlang && sudo make clean && sudo make
+    ;;
   "remote_install" )
     if [ $HOST != false ]; then
-      RSYNC=$(which rsync)
-      SSH=$(which ssh)
       echo "Installing on $HOST"
-      $SCP "~/.ssh/id_rsa.pub" $HOST:/tmp/id_rsa.pub
+      if [ -f "$HOME/.ssh/id_rsa.pub" ]; then
+        $SCP "$HOME/.ssh/id_rsa.pub" $HOST:/tmp/id_rsa.pub
+      else
+        echo "Create an id_rsa.pub in $HOME/.ssh/id_rsa.pub"
+        exit 2
+      fi
       $RSYNC -va --exclude=".git" $progdir/../ $HOST:~/bh
       $SSH $HOST "cd ~/bh && sudo ./bin/apiary install -t $TYPE; rm -rf ~/bh"
     else
@@ -157,6 +175,10 @@ You must pass a host when installing on a remote machine"
       print_usage
       exit 1
     fi
+    ;;
+  "remote_upgrade" )
+      $RSYNC -va --exclude=".git" $progdir/../ $HOST:~/bh
+      $SSH $HOST "cd ~/bh && sudo ./bin/apiary upgrade -t $TYPE; rm -rf ~/bh"
     ;;
   "remove" )
     if [ "$WHOAMI" != "root" ]; then
