@@ -19,83 +19,100 @@ cd gitosis
 
 sudo python setup.py install
 
-sudo adduser --system --shell /bin/bash --gecos 'git version control' --group --disabled-password --home /home/git git
-sudo -H -u git mkdir /home/git/.ssh
+if [ $(cat /etc/passwd | grep git | grep -v "#" | wc -l) -eq 0 ]; then
+  sudo adduser \
+      --system \
+      --shell /bin/sh \
+      --gecos 'git version control' \
+      --group \
+      --disabled-password \
+      --home /home/git \
+      git
+  sudo -H -u git mkdir /home/git/.ssh
 
-if [ -f /tmp/id_rsa.pub ]; then
-  sudo -H -u git gitosis-init < /tmp/id_rsa.pub
-  rm /tmp/id_rsa.pub
+  if [ -f /tmp/id_rsa.pub ]; then
+    sudo -H -u git gitosis-init < /tmp/id_rsa.pub
+    mv /tmp/id_rsa.pub /home/git/.ssh/id_rsa.pub
+  else
+    ssh-keygen -f ~/.ssh/id_rsa -N "hello"
+    sudo -H -u git gitosis-init < ~/.ssh/id_rsa.pub
+  fi
 else
-  ssh-keygen -f ~/.ssh/id_rsa -N "hello"
-  sudo -H -u git gitosis-init < ~/.ssh/id_rsa.pub
+  echo "git_user exists";
 fi
 
 sudo chmod 755 /home/git/repositories/gitosis-admin.git/hooks/post-update
 
-echo "#! /bin/sh
+if [ ! -f /etc/init.d/git-daemon ]; then
+  echo "#! /bin/sh
 
-PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-NAME=git-daemon
-PIDFILE=/var/run/\$NAME.pid
-DESC=\"the git daemon\"
-DAEMON=\"/usr/bin/git daemon\"
-DAEMON_OPTS=\"--base-path=/home/git/repositories --verbose --syslog
-            --detach --pid-file=\$PIDFILE --user=git --group=nogroup\"
+  PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+  NAME=git-daemon
+  PIDFILE=/var/run/\$NAME.pid
+  DESC=\"the git daemon\"
+  DAEMON=\"/usr/bin/git daemon\"
+  DAEMON_OPTS=\"--base-path=/home/git/repositories --verbose --syslog
+              --detach --pid-file=\$PIDFILE --user=git --group=nogroup\"
 
-[ -r /etc/default/git-daemon ] && . /etc/default/git-daemon
+  [ -r /etc/default/git-daemon ] && . /etc/default/git-daemon
 
-. /lib/lsb/init-functions
+  . /lib/lsb/init-functions
 
-start_git() {
-  start-stop-daemon --start --quiet --pidfile \$PIDFILE \
-    --startas \$DAEMON -- \$DAEMON_OPTS
-}
+  start_git() {
+    start-stop-daemon --start --quiet --pidfile \$PIDFILE \
+      --startas \$DAEMON -- \$DAEMON_OPTS
+  }
 
-stop_git() {
-  start-stop-daemon --stop --quiet --pidfile \$PIDFILE
-  rm -f \$PIDFILE
-}
+  stop_git() {
+    start-stop-daemon --stop --quiet --pidfile \$PIDFILE
+    rm -f \$PIDFILE
+  }
 
-status_git() {
-  start-stop-daemon --stop --test --quiet --pidfile \$PIDFILE >/dev/null 2>&1
-}
+  status_git() {
+    start-stop-daemon --stop --test --quiet --pidfile \$PIDFILE >/dev/null 2>&1
+  }
 
-case \"\$1\" in
-  start)
-  log_begin_msg \"Starting \$DESC\"
-  start_git
-  log_end_msg 0
-  ;;
-  stop)
-  log_begin_msg \"Stopping \$DESC\"
-  stop_git
-  log_end_msg 0
-  ;;
-  status)
-  log_begin_msg \"Testing \$DESC: \"
-  if status_git
-  then
-    log_success_msg \"Running\"
-    exit 0
-  else
-    log_failure_msg \"Not running\"
+  case \"\$1\" in
+    start)
+    log_begin_msg \"Starting \$DESC\"
+    start_git
+    log_end_msg 0
+    ;;
+    stop)
+    log_begin_msg \"Stopping \$DESC\"
+    stop_git
+    log_end_msg 0
+    ;;
+    status)
+    log_begin_msg \"Testing \$DESC: \"
+    if status_git
+    then
+      log_success_msg \"Running\"
+      exit 0
+    else
+      log_failure_msg \"Not running\"
+      exit 1
+    fi
+    ;;
+    restart|force-reload)
+    log_begin_msg \"Restarting \$DESC\"
+    stop_git
+    sleep 1
+    start_git
+    log_end_msg 0
+    ;;
+    *)
+    echo \"Usage: \$0 {start|stop|restart|force-reload|status}\" >&2
     exit 1
-  fi
-  ;;
-  restart|force-reload)
-  log_begin_msg \"Restarting \$DESC\"
-  stop_git
-  sleep 1
-  start_git
-  log_end_msg 0
-  ;;
-  *)
-  echo \"Usage: \$0 {start|stop|restart|force-reload|status}\" >&2
-  exit 1
-  ;;
-esac
+    ;;
+  esac
 
-exit 0" > /etc/init.d/git-daemon
+  exit 0" > /etc/init.d/git-daemon
 
-sudo chmod +x /etc/init.d/git-daemon
-sudo invoke-rc.d git-daemon start
+  sudo chmod +x /etc/init.d/git-daemon
+  sudo invoke-rc.d git-daemon start
+else
+  echo "git daemon already exists"
+fi
+
+rm -rf /tmp/gitosis
