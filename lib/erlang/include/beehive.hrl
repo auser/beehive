@@ -24,7 +24,12 @@
 
 % EVENTS
 -define (EVENT_MANAGER, event_manager).
--define (NOTIFY (Event), ?EVENT_MANAGER:notify(Event)).
+-define (NOTIFY (Event), node_manager:notify(Event)).
+
+% Server types
+-define (ROUTER_SERVERS, 'ROUTER SERVERS').
+-define (NODE_SERVERS, 'NODE SERVERS').
+-define (STORAGE_SERVERS, 'STORAGE SERVERS').
 
 % Port to start on
 -define (STARTING_PORT, 5001).

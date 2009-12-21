@@ -23,6 +23,8 @@
   get_routers/0, get_nodes/0, get_storage/0,
   dump/1,
   join/1,
+  notify/1,
+  is_a/1,
   can_deploy_new_app/0, can_pull_new_app/0,
   get_next_available_host/0, get_next_available_storage/0,
   find_application_location/1
@@ -39,9 +41,6 @@
 }).
 
 -define(SERVER, ?MODULE).
--define (ROUTER_SERVERS, 'ROUTER SERVERS').
--define (NODE_SERVERS, 'NODE SERVERS').
--define (STORAGE_SERVERS, 'STORAGE SERVERS').
 % Other modules
 -define (APP_HANDLER, app_handler).
 -define (STORAGE_SRV, bh_storage_srv).
@@ -89,6 +88,34 @@ start_link(node, Seed) ->
       {ok, Pid};
     Else ->
       ?LOG(error, "Could not start router link: ~p~n", [Else])
+  end.
+
+is_a(router) ->
+  case whereis(bee_srv) of
+    undefined -> false;
+    _ -> true
+  end;
+
+is_a(storage) ->
+  case whereis(bh_storage_srv) of
+    undefined -> false;
+    _ -> true
+  end;
+
+is_a(node) ->
+  case whereis(app_handler) of
+    undefined -> false;
+    _ -> true
+  end.
+
+notify(Msg) ->
+  case is_a(router) of
+    true -> ?EVENT_MANAGER:notify(Msg);
+    false -> 
+      case get_routers() of
+        [] -> error;
+        Routers -> rpc:call(node(hd(Routers)), ?EVENT_MANAGER, notify, [Msg])
+      end
   end.
   
 get_host() -> gen_server:call(?SERVER, {get_host}).
