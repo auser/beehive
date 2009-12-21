@@ -136,6 +136,8 @@ starting({bee_built, Info}, #bee{app_name = AppName} = Bee) ->
   io:format("bee_built: ~p for new hash: ~p~n", [NewBee, Sha]),
   {next_state, success, NewBee};
 
+starting({error, could_not_pull_bee}, Bee) ->
+  {stop, could_not_pull_bee, Bee};
 starting(Event, Bee) ->
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, starting]),
   {next_state, launching, Bee}.
