@@ -220,7 +220,13 @@ if [ ! -z $CONFIG_FILE ]; then
 		
 		BEEHIVE_OPTS="$BEEHIVE_OPTS seed '$SEED' "
 	fi
-	
+fi
+
+# Make sure the name has an '@' symbol
+if [ $(echo "$NAME" | $grep '@') ]; then
+  NAME=$NAME
+else
+  NAME="$NAME@$HOSTNAME"
 fi
 
 BEEHIVE_OPTS="$BEEHIVE_OPTS node_type $TYPE "
