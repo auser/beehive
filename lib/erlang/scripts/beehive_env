@@ -1,0 +1,8 @@
+#!/bin/sh
+
+SCRIPT_PATH="$0"
+SCRIPT_DIR=`dirname $SCRIPT_PATH`
+
+BEEHIVE_HOME="${SCRIPT_DIR}/.."
+
+echo $SCRIPT_DIR
