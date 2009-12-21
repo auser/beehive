@@ -1,9 +1,11 @@
 #!/bin/sh
 
-progdir=$(dirname $0)
-progname=$(basename $0)
 grep=$(which grep)
 version="0.1"
+
+. `dirname $0`/beehive_env
+
+progname=$APP
 
 if [ ! -f ebin/beehive-*.boot ]; then
 	make && make boot
@@ -65,7 +67,7 @@ REST="true"
 VERBOSE=0
 STRATEGY="random"
 RELOADER_OPTS="-s reloader"
-ERL_OPTS="-pa $PWD/ebin -pa $PWD/include -pz $PWD/deps/*/ebin"
+ERL_OPTS="-pa $BEEHIVE_HOME/ebin -pa $BEEHIVE_HOME/include -pz $BEEHIVE_HOME/deps/*/ebin"
 
 SHORTOPTS="hm:n:dp:t:g:r:s:vi:e:b:q:l:z:c:"
 LONGOPTS="help,version,client_port,type,bee_strategy,routing_parameter,seed,mnesia_dir,daemonize"

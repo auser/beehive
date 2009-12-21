@@ -1,14 +1,10 @@
 #!/bin/sh
 
-progdir=$(dirname $0)
-progname=$(basename $0)
-grep=$(which grep)
+. `dirname $0`/beehive_env
 
-ERL_OPTS="-pa $PWD/ebin -pa $PWD/include -pz $PWD/deps/*/ebin"
+ERL_OPTS="-pa $BEEHIVE_HOME/ebin -pa $BEEHIVE_HOME/include -pz $BEEHIVE_HOME/deps/*/ebin"
 HOSTNAME=`hostname -f`
 NAME=control@$HOSTNAME
-
-. `dirname $0`/beehive_env.sh
 
 exec erl \
     -pa "${BEEHIVE_HOME}/ebin" \

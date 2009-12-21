@@ -1,4 +1,4 @@
-LIBDIR					= `erl -eval 'io:format("~s~n", [code:lib_dir()])' -s init stop -noshell`
+LIBDIR					= $(shell erl -eval 'io:format("~s~n", [code:lib_dir()])' -s init stop -noshell)
 VERSION					= $(shell cat VERSION | tr -d '\n')
 CC							= erlc
 ERL							= erl
@@ -11,6 +11,9 @@ EBIN_DIRS				= $(wildcard $(DEPS_DIR)/*/ebin) $(wildcard include/*/ebin)
 TEST_DIR				= test
 TEST_EBIN_DIR		= $(TEST_DIR)/ebin
 APP							= beehive
+BIN_DIR					= $(PREFIX)/usr/bin
+TARGET_DIR			= $(PREFIX)/$(LIBDIR)/$(APP)-$(VERSION)
+SCRIPTS					= beehive_env queen start_beehive
 
 RELFILE = $(EBIN)/$(APP)-$(VERSION).rel
 
@@ -32,14 +35,24 @@ compile: $(TEST_EBIN_DIR)
 	
 debug: $(TEST_EBIN_DIR)
 	@$(ERL) -pa $(EBIN_DIRS) -pa $(EBIN) -noinput +B -eval 'case make:all([{d, debug}]) of up_to_date -> halt(0); error -> halt(1) end.'
-	
+
 test: compile
 	$(ERL) 	-noshell -pa $(EBIN) \
 					-pa deps/*/ebin \
 					-pa $(TEST_EBIN_DIR) \
 					-s test_suite test \
 					-s init stop
+
+install: compile
+	@mkdir -p $(BIN_DIR)
+	@mkdir -p $(TARGET_DIR)/bin
 	
+	@cp -r ebin include ./../../LICENSE deps shell_templates $(TARGET_DIR)
+	for i in ebin/*.beam; do install $$i $(TARGET_DIR)/$$i; done
+
+	chmod 0755 scripts/*
+	for i in $(SCRIPTS); do install scripts/$$i $(BIN_DIR)/$$i; done
+			
 edoc:
 	@echo Generating $(APP) documentation from srcs
 	@$(ERL) -noinput -eval 'edoc:application($(APP), "./", [{doc, "doc/"}, {files, "src/"}])' -s erlang halt
