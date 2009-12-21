@@ -28,7 +28,10 @@ start() ->
     args = Args
     } = parse_args(FullCommand, #params{}),
   
-  {NodeType, Node} = get_node_type(),
+  {NodeType, Node} = case get_node_type() of
+    [] -> show_could_not_connect_error();
+    Tuple1 -> Tuple1
+  end,
   
   case (catch command(Node, Command, Args)) of
     {'EXIT', E} ->
@@ -62,17 +65,14 @@ parse_args([], P) -> P.
 
 % Errors
 show_could_not_connect_error() ->
-  Cookie = erlang:get_cookie(),
-  Nodes = nodes(),
-  DetectedNodeType = get_node_type(?ALLOWED_TYPE_OF_NODES),
-  
+  Cookie = erlang:get_cookie(),  
   io:format("
     *** Could not connect ***
     There was an error connecting to the local node.
+    Make sure that it is up and that the cookies are identical
     Your cookie is set as: ~p
-    Nodes: ~p
-    Detected node type: ~p
-", [Cookie, Nodes, DetectedNodeType]),
+    
+", [Cookie]),
   halt(2).
 
 error(Msg) ->
