@@ -338,15 +338,15 @@ clean_up_on_long_running_instance(#bee{start_time = StartTime} = Backend, _App, 
   %   end
   % end, Files).
 
-load_app_config_from_yaml_file(Filepath, Ext) ->
-  O1 = yaml:parse_file(Filepath),
-  O = misc_utils:atomize(O1, []),
-  Name = case proplists:is_defined(name, O) of
-    true  -> proplists:get_value(name, O);
-    false -> filename:basename(Filepath, Ext)
-  end,
-  update_app_configuration(O, #app{name = Name}, #state{}),
-  ok.
+% load_app_config_from_yaml_file(Filepath, Ext) ->
+%   O1 = yaml:parse_file(Filepath),
+%   O = misc_utils:atomize(O1, []),
+%   Name = case proplists:is_defined(name, O) of
+%     true  -> proplists:get_value(name, O);
+%     false -> filename:basename(Filepath, Ext)
+%   end,
+%   update_app_configuration(O, #app{name = Name}, #state{}),
+%   ok.
 
 % MAINTENANCE
 ping_bees() ->
