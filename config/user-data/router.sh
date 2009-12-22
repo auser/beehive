@@ -21,11 +21,9 @@ sudo chown beehive -R $BEEHIVE_USER_HOME
 cd /tmp
 git clone --depth 0 git://github.com/auser/beehive.git
 cd beehive/lib/erlang
-make deps
-make
-make boot
+sudo make
 sudo make install
 
 echo " starting beehive.. "
-$INSTALL_PREFIX/usr/bin/start_beehive -d -t router
+sudo $INSTALL_PREFIX/usr/bin/start_beehive -d -t router
 echo " -- completed router user-data script ---"

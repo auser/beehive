@@ -37,6 +37,8 @@ sudo make
 sudo make install
 cd $SRC_DIR
 
+sudo $INSTALL_PREFIX/usr/bin/start_beehive -d -t node
+
 # Create as many loop back devices as we can
 for i in $(seq 0 255); do
   sudo mknod -m0660 /dev/loop$i b 7 $i >/dev/null 2>&1
