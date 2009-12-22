@@ -35,7 +35,7 @@ init(LocalPort) ->
 
 % accept responses on the port given by the application configuration
 init_accept(LPort) ->
-  SockOpts = [binary, {backlog, 256}, {nodelay, true},{reuseaddr, true}, {active, false}],
+  SockOpts = [binary, {backlog, 256}, {nodelay, false},{reuseaddr, true},{active, false}],
 	case gen_tcp:listen(LPort, SockOpts) of
 	  {ok, ListenSocket} -> 
 	    accept(ListenSocket);
