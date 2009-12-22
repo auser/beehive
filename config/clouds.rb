@@ -3,9 +3,9 @@ pool "beehive" do
   cloud "router" do
     using :ec2
     instances 1
-    image_id "ami-1515f67c"
+    image_id "ami-4205e72b" #ebs Ubuntu 9.10 base server ami
     user 'ubuntu'
-    elastic_ip "174.129.43.151"
+    elastic_ip "174.129.204.191"
     security_group do
       authorize :from_port => 22, :to_port => 22
       authorize :user_id => ENV["EC2_USER"], :group_name => "beehive-router"

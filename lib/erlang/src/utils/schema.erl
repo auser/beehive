@@ -42,7 +42,6 @@ install(Nodes) when is_list(Nodes) ->
   install_bee(Nodes),
   install_user(Nodes),
   % Load the config'd applications
-  app_manager:load_static_configs(),
   ok.
 
 install_app(Nodes) ->
