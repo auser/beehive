@@ -5,6 +5,8 @@ progname=$(basename $0)
 grep=$(which grep)
 version="0.1"
 
+. `dirname $0`/
+
 print_usage() {
 cat <<EOF
 
@@ -130,6 +132,10 @@ WHOAMI=$(whoami)
 RSYNC=$(which rsync)
 SSH=$(which ssh)
 
+LIBDIR=$(erl -eval 'io:format("~s~n", [code:lib_dir()])' -s init stop -noshell)
+VERSION=$(cat $BEEHIVE_HOME/VERSION | tr -d '\n')
+APP=beehive
+
 case $ACTION in
   "install" )
     if [ "$WHOAMI" != "root" ]; then
@@ -151,7 +157,6 @@ case $ACTION in
     mkdir $PREFIX/db
     apt-get install -y $ALL_NODES_HAVE_THESE_APPS
     /usr/bin/env -i PREFIX=$PREFIX /bin/bash $SETUP_SCRIPTS_DIR/$TYPE.sh
-    /bin/bash $SETUP_SCRIPTS_DIR/erlang.sh
     ;;
   "upgrade" )
       mkdir -p $SRC_DIR
