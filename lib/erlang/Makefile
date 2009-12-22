@@ -30,7 +30,7 @@ boot:
 	(cd ebin; $(ERL) -pa src -pa ebin -pz deps/*/ebin -noshell -run make_boot write_scripts storage $(VERSION);)
 	(cd ebin; $(ERL) -pa src -pa ebin -pz deps/*/ebin -noshell -run make_boot write_scripts node $(VERSION);)
 
-compile: $(TEST_EBIN_DIR)
+compile: $(TEST_EBIN_DIR) deps
 	@$(ERL) -pa $(EBIN_DIRS) -pa $(EBIN) -noinput +B -eval 'case make:all() of up_to_date -> halt(0); error -> halt(1) end.'
 	
 debug: $(TEST_EBIN_DIR)
@@ -43,17 +43,20 @@ test: compile
 					-s test_suite test \
 					-s init stop
 
-install: compile
+install: compile boot		
 	@mkdir -p $(BIN_DIR)
 	@mkdir -p $(TARGET_DIR)/bin
 	@mkdir -p $(PREFIX)/var/lib/db
 	
+	if [ -n "$$BEEHIVE_USER"]; then
+		chown -R $$BEEHIVE_USER ./
+	fi
 	@cp -r ebin include ./../../LICENSE deps shell_templates $(TARGET_DIR)
 	for i in ebin/*.beam; do install $$i $(TARGET_DIR)/$$i; done
 
 	chmod 0755 scripts/*
 	for i in $(SCRIPTS); do install scripts/$$i $(BIN_DIR)/$$i; done
-			
+	
 edoc:
 	@echo Generating $(APP) documentation from srcs
 	@$(ERL) -noinput -eval 'edoc:application($(APP), "./", [{doc, "doc/"}, {files, "src/"}])' -s erlang halt
