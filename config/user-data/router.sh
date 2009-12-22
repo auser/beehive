@@ -22,8 +22,6 @@ sudo chown beehive -R $BEEHIVE_USER_HOME
 # mkdir -p $BEEHIVE_HOME/src && cd $BEEHIVE_HOME/src
 # git clone git@github.com:auser/beehive.git
 # curl -o $BEEHIVE_HOME/src/beehive.tgz https://github.com/auser/beehive/tarball/master
-SRC_DIR="/home/ubuntu/beehive"
-
 cd $SRC_DIR/lib/erlang
 make deps
 make

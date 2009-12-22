@@ -1,8 +1,14 @@
-#!/bin/sh
+#!/bin/bash -e
+
+BEEHIVE_USER_HOME=${1:-'/var/lib/beehive'}
+INSTALL_PREFIX=${2:-''}
+SRC_DIR="/tmp/beehive"
 
 sudo apt-get update -y
-sudo apt-get install -y build-essential m4 libssl-dev libncurses5 libncurses5-dev
+sudo apt-get install -y build-essential libc6-dev m4 libssl-dev libncurses5 libncurses5-dev
 sudo apt-get install -y ruby rubygems ruby-dev libopenssl-ruby
+sudo apt-get install -y curl
+sudo apt-get install -y erlang-nox erlang-base-hipe erlang-dev
 sudo apt-get install -y squashfs-tools
 sudo apt-get autoremove -y
 
@@ -12,20 +18,29 @@ sudo gem install haml sinatra --no-rdoc --no-ri
 
 # Create as many loop back devices as we can
 for i in $(seq 0 255); do
-	sudo mknod -m0660 /dev/loop$i b 7 $i 2>&1 >/dev/null
+	sudo mknod -m0660 /dev/loop$i b 7 $i >/dev/null 2>&1
 done
 
-echo "HwlloE0lrd" > ~/.erlang.cookie
-
-ERL=$(which erl)
-OTP_VERSION=otp_src_R13B03
-
-cd /tmp
-if [ -z "$ERL" ]; then
-	wget http://www.erlang.org/download/$OTP_VERSION.tar.gz
-	tar -zxf $OTP_VERSION.tar.gz
-	cd $OTP_VERSION
-	./configure  --enable-smp-support --enable-threads --enable-kernel-poll --enable-hipe --with-ssl
-	make
-	sudo make install
+## Prepare beehive directories
+sudo mkdir -p $BEEHIVE_USER_HOME
+if [ $(sudo cat /etc/passwd | grep ^beehive | grep -v "#" | wc -l) -eq 0 ]; then
+  useradd -s /bin/bash -b $BEEHIVE_USER_HOME -d $BEEHIVE_USER_HOME -c "beehive user" -g users beehive;
 fi
+sudo cp ~/.bashrc ~beehive/.bashrc
+echo "HwlloE0lrd" > $BEEHIVE_USER_HOME/.erlang.cookie
+sudo chmod 600 $BEEHIVE_USER_HOME/.erlang.cookie
+sudo chown beehive -R $BEEHIVE_USER_HOME
+
+####### behive stuff
+# mkdir -p $BEEHIVE_HOME/src && cd $BEEHIVE_HOME/src
+# git clone git@github.com:auser/beehive.git
+# curl -o $BEEHIVE_HOME/src/beehive.tgz https://github.com/auser/beehive/tarball/master
+cd $SRC_DIR/lib/erlang
+make deps
+make
+make boot
+sudo make install
+chown -R beehive $INSTALL_PREFIX
+cd $SRC_DIR
+
+echo " -- completed node user-data script ---"
