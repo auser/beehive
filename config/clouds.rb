@@ -9,6 +9,7 @@ pool "beehive" do
     security_group do
       authorize :from_port => 22, :to_port => 22
       authorize :user_id => ENV["EC2_USER"], :group_name => "beehive-router"
+      authorize :user_id => ENV["EC2_USER"], :group_name => "beehive-bees"
       authorize :from_port => 80, :to_port => 80
       authorize :from_port => 4369, :to_port => 4369
       authorize :from_port => 8080, :to_port => 8080
@@ -16,7 +17,7 @@ pool "beehive" do
     user_data open("#{File.dirname(__FILE__)}/user-data/router.sh").read
   end
   
-  cloud "nodes" do
+  cloud "bees" do
     using :ec2
     instances 1
     image_id "ami-4205e72b"
@@ -28,8 +29,7 @@ pool "beehive" do
       authorize :from_port => 4369, :to_port => 4369
       authorize :from_port => 8080, :to_port => 8080
     end
-    user_data "#{File.dirname(__FILE__)}/user-data/node.sh"
-    
+    user_data open("#{File.dirname(__FILE__)}/user-data/node.sh").read
   end
   
 end
