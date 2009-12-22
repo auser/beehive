@@ -21,7 +21,6 @@
   terminate_app_instances/1,
   add_application/1,
   spawn_update_bee_status/3,
-  load_static_configs/0,
   request_to_start_new_bee/1
 ]).
 
