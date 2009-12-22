@@ -29,7 +29,7 @@ pool "beehive" do
       authorize :from_port => 4369, :to_port => 4369
       authorize :from_port => 8080, :to_port => 8080
     end
-    user_data open("#{File.dirname(__FILE__)}/user-data/node.sh").read
+    user_data open("#{File.dirname(__FILE__)}/user-data/bees.sh").read
   end
   
 end
