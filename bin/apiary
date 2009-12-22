@@ -150,16 +150,16 @@ case $ACTION in
     	useradd -s /bin/bash -b $PREFIX -d $PREFIX -c "beehive user" -g users beehive;
     fi
     ALL_NODES_HAVE_THESE_APPS="curl"
+    apt-get install -y $ALL_NODES_HAVE_THESE_APPS
+    cd ../../
+    /usr/bin/env -i PREFIX=$PREFIX /bin/bash $SETUP_SCRIPTS_DIR/$TYPE.sh
     cd lib/erlang
     make deps
     make
     make boot
     sudo make install
-    chown -R beehive $PREFIX
+    chown beehive $PREFIX
     mkdir -p $PREFIX/db
-    apt-get install -y $ALL_NODES_HAVE_THESE_APPS
-    cd ../../
-    /usr/bin/env -i PREFIX=$PREFIX /bin/bash $SETUP_SCRIPTS_DIR/$TYPE.sh
     ;;
   "upgrade" )
       mkdir -p $SRC_DIR
@@ -175,8 +175,7 @@ case $ACTION in
         echo "Create an id_rsa.pub in $HOME/.ssh/id_rsa.pub"
         exit 2
       fi
-      cd ./../lib/erlang && make clean
-      $RSYNC -va --exclude=".git" $progdir/../ $HOST:~/bh
+      $RSYNC -a --exclude=".git" $progdir/../ $HOST:~/bh
       $SSH $HOST "cd ~/bh && sudo ./bin/apiary install -t $TYPE; rm -rf ~/bh"
     else
       echo "
