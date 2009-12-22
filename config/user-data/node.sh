@@ -23,10 +23,10 @@ done
 ## Prepare beehive directories
 sudo mkdir -p $BEEHIVE_USER_HOME
 if [ $(sudo cat /etc/passwd | grep ^beehive | grep -v "#" | wc -l) -eq 0 ]; then
-  useradd -s /bin/bash -b $BEEHIVE_USER_HOME -d $BEEHIVE_USER_HOME -c "beehive user" -g users beehive;
+  sudo useradd -s /bin/bash -b $BEEHIVE_USER_HOME -d $BEEHIVE_USER_HOME -c "beehive user" -g users beehive;
 fi
 sudo cp ~/.bashrc ~beehive/.bashrc
-echo "HwlloE0lrd" > $BEEHIVE_USER_HOME/.erlang.cookie
+sudo echo "HwlloE0lrd" > $BEEHIVE_USER_HOME/.erlang.cookie
 sudo chmod 600 $BEEHIVE_USER_HOME/.erlang.cookie
 sudo chown beehive -R $BEEHIVE_USER_HOME
 
