@@ -36,9 +36,9 @@ For more information about each particular part of the project, there are README
 
 ---
 
-### Thanks
+## Thanks
 
-  * Mad props for the super smart folks at [Heroku](http://heroku.com) for their sweet architecture ideas and for providing such a rad interface
+  * Mad props for the super smart folks at [Heroku](http://heroku.com) for their sweet architecture ideas and for providing such a rad interface and an unmatched user experience.
   * AT&T R&D for their support of the project
 
 ### Note on Patches/Pull Requests
