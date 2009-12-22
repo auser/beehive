@@ -46,6 +46,7 @@ test: compile
 install: compile
 	@mkdir -p $(BIN_DIR)
 	@mkdir -p $(TARGET_DIR)/bin
+	@mkdir -p $(PREFIX)/var/lib/db
 	
 	@cp -r ebin include ./../../LICENSE deps shell_templates $(TARGET_DIR)
 	for i in ebin/*.beam; do install $$i $(TARGET_DIR)/$$i; done

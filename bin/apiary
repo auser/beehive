@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash -xe
 
 progdir=$(dirname $0)
 progname=$(basename $0)
@@ -22,8 +22,9 @@ OPTIONS
   -p, --prefix                  The root directory (default: /opt/beehive)
   -o, --host                    Host to install (only for remote_install)
   -V, --version                 Print the version
+  -k, --key                     Ssh public key to use (default: $HOME/.ssh/id_rsa.pub)
   -h, --help                    Show this screen
-	
+  
 EOF
 }
 
@@ -38,89 +39,94 @@ EOF
 # Defaults
 PREFIX="/opt/beehive"
 TYPE="router"
+KEY="$HOME/.ssh/id_rsa.pub"
 HOST=false
 
 # Opts
-SHORTOPTS="hp:t:o:"
-LONGOPTS="help,version,prefix,type,host"
+SHORTOPTS="hp:t:o:k:"
+LONGOPTS="help,version,prefix,type,host,key"
 
 if $(getopt -T >/dev/null 2>&1) ; [ $? = 4 ] ; then # New longopts getopt.
-	OPTS=$(getopt -o "$SHORTOPTS" --longoptions "$LONGOPTS" -n "$progname" -- "$@")
+  OPTS=$(getopt -o "$SHORTOPTS" --longoptions "$LONGOPTS" -n "$progname" -- "$@")
 else # Old classic getopt.
   # Special handling for --help and --version on old getopt.
-	case $1 in --help) print_usage ; exit 0 ;; esac
-	case $1 in --version) print_version ; exit 0 ;; esac
-	OPTS=$(getopt $SHORTOPTS "$@")
+  case $1 in --help) print_usage ; exit 0 ;; esac
+  case $1 in --version) print_version ; exit 0 ;; esac
+  OPTS=$(getopt $SHORTOPTS "$@")
 fi
 
 if [ $? -ne 0 ]; then
-	echo "'$progname --help' for more information" 1>&2
-	exit 1
+  echo "'$progname --help' for more information" 1>&2
+  exit 1
 fi
 
 # eval set -- "$OPTS"
 while [ $# -gt 0 ]; do
    : debug: $1
    case "$1" in
-		--help)
-			usage
-			exit 0
-			;;
-		-p|--prefix)
-		  PREFIX="$2"
-		  shift 2
-		  ;;
-		-t|--type)
-		  case "$2" in
-		    r|router )
-		      TYPE="router";;
-		    n|node )
-		      TYPE="node";;
-		    s|storage )
-		      TYPE="storage";;
-		    *)
-		      echo "
+    --help)
+      usage
+      exit 0
+      ;;
+    -p|--prefix)
+      PREFIX="$2"
+      shift 2
+      ;;
+    -t|--type)
+      case "$2" in
+        r|router )
+          TYPE="router";;
+        n|node )
+          TYPE="node";;
+        s|storage )
+          TYPE="storage";;
+        *)
+          echo "
 ERROR! Unknown type of node. Must be one of the following
 (r)router
 (n)node
 (s)storage
-		      "
-		      exit 1
-		      ;;
-		  esac
-		  shift 2
-		  ;;
-		-o|--host)
-		  HOST=$2
-		  shift 2
-		  ;;
-		--)
-			shift
-			break;;
-		install)
-		  ACTION="install"
-		  shift 1
-		  ;;
-		upgrade)
-		  ACTION="upgrade"
-		  shift 1
-		  ;;
-		remote_install)
-		  ACTION="remote_install"
-		  shift 1
-		  ;;
-		remote_upgrade)
-		  ACTION="remote_upgrade"
-		  shift 1
-		  ;;
-		remove)
-		  ACTION="remove"
-		  shift 1
-		  ;;
-		*)
-			print_usage; exit 0
-			;;
-	esac
+          "
+          exit 1
+          ;;
+      esac
+      shift 2
+      ;;
+    -o|--host)
+      HOST=$2
+      shift 2
+      ;;
+    -k|--key)
+      KEY=$2
+      shift 2
+      ;;
+    --)
+      shift
+      break;;
+    install)
+      ACTION="install"
+      shift 1
+      ;;
+    upgrade)
+      ACTION="upgrade"
+      shift 1
+      ;;
+    remote_install)
+      ACTION="remote_install"
+      shift 1
+      ;;
+    remote_upgrade)
+      ACTION="remote_upgrade"
+      shift 1
+      ;;
+    remove)
+      ACTION="remove"
+      shift 1
+      ;;
+    *)
+      print_usage; exit 0
+      ;;
+  esac
 done
 
 SRC_DIR="$PREFIX/sys"
@@ -129,6 +135,7 @@ BH_SRC_DIR="$progdir/../lib/*"
 WHOAMI=$(whoami)
 RSYNC=$(which rsync)
 SSH=$(which ssh)
+SCP=$(which ssh)
 
 LIBDIR=$(erl -eval 'io:format("~s~n", [code:lib_dir()])' -s init stop -noshell)
 VERSION=$(cat $BEEHIVE_HOME/VERSION | tr -d '\n')
@@ -147,7 +154,7 @@ case $ACTION in
     # Beehive specific stuff
     # Add a beehive user
     if [ $(sudo cat /etc/passwd | grep ^beehive | grep -v "#" | wc -l) -eq 0 ]; then
-    	useradd -s /bin/bash -b $PREFIX -d $PREFIX -c "beehive user" -g users beehive;
+      useradd -s /bin/bash -b $PREFIX -d $PREFIX -c "beehive user" -g users beehive;
     fi
     ALL_NODES_HAVE_THESE_APPS="curl"
     apt-get install -y $ALL_NODES_HAVE_THESE_APPS
@@ -169,10 +176,10 @@ case $ACTION in
   "remote_install" )
     if [ $HOST != false ]; then
       echo "Installing on $HOST"
-      if [ -f "$HOME/.ssh/id_rsa.pub" ]; then
-        $SCP "$HOME/.ssh/id_rsa.pub" $HOST:/tmp/id_rsa.pub
+      if [ -f $KEY ]; then
+        $SCP -i $KEY $HOST:/tmp/id_rsa.pub
       else
-        echo "Create an id_rsa.pub in $HOME/.ssh/id_rsa.pub"
+        echo "Create an id_rsa.pub in $HOME/.ssh/id_rsa.pub or speficy a key with --key"
         exit 2
       fi
       $RSYNC -a --exclude=".git" $progdir/../ $HOST:~/bh

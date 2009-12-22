@@ -54,7 +54,7 @@ EOF
 
 # Defaults
 HOSTNAME=`hostname -f`
-MNESIA_DIR="/opt/beehive/db"
+MNESIA_DIR="$BEEHIVE_HOME/var/lib/db"
 DAEMONIZE_ARGS=""
 
 BEEHIVE_OPTS="-beehive"
@@ -67,7 +67,7 @@ REST="true"
 VERBOSE=0
 STRATEGY="random"
 RELOADER_OPTS="-s reloader"
-ERL_OPTS="-pa $BEEHIVE_HOME/ebin -pa $BEEHIVE_HOME/include -pz $BEEHIVE_HOME/deps/*/ebin"
+ERL_OPTS="-pa $BEEHIVE_SRC/ebin -pa $BEEHIVE_SRC/include -pz $BEEHIVE_SRC/deps/*/ebin"
 
 SHORTOPTS="hm:n:dp:t:g:r:s:vi:e:b:q:l:z:c:"
 LONGOPTS="help,version,client_port,type,bee_strategy,routing_parameter,seed,mnesia_dir,daemonize"

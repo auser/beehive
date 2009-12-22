@@ -5,9 +5,11 @@ LIBDIR=$(erl -eval 'io:format("~s~n", [code:lib_dir()])' -s init stop -noshell)
 VERSION="0.1"
 INSTALLED_DIR=$LIBDIR/$APP-$VERSION
 SCRIPT_DIR=$(dirname $0)
-
-if [ -d $INSTALLED_DIR ]; then
-  BEEHIVE_HOME=$INSTALLED_DIR
-else
-  BEEHIVE_HOME="$SCRIPT_DIR/.."
+BEEHIVE_HOME=''
+if [ -z $BEEHIVE_SRC ]; then
+  if [ -d $INSTALLED_DIR ]; then
+    BEEHIVE_SRC=$INSTALLED_DIR
+  else
+    BEEHIVE_SRC="$SCRIPT_DIR/.."
+  fi
 fi
