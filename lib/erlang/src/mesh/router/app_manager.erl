@@ -328,15 +328,16 @@ clean_up_on_long_running_instance(#bee{start_time = StartTime} = Backend, _App, 
     true -> Proplist
   end.
 
-load_static_configs() ->
-  {ok, Files} = file:list_dir(?CONFIGS_DIR),
-  lists:map(fun(Filename) ->
-    case filename:extension(Filename) of
-      ".yaml" -> load_app_config_from_yaml_file(filename:join(?CONFIGS_DIR, Filename), ".yaml");
-      _ ->
-        ok
-    end
-  end, Files).
+% TODO: reimplement?
+% load_static_configs() ->
+  % {ok, Files} = file:list_dir(?CONFIGS_DIR),
+  % lists:map(fun(Filename) ->
+  %   case filename:extension(Filename) of
+  %     ".yaml" -> load_app_config_from_yaml_file(filename:join(?CONFIGS_DIR, Filename), ".yaml");
+  %     _ ->
+  %       ok
+  %   end
+  % end, Files).
 
 load_app_config_from_yaml_file(Filepath, Ext) ->
   O1 = yaml:parse_file(Filepath),
