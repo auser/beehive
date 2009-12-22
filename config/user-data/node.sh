@@ -15,11 +15,6 @@ sudo apt-get install -y squashfs-tools
 sudo gem install rack thin --no-rdoc --no-ri
 sudo gem install haml sinatra --no-rdoc --no-ri
 
-# Create as many loop back devices as we can
-for i in $(seq 0 255); do
-	sudo mknod -m0660 /dev/loop$i b 7 $i >/dev/null 2>&1
-done
-
 ## Prepare beehive directories
 sudo mkdir -p $BEEHIVE_USER_HOME
 if [ $(sudo cat /etc/passwd | grep ^beehive | grep -v "#" | wc -l) -eq 0 ]; then
@@ -35,11 +30,18 @@ sudo chown beehive -R $BEEHIVE_USER_HOME
 
 ####### behive stuff
 # mkdir -p $BEEHIVE_HOME/src && cd $BEEHIVE_HOME/src
-git clone --depth 0 git@github.com:auser/beehive.git $SRC_DIR
+sudo apt-get install -y git git-core
+GIT=$(which git)
+$GIT clone --depth 0 git://github.com/auser/beehive.git $SRC_DIR
 # curl -o $BEEHIVE_HOME/src/beehive.tgz https://github.com/auser/beehive/tarball/master
 cd $SRC_DIR/lib/erlang
-make
+sudo make
 sudo make install
 cd $SRC_DIR
+
+# Create as many loop back devices as we can
+for i in $(seq 0 255); do
+	sudo mknod -m0660 /dev/loop$i b 7 $i >/dev/null 2>&1
+done
 
 echo " -- completed node user-data script ---"
