@@ -17,8 +17,7 @@ abs_or_relative_filepath(P) ->
     false ->
       case filelib:is_file(relative_path(P)) of
         true -> relative_path(P);
-        false ->
-          throw({error, not_a_file})
+        false -> throw({error, not_a_file})
       end
   end.
 
