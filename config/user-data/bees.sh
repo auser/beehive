@@ -37,7 +37,7 @@ sudo make install
 cd $SRC_DIR
 
 # Start the beehive
-sudo -H -u beehive $INSTALL_PREFIX/usr/bin/start_beehive -d -t node -s 'router@'
+sudo -H -u beehive $INSTALL_PREFIX/usr/bin/start_beehive -d -t node -s 'router@domU-12-31-38-04-C4-68.compute-1.internal'
 
 # Create as many loop back devices as we can
 for i in $(seq 0 255); do

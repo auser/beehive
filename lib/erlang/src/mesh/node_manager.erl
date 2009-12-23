@@ -188,6 +188,8 @@ init([Type, SeedList]) ->
   process_flag(trap_exit, true),  
   
   Seed = misc_utils:to_atom(SeedList),
+  ?LOG(debug, "Connecting as type ~p to seed node ~p", [Type, Seed]),
+  net_adm:ping(node()), % start distributed
   join(Seed),
   
   SlaveDb = case Type of
@@ -253,8 +255,7 @@ handle_call({can_pull_new_app}, _From, State) ->
 
 handle_call({get_seed}, _From, #state{seed = Seed} = State) ->
   {reply, Seed, State};
-
-handle_call({set_seed, SeedPid}, _From, #state{type = Type} = State) ->
+handle_call({set_seed, SeedPid}, _From, #state{type = Type} = State) when is_pid(SeedPid) ->
   ListType = case Type of
     router -> ?ROUTER_SERVERS;
     storage -> ?STORAGE_SERVERS;
@@ -262,8 +263,19 @@ handle_call({set_seed, SeedPid}, _From, #state{type = Type} = State) ->
   end,
   pg2:create(ListType),
   ok = pg2:join(ListType, self()),
-  join(SeedPid),
+  join(node(SeedPid)),
   {reply, ok, State#state{seed = SeedPid}};
+handle_call({set_seed, SeedNode}, _From, #state{type = Type} = State) ->
+  ListType = case Type of
+    router -> ?ROUTER_SERVERS;
+    storage -> ?STORAGE_SERVERS;
+    node -> ?NODE_SERVERS
+  end,
+  pg2:create(ListType),
+  ok = pg2:join(ListType, self()),
+  join(SeedNode),
+  {reply, ok, State#state{seed = SeedNode}};
+
 handle_call({get_host}, _From, #state{host = Host} = State) ->
   {reply, Host, State};
 handle_call({dump, Pid}, _From, State) ->
