@@ -8,7 +8,7 @@ APP_NAME=[[APP_NAME]]
 # Fake the sha
 SHA=[[SHA]]
 PORT=[[PORT]]
-MOUNT_LOCATION=$MOUNT_BASE/$APP_NAME/$SHA/$(date +%H%M%S)
+MOUNT_LOCATION=$MOUNT_BASE/$APP_NAME/$SHA/$(date +%H%M%S%y%m%d)
 MOUNT_FILE=[[BEE_IMAGE]]
 NEW_LOOP_DEVICE=$(comm -13 <(mount | grep /dev/loop | awk '{print $1}') <(ls /dev/loop*) | head -1)
 
