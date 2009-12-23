@@ -27,7 +27,7 @@ end).
 
 -define (FIXTURES_DIR, bh_file_utils:relative_path("test/fixtures")).
 % Figure this out... Hm
--define (SHELL_SCRIPTS_DIR, filename:join([?BEEHIVE_HOME, "./shell_templates/"])).
+-define (SHELL_SCRIPTS_DIR, filename:join([?BEEHIVE_HOME, "shell_templates/"])).
 
 -define (SHELL_SCRIPT_PATH (Name), filename:join([?SHELL_SCRIPTS_DIR, lists:append([Name, ".sh"])])).
 -define (SHELL_SCRIPT (Name), fun() ->
