@@ -111,7 +111,8 @@ dir_size=`du -s $APP_DIR | awk '{print $1+1024}'`
 # Make the file
 dd if=/dev/zero of=$OUTFILE count=$dir_size bs=1K
 mkfs.$FILESYSTEM -F $OUTFILE
-mount -o loop -t $FILESYSTEM $OUTFILE $LOOPDIR
+NEW_LOOP_DEVICE=$(comm -13 <(mount | grep /dev/loop | awk '{print $1}') <(ls /dev/loop*) | head -1)
+mount -o loop=$NEW_LOOP_DEVICE -t $FILESYSTEM $OUTFILE $LOOPDIR
 rsync -a $APP_DIR/ $LOOPDIR
 umount $LOOPDIR
 
