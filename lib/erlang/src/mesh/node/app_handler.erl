@@ -264,17 +264,21 @@ find_and_transfer_bee(App, Sha) ->
   Nodes = lists:map(fun(N) -> node(N) end, node_manager:get_storage()),
   Path = next_free_honeycomb(App),
   LocalPath = filename:join([filename:absname(""), lists:append([Path, "/", "app.squashfs"])]),
+  ?LOG(info, "find_bee_on_storage_nodes: ~p:~p on nodes: ~p at Path: ~p and LocalPath: ~p", [App#app.name, Sha, Nodes, Path, LocalPath]),
   case find_bee_on_storage_nodes(App, Sha, Nodes) of
     {ok, Node, RemotePath} ->
+      ?LOG(info, "find_bee_on_storage_nodes found on ~p at ~p", [Node, RemotePath]),
       slugger:get(Node, RemotePath, LocalPath),
       {ok, Node, LocalPath};
-    E -> E
+    E -> 
+      ?LOG(info, "find_bee_on_storage_nodes returned ~p instead of something useful", [E]),
+      E
   end.
 
 % Look on the node and see if it has the 
 find_bee_on_storage_nodes(App, _Sha, []) -> 
   % ?NOTIFY({app, app_not_squashed, Name}),
-  io:format("App not found: ~p~n", [App]),
+  ?LOG(info, "App not found: ~p", [App#app.name]),
   ?NOTIFY({app, updated, App}),
   {error, not_found};
 find_bee_on_storage_nodes(App, Sha, [Node|Rest]) ->
