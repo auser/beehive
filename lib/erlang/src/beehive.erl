@@ -14,4 +14,10 @@
 
 start(_Type, Args) -> beehive_sup:start_link(Args).
 
-stop(_State) -> ok.
+stop(State) -> 
+  io:format("Stopping beehive...~n"),
+  lists:map(fun(App) ->
+    io:format("---> stopping ~p~n", [App]),
+    App:stop(State)
+  end, [os_mon, mnesia]),
+  ok.
