@@ -13,7 +13,7 @@
     {seed, []},
     {user_defined_event_handler, undefined},
     {log_level, 0},
-    {log_path, "/opt/beehive/logs"}
+    {log_path, undefined}
   ]}
  ]
 }.

@@ -8,7 +8,7 @@
   {applications, [kernel, stdlib, sasl]},
   {mod, {beehive, []}},
   {env, [
-    {app_dir, "/opt/beehive/apps"}
+    {app_dir, undefined}
   ]}
  ]
 }.

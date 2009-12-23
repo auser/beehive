@@ -82,8 +82,8 @@ init([]) ->
   ets:new(?TAB_NAME_TO_PATH, Opts),
   
   {ok, #state{
-    scratch_disk = config:search_for_application_value(scratch_disk, "/opt/beehive/tmp", storage),
-    squashed_disk = config:search_for_application_value(squashed_storage, "/opt/beehive/squashed", storage)
+    scratch_disk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("tmp"), storage),
+    squashed_disk = config:search_for_application_value(squashed_storage, ?BH_RELATIVE_DIR("squashed"), storage)
   }}.
 
 %%--------------------------------------------------------------------
@@ -223,7 +223,7 @@ handle_lookup_squashed_repos(Name, Sha) ->
   case ets:lookup(?TAB_NAME_TO_PATH, lists:append([Name, Sha])) of
     [{_Key, Path}] -> Path;
     _ -> 
-      SquashedDir = config:search_for_application_value(squashed_storage, "/opt/beehive/squashed", storage),
+      SquashedDir = config:search_for_application_value(squashed_storage, ?BH_RELATIVE_DIR("squashed"), storage),
       {ok, Folders} = file:list_dir(SquashedDir),
       case lists:member(Name, Folders) of
         true ->

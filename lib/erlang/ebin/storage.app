@@ -11,8 +11,8 @@
     {git_port, undefined},
     {git_repos_path, undefined},
     {git_store, undefined},
-    {squashed_storage, "/opt/beehive/squashed"},
-    {scratch_disk, "/opt/beehive/tmp"}
+    {squashed_storage, undefined},
+    {scratch_disk, undefined}
   ]}
  ]
 }.

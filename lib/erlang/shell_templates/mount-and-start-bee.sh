@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PREFIX=/opt/beehive
+PREFIX=$HOME
 MOUNT_BASE=$PREFIX/mnt
 
 # mount a bee!

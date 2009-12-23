@@ -305,7 +305,7 @@ internal_stop_instance(#bee{commit_hash = Sha} = Bee, App, From) when is_record(
 
 % Get a new honeycomb location for the new bee
 next_free_honeycomb(App) ->
-  BaseDir = config:search_for_application_value(squashed_storage, "/opt/beehive/apps", storage),
+  BaseDir = config:search_for_application_value(squashed_storage, ?BH_RELATIVE_DIR("apps"), storage),
   UniqueName = apps:build_on_disk_app_name(App),
   {Proplists, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("next-free-honeycomb", [
     {"[[APP_NAME]]", App#app.name},

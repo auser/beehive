@@ -23,6 +23,8 @@ end()).
 end).
 
 -define (BEEHIVE_HOME, os:getenv("HOME")).
+-define (BH_RELATIVE_DIR (List), filename:join([?BEEHIVE_HOME, List])).
+
 -define (FIXTURES_DIR, bh_file_utils:relative_path("test/fixtures")).
 % Figure this out... Hm
 -define (SHELL_SCRIPTS_DIR, filename:join([?BEEHIVE_HOME, "./shell_templates/"])).
