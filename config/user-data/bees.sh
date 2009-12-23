@@ -20,6 +20,10 @@ if [ $(sudo cat /etc/passwd | grep ^beehive | grep -v "#" | wc -l) -eq 0 ]; then
   sudo useradd -s /bin/bash -b $BEEHIVE_USER_HOME -d $BEEHIVE_USER_HOME -c "beehive user" -g users beehive;
 fi
 
+echo "options loop max_loop=256" > /etc/modprobe.d/loop.conf
+modprobe loop
+rmmod loop
+
 FIRST_N_CHARS_OF_PUB_KEY=`curl http://169.254.169.254/latest/meta-data/public-keys/0/openssh-key/ | awk '{str=$2} END {print substr(str, 0, 30)}'`
 echo $FIRST_N_CHARS_OF_PUB_KEY > /tmp/.erlang.cookie
 sudo mv /tmp/.erlang.cookie $BEEHIVE_USER_HOME
@@ -40,7 +44,7 @@ cd $SRC_DIR
 sudo cp -R $BEEHIVE_USER_HOME/* /root
 
 # Start the beehive
-sudo -H -u beehive $INSTALL_PREFIX/usr/bin/start_beehive -d -t node -s 'router@domU-12-31-38-04-C4-68.compute-1.internal'
+sudo -H -u root $INSTALL_PREFIX/usr/bin/start_beehive -d -t node -s 'router@domU-12-31-38-04-C4-68.compute-1.internal'
 # Root needs to mount - TODO
 sudo -H -u root $INSTALL_PREFIX/usr/bin/start_beehive -d -t storage -s 'router@domU-12-31-38-04-C4-68.compute-1.internal'
 
