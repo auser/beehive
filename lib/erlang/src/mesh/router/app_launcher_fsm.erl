@@ -104,7 +104,7 @@ launching({error, Code}, State) ->
   {stop, {error, CodeAtom}, State};
 
 launching(Event, State) ->
-  io:format("Uncaught event: ~p while in state: ~p ~n", [Event, launching]),
+  ?LOG(info, "Uncaught event: ~p while in state: ~p ~n", [Event, launching]),
   {next_state, launching, State}.
 
 pending({updated_bee_status, BackendStatus}, #state{app = App, bee = Bee, from = From, latest_sha = Sha} = State) ->
@@ -113,7 +113,8 @@ pending({updated_bee_status, BackendStatus}, #state{app = App, bee = Bee, from =
   From ! {bee_started_normally, Bee, App#app{sha = Sha}},
   {stop, normal, State};
   
-pending(_Event, State) ->
+pending(Event, State) ->
+  ?LOG(info, "Got uncaught event in pending state: ~p", [Event]),
   {next_state, pending, State}.
   
 state_name(Event, State) ->
