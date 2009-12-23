@@ -112,7 +112,7 @@ dir_size=`du -s $APP_DIR | awk '{print $1+1024}'`
 dd if=/dev/zero of=$OUTFILE count=$dir_size bs=1K
 mkfs.$FILESYSTEM -F $OUTFILE
 mount -o loop -t $FILESYSTEM $OUTFILE $LOOPDIR
-rsync -a $APP_DIR $LOOPDIR
+rsync -a $APP_DIR/ $LOOPDIR
 umount $LOOPDIR
 
 # mksquashfs $APP_DIR $OUTFILE >/dev/null 2>&1
