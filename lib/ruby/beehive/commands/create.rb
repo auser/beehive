@@ -16,13 +16,13 @@ module Beehive
         end
         
         get_token unless @token
-        n = new_app
+        n = JSON.parse(new_app)
         
         puts <<-EOE
           host: #{host}
           user: #{user}
           password: #{password}
-          name: #{n}
+          name: #{n["app"]}
         EOE
       end
       

@@ -54,13 +54,13 @@ init([]) ->
 %% each installed event handler to handle the event.
 %%--------------------------------------------------------------------
 handle_event({app, updated, App}, State) ->
-  handle_updating_app(App),
+  spawn(fun() -> handle_updating_app(App) end),
   {ok, State};
   
 % Fired when the squashed app has not been found
 handle_event({app, app_not_squashed, App}, State) ->
   ?LOG(info, "app_not_squashed yet: ~p", [App#app.name]),
-  handle_updating_app(App),
+  spawn(fun() -> handle_updating_app(App) end),
   {ok, State};
 
 handle_event({app, request_to_start_new_bee, Hostname}, State) ->
@@ -69,7 +69,7 @@ handle_event({app, request_to_start_new_bee, Hostname}, State) ->
   
 handle_event({app, request_to_start_new_bee, App, Host, Sha}, State) ->
   ?LOG(info, "request_to_start_new_bee: ~p~n", [App]),
-  handle_launch_app(App, Host, Sha),
+  spawn(fun() -> handle_launch_app(App, Host, Sha) end),
   {ok, State};
 
 handle_event(_Event, State) ->
@@ -137,7 +137,7 @@ code_change(_OldVsn, State, _Extra) ->
 handle_updating_app(App) ->  
   case ets:lookup(?UPDATERS_APP_TO_PID, App) of
     [{_App, _Pid}] -> ok;
-    _ -> 
+    _ ->
       {ok, P} = app_updater_fsm:start_link(App),
       app_updater_fsm:go(P, self()),
       ets:insert(?UPDATERS_APP_TO_PID, {App, P}),

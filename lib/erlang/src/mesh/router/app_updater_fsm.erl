@@ -156,7 +156,7 @@ success({bee_started_normally, StartedBee, App}, #bee{app_name = Name, commit_ha
         case B#bee.id =:= StartedBee#bee.id of
           true -> skip;
           false ->
-            io:format("Terminating old bee: ~p~n", [B]),
+            ?LOG(debug, "Terminating old bee: ~p~n", [B]),
             node_manager:request_to_terminate_bee(B),
             bees:save(B#bee{status = terminated})
         end

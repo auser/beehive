@@ -62,14 +62,17 @@ command(Node, list, [routers]) -> call(Node, node_manager, get_routers, []);
 command(Node, list, [storage]) -> call(Node, node_manager, get_storage, []);
 command(Node, list, [nodes])   -> call(Node, node_manager, get_nodes, []);
 command(Node, list, []) -> 
-  Routers = command(Node, list, [routers]),
-  Storage = command(Node, list, [storage]),
-  Nodes   = command(Node, list, [nodes]),
+  RouterPids  = command(Node, list, [routers]),
+  Routers = lists:map(fun(P) -> node(P) end, RouterPids),
+  StoragePids = command(Node, list, [storage]),
+  Storage = lists:map(fun(P) -> node(P) end, StoragePids),
+  NodesPids   = command(Node, list, [nodes]),
+  Nodes = lists:map(fun(P) -> node(P) end, NodesPids),
   io:format("
-  Type                      Ips
+  Type                      Nodes
   routers                   ~p
   nodes                     ~p
-  storages                  ~p
+  storages                  ~p~n
 ", [Routers, Nodes, Storage]);
 % Get the seeds
 command(Node, get_seed, []) -> get_seed(Node);
@@ -121,6 +124,7 @@ show_usage() ->
     app_updated [NameOfApp]         Marks an application as updated
     set_seed [SeedNode]             Set a new seed
     get_seed                        Get the seed node
+    list [Type (optional)]          List types (valid types: router, storage, node or nothing)
     
 ", []),
 halt(1).
