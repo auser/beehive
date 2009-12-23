@@ -20,7 +20,7 @@ module Beehive
       end
       
       def restart_app
-        post("apps/#{@app_name}/restart", { "token" => @token })
+        post("apps/#{@app_name}/deploy", { "token" => @token })
       end
             
     end

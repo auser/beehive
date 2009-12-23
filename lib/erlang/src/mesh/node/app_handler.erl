@@ -231,8 +231,6 @@ initialize_application(App, PropLists, AppLauncher, From) ->
     {"[[APP_NAME]]", App#app.name}
   ]),
   
-  ?LOG(info, "mounted: ~p as ~p", [Proplist, Status]),
-  
   AppRootPath = proplists:get_value(dir, Proplist),
   
   Bee  = #bee{
@@ -247,6 +245,8 @@ initialize_application(App, PropLists, AppLauncher, From) ->
     pid                     = self(),
     start_time              = StartedAt
   },
+  
+  ?LOG(info, "mounted: ~p as ~p", [Proplist, Bee]),
   
   % Store the app in the local ets table
   ets:insert(?TAB_ID_TO_BEE, {Id, Bee}),

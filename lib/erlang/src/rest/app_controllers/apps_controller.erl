@@ -35,7 +35,7 @@ post(["new"], Data) ->
   end;
 
 % Not sure about this... yet as far as authentication goes
-post([Name, "restart"], _Data) ->
+post([Name, "deploy"], _Data) ->
   Response = case apps:update_by_name(Name) of
     {ok, _} -> {"app", <<"updated">>};
     _ -> {"app", <<"error">>}

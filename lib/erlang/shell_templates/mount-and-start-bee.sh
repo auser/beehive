@@ -71,6 +71,7 @@ THIN_APP="$GEM_ENV/thin"
 echo "thin $THIN_APP"
 
 PIDS_DIR=/tmp/$APP_NAME/$SHA
+mkdir -p $PIDS_DIR
 PID_NAME=$APP_NAME-$SHA-$PORT.pid
 
 # Kill the previous thin process, just in case
