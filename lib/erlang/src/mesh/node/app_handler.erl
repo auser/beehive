@@ -199,18 +199,18 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 % Start new instance
-internal_start_new_instance(App, Sha, Port, AppLauncher, _From) ->
+internal_start_new_instance(App, Sha, Port, AppLauncher, From) ->
   case find_and_transfer_bee(App, Sha) of
     {ok, Node, LocalPath} ->
       Proplists = [{sha, Sha}, {port, Port}, {bee_image, LocalPath}, {storage_node, Node}],
-      initialize_application(App, Proplists, AppLauncher);
+      initialize_application(App, Proplists, AppLauncher, From);
     E -> 
       io:format("Error: ~p~n", [E]),
       E
   end.
 
 % Initialize the node
-initialize_application(App, PropLists, AppLauncher) ->
+initialize_application(App, PropLists, AppLauncher, From) ->
   Sha = proplists:get_value(sha, PropLists),
   Port = proplists:get_value(port, PropLists),
   ImagePath = proplists:get_value(bee_image, PropLists),
@@ -231,7 +231,7 @@ initialize_application(App, PropLists, AppLauncher) ->
     {"[[APP_NAME]]", App#app.name}
   ]),
   
-  ?LOG(info, "mounted: ~p", [Proplist]),
+  ?LOG(info, "mounted: ~p as ~p", [Proplist, Status]),
   
   AppRootPath = proplists:get_value(dir, Proplist),
   
@@ -255,6 +255,7 @@ initialize_application(App, PropLists, AppLauncher) ->
   case Status of
     0 ->
       AppLauncher ! {started_bee, Bee},
+      From ! {started_bee, Bee},
       Bee;
     Code ->
       ?LOG(error, "Could not mount-and-start-bee: ~p of status code ~p on ~p", [Proplist, Status, Host]),
