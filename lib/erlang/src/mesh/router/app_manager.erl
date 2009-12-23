@@ -212,6 +212,7 @@ code_change(_OldVsn, State, _Extra) ->
 spawn_update_bee_status(Bee, From, Nums) ->
   spawn(fun() ->
     BeeStatus = try_to_connect_to_new_instance(Bee, Nums),
+    ?LOG(info, "spawn_update_bee_status: ~p", [BeeStatus]),
     RealBee = bees:find_by_id(Bee#bee.id),
     bees:update(RealBee#bee{status = BeeStatus}),
     From ! {updated_bee_status, BeeStatus}
@@ -220,6 +221,7 @@ spawn_update_bee_status(Bee, From, Nums) ->
 % Try to connect to the application instance while it's booting up
 try_to_connect_to_new_instance(_Backend, 0) -> broken;
 try_to_connect_to_new_instance(Backend, Attempts) ->
+  ?LOG(info, "try_to_connect_to_new_instance (~p:~p)", [Backend#bee.host, Backend#bee.port]),
   case gen_tcp:connect(Backend#bee.host, Backend#bee.port, [binary, {packet, 0}]) of
     {ok, Sock} ->
       gen_tcp:close(Sock),

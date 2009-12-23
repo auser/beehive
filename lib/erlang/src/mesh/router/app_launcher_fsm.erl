@@ -91,6 +91,7 @@ launching({launch, From}, #state{app = App, host = Host, latest_sha = Sha} = Sta
 launching({started_bee, Be}, State) ->
   bee_srv:add_bee(Be),
   Self = self(),
+  ?LOG(info, "spawn_update_bee_status: ~p for ~p, ~p", [Be, Self, 20]),
   app_manager:spawn_update_bee_status(Be, Self, 20),
   {next_state, pending, State#state{bee = Be}};
 

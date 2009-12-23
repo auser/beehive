@@ -210,7 +210,7 @@ internal_start_new_instance(App, Sha, Port, AppLauncher, From) ->
   end.
 
 % Initialize the node
-initialize_application(App, PropLists, AppLauncher, From) ->
+initialize_application(App, PropLists, AppLauncher, _From) ->
   Sha = proplists:get_value(sha, PropLists),
   Port = proplists:get_value(port, PropLists),
   ImagePath = proplists:get_value(bee_image, PropLists),
@@ -255,7 +255,6 @@ initialize_application(App, PropLists, AppLauncher, From) ->
   case Status of
     0 ->
       AppLauncher ! {started_bee, Bee},
-      From ! {started_bee, Bee},
       Bee;
     Code ->
       ?LOG(error, "Could not mount-and-start-bee: ~p of status code ~p on ~p", [Proplist, Status, Host]),

@@ -42,7 +42,7 @@ init([]) ->
   ets:new(?LAUNCHERS_PID_TO_APP, Opts),
   ets:new(?LAUNCHERS_APP_TO_PID, Opts),
   
-  {ok, _TRef} = timer:send_interval(timer:seconds(10), flush_old_processes),
+  {ok, _TRef} = timer:send_interval(10000, flush_old_processes),
   
   {ok, #state{}}.
 
@@ -116,7 +116,7 @@ handle_info({'EXIT', Pid, _Reason}, State) ->
   end,
   {ok, State};
   
-handle_info({flush_old_processes}, State) ->
+handle_info(flush_old_processes, State) ->
   ?LOG(info, "flushing old cached app event processes", []),
   lists:map(fun({Pid, App, Time}) ->
     case date_util:now_to_seconds() - Time > 120 of
