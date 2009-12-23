@@ -284,7 +284,9 @@ find_bee_on_storage_nodes(App, _Sha, []) ->
 find_bee_on_storage_nodes(App, Sha, [Node|Rest]) ->
   case rpc:call(Node, ?STORAGE_SRV, has_squashed_repos, [App, Sha]) of
     false -> find_bee_on_storage_nodes(App, Sha, Rest);
-    Path -> {ok, Node, Path}
+    Path -> 
+      ?LOG(info, "Found bee (~p) on node: ~p at ~p", [App#app.name, Node, Path]),
+      {ok, Node, Path}
   end.
 
 % kill the instance of the application  
