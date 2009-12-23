@@ -54,7 +54,8 @@ EOF
 
 # Defaults
 HOSTNAME=`hostname -f`
-MNESIA_DIR="$BEEHIVE_HOME/var/lib/db"
+MNESIA_DIR="$BEEHIVE_HOME/var/lib/beehive/db"
+LOG_PATH="$BEEHIVE_HOME/var/log/beehive"
 DAEMONIZE_ARGS=""
 
 BEEHIVE_OPTS="-beehive"
@@ -103,7 +104,6 @@ while [ $# -gt 0 ]; do
 			shift 2;;
 		-l|--log_path)
 			LOG_PATH=$2
-			BEEHIVE_OPTS="$BEEHIVE_OPTS log_path '$2'"
 			shift 2;;
 		-r|--routing_parameter)
 			ROUTER_OPTS="$ROUTER_OPTS routing_parameter '$2'"
@@ -233,6 +233,7 @@ fi
 
 BEEHIVE_OPTS="$BEEHIVE_OPTS node_type $TYPE "
 BEEHIVE_OPTS="$BEEHIVE_OPTS log_level $VERBOSE "
+BEEHIVE_OPTS="$BEEHIVE_OPTS log_path '$LOG_PATH' "
 
 case $TYPE in
   'router' )

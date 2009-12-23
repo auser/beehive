@@ -57,6 +57,9 @@ start() ->
   
   halt(0).
 
+% Get the seeds
+command(Node, get_seed, []) -> get_seed(Node);
+
 % Change the seed on the fly
 command(_Node, set_seed, []) -> error("set_seed requires an argument: Seed node");
 command(Node, set_seed, [Seed]) ->
@@ -103,6 +106,7 @@ show_usage() ->
     COMMANDS
     app_updated [NameOfApp]         Marks an application as updated
     set_seed [SeedNode]             Set a new seed
+    get_seed                        Get the seed node
     
 ", []),
 halt(1).
@@ -129,6 +133,7 @@ get_config_option([ConfigFile, Param]) ->
       end
   end.
 
+get_seed(Node) -> call(Node, node_manager, get_seed, []).
 set_seed(Node, Seed) -> call(Node, node_manager, set_seed, Seed).
 notify(Node, Msg) -> call(Node, node_manager, notify, [Msg]).
 

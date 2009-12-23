@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 
 BEEHIVE_USER_HOME=${1:-'/var/lib/beehive'}
 INSTALL_PREFIX=${2:-''}
@@ -21,9 +21,8 @@ if [ $(sudo cat /etc/passwd | grep ^beehive | grep -v "#" | wc -l) -eq 0 ]; then
   sudo useradd -s /bin/bash -b $BEEHIVE_USER_HOME -d $BEEHIVE_USER_HOME -c "beehive user" -g users beehive;
 fi
 
-sudo touch $BEEHIVE_USER_HOME/.erlang.cookie
-
-echo "HwlloE0lrd" > /tmp/.erlang.cookie
+FIRST_N_CHARS_OF_PUB_KEY=`curl http://169.254.169.254/latest/meta-data/public-keys/0/openssh-key/ | awk '{str=$2} END {print substr(str, 0, 30)}'`
+echo $FIRST_N_CHARS_OF_PUB_KEY > /tmp/.erlang.cookie
 sudo mv /tmp/.erlang.cookie $BEEHIVE_USER_HOME
 sudo chmod 600 $BEEHIVE_USER_HOME/.erlang.cookie
 sudo chown beehive -R $BEEHIVE_USER_HOME
@@ -37,11 +36,12 @@ sudo make
 sudo make install
 cd $SRC_DIR
 
-sudo $INSTALL_PREFIX/usr/bin/start_beehive -d -t node
+# Start the beehive
+sudo -H -u beehive $INSTALL_PREFIX/usr/bin/start_beehive -d -t node -s 'router@'
 
 # Create as many loop back devices as we can
 for i in $(seq 0 255); do
-  sudo mknod -m0660 /dev/loop$i b 7 $i >/dev/null 2>&1
+  sudo mknod -m0660 /dev/loop$i b 7 $i
 done
 
 echo " -- completed bee user-data script ---"
