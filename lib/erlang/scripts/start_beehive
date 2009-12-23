@@ -229,7 +229,9 @@ else
   NAME="$NAME@$HOSTNAME"
 fi
 
-if [ ! -n $SEED ]; then
+echo "Seed: $SEED"
+
+if [ -n $SEED ]; then
   BEEHIVE_OPTS="$BEEHIVE_OPTS seed '$SEED' "
 fi
 
