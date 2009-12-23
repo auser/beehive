@@ -94,6 +94,15 @@ launching({started_bee, Be}, State) ->
   app_manager:spawn_update_bee_status(Be, Self, 20),
   {next_state, pending, State#state{bee = Be}};
 
+launching({error, Code}, State) ->
+  CodeAtom = case Code of
+    1 -> could_not_add_user;
+    2 -> could_not_start_app;
+    3 -> count_not_mount_app;
+    4 -> could_not_unmount_old_processes
+  end,
+  {stop, {error, CodeAtom}, State};
+
 launching(Event, State) ->
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, launching]),
   {next_state, launching, State}.
