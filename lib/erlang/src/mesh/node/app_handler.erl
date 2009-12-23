@@ -220,6 +220,8 @@ initialize_application(App, PropLists, AppLauncher) ->
   Id = {App#app.name, Host, Port},
   StartedAt = date_util:now_to_seconds(),
   
+  ?LOG(info, "mount-and-start-bee: ~p, ~p, ~p, ~p, ~p", [Host, ImagePath, Port, Sha, App#app.name]),
+  
   {Proplist, Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("mount-and-start-bee", [
     {"[[HOST_IP]]", Host},
     {"[[BEE_IMAGE]]", ImagePath},

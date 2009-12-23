@@ -80,7 +80,7 @@ init([App, Host, Sha]) ->
 %%--------------------------------------------------------------------
 launching({launch, From}, #state{app = App, host = Host, latest_sha = Sha} = State) ->
   Self = self(),
-  io:format("Calling ~p, app_handler:start_new_instance~n", [Host]),
+  io:format("Calling ~p, app_handler:start_new_instance(~p, ~p)~n", [Host, App, Sha]),
   case Host of
     false -> {stop, no_node_found, State};
     _ ->
