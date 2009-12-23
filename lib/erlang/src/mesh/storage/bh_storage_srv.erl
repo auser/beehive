@@ -224,6 +224,7 @@ handle_lookup_squashed_repos(Name, Sha) ->
     [{_Key, Path}] -> Path;
     _ -> 
       SquashedDir = config:search_for_application_value(squashed_storage, ?BH_RELATIVE_DIR("squashed"), storage),
+      ?LOG(info, "looking in relative dir: ~p", [?BH_RELATIVE_DIR("squashed")]),
       {ok, Folders} = file:list_dir(SquashedDir),
       case lists:member(Name, Folders) of
         true ->
