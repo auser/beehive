@@ -246,7 +246,7 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
     start_time              = StartedAt
   },
   
-  ?LOG(info, "mounted: ~p as ~p", [Proplist, Bee]),
+  ?LOG(info, "mounted: ~p as ~p (~p)", [Proplist, Bee, Status]),
   
   % Store the app in the local ets table
   ets:insert(?TAB_ID_TO_BEE, {Id, Bee}),

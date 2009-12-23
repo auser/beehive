@@ -161,8 +161,8 @@ handle_cast({build_bee, App, Caller}, #state{scratch_disk = ScratchDisk, squashe
       Reply = {error, could_not_pull_bee},
       Caller ! Reply,
       {noreply, State};
-    _ ->
-      Reply = {error, unknown_error},
+    Else ->
+      Reply = {error, Else},
       Caller ! Reply,
       {noreply, State}
   end;

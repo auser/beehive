@@ -38,7 +38,7 @@ else
 fi
 if [ $? != 0 ]; then exit $COULD_NOT_ADD_USER; fi
 
-mount $MOUNT_FILE $MOUNT_LOCATION -o ro -o loop=$NEW_LOOP_DEVICE
+mount $MOUNT_FILE $MOUNT_LOCATION -o ro -o loop
 if [ $? != 0 ]; then exit $COULD_NOT_MOUNT_APP; fi
   
 # Create a tmp directory
