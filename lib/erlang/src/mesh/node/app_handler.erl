@@ -112,6 +112,7 @@ handle_call({start_new_instance, App, Sha, AppLauncher, From}, _From, #state{
   ?LOG(debug, "internal_start_new_instance: ~p, ~p, ~p, ~p, ~p~n", [App, Sha, Port, AppLauncher, From]),
   internal_start_new_instance(App, Sha, Port, AppLauncher, From),
   NewAvailablePorts = lists:delete(Port, AvailablePorts),
+  ?LOG(debug, "new available ports: ~p", [NewAvailablePorts]),
   {reply, ok, State#state{
     available_ports = NewAvailablePorts
   }};

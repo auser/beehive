@@ -22,7 +22,7 @@ module Beehive
           host: #{host}
           user: #{user}
           password: #{password}
-          name: #{n["app"]}
+          name: #{n}
         EOE
       end
       
