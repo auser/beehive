@@ -20,8 +20,8 @@ pool "beehive" do
   cloud "bees" do
     using :ec2
     instances 1
-    image_id "ami-4205e72b"
-    user 'ubuntu'
+    image_id "ami-ccf615a5"
+    user 'root'
     security_group do
       authorize :from_port => 22, :to_port => 22
       authorize :user_id => ENV["EC2_USER"], :group_name => "beehive-router"

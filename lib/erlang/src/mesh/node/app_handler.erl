@@ -253,6 +253,7 @@ initialize_application(App, PropLists, AppLauncher) ->
       AppLauncher ! {started_bee, Bee},
       Bee;
     Code ->
+      ?LOG(error, "Could not mount-and-start-bee: ~p of status code ~p on ~p", [Proplist, Status, Host]),
       AppLauncher ! {error, Code}
   end.
 

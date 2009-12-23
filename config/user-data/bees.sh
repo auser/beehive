@@ -8,7 +8,7 @@ sudo apt-get update -y
 sudo apt-get install -y curl git-core
 sudo apt-get install -y build-essential libc6-dev m4 libssl-dev libncurses5 libncurses5-dev
 sudo apt-get install -y ruby rubygems ruby-dev libopenssl-ruby
-sudo apt-get install -y erlang-nox erlang-base-hipe erlang-dev erlang-tools
+sudo apt-get install -y erlang-nox erlang-base-hipe erlang-dev
 sudo apt-get install -y squashfs-tools
 
 # So we can deploy thin and rack apps
@@ -26,6 +26,7 @@ echo $FIRST_N_CHARS_OF_PUB_KEY > /tmp/.erlang.cookie
 sudo mv /tmp/.erlang.cookie $BEEHIVE_USER_HOME
 sudo chmod 600 $BEEHIVE_USER_HOME/.erlang.cookie
 sudo chown beehive -R $BEEHIVE_USER_HOME
+sudo cp $BEEHIVE_USER_HOME/.erlang.cookie /root/.erlang.cookie
 
 ####### behive stuff
 # mkdir -p $BEEHIVE_HOME/src && cd $BEEHIVE_HOME/src
@@ -36,8 +37,14 @@ sudo make
 sudo make install
 cd $SRC_DIR
 
+# Root has to run stuff... hrmph!
+sudo cp -R $BEEHIVE_USER_HOME/* /root
+
 # Start the beehive
 sudo -H -u beehive $INSTALL_PREFIX/usr/bin/start_beehive -d -t node -s 'router@domU-12-31-38-04-C4-68.compute-1.internal'
+
+# Root needs to mount - TODO
+sudo -H -u root $INSTALL_PREFIX/usr/bin/start_beehive -d -t storage -s 'router@domU-12-31-38-04-C4-68.compute-1.internal'
 
 # Create as many loop back devices as we can
 for i in $(seq 0 255); do
