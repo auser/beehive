@@ -11,7 +11,8 @@ module Beehive
             
       def run
         parse_args do |opts|
-          opts.on('-n name', '--name name') {|n| @app_name = n}
+          opts.on('-g git_url', '--git git_url', 'Git repos to pull from') {|n| @url = n}
+          opts.on('-n name', '--name name', 'Optional unique name') {|n| @app_name = n}
         end
         
         get_token unless @token
@@ -21,13 +22,14 @@ module Beehive
           host: #{host}
           user: #{user}
           password: #{password}
-          #{n}
+          name: #{n}
         EOE
       end
       
       def new_app
-        r = post("apps/new", {  "name" => @app_name,
-                                "token" => @token })
+        params = {"url" => @url,"token" => @token }
+        params.merge!({"name" => @name}) if @name
+        r = post("apps/new", params)
       end
             
     end

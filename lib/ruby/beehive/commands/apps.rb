@@ -19,7 +19,7 @@ module Beehive
       def apps_list
         get("apps")
       end
-            
+
     end
     
   end

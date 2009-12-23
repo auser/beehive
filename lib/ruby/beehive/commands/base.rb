@@ -82,9 +82,16 @@ module Beehive
       def post(url, params={})
         j = RestClient.post("http://#{host}/#{url}", params.to_json)
         r = JSON.parse(j)
-
+        
         if r["error"]
-          raise r["error"] 
+          if r["error"] == "There was a problem authenticating"
+            raise StandardError.new("
+There was an error authenticating
+Check your credentials
+            ")
+          else
+            raise StandardError.new(r["error"])
+          end
         else
           return r
         end

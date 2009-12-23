@@ -26,8 +26,7 @@ Register a new user. Use this to register a new user for your own beehive.
           end
         end
         
-        
-        get_token @token
+        get_token
         r = new_user
       
         puts <<-EOE

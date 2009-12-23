@@ -57,6 +57,20 @@ start() ->
   
   halt(0).
 
+% List the routers
+command(Node, list, [routers]) -> call(Node, node_manager, get_routers, []);
+command(Node, list, [storage]) -> call(Node, node_manager, get_storage, []);
+command(Node, list, [nodes])   -> call(Node, node_manager, get_nodes, []);
+command(Node, list, []) -> 
+  Routers = command(Node, list, [routers]),
+  Storage = command(Node, list, [storage]),
+  Nodes   = command(Node, list, [nodes]),
+  io:format("
+  Type                      Ips
+  routers                   ~p
+  nodes                     ~p
+  storages                  ~p
+", [Routers, Nodes, Storage]);
 % Get the seeds
 command(Node, get_seed, []) -> get_seed(Node);
 

@@ -133,6 +133,7 @@ starting({bee_built, Info}, #bee{app_name = AppName} = Bee) ->
   app_launcher_fsm:launch(P, self()),
   
   NewBee = Bee#bee{bee_size = BeeSize, dir_size = DirSize, host_node = Node, commit_hash = Sha},
+  bees:save(NewBee),
   io:format("bee_built: ~p for new hash: ~p~n", [NewBee, Sha]),
   {next_state, success, NewBee};
 

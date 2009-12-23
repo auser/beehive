@@ -19,7 +19,7 @@ ACTIONS
 
 OPTIONS
   -t, --type                    Type of node to install on beehive [router]|node|storage
-  -p, --prefix                  The root directory (default: /opt/beehive)
+  -p, --prefix                  The root directory (default: /var/lib/beehive)
   -o, --host                    Host to install (only for remote_install)
   -V, --version                 Print the version
   -k, --key                     Ssh public key to use (default: $HOME/.ssh/id_rsa.pub)
@@ -37,7 +37,7 @@ EOF
 }
 
 # Defaults
-PREFIX="/opt/beehive"
+PREFIX=""
 TYPE="router"
 KEY="$HOME/.ssh/id_rsa.pub"
 HOST=false
