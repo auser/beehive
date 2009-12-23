@@ -305,7 +305,8 @@ internal_stop_instance(#bee{commit_hash = Sha} = Bee, App, From) when is_record(
     undefined -> ok;
     _E ->
       StopProplists = [{"[[SHA]]", Sha},{"[[APP_NAME]]", App#app.name}],
-      ?TEMPLATE_SHELL_SCRIPT_PARSED("stop-bee", StopProplists)
+      O = ?TEMPLATE_SHELL_SCRIPT_PARSED("stop-bee", StopProplists),
+      ?LOG(debug, "stop-bee result: ~p from ~p", [O, StopProplists])
   end,
   
   case ets:lookup(?TAB_ID_TO_BEE, {App#app.name, Bee#bee.host, Bee#bee.port}) of
