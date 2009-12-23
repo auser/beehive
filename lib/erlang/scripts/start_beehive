@@ -219,8 +219,6 @@ if [ ! -z $CONFIG_FILE ]; then
 		else
 			SEED="$ASEED@$HOSTNAME"
 		fi
-		
-		BEEHIVE_OPTS="$BEEHIVE_OPTS seed '$SEED' "
 	fi
 fi
 
@@ -229,6 +227,10 @@ if [ $(echo "$NAME" | $grep '@') ]; then
   NAME=$NAME
 else
   NAME="$NAME@$HOSTNAME"
+fi
+
+if [ ! -n $SEED ]; then
+  BEEHIVE_OPTS="$BEEHIVE_OPTS seed '$SEED' "
 fi
 
 BEEHIVE_OPTS="$BEEHIVE_OPTS node_type $TYPE "
