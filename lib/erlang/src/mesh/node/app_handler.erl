@@ -121,7 +121,7 @@ handle_call({stop_instance, Backend, App, From}, _From, #state{available_ports =
   Port = Backend#bee.port,
   internal_stop_instance(Backend, App, From),
   NewAvailablePorts = [Port|AvailablePorts],
-  {reply, ok, State#state{available_ports = NewAvailablePorts}};
+  {reply, ok, State#state{available_ports = lists:reverse(NewAvailablePorts)}};
 
 handle_call({has_app_named, Name}, _From, State) ->
   Reply = case ets:lookup(?TAB_NAME_TO_BEE, Name) of
@@ -297,9 +297,6 @@ find_bee_on_storage_nodes(App, Sha, [Node|Rest]) ->
 % kill the instance of the application  
 internal_stop_instance(#bee{commit_hash = Sha} = Bee, App, From) when is_record(App, app) ->
   io:format("internal_stop_instance(~p)~n", [Bee]),
-  Pid = Bee#bee.pid,
-  
-  Pid ! {stop},
   
   io:format("internal_stop_instance: ~p and ~p~n", [Sha, App#app.name]),
   case Sha of

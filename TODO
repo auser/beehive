@@ -12,3 +12,4 @@ TODO:
 * Throw error for creating duplicate users/apps/bees
 * Add job-queue to handle tasks -> queue-driven
 * Investigate BERT-RPC
+* Force not updating apps after they terminate
