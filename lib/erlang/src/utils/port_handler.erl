@@ -6,7 +6,7 @@
 start(Cmd, WorkingDir, From, Opts) ->
   process_flag(trap_exit, true),
   spawn_link(fun() ->
-    Port = open_port({spawn, Cmd}, [exit_status, {cd, file_utils:relative_path(WorkingDir)}|Opts]),
+    Port = open_port({spawn, Cmd}, [exit_status, {cd, bh_file_utils:relative_path(WorkingDir)}|Opts]),
     port_loop(Port, Cmd, WorkingDir, From)
   end).
 

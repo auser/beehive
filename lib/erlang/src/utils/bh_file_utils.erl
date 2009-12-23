@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% File    : file_utils.erl
+%%% File    : bh_file_utils.erl
 %%% Author  : Ari Lerner
 %%% Description : 
 %%%
 %%% Created :  Mon Nov 16 14:09:53 PST 2009
 %%%-------------------------------------------------------------------
 
--module (file_utils).
+-module (bh_file_utils).
 
 -compile (export_all).
 

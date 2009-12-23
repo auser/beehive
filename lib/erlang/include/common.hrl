@@ -22,14 +22,18 @@ end()).
 	F -> F
 end).
 
--define (FIXTURES_DIR, file_utils:relative_path("test/fixtures")).
+-define (BEEHIVE_HOME, os:getenv("HOME")).
+-define (FIXTURES_DIR, bh_file_utils:relative_path("test/fixtures")).
 % Figure this out... Hm
--define (SHELL_SCRIPTS_DIR, file_utils:relative_path("./shell_templates/")).
+-define (SHELL_SCRIPTS_DIR, filename:join([?BEEHIVE_HOME, "./shell_templates/"])).
 
 -define (SHELL_SCRIPT_PATH (Name), filename:join([?SHELL_SCRIPTS_DIR, lists:append([Name, ".sh"])])).
 -define (SHELL_SCRIPT (Name), fun() ->
-  {ok, Binary} = file:read_file(?SHELL_SCRIPT_PATH(Name)),
-  erlang:binary_to_list(Binary)
+  case file:read_file(?SHELL_SCRIPT_PATH(Name)) of
+    {ok, Binary} -> erlang:binary_to_list(Binary);
+    {error, _Reason} -> 
+      ?LOG(error, "Could not file shell_script named: ~p", [Name])
+    end
  end()
 ).
 -define (TEMPLATE_SHELL_SCRIPT (Name, Params), fun() ->

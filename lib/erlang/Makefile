@@ -50,8 +50,10 @@ install: compile boot
 	@mkdir -p $(PREFIX)/var/log/beehive
 	
 	if [ ! -n $$BEEHIVE_USER ]; then chown -R $$BEEHIVE_USER ./; fi
-	@cp -r ebin include ./../../LICENSE deps shell_templates $(TARGET_DIR)
+	@cp -r ebin include ./../../LICENSE deps $(TARGET_DIR)
 	for i in ebin/*.beam; do install $$i $(TARGET_DIR)/$$i; done
+	# copy the shell templates to the beehive home
+	@cp -r shell_templates $(PREFIX)/var/lib/beehive
 	
 	chown -R beehive $(PREFIX)/var/lib/beehive/
 	chown -R beehive $(PREFIX)/var/log/beehive/

@@ -342,7 +342,7 @@ add_bees_from_config() ->
   case config:search_for_application_value(bees, undefined, router) of
     undefined -> ok;
     RawPath ->
-      case (catch file_utils:abs_or_relative_filepath(RawPath)) of
+      case (catch bh_file_utils:abs_or_relative_filepath(RawPath)) of
         {error, _} -> "router.log";
         Path -> 
           case file:consult(Path) of

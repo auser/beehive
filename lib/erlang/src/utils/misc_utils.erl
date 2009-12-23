@@ -34,7 +34,7 @@ shell_fox(Name, Proplist) ->
   Self = self(),
   
   spawn(fun() -> 
-      Port = open_port({spawn, Tempfile}, [exit_status, {cd, file_utils:relative_path("/tmp")}, use_stdio]),
+      Port = open_port({spawn, Tempfile}, [exit_status, {cd, bh_file_utils:relative_path("/tmp")}, use_stdio]),
       wait_for_port(Port, Tempfile, Self, [])
     end),
   receive
