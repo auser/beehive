@@ -199,5 +199,7 @@ decode_data_from_request(Req) ->
     <<>> -> erlang:list_to_binary("{}");
     Bin -> Bin
   end,
-  {struct, Struct} = mochijson2:decode(Data),
-  convert_to_struct(Struct).
+  case mochijson2:decode(Data) of
+    {struct, Struct} -> convert_to_struct(Struct);
+    B -> convert_to_struct(B)
+  end.
