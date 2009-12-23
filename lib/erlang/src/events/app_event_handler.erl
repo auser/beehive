@@ -117,7 +117,6 @@ handle_info({'EXIT', Pid, _Reason}, State) ->
   {ok, State};
   
 handle_info(flush_old_processes, State) ->
-  ?LOG(info, "flushing old cached app event processes", []),
   lists:map(fun({Pid, App, Time}) ->
     case date_util:now_to_seconds() - Time > 120 of
       false -> ok;
