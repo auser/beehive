@@ -174,6 +174,8 @@ handle_info({port_closed, Pid, 0}, State) ->
 handle_info({data, _Data}, State) ->
   % io:format("Received data from a port: ~p~n", [Data]),
   {noreply, State};
+handle_info({stop}, _State) ->
+  {stop, normal};
 handle_info(Info, State) ->
   ?LOG(info, "~p caught info: ~p", [?MODULE, Info]),
   {noreply, State}.
