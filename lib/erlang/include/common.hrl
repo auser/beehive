@@ -31,8 +31,9 @@ end).
 -define (SHELL_SCRIPT (Name), fun() ->
   case file:read_file(?SHELL_SCRIPT_PATH(Name)) of
     {ok, Binary} -> erlang:binary_to_list(Binary);
-    {error, _Reason} -> 
-      ?LOG(error, "Could not file shell_script named: ~p", [Name])
+    {error, Reason} -> 
+      ?LOG(error, "Could not file shell_script named: ~p", [Name]),
+      throw({error, shell_script, Reason})
     end
  end()
 ).
