@@ -33,7 +33,6 @@ echo " -- completed router user-data script ---"
 sudo apt-get install -y build-essential m4 libssl-dev libncurses5 libncurses5-dev
 sudo apt-get install -y git git-core
 sudo apt-get install -y rubygems1.8
-sudo apt-get install -y squashfs-tools
 sudo apt-get install -y erlang-nox erlang-base-hipe erlang-dev
 sudo apt-get install -y python-setuptools
 
@@ -170,7 +169,6 @@ echo " -- completed storage user-data script ---"
 sudo apt-get install -y build-essential libc6-dev m4 libssl-dev libncurses5 libncurses5-dev
 sudo apt-get install -y ruby rubygems ruby-dev libopenssl-ruby
 sudo apt-get install -y erlang-nox erlang-base-hipe erlang-dev
-sudo apt-get install -y squashfs-tools
 
 # So we can deploy thin and rack apps
 sudo gem install rack thin --no-rdoc --no-ri

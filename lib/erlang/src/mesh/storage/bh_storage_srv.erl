@@ -134,7 +134,7 @@ handle_cast({pull_repos, App, Caller}, State) ->
 
 handle_cast({build_bee, App, Caller}, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} = State) ->
   {ok, ReposUrl} = handle_repos_lookup(App),
-  OutFile = lists:append([handle_find_application_location(App, State), ".squashfs"]),
+  OutFile = lists:append([handle_find_application_location(App, State), ".img"]),
   
   io:format("creating bee: ~p~n", [ReposUrl]),
   {Proplists, Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("create-bee", [
@@ -228,7 +228,7 @@ handle_lookup_squashed_repos(Name, Sha) ->
       case lists:member(Name, Folders) of
         true ->
           Dir = filename:join([SquashedDir, Name]),
-          FullFilePath = filename:join([Dir, lists:append([Name, ".", Sha, ".squashfs"])]),
+          FullFilePath = filename:join([Dir, lists:append([Name, ".", Sha, ".img"])]),
           case filelib:is_file(FullFilePath) of
             true -> FullFilePath;
             false -> false

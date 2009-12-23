@@ -263,7 +263,7 @@ initialize_application(App, PropLists, AppLauncher) ->
 find_and_transfer_bee(App, Sha) ->
   Nodes = lists:map(fun(N) -> node(N) end, node_manager:get_storage()),
   Path = next_free_honeycomb(App),
-  LocalPath = filename:join([filename:absname(""), lists:append([Path, "/", "app.squashfs"])]),
+  LocalPath = filename:join([filename:absname(""), lists:append([Path, "/", "app.img"])]),
   ?LOG(info, "find_bee_on_storage_nodes: ~p:~p on nodes: ~p at Path: ~p and LocalPath: ~p", [App#app.name, Sha, Nodes, Path, LocalPath]),
   case find_bee_on_storage_nodes(App, Sha, Nodes) of
     {ok, Node, RemotePath} ->

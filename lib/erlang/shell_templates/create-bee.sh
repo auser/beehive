@@ -17,8 +17,9 @@ if [ ! -d $WORKING_DIRECTORY ]; then
 fi
 cd $WORKING_DIRECTORY
 
-APP_DIR=$WORKING_DIRECTORY/$APP_NAME	
+APP_DIR=$WORKING_DIRECTORY/$APP_NAME
 GIT_REPOS_DIR=$APP_DIR/home/app
+FILESYSTEM=ext3
 
 echo "app_dir $APP_DIR"
 rm -rf $APP_DIR
@@ -56,8 +57,6 @@ if [ ! -d "$SKEL_DIR" ]; then
 
   chmod 666 dev/null
   chmod 666 dev/zero
-    
-  mkdir -p $APP_DIR
 fi
 
 if [ ! -d $APP_DIR/home ]; then
@@ -65,7 +64,6 @@ if [ ! -d $APP_DIR/home ]; then
 fi
 
 echo "done $APP_DIR"
-
 
 # Yes, this is redundant, but... will do for now
 git clone --depth 0 $GIT_REPOS $GIT_REPOS_DIR
@@ -94,7 +92,9 @@ if [ -f $GEM_FILE ]; then
 fi
 echo "installed gems"
 
-OUTFILE=$SQUASHED_DIR/$APP_NAME/$APP_NAME.$SHA.squashfs
+OUTFILE=$SQUASHED_DIR/$APP_NAME/$APP_NAME.$SHA.img
+LOOPDIR=$SQUASHED_DIR/$APP_NAME/$APP_NAME.$SHA
+mkdir -p $LOOPDIR
 
 # Make sure this directory doesn't exist
 if [ -f $OUTFILE ]; then
@@ -107,7 +107,15 @@ if [ ! -d $T_DIR ]; then
 	mkdir -p $T_DIR
 fi
 
-mksquashfs $APP_DIR $OUTFILE >/dev/null 2>&1
+dir_size=`du -s $APP_DIR | awk '{print $1+1024}'`
+# Make the file
+dd if=/dev/zero of=$OUTFILE count=$dir_size bs=1K
+mkfs.$FILESYSTEM -F $OUTFILE
+mount -o loop -t $FILESYSTEM $OUTFILE $LOOPDIR
+rsync -a $APP_DIR $LOOPDIR
+umount $LOOPDIR
+
+# mksquashfs $APP_DIR $OUTFILE >/dev/null 2>&1
 
 if [ $? != 0 ]; then
 	exit 1
@@ -118,7 +126,6 @@ fi
 # # Link it as the "latest" filesystem
 # ln -sf $FS_DIRECTORY/$TIMESTAMPED_NAME $MOUNT_FILE
 
-dir_size=`du -h -s $APP_DIR | awk '{print $1}'`
 bee_size=`du -h -s $OUTFILE | awk '{print $1}'`
 echo "bee_size $bee_size"
 echo "dir_size $dir_size"
@@ -126,4 +133,5 @@ echo "outdir $OUTFILE"
 
 # Cleanup
 rm -rf $APP_DIR
+rm -rf $LOOPDIR
 echo "finished true"
