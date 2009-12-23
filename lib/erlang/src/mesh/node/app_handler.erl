@@ -231,6 +231,8 @@ initialize_application(App, PropLists, AppLauncher) ->
     {"[[APP_NAME]]", App#app.name}
   ]),
   
+  ?LOG(info, "mounted: ~p", [Proplist]),
+  
   AppRootPath = proplists:get_value(dir, Proplist),
   
   Bee  = #bee{

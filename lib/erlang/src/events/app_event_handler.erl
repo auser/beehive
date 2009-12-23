@@ -42,6 +42,8 @@ init([]) ->
   ets:new(?LAUNCHERS_PID_TO_APP, Opts),
   ets:new(?LAUNCHERS_APP_TO_PID, Opts),
   
+  {ok, _TRef} = timer:send_interval(timer:seconds(10), flush_old_processes),
+  
   {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -101,17 +103,37 @@ handle_call(_Request, State) ->
 handle_info({'EXIT', Pid, _Reason}, State) ->
   io:format("Pid exited: ~p~n", [Pid]),
   case ets:lookup(?UPDATERS_PID_TO_APP, Pid) of
-    [{Pid, App}] ->
+    [{Pid, App, _Time}] ->
       ets:delete(?UPDATERS_PID_TO_APP, Pid),
       ets:delete(?UPDATERS_APP_TO_PID, App);
     _ -> 
       case ets:lookup(?LAUNCHERS_PID_TO_APP, Pid) of
-        [{Pid, App}] ->
+        [{Pid, App, _Time}] ->
           ets:delete(?LAUNCHERS_PID_TO_APP, Pid),
           ets:delete(?LAUNCHERS_APP_TO_PID, App);
         _ -> true
       end
   end,
+  {ok, State};
+  
+handle_info({flush_old_processes}, State) ->
+  ?LOG(info, "flushing old cached app event processes", []),
+  lists:map(fun({Pid, App, Time}) ->
+    case date_util:now_to_seconds() - Time > 120 of
+      false -> ok;
+      true ->
+        ets:delete(?UPDATERS_PID_TO_APP, Pid),
+        ets:delete(?UPDATERS_APP_TO_PID, App)
+    end
+  end, ets:tab2list(?UPDATERS_APP_TO_PID)),
+  lists:map(fun({Pid, App, Time}) ->
+    case date_util:now_to_seconds() - Time > 120 of
+      false -> ok;
+      true ->
+        ets:delete(?LAUNCHERS_PID_TO_APP, Pid),
+        ets:delete(?LAUNCHERS_APP_TO_PID, App)
+    end
+  end, ets:tab2list(?LAUNCHERS_PID_TO_APP)),
   {ok, State};
 handle_info(_Info, State) ->
   {ok, State}.
@@ -136,20 +158,22 @@ code_change(_OldVsn, State, _Extra) ->
 
 handle_updating_app(App) ->  
   case ets:lookup(?UPDATERS_APP_TO_PID, App) of
-    [{_App, _Pid}] -> ok;
+    [{_App, _Pid, _Time}] -> ok;
     _ ->
       {ok, P} = app_updater_fsm:start_link(App),
-      app_updater_fsm:go(P, self()),
-      ets:insert(?UPDATERS_APP_TO_PID, {App, P}),
-      ets:insert(?UPDATERS_PID_TO_APP, {P, App})
+      Now = date_util:now_to_seconds(),
+      app_updater_fsm:go(P, self()), 
+      ets:insert(?UPDATERS_APP_TO_PID, {App, P, Now}),
+      ets:insert(?UPDATERS_PID_TO_APP, {P, App, Now})
   end.
 
 handle_launch_app(App, Host, Sha) ->
   case ets:lookup(?LAUNCHERS_APP_TO_PID, App) of
-    [{_App, _Pid}] -> ok;
+    [{_App, _Pid, _Time}] -> ok;
     _ -> 
       {ok, P} = app_launcher_fsm:start_link(App, Host, Sha),
+      Now = date_util:now_to_seconds(),
       app_launcher_fsm:launch(P, self()),
-      ets:insert(?LAUNCHERS_APP_TO_PID, {App, P}),
-      ets:insert(?LAUNCHERS_PID_TO_APP, {P, App})
+      ets:insert(?LAUNCHERS_APP_TO_PID, {App, P, Now}),
+      ets:insert(?LAUNCHERS_PID_TO_APP, {P, App, Now})
   end.
