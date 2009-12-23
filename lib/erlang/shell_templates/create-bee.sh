@@ -1,4 +1,4 @@
-#!/bin/sh -x
+#!/bin/sh
 
 progdir=$(dirname $0)
 
