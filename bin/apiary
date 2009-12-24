@@ -18,7 +18,7 @@ ACTIONS
   remove                        Removes beehive from the system
 
 OPTIONS
-  -t, --type                    Type of node to install on beehive [router]|node|storage
+  -t, --type                    Type of node to install on beehive [(r)outer]|(b)ee|(s)torage
   -p, --prefix                  The root directory (default: /var/lib/beehive)
   -o, --host                    Host to install (only for remote_install)
   -V, --version                 Print the version
@@ -76,15 +76,15 @@ while [ $# -gt 0 ]; do
       case "$2" in
         r|router )
           TYPE="router";;
-        n|node )
-          TYPE="node";;
+        b|bee )
+          TYPE="bee";;
         s|storage )
           TYPE="storage";;
         *)
           echo "
 ERROR! Unknown type of node. Must be one of the following
 (r)router
-(n)node
+(b)ee
 (s)storage
           "
           exit 1
