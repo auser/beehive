@@ -8,11 +8,19 @@ sudo apt-get update -y
 sudo apt-get install -y curl git-core
 sudo apt-get install -y build-essential libc6-dev m4 libssl-dev libncurses5 libncurses5-dev
 sudo apt-get install -y ruby rubygems ruby-dev libopenssl-ruby
+sudo apt-get install -y spidermonkey-bin
 sudo apt-get install -y erlang-nox erlang-base-hipe erlang-dev erlang-tools
 
 # So we can deploy thin and rack apps
 sudo gem install rack thin --no-rdoc --no-ri
 sudo gem install haml sinatra --no-rdoc --no-ri
+
+cd /tmp
+
+# Grab and install jsawk
+curl http://github.com/micha/jsawk/raw/master/jsawk > jsawk
+chmod +x jsawk
+sudo mv jsawk /usr/bin
 
 ## Prepare beehive directories
 sudo mkdir -p $BEEHIVE_USER_HOME
@@ -44,9 +52,11 @@ cd $SRC_DIR
 sudo cp -R $BEEHIVE_USER_HOME/* /root
 
 # Start the beehive
-sudo -H -u root $INSTALL_PREFIX/usr/bin/start_beehive -d -t node -s 'router@domU-12-31-38-04-C4-68.compute-1.internal'
+ROUTER_HOST=$(curl -sL 'http://twitter.com/users/getbeehive.json' | jsawk 'return this.status.text')
+ROUTER_ATOM="router@$ROUTER_HOST"
+sudo -H -u root $INSTALL_PREFIX/usr/bin/start_beehive -d -t node -s $ROUTER_ATOM
 # Root needs to mount - TODO
-sudo -H -u root $INSTALL_PREFIX/usr/bin/start_beehive -d -t storage -s 'router@domU-12-31-38-04-C4-68.compute-1.internal'
+sudo -H -u root $INSTALL_PREFIX/usr/bin/start_beehive -d -t storage -s $ROUTER_ATOM
 
 # Create as many loop back devices as we can
 for i in $(seq 0 255); do
