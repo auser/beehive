@@ -36,7 +36,7 @@
 
 -record (state, {
   seed,             % seed host
-  type,             % type of node (router|node)
+  type,             % type of node (router|bee|storage)
   host              % local host
 }).
 
@@ -57,7 +57,7 @@ start_link() ->
   case config:search_for_application_value(node_type, router, beehive) of
     router -> start_link(router, Seed);
     storage -> start_link(storage, Seed);
-    node -> start_link(node, Seed)
+    bee -> start_link(bee, Seed)
   end.
   
 start_link(router, Seed) -> 
@@ -80,8 +80,8 @@ start_link(storage, Seed) ->
       ?LOG(error, "Could not start router link: ~p~n", [Else])
   end;  
 
-start_link(node, Seed) -> 
-  case gen_server:start_link({local, ?MODULE}, ?MODULE, [node, Seed], []) of
+start_link(bee, Seed) -> 
+  case gen_server:start_link({local, ?MODULE}, ?MODULE, [bee, Seed], []) of
     {ok, Pid} ->
       pg2:create(?NODE_SERVERS),
       ok = pg2:join(?NODE_SERVERS, Pid),
@@ -102,7 +102,7 @@ is_a(storage) ->
     _ -> true
   end;
 
-is_a(node) ->
+is_a(bee) ->
   case whereis(app_handler) of
     undefined -> false;
     _ -> true
@@ -188,14 +188,18 @@ init([Type, SeedList]) ->
   process_flag(trap_exit, true),  
   
   Seed = misc_utils:to_atom(SeedList),
-  ?LOG(debug, "Connecting as type ~p to seed node ~p", [Type, Seed]),
-  net_adm:ping(node()), % start distributed
-  join(Seed),
+  case Seed of
+    '' -> ok;
+    _ ->
+      ?LOG(debug, "Connecting as type ~p to seed ~p", [Type, Seed]),
+      net_adm:ping(node()), % start distributed
+      join(Seed)
+  end,
   
   SlaveDb = case Type of
     router ->
       case SeedList of
-        [] -> 
+        '' -> 
           % Initializing root router
           case db:already_initialized() of
             true -> false;
@@ -206,8 +210,8 @@ init([Type, SeedList]) ->
         _ -> true
       end;
     storage -> true;
-    node ->
-      % Node initialization stuff
+    bee ->
+      % Bee initialization stuff
       true
   end,
   
@@ -259,7 +263,7 @@ handle_call({set_seed, SeedPid}, _From, #state{type = Type} = State) when is_pid
   ListType = case Type of
     router -> ?ROUTER_SERVERS;
     storage -> ?STORAGE_SERVERS;
-    node -> ?NODE_SERVERS
+    bee -> ?NODE_SERVERS
   end,
   pg2:create(ListType),
   ok = pg2:join(ListType, self()),
@@ -269,7 +273,7 @@ handle_call({set_seed, SeedNode}, _From, #state{type = Type} = State) ->
   ListType = case Type of
     router -> ?ROUTER_SERVERS;
     storage -> ?STORAGE_SERVERS;
-    node -> ?NODE_SERVERS
+    bee -> ?NODE_SERVERS
   end,
   pg2:create(ListType),
   ok = pg2:join(ListType, self()),
@@ -408,7 +412,7 @@ get_next_available(Group, Count, M, F, A) ->
 % Get the next nodes of the same type
 get_other_nodes(Type) ->
   case Type of
-    node -> get_nodes();
+    bee -> get_nodes();
     storage -> get_storage();
     router -> get_routers()
   end.

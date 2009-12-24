@@ -10,7 +10,7 @@
 
 -export ([check/1]).
 
-check(node) -> check_for_all();
+check(bee) -> check_for_all();
 check(storage) -> check_for_all();
 check(router) -> check_for_all().
 
