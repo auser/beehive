@@ -77,7 +77,7 @@ all() ->
   db:find(qlc:q([ B || B <- mnesia:table(user) ])).
 
 create_new_token_for(User) when is_record(User, user) ->
-  NewToken = md5:hex(lists:flatten([
+  NewToken = bh_md5:hex(lists:flatten([
     User#user.email,
     misc_utils:to_list(date_util:now_to_seconds())
   ])),
@@ -96,7 +96,7 @@ create_new_token_for(Email, Password) ->
   case find_by_email(Email) of
     [] -> error;
     User ->
-      case User#user.password =:= md5:hex(Password) of
+      case User#user.password =:= bh_md5:hex(Password) of
         false -> error;
         true ->
           create_new_token_for(User)
@@ -127,8 +127,8 @@ validate_user_proplists(PropList) ->
       updated_at -> {Key, date_util:now_to_seconds()};
       password -> 
         case Val of
-          undefined -> md5:hex("test");
-          _ -> {Key, md5:hex(Val)}
+          undefined -> bh_md5:hex("test");
+          _ -> {Key, bh_md5:hex(Val)}
         end;
       token -> {Key, none};
       level -> {Key, misc_utils:to_integer(Val)};

@@ -5,9 +5,16 @@ INSTALL_PREFIX=${2:-''}
 sudo apt-get update
 sudo apt-get install -y build-essential m4 libssl-dev libncurses5 libncurses5-dev
 sudo apt-get install -y git git-core
-sudo apt-get install -y rubygems1.8
+sudo apt-get install -y rubygems1.8 spidermonkey-bin
 sudo apt-get install -y erlang-nox erlang-base-hipe erlang-dev erlang-tools
 sudo apt-get install -y python-setuptools
+
+cd /tmp
+
+# Grab and install jsawk
+curl http://github.com/micha/jsawk/raw/master/jsawk > jsawk
+chmod +x jsawk
+sudo mv jsawk /usr/bin
 
 ## Prepare beehive directories
 sudo mkdir -p $BEEHIVE_USER_HOME

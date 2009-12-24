@@ -4,6 +4,6 @@
  
 all_test_() ->
   [
-    {module, md5_test},
+    {module, bh_md5_test},
     {module, string_test}
   ].

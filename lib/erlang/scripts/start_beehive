@@ -233,21 +233,24 @@ if [ -n $SEED ]; then
   BEEHIVE_OPTS="$BEEHIVE_OPTS seed '$SEED' "
 fi
 
-BEEHIVE_OPTS="$BEEHIVE_OPTS node_type $TYPE "
-BEEHIVE_OPTS="$BEEHIVE_OPTS log_level $VERBOSE "
-BEEHIVE_OPTS="$BEEHIVE_OPTS log_path '$LOG_PATH' "
-
 case $TYPE in
-  'router' )
+  'router'|'r' )
+    TYPE='router'
     APP_OPTS=$ROUTER_OPTS;;
-  'node' )
+  'node'|'n' )
+    TYPE='node'
     APP_OPTS=$NODE_OPTS;;
-  'storage' )
+  'storage'|'s' )
+    TYPE='storage'
     APP_OPTS=$STORAGE_OPTS;;
   *)
     echo "Node type: $TYPE is not a valid node type"
     exit 2
 esac
+
+BEEHIVE_OPTS="$BEEHIVE_OPTS node_type $TYPE "
+BEEHIVE_OPTS="$BEEHIVE_OPTS log_level $VERBOSE "
+BEEHIVE_OPTS="$BEEHIVE_OPTS log_path '$LOG_PATH' "
 
 if [ $VERBOSE -gt 0 ]; then
 cat <<EOF

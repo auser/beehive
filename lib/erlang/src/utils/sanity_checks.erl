@@ -10,17 +10,12 @@
 
 -export ([check/1]).
 
-check(node) ->
-  check_db_directory(),
-  ok;
-check(storage) ->
-  check_db_directory(),
-  ok;
-check(router) ->
-  io:format("checking router...~n~n"),
-  % Check the db directory, make sure it exists and is writeable
-  check_db_directory(),
-  ok.
+check(node) -> check_for_all();
+check(storage) -> check_for_all();
+check(router) -> check_for_all().
+
+check_for_all() ->
+  check_db_directory().
   
 % Internals
 check_db_directory() ->

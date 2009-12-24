@@ -321,7 +321,7 @@ next_free_honeycomb(App) ->
   UniqueName = apps:build_on_disk_app_name(App),
   {Proplists, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("next-free-honeycomb", [
     {"[[APP_NAME]]", App#app.name},
-    {"[[SLOT_DIR]]", md5:hex(UniqueName)},
+    {"[[SLOT_DIR]]", bh_md5:hex(UniqueName)},
     {"[[DESTINATION]]", BaseDir}
   ]),
   proplists:get_value(dir, Proplists).
