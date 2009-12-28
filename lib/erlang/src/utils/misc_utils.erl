@@ -29,8 +29,14 @@ random_word(List) ->
 % Take a proplist and a name of a shell script, replace the
 % variables set in the proplist, write the "new" shell script
 % out and run it, while waiting for it
-shell_fox(Name, Proplist) -> 
-  Tempfile = create_templated_tempfile(Name, Proplist),
+shell_fox(Name, Proplist) ->   
+  Tempfile = case proplists:is_defined(use_temp_file, Proplist) of
+    true -> 
+      NewProplist = proplists:delete(use_temp_file, Proplist),
+      create_templated_tempfile(Name, NewProplist);
+    false ->
+      ?TEMPLATE_SHELL_SCRIPT(Name, Proplist)
+  end,
   Self = self(),
   
   spawn(fun() -> 
@@ -38,10 +44,14 @@ shell_fox(Name, Proplist) ->
       wait_for_port(Port, Tempfile, Self, [])
     end),
   receive
-    {ok, Tempfile, E, Status} -> 
-      file:delete(Tempfile),
-      {E, Status}
+    {ok, Tempfile, E, Status} ->
+      cleanup_tempfile(Tempfile),
+      {E, Status};
+    Else -> 
+      cleanup_tempfile(Tempfile),
+      {error, Else}
   after timer:seconds(60) ->
+    cleanup_tempfile(Tempfile),
     {error, timeout}
   end.
 
@@ -73,18 +83,32 @@ wait_for_port(Port, Tempfile, AppUpdatorPid, Acc) ->
         true -> [Acc];
         false -> lists:reverse(Acc)
       end,
-      Tokens = string:tokens(string:join(ListofStrings, "\n"), "\n"),
-      O = lists:flatten(lists:map(fun(List) ->
-        element(1, lists:foldr(fun (X,{As,[]}) -> {As,[X]}; (X,{As,[Y]}) ->
-          {[{erlang:list_to_atom(X),Y}|As],[]} end, {[],[]},  string:tokens(List, " "))) end, Tokens)),
-      AppUpdatorPid ! {ok, Tempfile, O, Status},
-      file:delete(Tempfile);
+      O = chop(ListofStrings),
+      AppUpdatorPid ! {ok, Tempfile, O, Status};
     E ->
-      file:delete(Tempfile),
       E
   after timer:seconds(60) ->
-    file:delete(Tempfile),
     ok
+  end.
+
+% Take a list of strings, separated by newlines and 
+% divy them up such that the first 
+chop(ListofStrings) ->
+  Tokens = string:tokens(string:join(ListofStrings, "\n"), "\n"),
+  lists:flatten(lists:map(fun(List) ->
+    [D|Rest] = string:tokens(List, " "),
+    Val = case Rest of
+      [] -> "";
+      _ -> string:join(Rest, " ")
+    end,
+    {erlang:list_to_atom(D), Val}
+  end, Tokens)).
+  
+% clean up the tempfile, if necessary
+cleanup_tempfile(Tempfile) ->
+  case filelib:is_file(Tempfile) of
+    true -> file:delete(Tempfile);
+    false -> ok
   end.
 
 to_list(Bin) when is_binary(Bin) -> erlang:binary_to_list(Bin);

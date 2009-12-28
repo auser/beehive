@@ -225,7 +225,7 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
   
   ?LOG(info, "mount-and-start-bee: ~p, ~p, ~p, ~p, ~p", [Host, ImagePath, Port, Sha, App#app.name]),
   
-  {Proplist, Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("mount-and-start-bee", [
+  {Proplist1, Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("mount-bee", [
     {"[[HOST_IP]]", Host},
     {"[[BEE_IMAGE]]", ImagePath},
     {"[[PORT]]", misc_utils:to_list(Port)},
@@ -234,7 +234,7 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
     {"[[APP_NAME]]", App#app.name}
   ]),
   
-  AppRootPath = proplists:get_value(dir, Proplist),
+  AppRootPath = proplists:get_value(path, Proplist),
   
   Bee  = #bee{
     id                      = Id,
@@ -249,8 +249,16 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
     start_time              = StartedAt
   },
   
-  ?LOG(info, "mounted: ~p as ~p (~p)", [Proplist, Bee, Status]),
-  
+  Vars = [
+    {"[[HOST_IP]]", Host},
+    {"[[PORT]]", misc_utils:to_list(Port)},
+    {"[[SHA]]", Sha},
+    {"[[START_TIME]]", StartedAt},
+    {"[[APP_NAME]]", App#app.name},
+    {"[[APP_HOME]]", AppRootPath}
+  ],
+  StopCommand = fun() -> internal_stop_instance(Bee, App, AppLauncher) end,
+    
   % Store the app in the local ets table
   ets:insert(?TAB_ID_TO_BEE, {Id, Bee}),
   ets:insert(?TAB_NAME_TO_BEE, {App#app.name, Bee}),
@@ -260,7 +268,6 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
       AppLauncher ! {started_bee, Bee},
       Bee;
     Code ->
-      ?LOG(error, "Could not mount-and-start-bee: ~p of status code ~p on ~p", [Proplist, Status, Host]),
       AppLauncher ! {error, Code}
   end.
 

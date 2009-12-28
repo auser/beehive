@@ -22,7 +22,12 @@ end()).
 	F -> F
 end).
 
--define (BEEHIVE_HOME, os:getenv("HOME")).
+-define (BEEHIVE_HOME, fun() ->
+  case os:getenv("BEEHIVE_HOME") of
+    false -> os:getenv("HOME");
+    E -> E
+  end
+end()).
 -define (BH_RELATIVE_DIR (List), filename:join([?BEEHIVE_HOME, List])).
 
 -define (FIXTURES_DIR, bh_file_utils:relative_path("test/fixtures")).
