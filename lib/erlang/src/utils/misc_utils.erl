@@ -72,16 +72,34 @@ create_templated_tempfile(Name, Dest, Proplist) ->
   Tempfile.
   
 
-% Wait (up to 60 seconds) for a response from the shell script
-% for a response. Then send the response to the caller
-wait_for_port(Port, Tempfile, AppUpdatorPid, Acc) ->
-  receive
-    {Port, {data, Info}} ->
-      wait_for_port(Port, Tempfile, AppUpdatorPid, [Info|Acc]);
-    {Port, {exit_status, Status}} ->
-      ListofStrings = case io_lib:char_list(Acc) of
-        true -> [Acc];
-        false -> lists:reverse(Acc)
+  % Wait (up to 60 seconds) for a response from the shell script
+  % for a response. Then send the response to the caller
+  wait_for_port(Port, Tempfile, AppUpdatorPid, Acc) ->
+    receive
+      {Port, {data, Info}} ->
+        wait_for_port(Port, Tempfile, AppUpdatorPid, [Info|Acc]);
+      {Port, {exit_status, Status}} ->
+        ListofStrings = case io_lib:char_list(Acc) of
+          true -> [Acc];
+          false -> lists:reverse(Acc)
+        end,
+        O = chop(ListofStrings),
+        AppUpdatorPid ! {ok, Tempfile, O, Status};
+      E ->
+        E
+    after timer:seconds(60) ->
+      ok
+    end.
+
+  % Take a list of strings, separated by newlines and 
+  % divy them up such that the first 
+  chop(ListofStrings) ->
+    Tokens = string:tokens(string:join(ListofStrings, "\n"), "\n"),
+    lists:flatten(lists:map(fun(List) ->
+      [D|Rest] = string:tokens(List, " "),
+      Val = case Rest of
+        [] -> "";
+        _ -> string:join(Rest, " ")
       end,
       O = chop(ListofStrings),
       AppUpdatorPid ! {ok, Tempfile, O, Status};
