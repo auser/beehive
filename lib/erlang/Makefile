@@ -19,7 +19,10 @@ RELFILE = $(EBIN)/$(APP)-$(VERSION).rel
 
 all: compile
   
-deps: mochi
+deps: mochi babysitter
+
+babysitter:
+	@(cd deps/babysitter;$(MAKE))
 	
 mochi:
 	@(cd deps/mochiweb;$(MAKE))
