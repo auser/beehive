@@ -42,6 +42,7 @@ shell_fox(Name, Proplist) ->
       file:delete(Tempfile),
       {E, Status}
   after timer:seconds(60) ->
+    file:delete(Tempfile),
     {error, timeout}
   end.
 
@@ -62,30 +63,37 @@ create_templated_tempfile(Name, Dest, Proplist) ->
   Tempfile.
   
 
-% Wait (up to 60 seconds) for a response from the shell script
-% for a response. Then send the response to the caller
-wait_for_port(Port, Tempfile, AppUpdatorPid, Acc) ->
-  receive
-    {Port, {data, Info}} ->
-      wait_for_port(Port, Tempfile, AppUpdatorPid, [Info|Acc]);
-    {Port, {exit_status, Status}} ->
-      ListofStrings = case io_lib:char_list(Acc) of
-        true -> [Acc];
-        false -> lists:reverse(Acc)
+  % Wait (up to 60 seconds) for a response from the shell script
+  % for a response. Then send the response to the caller
+  wait_for_port(Port, Tempfile, AppUpdatorPid, Acc) ->
+    receive
+      {Port, {data, Info}} ->
+        wait_for_port(Port, Tempfile, AppUpdatorPid, [Info|Acc]);
+      {Port, {exit_status, Status}} ->
+        ListofStrings = case io_lib:char_list(Acc) of
+          true -> [Acc];
+          false -> lists:reverse(Acc)
+        end,
+        O = chop(ListofStrings),
+        AppUpdatorPid ! {ok, Tempfile, O, Status};
+      E ->
+        E
+    after timer:seconds(60) ->
+      ok
+    end.
+
+  % Take a list of strings, separated by newlines and 
+  % divy them up such that the first 
+  chop(ListofStrings) ->
+    Tokens = string:tokens(string:join(ListofStrings, "\n"), "\n"),
+    lists:flatten(lists:map(fun(List) ->
+      [D|Rest] = string:tokens(List, " "),
+      Val = case Rest of
+        [] -> "";
+        _ -> string:join(Rest, " ")
       end,
-      Tokens = string:tokens(string:join(ListofStrings, "\n"), "\n"),
-      O = lists:flatten(lists:map(fun(List) ->
-        element(1, lists:foldr(fun (X,{As,[]}) -> {As,[X]}; (X,{As,[Y]}) ->
-          {[{erlang:list_to_atom(X),Y}|As],[]} end, {[],[]},  string:tokens(List, " "))) end, Tokens)),
-      AppUpdatorPid ! {ok, Tempfile, O, Status},
-      file:delete(Tempfile);
-    E ->
-      file:delete(Tempfile),
-      E
-  after timer:seconds(60) ->
-    file:delete(Tempfile),
-    ok
-  end.
+      {erlang:list_to_atom(D), Val}
+    end, Tokens)).
 
 to_list(Bin) when is_binary(Bin) -> erlang:binary_to_list(Bin);
 to_list(Atom) when is_atom(Atom) -> erlang:atom_to_list(Atom);
