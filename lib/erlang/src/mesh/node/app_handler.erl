@@ -234,7 +234,7 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
     {"[[APP_NAME]]", App#app.name}
   ]),
   
-  AppRootPath = proplists:get_value(path, Proplist),
+  AppRootPath = proplists:get_value(path, Proplist1),
   
   Bee  = #bee{
     id                      = Id,

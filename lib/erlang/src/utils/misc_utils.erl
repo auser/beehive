@@ -91,24 +91,6 @@ create_templated_tempfile(Name, Dest, Proplist) ->
       ok
     end.
 
-  % Take a list of strings, separated by newlines and 
-  % divy them up such that the first 
-  chop(ListofStrings) ->
-    Tokens = string:tokens(string:join(ListofStrings, "\n"), "\n"),
-    lists:flatten(lists:map(fun(List) ->
-      [D|Rest] = string:tokens(List, " "),
-      Val = case Rest of
-        [] -> "";
-        _ -> string:join(Rest, " ")
-      end,
-      O = chop(ListofStrings),
-      AppUpdatorPid ! {ok, Tempfile, O, Status};
-    E ->
-      E
-  after timer:seconds(60) ->
-    ok
-  end.
-
 % Take a list of strings, separated by newlines and 
 % divy them up such that the first 
 chop(ListofStrings) ->
