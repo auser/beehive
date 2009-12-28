@@ -8,6 +8,7 @@ APP_NAME=[[APP_NAME]]
 # Fake the sha
 SHA=[[SHA]]
 PORT=[[PORT]]
+HOST_IP=[[HOST_IP]]
 MOUNT_LOCATION=$MOUNT_BASE/$APP_NAME/$SHA/$(date +%H%M%S%y%m%d)
 MOUNT_FILE=[[BEE_IMAGE]]
 NEW_LOOP_DEVICE=$(comm -13 <(mount | grep /dev/loop | awk '{print $1}') <(ls /dev/loop*) | head -1)
@@ -94,6 +95,7 @@ fi
   WHOAMI=$APP_NAME \
   APP_NAME=$APP_NAME \
   RACK_ENV=production \
+  HOST_IP=$HOST_IP \
   COMMIT_HASH=$SHA \
   GEM_PATH=$MOUNT_LOCATION/.gems:$GEM_PATHS \
   /bin/su -m $APP_NAME \
