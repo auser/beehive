@@ -237,8 +237,8 @@ case $TYPE in
   'router'|'r' )
     TYPE='router'
     APP_OPTS=$ROUTER_OPTS;;
-  'node'|'n' )
-    TYPE='node'
+  'node'|'n'|'bee'|'b' )
+    TYPE='bee'
     APP_OPTS=$NODE_OPTS;;
   'storage'|'s' )
     TYPE='storage'

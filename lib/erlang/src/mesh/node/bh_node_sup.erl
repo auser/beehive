@@ -42,10 +42,11 @@ start_link(Args) ->
 %% to find out about restart strategy, maximum restart frequency and child
 %% specifications.
 %%--------------------------------------------------------------------
-init(_Args) ->
+init(Args) ->
   AppHandler  = {the_app_handler,{app_handler, start_link,[]}, permanent, 2000, worker, dynamic},
+  BabySitter  = {the_babysitter,{babysitter_app, start,[[], Args]}, permanent, 2000, worker, dynamic},
   
-  AppsToStart =[AppHandler],
+  AppsToStart =[AppHandler, BabySitter],
   
   {ok,{{one_for_one,5,10}, AppsToStart}}.
 
