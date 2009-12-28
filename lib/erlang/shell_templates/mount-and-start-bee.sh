@@ -92,10 +92,10 @@ fi
   HOME=/ \
   HI="Hello world" \
   PATH=$PATH:$GEM_ENV \
-  WHOAMI=$APP_NAME \
   APP_NAME=$APP_NAME \
   RACK_ENV=production \
   HOST_IP=$HOST_IP \
+  HOST_PORT=$PORT \
   COMMIT_HASH=$SHA \
   GEM_PATH=$MOUNT_LOCATION/.gems:$GEM_PATHS \
   /bin/su -m $APP_NAME \
