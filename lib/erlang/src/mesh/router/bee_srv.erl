@@ -170,7 +170,7 @@ handle_call({Pid, get_bee, Hostname}, From, State) ->
     	  {ok, Backend} -> 
     	    {reply, {ok, Backend}, State};
     	  {error, Reason} -> 
-    	    ?LOG(error, "handle_call (~p:~p) failed because: ~p, ~p~n", [?MODULE, ?LINE, Reason, Hostname]),
+    	    ?LOG(error, "handle_call (~p:~p) failed because: ~p, ~p", [?MODULE, ?LINE, Reason, Hostname]),
     	    {reply, {error, Reason}, State};
     	  Else ->
     	    ?LOG(error, "Got weird response in get_bees: ~p", [Else]),
@@ -269,8 +269,9 @@ choose_bee({Hostname, AppMod, RoutingParameter}) ->
           ?NOTIFY({app, request_to_start_new_bee, Hostname}),
           ?MUST_WAIT_MSG
       end;
-    {'EXIT', {_, {no_exists, _}}} ->
-      ?LOG(error, "No exists for bees", []),
+    {'EXIT', {_, {no_exists, Err}}} ->
+      ?LOG(error, "No exists for bees: ~p", [Err]),
+      ?NOTIFY({db, database_not_initialized, bees}),
       ?MUST_WAIT_MSG;
     {'EXIT', _} ->
       ?LOG(error, "Undefined error with choose_bee", []),

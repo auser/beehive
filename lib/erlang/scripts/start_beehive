@@ -54,8 +54,8 @@ EOF
 
 # Defaults
 HOSTNAME=`hostname -f`
-MNESIA_DIR="$BEEHIVE_HOME/var/lib/beehive/db"
-LOG_PATH="$BEEHIVE_HOME/var/log/beehive"
+MNESIA_DIR="$BEEHIVE_PREFIX/var/lib/beehive/db"
+LOG_PATH="$BEEHIVE_PREFIX/var/log/beehive"
 DAEMONIZE_ARGS=""
 
 BEEHIVE_OPTS="-beehive"

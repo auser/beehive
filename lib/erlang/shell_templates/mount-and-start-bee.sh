@@ -20,6 +20,7 @@ COULD_NOT_MOUNT_APP=3
 COULD_NOT_UNMOUNT_OLD_PROCESSES=4
 
 # Grab the currently mounted filesystems
+# MOUNTED=$(mount | grep $APP_NAME |  awk '{a[i++]=$0} END {for (j=i-1; j>=0;) print a[j--] }' | awk '{print $3}')
 MOUNTED=$(mount | grep $APP_NAME | grep -v $SHA |  awk '{a[i++]=$0} END {for (j=i-1; j>=0;) print a[j--] }' | awk '{print $3}')
 # Old mounts
 OLD_LOOP_DEVICE=$(mount | grep $APP_NAME | grep -v $SHA | grep /dev/loop | awk '{print $1}')

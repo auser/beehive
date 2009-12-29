@@ -112,7 +112,6 @@ handle_call({start_new_instance, App, Sha, AppLauncher, From}, _From, #state{
   ?LOG(debug, "internal_start_new_instance: ~p, ~p, ~p, ~p, ~p~n", [App, Sha, Port, AppLauncher, From]),
   internal_start_new_instance(App, Sha, Port, AppLauncher, From),
   NewAvailablePorts = lists:delete(Port, AvailablePorts),
-  ?LOG(debug, "new available ports: ~p", [NewAvailablePorts]),
   {reply, ok, State#state{
     available_ports = NewAvailablePorts
   }};
@@ -223,17 +222,15 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
   Id = {App#app.name, Host, Port},
   StartedAt = date_util:now_to_seconds(),
   
-  ?LOG(info, "mount-and-start-bee: ~p, ~p, ~p, ~p, ~p", [Host, ImagePath, Port, Sha, App#app.name]),
-  
-  {Proplist1, Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("mount-bee", [
-    {"[[HOST_IP]]", Host},
+  Vars = [
     {"[[BEE_IMAGE]]", ImagePath},
+    {"[[HOST_IP]]", Host},
     {"[[PORT]]", misc_utils:to_list(Port)},
     {"[[SHA]]", Sha},
-    {"[[START_TIME]]", StartedAt},
+    {"[[START_TIME]]", misc_utils:to_list(StartedAt)},
     {"[[APP_NAME]]", App#app.name}
-  ]),
-  
+  ],
+  {Proplist1, Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("mount-bee", Vars),
   AppRootPath = proplists:get_value(path, Proplist1),
   
   Bee  = #bee{
@@ -248,23 +245,22 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
     pid                     = self(),
     start_time              = StartedAt
   },
-  
-  Vars = [
-    {"[[HOST_IP]]", Host},
-    {"[[PORT]]", misc_utils:to_list(Port)},
-    {"[[SHA]]", Sha},
-    {"[[START_TIME]]", StartedAt},
-    {"[[APP_NAME]]", App#app.name},
-    {"[[APP_HOME]]", AppRootPath}
-  ],
-  StopCommand = fun() -> internal_stop_instance(Bee, App, AppLauncher) end,
-    
-  % Store the app in the local ets table
-  ets:insert(?TAB_ID_TO_BEE, {Id, Bee}),
-  ets:insert(?TAB_NAME_TO_BEE, {App#app.name, Bee}),
-  
+      
   case Status of
     0 ->
+      % Store the app in the local ets table
+      ets:insert(?TAB_ID_TO_BEE, {Id, Bee}),
+      ets:insert(?TAB_NAME_TO_BEE, {App#app.name, Bee}),
+      
+      StartCommand1 = proplists:get_value(start_command, Proplist1),
+      StartCommand = string:strip(StartCommand1, both, $\n),
+      
+      StopCommand1 = proplists:get_value(stop_command, Proplist1),
+      StopCommand = string:strip(StopCommand1, both, $\n),
+      
+      StartVars = [{start_command, StartCommand},{stop_command, StopCommand}, {variables, Vars}],
+      babysitter:spawn_new(StartVars, self()),
+      
       AppLauncher ! {started_bee, Bee},
       Bee;
     Code ->

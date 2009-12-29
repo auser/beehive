@@ -24,7 +24,7 @@ FILESYSTEM=ext3
 echo "app_dir $APP_DIR"
 rm -rf $APP_DIR
 
-SKEL_DIR="$BASE_DIR/../base_skel"
+SKEL_DIR="$BASE_DIR/base_skel"
 
 mkdir -p $APP_DIR
 
@@ -93,7 +93,7 @@ fi
 echo "installed gems"
 
 OUTFILE=$SQUASHED_DIR/$APP_NAME/$APP_NAME.$SHA.img
-LOOPDIR=$SQUASHED_DIR/$APP_NAME/$APP_NAME.$SHA
+LOOPDIR=$SQUASHED_DIR/$APP_NAME/$APP_NAME/$SHA
 mkdir -p $LOOPDIR
 
 # Make sure this directory doesn't exist
@@ -109,10 +109,13 @@ fi
 
 dir_size=`du -s $APP_DIR | awk '{print $1+1024}'`
 # Make the file
+echo "dd if=/dev/zero of=$OUTFILE count=$dir_size bs=1024" > /tmp/app.log
 dd if=/dev/zero of=$OUTFILE count=$dir_size bs=1K
 mkfs.$FILESYSTEM -F $OUTFILE
+echo "mounting: mount -o loop -t $FILESYSTEM $OUTFILE $LOOPDIR" >> /tmp/app.log
 mount -o loop -t $FILESYSTEM $OUTFILE $LOOPDIR
 rsync -a $APP_DIR/ $LOOPDIR
+echo "unmounting: umount $LOOPDIR" >> /tmp/app.log
 umount $LOOPDIR
 
 # mksquashfs $APP_DIR $OUTFILE >/dev/null 2>&1

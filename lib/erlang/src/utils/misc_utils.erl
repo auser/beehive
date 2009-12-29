@@ -36,7 +36,7 @@ shell_fox(Name, Proplist) ->
       create_templated_tempfile(Name, NewProplist);
     false ->
       ?TEMPLATE_SHELL_SCRIPT(Name, Proplist)
-  end,
+  end,  
   Self = self(),
   
   spawn(fun() -> 

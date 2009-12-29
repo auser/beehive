@@ -136,7 +136,7 @@ handle_cast({build_bee, App, Caller}, #state{scratch_disk = ScratchDisk, squashe
   {ok, ReposUrl} = handle_repos_lookup(App),
   OutFile = lists:append([handle_find_application_location(App, State), ".img"]),
   
-  io:format("creating bee: ~p~n", [ReposUrl]),
+  io:format("creating bee: ~p~n", [{ReposUrl, ScratchDisk, SquashedDisk, App#app.name, OutFile}]),
   {Proplists, Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("create-bee", [
     {"[[GIT_REPOS]]", ReposUrl},
     {"[[WORKING_DIRECTORY]]", ScratchDisk},

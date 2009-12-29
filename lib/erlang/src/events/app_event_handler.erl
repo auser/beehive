@@ -21,6 +21,7 @@
 -define (UPDATERS_PID_TO_APP, 'updaters_pid_to_app').
 -define (UPDATERS_APP_TO_PID, 'updaters_app_to_pid').
 
+-define (ACTION_TIMEOUT, 10).
 -record (state, {}).
 
 %%====================================================================
@@ -118,15 +119,15 @@ handle_info({'EXIT', Pid, _Reason}, State) ->
   
 handle_info(flush_old_processes, State) ->
   lists:map(fun({Pid, App, Time}) ->
-    case date_util:now_to_seconds() - Time > 120 of
+    case date_util:now_to_seconds() - Time > ?ACTION_TIMEOUT of
       false -> ok;
       true ->
         ets:delete(?UPDATERS_PID_TO_APP, Pid),
         ets:delete(?UPDATERS_APP_TO_PID, App)
     end
-  end, ets:tab2list(?UPDATERS_APP_TO_PID)),
+  end, ets:tab2list(?UPDATERS_PID_TO_APP)),
   lists:map(fun({Pid, App, Time}) ->
-    case date_util:now_to_seconds() - Time > 120 of
+    case date_util:now_to_seconds() - Time > ?ACTION_TIMEOUT of
       false -> ok;
       true ->
         ets:delete(?LAUNCHERS_PID_TO_APP, Pid),
@@ -157,7 +158,9 @@ code_change(_OldVsn, State, _Extra) ->
 
 handle_updating_app(App) ->  
   case ets:lookup(?UPDATERS_APP_TO_PID, App) of
-    [{_App, _Pid, _Time}] -> ok;
+    [{_App, _Pid, Time}] -> 
+      ?LOG(info, "Cannot update app as there is already one in progress (timeout: ~p)", [date_util:now_to_seconds() - Time]),
+      ok;
     _ ->
       {ok, P} = app_updater_fsm:start_link(App),
       Now = date_util:now_to_seconds(),
@@ -168,7 +171,9 @@ handle_updating_app(App) ->
 
 handle_launch_app(App, Host, Sha) ->
   case ets:lookup(?LAUNCHERS_APP_TO_PID, App) of
-    [{_App, _Pid, _Time}] -> ok;
+    [{_App, _Pid, Time}] -> 
+      ?LOG(info, "Cannot launch app as there is already one in progress (timeout: ~p)", [date_util:now_to_seconds() - Time]),
+      ok;
     _ -> 
       {ok, P} = app_launcher_fsm:start_link(App, Host, Sha),
       Now = date_util:now_to_seconds(),

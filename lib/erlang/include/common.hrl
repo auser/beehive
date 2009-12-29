@@ -22,24 +22,24 @@ end()).
 	F -> F
 end).
 
--define (BEEHIVE_HOME, fun() ->
+-define (BEEHIVE_HOME_DIR, fun() ->
   case os:getenv("BEEHIVE_HOME") of
     false -> os:getenv("HOME");
     E -> E
   end
 end()).
--define (BH_RELATIVE_DIR (List), filename:join([?BEEHIVE_HOME, List])).
+-define (BH_RELATIVE_DIR (List), filename:join([?BEEHIVE_HOME_DIR, List])).
 
 -define (FIXTURES_DIR, bh_file_utils:relative_path("test/fixtures")).
 % Figure this out... Hm
--define (SHELL_SCRIPTS_DIR, filename:join([?BEEHIVE_HOME, "shell_templates"])).
+-define (SHELL_SCRIPTS_DIR, filename:join([?BEEHIVE_HOME_DIR, "shell_templates"])).
 
 -define (SHELL_SCRIPT_PATH (Name), filename:join([?SHELL_SCRIPTS_DIR, lists:append([Name, ".sh"])])).
 -define (SHELL_SCRIPT (Name), fun() ->
   case file:read_file(?SHELL_SCRIPT_PATH(Name)) of
     {ok, Binary} -> erlang:binary_to_list(Binary);
     {error, Reason} -> 
-      ?LOG(error, "Could not file shell_script named: ~p", [Name]),
+      ?LOG(error, "Could not file shell_script named: ~p", [?SHELL_SCRIPT_PATH(Name)]),
       throw({error, shell_script, Reason})
     end
  end()

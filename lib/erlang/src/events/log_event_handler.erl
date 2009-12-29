@@ -15,7 +15,7 @@
 
 -record (state, {
   log_level,
-  log_handles
+  log_handle
 }).
 
 % Log levels
@@ -49,11 +49,9 @@ init([]) ->
   % Get the full path for the file
   LogName1 = misc_utils:to_list(config:search_for_application_value(node_type, node, beehive)),
   
-  LogHandles = lists:map(fun(Level) ->
-    make_log_for_level(LogPath, LogName1, Level) 
-  end, ?LOG_LEVELS),
+  LogHandle = make_log(LogPath, LogName1),
   
-  {ok, #state{log_handles = LogHandles, log_level = LogLevel}}.
+  {ok, #state{log_handle = LogHandle, log_level = LogLevel}}.
 
 %%--------------------------------------------------------------------
 %% Function:
@@ -102,8 +100,8 @@ handle_info(_Info, State) ->
 %% this function is called. It should be the opposite of Module:init/1 and
 %% do any necessary cleaning up.
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{log_handles = ProplistsOfHandles} = _State) ->
-  lists:map(fun(_, Fd) -> file:close(Fd) end, ProplistsOfHandles),
+terminate(_Reason, #state{log_handle = Handle} = _State) ->
+  lists:map(fun(_, Fd) -> file:close(Fd) end, [Handle]),
   ok.
 
 %%--------------------------------------------------------------------
@@ -125,12 +123,9 @@ ensure_logfile_exists(FullFilepath) ->
       F
   end.
 
-write(Level, _File, _Line, Message, #state{log_handles = ProplistsOfHandles, log_level = LogLevel} = State) ->
+write(Level, _File, _Line, Message, #state{log_handle = Handle, log_level = LogLevel} = State) ->
   Msg = io_lib:format("[~s] [~p] ~s\r\n", [httpd_util:rfc1123_date(), Level, Message]),
-  case proplists:get_value(Level, ProplistsOfHandles) of
-    undefined -> ok;
-    Fd -> write_to_file(Fd, Msg)
-  end,
+  write_to_file(LogLevel, Handle, Msg),
   case LogLevel of
     0 -> ok;
     _ -> write_to_console(Msg)
@@ -138,10 +133,12 @@ write(Level, _File, _Line, Message, #state{log_handles = ProplistsOfHandles, log
   State.
 
 write_to_console(Msg) -> io:format("~s", [Msg]).
-write_to_file(Fd, Msg) -> io:format(Fd, "~s", [Msg]).
+write_to_file(Level, Fd, Msg) ->
+  case Level of
+    ?QUIET -> ok;
+    _ -> io:format(Fd, "~s", [Msg])
+  end.
 
-make_log_for_level(LogPath, LogName, Level) ->
-  LogName1 = lists:append([LogName, ".", misc_utils:to_list(Level)]),
-  FullFilepath = filename:join([LogPath, lists:append([LogName1, ".log"])]),
-  
-  {Level, ensure_logfile_exists(FullFilepath)}.
+make_log(LogPath, LogName) ->
+  FullFilepath = filename:join([LogPath, lists:append([LogName, ".log"])]),
+  ensure_logfile_exists(FullFilepath).

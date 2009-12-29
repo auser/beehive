@@ -8,20 +8,17 @@ APP_NAME=[[APP_NAME]]
 # Fake the sha
 SHA=[[SHA]]
 PORT=[[PORT]]
-MOUNT_LOCATION=$MOUNT_BASE/$APP_NAME/$SHA/$(date +%H%M%S%y%m%d)
+HOST_IP="[[HOST_IP]]"
+APP_NAME=[[APP_NAME]]
+START_TIME=[[START_TIME]]
 MOUNT_FILE=[[BEE_IMAGE]]
-NEW_LOOP_DEVICE=$(comm -13 <(mount | grep /dev/loop | awk '{print $1}') <(ls /dev/loop*) | head -1)
+MOUNT_LOCATION="$MOUNT_BASE/$APP_NAME/$SHA/$(date +%H%M%S%y%m%d)"
 
 # MESSAGES
 COULD_NOT_ADD_USER=1
 COULD_NOT_START_APP=2
 COULD_NOT_MOUNT_APP=3
 COULD_NOT_UNMOUNT_OLD_PROCESSES=4
-
-# Grab the currently mounted filesystems
-MOUNTED=$(mount | grep $APP_NAME | grep -v $SHA |  awk '{a[i++]=$0} END {for (j=i-1; j>=0;) print a[j--] }' | awk '{print $3}')
-# Old mounts
-OLD_LOOP_DEVICE=$(mount | grep $APP_NAME | grep -v $SHA | grep /dev/loop | awk '{print $1}')
 
 if [ ! -d $MOUNT_LOCATION ]; then
 	mkdir -p $MOUNT_LOCATION
@@ -60,20 +57,44 @@ if [ -d /lib64 ]; then
   sudo mount --bind /lib64 $MOUNT_LOCATION/lib64 -o ro
 fi
 
-# Run the application!
-# This should be in a separate process, but... because we need
-# to retain the OLD_PROCESSES pids and the old MOUNTED devices
-# we'll put this in here
 GEM_ENV=$(gem env | grep "EXECUTABLE DIRECTORY" | awk '{print $4}')
-GEM_PATHS=$(ruby -r rubygems -e "p Gem.path.join(':')")
+GEM_PATHS=$(ruby -r rubygems -e "print Gem.path.join(':')")
 THIN_APP="$GEM_ENV/thin"
 
 echo "thin $THIN_APP"
-
-PIDS_DIR=/tmp/$APP_NAME/$SHA
-mkdir -p $PIDS_DIR
-PID_NAME=$APP_NAME-$SHA-$PORT.pid
-
-echo "app_name [[APP_NAME]]"
 echo "path $MOUNT_LOCATION"
+
+cd $MOUNT_LOCATION
+
+START_COMMAND="$THIN_APP -R home/app/config.ru --log tmp/$APP_NAME.log --port $PORT start"
+
+if [ -f $MOUNT_LOCATION/home/app/start.sh ]; then
+  START_COMMAND=$(cat $MOUNT_LOCATION/home/app/start.sh)
+fi
+
+CMD="/usr/sbin/chroot $MOUNT_LOCATION \
+  /usr/bin/env -i \
+  HOME=/ \
+  HI='Hello world' \
+  PATH=/usr/local/bin:/usr/bin:/bin:$GEM_ENV \
+  WHOAMI=$APP_NAME \
+  STARTED_AT=$START_TIME \
+  APP_NAME=$APP_NAME \
+  COMMIT_HASH=$SHA \
+  HOST_IP=$HOST_IP \
+  LOCAL_PORT=$PORT \
+  RACK_ENV=production \
+  GEM_PATH=$MOUNT_LOCATION/.gems:$GEM_PATHS \
+  /bin/su -m $APP_NAME \
+  /bin/bash -c \
+  '$START_COMMAND'"
+
+echo "start_command $CMD"
+
+# Right now, this umounts all... consider: grep -v $SHA again
+STOPCMD="/bin/kill -9 [[PID]]; \
+  MOUNTED=\$(mount | grep $APP_NAME | grep $SHA | awk '{a[i++]=\$3} END {for (j=i-1; j>=0;) print a[j--] }'); \
+  for i in \$MOUNTED; do sudo umount \$i -f >/dev/null 2>&1; done"
+
+echo "stop_command $STOPCMD"
 exit 0
