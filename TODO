@@ -13,3 +13,6 @@ TODO:
 * Add job-queue to handle tasks -> queue-driven
 * Investigate BERT-RPC
 * Force not updating apps after they terminate
+* Ensure apps update only on call, not otherwise
+* Add automated test scripts to watch processes
+* Add more eunit tests

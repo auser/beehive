@@ -17,7 +17,7 @@ SCRIPTS					= beehive_env queen start_beehive
 
 RELFILE = $(EBIN)/$(APP)-$(VERSION).rel
 
-all: compile
+all: compile boot
   
 deps: mochi babysitter
 
@@ -46,7 +46,7 @@ test: compile
 					-s test_suite test \
 					-s init stop
 
-install: compile boot		
+install: compile boot
 	@mkdir -p $(BIN_DIR)
 	@mkdir -p $(TARGET_DIR)/bin
 	@mkdir -p $(PREFIX)/var/lib/beehive/db
