@@ -300,20 +300,21 @@ handle_call(_Request, _From, State) ->
 handle_cast({request_to_terminate_all_bees, Name}, State) ->
   % First, find all the bees and "unregister" them, or delete them from the bee list so we don't
   % route any requests this way
-  Backends = bees:find_all_by_name(Name),
-  lists:map(fun(Backend) -> bees:update(Backend#bee{status = unavailable}) end, Backends),
+  Bees = bees:find_all_by_name(Name),
+  lists:map(fun(Bee) -> bees:update(Bee#bee{status = unavailable}) end, Bees),
   % Next, do this in an rpc call to shutdown the nodes
   App = apps:find_by_name(Name),
   Nodes = lists:map(fun(N) -> node(N) end, get_nodes()),
   % Can't do this in a multicall (or it would be an optimization), but want to get the node back
   % so for now, we'll do it in an rpc:call, instead
-  lists:map(fun(Node) ->
-    case rpc:call(Node, ?APP_HANDLER, has_app_named, [Name]) of
-      true -> 
-        rpc:call(Node, ?APP_HANDLER, stop_app, [App, self()]);
-      false -> ok
-    end
-  end, Nodes),
+  rpc:multicall(Nodes, ?APP_HANDLER, stop_app, [App, self()]),
+  % lists:map(fun(Node) ->
+  %   case rpc:call(Node, ?APP_HANDLER, has_app_named, [Name]) of
+  %     true -> 
+  %       rpc:call(Node, ?APP_HANDLER, stop_app, [App, self()]);
+  %     false -> ok
+  %   end
+  % end, Nodes),
   {noreply, State};
 
 % Kill a bee, yo

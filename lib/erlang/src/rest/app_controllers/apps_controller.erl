@@ -34,6 +34,14 @@ post(["new"], Data) ->
       end
   end;
 
+  % Not sure about this... yet as far as authentication goes
+post([Name, "restart"], _Data) ->
+  Response = case ?NOTIFY({app, restart, Name}) of
+    {ok, _} -> {"app", <<"restarting">>};
+    _ -> {"app", <<"error">>}
+  end,
+  {struct, ?BINIFY([Response])};
+
 % Not sure about this... yet as far as authentication goes
 post([Name, "deploy"], _Data) ->
   Response = case apps:update_by_name(Name) of
