@@ -38,7 +38,7 @@ sudo make install
 cd $SRC_DIR
 
 echo " starting beehive.. "
-sudo -H -u beehive $INSTALL_PREFIX/usr/bin/start_beehive -d -t router
+sudo -H -u beehive $INSTALL_PREFIX/usr/bin/start_beehive -d -t router -p 80
 echo " -- completed router user-data script ---"
 
 HOSTNAME=`hostname -f`

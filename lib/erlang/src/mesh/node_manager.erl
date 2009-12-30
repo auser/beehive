@@ -284,7 +284,7 @@ handle_call({get_host}, _From, #state{host = Host} = State) ->
   {reply, Host, State};
 handle_call({dump, Pid}, _From, State) ->
   Name = node(Pid),
-  Host = rpc:call(Name, host, myip, []),
+  Host = rpc:call(Name, bh_host, myip, []),
   Node = #node{ name = Name, host = Host },
   {reply, Node, State};
 handle_call(_Request, _From, State) ->
@@ -323,8 +323,12 @@ handle_cast({request_to_terminate_bee, Bee}, State) ->
   Node = Bee#bee.host_node,
   
   RealBee = bees:find_by_id(Bee#bee.id),
-  io:format("request_to_terminate_bee: ~p~n", [RealBee]),
-  rpc:call(Node, ?APP_HANDLER, stop_instance, [RealBee, App, self()]),
+  case RealBee#bee.status of
+    ready ->
+      io:format("request_to_terminate_bee: ~p~n", [RealBee]),
+      rpc:call(Node, ?APP_HANDLER, stop_instance, [RealBee, App, self()]);
+    _ -> ok
+  end,
   {noreply, State};
   
 handle_cast(_Msg, State) ->

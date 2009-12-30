@@ -22,6 +22,7 @@ get(_) ->
         {"host", B#bee.host},
         {"port", B#bee.port},
         {"meta data", B#bee.meta_data},
+        {"commit", B#bee.commit_hash},
         {"status", B#bee.status}
       ],
       {struct, ?BINIFY(Details)}

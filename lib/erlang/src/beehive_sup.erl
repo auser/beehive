@@ -13,7 +13,6 @@
 
 %% API
 -export([start_link/1]).
--export ([build_role_supervisor/2]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -28,8 +27,12 @@
 %% Description: Starts the supervisor
 %%--------------------------------------------------------------------
 start_link(Args) ->
+  NodeType = config:search_for_application_value(node_type, router, beehive),
+  sanity_checks:check(NodeType),
+  
   case supervisor:start_link({local, ?SERVER}, ?MODULE, Args) of
     {ok, Pid} ->
+      application:start(NodeType),
       {ok, Pid};
     Else ->
       io:format("There was an error: ~p~n", [Else])
@@ -47,26 +50,12 @@ start_link(Args) ->
 %% to find out about restart strategy, maximum restart frequency and child
 %% specifications.
 %%--------------------------------------------------------------------
-init(Args) ->
-  NodeType = config:search_for_application_value(node_type, router, beehive),
-  application:load(NodeType),
-  application:start(NodeType),
-  sanity_checks:check(NodeType),
-  
+init(_Args) ->  
   NodeManager = {the_node_manager, {node_manager, start_link, []}, permanent, 2000, worker, dynamic},
   EventManager = {the_app_event_manager, {?EVENT_MANAGER, start_link, []}, permanent, 2000, worker, dynamic},
   StatSrv = {the_stats_srv, {bh_node_stats_srv, start_link, []}, permanent,2000,worker,dynamic},
-  RoledSupervisors = {the_roles, {?MODULE, build_role_supervisor, [NodeType, Args]}, permanent, 2000, worker, dynamic},
   
-  {ok,{{one_for_one,5,10}, [EventManager, StatSrv, NodeManager,RoledSupervisors]}}.
-
-build_role_supervisor(NodeType, Args) ->
-  Sup = case NodeType of
-    bee -> bh_node_sup;
-    storage -> bh_storage_sup;
-    router -> bh_router_sup
-  end,
-  supervisor:start_link({local, Sup}, Sup, Args).
+  {ok,{{one_for_one,5,10}, [EventManager, StatSrv, NodeManager]}}.
   
 %%====================================================================
 %% Internal functions

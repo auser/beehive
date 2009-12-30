@@ -7,7 +7,7 @@ INSTALLED_DIR=$LIBDIR/$APP-$VERSION
 SCRIPT_DIR=$(dirname $0)
 BEEHIVE_PREFIX=''
 if [ -z $BEEHIVE_HOME ]; then
-  export BEEHIVE_HOME=$(BEEHIVE_PREFIX)/var/lib/beehive
+  export BEEHIVE_HOME=$BEEHIVE_PREFIX/var/lib/beehive
 fi
 if [ -z $BEEHIVE_SRC ]; then
   if [ -d $INSTALLED_DIR ]; then
