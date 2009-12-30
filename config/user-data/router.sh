@@ -28,6 +28,7 @@ echo $FIRST_N_CHARS_OF_PUB_KEY > /tmp/.erlang.cookie
 sudo mv /tmp/.erlang.cookie $BEEHIVE_USER_HOME
 sudo chmod 600 $BEEHIVE_USER_HOME/.erlang.cookie
 sudo chown beehive -R $BEEHIVE_USER_HOME
+sudo cp $BEEHIVE_USER_HOME/.erlang.cookie /root/.erlang.cookie
 
 SRC_DIR="/tmp/beehive"
 git clone --depth 0 git://github.com/auser/beehive.git $SRC_DIR
@@ -38,7 +39,7 @@ sudo make install
 cd $SRC_DIR
 
 echo " starting beehive.. "
-sudo -H -u beehive $INSTALL_PREFIX/usr/bin/start_beehive -d -t router -p 80
+sudo -H -u root $INSTALL_PREFIX/usr/bin/start_beehive -d -t router -p 80
 echo " -- completed router user-data script ---"
 
 HOSTNAME=`hostname -f`

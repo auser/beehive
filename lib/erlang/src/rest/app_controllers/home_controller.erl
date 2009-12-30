@@ -7,11 +7,11 @@
 %%%-------------------------------------------------------------------
 
 -module (home_controller).
-
+-include ("http.hrl").
 -export ([get/1, post/2, put/2, delete/2]).
 
 get(_) -> 
-  {struct, [{"beehive", <<"app, node, bees, stats">>}]}.
+  {struct, [{"beehive", ?BINIFY(["app", "node", "bees", "stats"])}]}.
 post(_Path, _Data) -> error("unhandled").
 put(_Path, _Data) -> error("unhandled").
 delete(_Path, _Data) -> error("unhandled").
