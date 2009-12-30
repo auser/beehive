@@ -6,7 +6,7 @@
   {modules,      []},
   {registered,   []},
   {applications, [kernel, stdlib, sasl]},
-  {mod, {beehive, []}},
+  {mod, {bh_router, []}},
   {env, [
     {client_port, undefined},
     {routing_parameter, undefined},

@@ -1,12 +1,12 @@
-{application, node,
+{application, bee,
  [
-  {description, "Beehive node app"},
+  {description, "Beehive bee app"},
   {vsn, "0.1"},
-  {id, "beehive_srv"},
+  {id, "bh_node_srv"},
   {modules,      []},
   {registered,   []},
   {applications, [kernel, stdlib, sasl]},
-  {mod, {beehive, []}},
+  {mod, {bh_node, []}},
   {env, [
     {app_dir, undefined}
   ]}

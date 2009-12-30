@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% File    : host.erl
+%%% File    : bh_host.erl
 %%% Author  : Ari Lerner
 %%% Description : 
 %%%
-%%% Created :  Wed Oct  7 02:39:07 PDT 2009
+%%% Created :  Tue Dec 29 18:16:40 PST 2009
 %%%-------------------------------------------------------------------
 
--module (host).
+-module (bh_host).
 
 -compile (export_all).
 
@@ -63,3 +63,24 @@ get_if([H | T], Res) ->
 get_iplist() ->
     {ok, If} = inet:getiflist(),
     get_if(If).
+    
+
+% Find an unused port
+unused_port() -> unused_port_between(5000, 65535, []).
+unused_port_between(Start, End, Acc) ->
+  ensure_started(crypto),
+  Port = crypto:rand_uniform(Start, End),
+  case lists:member(Port, Acc) of
+    true -> unused_port_between(Start, End, Acc);
+    false ->
+      case gen_tcp:connect("0.0.0.0", Port, [binary, {active, false}, {packet, raw}]) of
+        {ok, _S} -> unused_port_between(Start, End, [Port|Acc]);
+        _ -> Port
+      end
+  end.
+
+ensure_started(App) ->
+  case application:start(App) of
+    ok -> ok;
+    {error, {already_started, App}} -> ok
+  end.
