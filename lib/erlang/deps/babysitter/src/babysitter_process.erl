@@ -95,15 +95,12 @@ initialize({go, From}, #state{start_command = StartCmd, port_options = Opts, var
     undefined -> "thin -R config.ru start";
     AStartCmd -> string_utils:template_command_string(AStartCmd, Vars)
   end,
-  RealCommand = lists:flatten(io_lib:format("
-    echo \"$$\"
-    exec ~s
-  ", [Command])),
+  RealCommand = lists:flatten(io_lib:format("#!/bin/sh \n echo $$ && ~s", [Command])),
   Port = open_port({spawn, RealCommand}, [exit_status, stderr_to_stdout|Opts]),
   PortPid = receive
     {Port, {data, PidStr}} ->
       string:strip(PidStr, both, $\n)
-    after 1000 -> exit({error, port_pid})
+    after 2000 -> exit({error, port_pid})
   end,
   {next_state, running, State#state{port_process = Port, caller = From, port_pid = PortPid}};
   
@@ -111,9 +108,9 @@ initialize(_Event, State) ->
   {next_state, running, State}.
 
 % The port process is running the command
-running({Port, {data, Data}}, #state{port_process = Port, captured_output = CurrentOutput, callbacks = Callbacks} = State) ->
+running({Port, {data, Data}}, #state{port_process = Port, callbacks = Callbacks} = State) ->
   run_callback(on_data, {data, Data}, Callbacks),
-  {next_state, running, State#state{captured_output = [Data|CurrentOutput]}};
+  {next_state, running, State};
 
 running({Port, {exit_status, 0}}, #state{port_process = Port} = State) ->
   {stop, normal, State};
@@ -122,10 +119,11 @@ running({Port, {exit_status, Code}}, #state{port_process = Port} = State) ->
   {next_state, {error, Code}, State};
     
 running({stop}, #state{stop_command = StopCmd, port_options = Opts} = State) ->
-  open_port({spawn, StopCmd}, [exit_status|Opts]),  
+  kill_os_process(State),
   {next_state, stopping, State};
 
-running(_Event, State) ->
+running(Event, State) ->
+  io:format("Got Event: ~p when in state: ~p~n", [Event, running]),
   {next_state, running, State}.
   
 stopping(_Event, State) ->
@@ -208,17 +206,10 @@ handle_info(Info, StateName, State) ->
 %% necessary cleaning up. When it returns, the gen_fsm terminates with
 %% Reason. The return value is ignored.
 %%--------------------------------------------------------------------
-terminate(_Reason, _StateName, #state{vars = Vars, port_pid = PortPid, port_process = Port, stop_command = StopCmd} = _State) ->
-  Command = case StopCmd of
-    undefined -> string_utils:template_command_string("kill -9 [[PID]]", [{"[[PID]]", PortPid}]);
-    ACommd -> string_utils:template_command_string(ACommd, Vars)
-  end,
-  open_port({spawn, Command}, []),
-  receive
-    _E -> ok
-    after 3000 -> ok
-  end,
+terminate(_Reason, _StateName, #state{port_process = Port, caller = Caller} = State) ->
+  kill_os_process(State), % really duplicate work, but safe
   (catch port_close(Port)),
+  Caller ! {port_exited, Port, self()},
   ok.
 
 %%--------------------------------------------------------------------
@@ -247,3 +238,17 @@ run_callback(CallbackName, Val, Callbacks) ->
     undefined -> ok;
     Fun -> Fun(Val)
   end.
+
+kill_os_process(#state{port_pid = PortPid, vars = Vars, stop_command = StopCmd} = _State) ->
+  StopVars = [{"[[PID]]", PortPid}|Vars],
+  Command = case StopCmd of
+    undefined -> string_utils:template_command_string("kill -9 [[PID]]", StopVars);
+    ACommd -> 
+      string_utils:template_command_string(ACommd, StopVars)
+  end,
+  open_port({spawn, Command}, [stderr_to_stdout]),
+  receive
+    _E -> ok
+    after 3000 -> ok
+  end.
+  
