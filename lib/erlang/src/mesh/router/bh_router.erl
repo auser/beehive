@@ -13,6 +13,11 @@
 
 -export([start/2, stop/1]).
 
-start(_Type, Args) -> bh_router_sup:start_link(Args).
+start(_Type, Args) -> 
+  lists:map(fun(App) ->
+    io:format("---> starting ~p~n", [App]),
+    App:start()
+  end, []),
+  bh_router_sup:start_link(Args).
 
 stop(_State) -> ok.

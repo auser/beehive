@@ -226,7 +226,7 @@ init([Type, SeedList]) ->
   timer:send_interval(timer:seconds(30), {update_node_stats}),
   % timer:send_interval(timer:minutes(1), {update_node_pings}),
   
-  LocalHost = host:myip(),
+  LocalHost = bh_host:myip(),
   
   {ok, #state{
     seed = Seed,

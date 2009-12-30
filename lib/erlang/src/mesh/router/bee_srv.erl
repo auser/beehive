@@ -115,7 +115,7 @@ init([LocalPort, ConnTimeout, ActTimeout]) ->
   
   Pid     = whereis(tcp_socket_server),
   
-  LocalHost = host:myip(),
+  LocalHost = bh_host:myip(),
   
   add_bees_from_config(),
 

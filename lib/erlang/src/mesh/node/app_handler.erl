@@ -103,10 +103,8 @@ init([]) ->
 %%-------------------------------------------------------------------- 
 handle_call({start_new_instance, App, Sha, AppLauncher, From}, _From, #state{
                                       available_ports = AvailablePorts} = State) ->
-  Port = case AvailablePorts of
-    [] -> ?STARTING_PORT;
-    [P|_] -> P
-  end,
+  
+  Port = bh_host:unused_port(),
   
   % Then start it :)
   ?LOG(debug, "internal_start_new_instance: ~p, ~p, ~p, ~p, ~p~n", [App, Sha, Port, AppLauncher, From]),
@@ -218,7 +216,7 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
   ImagePath = proplists:get_value(bee_image, PropLists),
   StorageNode = proplists:get_value(storage_node, PropLists),
   
-  Host = host:myip(),
+  Host = bh_host:myip(),
   Id = {App#app.name, Host, Port},
   StartedAt = date_util:now_to_seconds(),
   
