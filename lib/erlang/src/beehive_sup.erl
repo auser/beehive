@@ -13,7 +13,7 @@
 
 %% API
 -export([start_link/1]).
--export ([start_internal_supervisors/1]).
+-export ([build_role_supervisor/2]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -50,22 +50,24 @@ start_link(Args) ->
 init(Args) ->
   NodeType = config:search_for_application_value(node_type, router, beehive),
   application:load(NodeType),
+  application:start(NodeType),
   sanity_checks:check(NodeType),
   
   NodeManager = {the_node_manager, {node_manager, start_link, []}, permanent, 2000, worker, dynamic},
   EventManager = {the_app_event_manager, {?EVENT_MANAGER, start_link, []}, permanent, 2000, worker, dynamic},
   StatSrv = {the_stats_srv, {bh_node_stats_srv, start_link, []}, permanent,2000,worker,dynamic},
-  RoleSupervisors = {the_roles, {?MODULE, start_internal_supervisors, [Args]}, permanent, 2000, worker, dynamic},
+  RoledSupervisors = {the_roles, {?MODULE, build_role_supervisor, [NodeType, Args]}, permanent, 2000, worker, dynamic},
   
-  {ok,{{one_for_one,5,10}, [EventManager, StatSrv, NodeManager, RoleSupervisors]}}.
+  {ok,{{one_for_one,5,10}, [EventManager, StatSrv, NodeManager,RoledSupervisors]}}.
 
+build_role_supervisor(NodeType, Args) ->
+  Sup = case NodeType of
+    bee -> bh_node_sup;
+    storage -> bh_storage_sup;
+    router -> bh_router_sup
+  end,
+  supervisor:start_link({local, Sup}, Sup, Args).
+  
 %%====================================================================
 %% Internal functions
 %%====================================================================
-
-start_internal_supervisors(Args) ->
-  case config:search_for_application_value(node_type, router, beehive) of
-    bee -> supervisor:start_link({local, bh_node_sup}, bh_node_sup, Args);
-    storage -> supervisor:start_link({local, bh_storage_sup}, bh_storage_sup, Args);
-    router -> supervisor:start_link({local, bh_router_sup}, bh_router_sup, Args)
-  end.
