@@ -146,14 +146,10 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 % Good spot for optimization
 handle_cast({stop_app, App, From}, State) ->
-  AppBees = ets:match(?TAB_NAME_TO_BEE, {App#app.name, '_'}),
+  AppBees = lists:flatten(ets:match(?TAB_NAME_TO_BEE, {App#app.name, '$1'})),
   
-  io:format("AppBees: ~p~n", [AppBees]),
-  lists:map(fun(Bee) ->
-    internal_stop_instance(Bee, App, From)
-  end, AppBees),
-  
-  NewAvailablePorts = lists:map(fun(B) -> B#bee.port end, AppBees),
+  io:format("Terminating AppBees: ~p~n", [AppBees]),  
+  NewAvailablePorts = handle_terminate_app_bees(AppBees, App, From, []),
   {noreply, State#state{available_ports = NewAvailablePorts}};
   
 handle_cast(_Msg, State) ->
@@ -242,7 +238,7 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
     path                    = AppRootPath,
     port                    = Port,
     status                  = pending,
-    pid                     = self(),
+    commit_hash             = Sha,
     start_time              = StartedAt
   },
       
@@ -258,11 +254,12 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
       StopCommand1 = proplists:get_value(stop_command, Proplist1),
       StopCommand = string:strip(StopCommand1, both, $\n),
       
-      StartVars = [{start_command, StartCommand},{stop_command, StopCommand}, {variables, Vars}],
-      babysitter:spawn_new(StartVars, self()),
+      StartVars = [{start_command, StartCommand},{stop_command, StopCommand},{variables, Vars}],
+      PortPid = babysitter:spawn_new(StartVars, self()),
       
-      AppLauncher ! {started_bee, Bee},
-      Bee;
+      NewBee = Bee#bee{pid = PortPid},
+      AppLauncher ! {started_bee, NewBee},
+      NewBee;
     Code ->
       AppLauncher ! {error, Code}
   end.
@@ -298,17 +295,18 @@ find_bee_on_storage_nodes(App, Sha, [Node|Rest]) ->
   end.
 
 % kill the instance of the application  
-internal_stop_instance(#bee{commit_hash = Sha} = Bee, App, From) when is_record(App, app) ->
-  io:format("internal_stop_instance(~p)~n", [Bee]),
-  
+internal_stop_instance(#bee{id = Id} = _CalledBee, App, From) when is_record(App, app) ->  
+  #bee{commit_hash = Sha, pid = PidPort} = Bee = bees:find_by_id(Id),
   io:format("internal_stop_instance: ~p and ~p~n", [Sha, App#app.name]),
-  case Sha of
-    undefined -> ok;
-    _E ->
-      StopProplists = [{"[[SHA]]", Sha},{"[[APP_NAME]]", App#app.name}],
-      O = ?TEMPLATE_SHELL_SCRIPT_PARSED("stop-bee", StopProplists),
-      ?LOG(debug, "stop-bee result: ~p from ~p", [O, StopProplists])
-  end,
+  % case Sha of
+  %   undefined -> ok;
+  %   _E ->
+  %     StopProplists = [{"[[SHA]]", Sha},{"[[APP_NAME]]", App#app.name}],
+  %     O = ?TEMPLATE_SHELL_SCRIPT_PARSED("stop-bee", StopProplists),
+  %     ?LOG(debug, "stop-bee result: ~p from ~p", [O, StopProplists])
+  % end,
+  
+  babysitter:stop_process(PidPort),
   
   case ets:lookup(?TAB_ID_TO_BEE, {App#app.name, Bee#bee.host, Bee#bee.port}) of
     [{Key, _B}] ->
@@ -329,5 +327,11 @@ next_free_honeycomb(App) ->
   ]),
   proplists:get_value(dir, Proplists).
   
+handle_terminate_app_bees([], _App, _From, AvailablePorts) -> AvailablePorts;
+handle_terminate_app_bees([#bee{port = Port} = Bee|Rest], App, From, AvailablePorts) ->
+  internal_stop_instance(Bee, App, From),
+  NewAvailablePorts = [Port|AvailablePorts],
+  handle_terminate_app_bees(Rest, App, From, NewAvailablePorts).
+
 handle_pid_exit(_Pid, _Reason, State) ->
   State.

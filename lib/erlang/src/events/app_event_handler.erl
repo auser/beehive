@@ -59,6 +59,10 @@ init([]) ->
 handle_event({app, updated, App}, State) ->
   handle_updating_app(App),
   {ok, State};
+
+handle_event({app, restart, App}, State) ->
+  handle_restart_app(App),
+  {ok, State};
   
 % Fired when the squashed app has not been found
 handle_event({app, app_not_squashed, App}, State) ->
@@ -168,6 +172,9 @@ handle_updating_app(App) ->
       ets:insert(?UPDATERS_APP_TO_PID, {App, P, Now}),
       ets:insert(?UPDATERS_PID_TO_APP, {P, App, Now})
   end.
+
+handle_restart_app(App) when is_record(App, app) -> node_manager:request_to_terminate_all_bees(App#app.name);
+handle_restart_app(Name) -> node_manager:request_to_terminate_all_bees(Name).
 
 handle_launch_app(App, Host, Sha) ->
   case ets:lookup(?LAUNCHERS_APP_TO_PID, App) of
