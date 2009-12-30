@@ -12,17 +12,13 @@ HOST_IP="[[HOST_IP]]"
 APP_NAME=[[APP_NAME]]
 START_TIME=[[START_TIME]]
 MOUNT_FILE=[[BEE_IMAGE]]
-MOUNT_LOCATION="$MOUNT_BASE/$APP_NAME/$SHA/$(date +%H%M%S%y%m%d)"
+MOUNT_LOCATION="$MOUNT_BASE/$APP_NAME/$SHA"
 
 # MESSAGES
 COULD_NOT_ADD_USER=1
 COULD_NOT_START_APP=2
 COULD_NOT_MOUNT_APP=3
 COULD_NOT_UNMOUNT_OLD_PROCESSES=4
-
-if [ ! -d $MOUNT_LOCATION ]; then
-	mkdir -p $MOUNT_LOCATION
-fi
 
 # Create chroot user
 CHROOT_USER="$APP_NAME"
@@ -35,26 +31,34 @@ else
 fi
 if [ $? != 0 ]; then exit $COULD_NOT_ADD_USER; fi
 
-mount $MOUNT_FILE $MOUNT_LOCATION -o ro -o loop
-if [ $? != 0 ]; then exit $COULD_NOT_MOUNT_APP; fi
+if [ ! -d $MOUNT_LOCATION ]; then
+	mkdir -p $MOUNT_LOCATION
+	chown $CHROOT_USER $MOUNT_LOCATION
+fi
   
-# Create a tmp directory
-mkdir -p /tmp/$APP_NAME/$SHA
-chown $CHROOT_USER /tmp/$APP_NAME/$SHA
+# Don't remount, if it's already mounted
+if [ -z "$(mount | grep $MOUNT_LOCATION)" ]; then
+  mount $MOUNT_FILE $MOUNT_LOCATION -o ro -o loop
+  if [ $? != 0 ]; then exit $COULD_NOT_MOUNT_APP; fi
+  
+  # Create a tmp directory
+  mkdir -p /tmp/$APP_NAME/$SHA
+  chown $CHROOT_USER /tmp/$APP_NAME/$SHA
 
-# Bind mount the system
-mount --bind /bin $MOUNT_LOCATION/bin -o ro
-mount --bind /etc $MOUNT_LOCATION/etc -o ro
-mount --bind /usr $MOUNT_LOCATION/usr -o ro
-mount --bind /lib $MOUNT_LOCATION/lib -o ro
-mount --bind /dev $MOUNT_LOCATION/dev -o ro
-mount --bind /var $MOUNT_LOCATION/var -o ro
-mount -t proc /proc $MOUNT_LOCATION/proc
-mount --bind /tmp/$APP_NAME/$SHA $MOUNT_LOCATION/tmp -o rw
+  # Bind mount the system
+  mount --bind /bin $MOUNT_LOCATION/bin -o ro
+  mount --bind /etc $MOUNT_LOCATION/etc -o ro
+  mount --bind /usr $MOUNT_LOCATION/usr -o ro
+  mount --bind /lib $MOUNT_LOCATION/lib -o ro
+  mount --bind /dev $MOUNT_LOCATION/dev -o ro
+  mount --bind /var $MOUNT_LOCATION/var -o ro
+  mount -t proc /proc $MOUNT_LOCATION/proc
+  mount --bind /tmp/$APP_NAME/$SHA $MOUNT_LOCATION/tmp -o rw
 
-# If there is a lib64 directory 
-if [ -d /lib64 ]; then
-  sudo mount --bind /lib64 $MOUNT_LOCATION/lib64 -o ro
+  # If there is a lib64 directory 
+  if [ -d /lib64 ]; then
+    sudo mount --bind /lib64 $MOUNT_LOCATION/lib64 -o ro
+  fi
 fi
 
 GEM_ENV=$(gem env | grep "EXECUTABLE DIRECTORY" | awk '{print $4}')
@@ -85,15 +89,15 @@ CMD="/usr/sbin/chroot $MOUNT_LOCATION \
   LOCAL_PORT=$PORT \
   RACK_ENV=production \
   GEM_PATH=$MOUNT_LOCATION/.gems:$GEM_PATHS \
-  /bin/su -m $APP_NAME \
+  /bin/su -p $APP_NAME \
   /bin/bash -c \
   '$START_COMMAND'"
 
 echo "start_command $CMD"
 
 # Right now, this umounts all... consider: grep -v $SHA again
-STOPCMD="/bin/kill -9 [[PID]]; \
-  MOUNTED=\$(mount | grep $APP_NAME | grep $SHA | awk '{a[i++]=\$3} END {for (j=i-1; j>=0;) print a[j--] }'); \
+STOPCMD="ps ax -o '%p %r %y %x %c' | grep [[PID]] | awk '{print \$1}' | /usr/bin/xargs /bin/kill; \
+  MOUNTED=\$(mount | grep $MOUNT_LOCATION | awk '{a[i++]=\$3} END {for (j=i-1; j>=0;) print a[j--] }'); \
   for i in \$MOUNTED; do sudo umount \$i -f >/dev/null 2>&1; done"
 
 echo "stop_command $STOPCMD"
