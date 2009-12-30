@@ -118,7 +118,7 @@ running({Port, {exit_status, 0}}, #state{port_process = Port} = State) ->
 running({Port, {exit_status, Code}}, #state{port_process = Port} = State) ->
   {next_state, {error, Code}, State};
     
-running({stop}, #state{stop_command = StopCmd, port_options = Opts} = State) ->
+running({stop}, State) ->
   kill_os_process(State),
   {next_state, stopping, State};
 

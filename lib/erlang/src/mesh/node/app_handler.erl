@@ -172,6 +172,10 @@ handle_info({data, _Data}, State) ->
   {noreply, State};
 handle_info({stop}, State) ->
   {stop, normal, State};
+handle_info({port_exited,Port,Pid}, State) ->
+  % Do something with this...
+  io:format("Port process exited: ~p, ~p~n", [Port, Pid]),
+  {noreply, State};
 handle_info(Info, State) ->
   ?LOG(info, "~p caught info: ~p", [?MODULE, Info]),
   {noreply, State}.

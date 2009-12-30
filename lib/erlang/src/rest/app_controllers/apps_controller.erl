@@ -37,8 +37,8 @@ post(["new"], Data) ->
   % Not sure about this... yet as far as authentication goes
 post([Name, "restart"], _Data) ->
   Response = case ?NOTIFY({app, restart, Name}) of
-    {ok, _} -> {"app", <<"restarting">>};
-    _ -> {"app", <<"error">>}
+    ok -> {"app", <<"restarting">>};
+    _E -> {"app", <<"error">>}
   end,
   {struct, ?BINIFY([Response])};
 
