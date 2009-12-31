@@ -173,7 +173,7 @@ atomize([], Acc) -> Acc;
 atomize([{K,V}|Rest], Acc) -> atomize(Rest, [{misc_utils:to_atom(K), V}|Acc]).
 
 % Reload all the beehive modules
-reload_all() ->
+reload_code() ->
   F = fun(M) -> 
     code:purge(M),
     code:soft_purge(M),
@@ -181,3 +181,9 @@ reload_all() ->
     {ok, M}
   end,
   [F(M) || {M,P} <- code:all_loaded(), is_list(P) andalso string:str(P, "beehive") > 0 ].
+
+% Reload code on all attached nodes
+reload_all() ->
+  reload_code(),
+  rpc:multicall(nodes(), misc_utils, reload_code, [], timer:seconds(30)),
+  ok.
