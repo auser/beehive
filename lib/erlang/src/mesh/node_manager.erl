@@ -325,7 +325,7 @@ handle_cast({request_to_terminate_bee, Bee}, State) ->
   RealBee = bees:find_by_id(Bee#bee.id),
   case RealBee#bee.status of
     ready ->
-      io:format("request_to_terminate_bee: ~p~n", [RealBee]),
+      ?LOG(debug, "request_to_terminate_bee: ~p~n", [RealBee]),
       rpc:call(Node, ?APP_HANDLER, stop_instance, [RealBee, App, self()]);
     _ -> ok
   end,
