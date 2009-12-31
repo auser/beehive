@@ -300,7 +300,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({request_to_terminate_all_bees, Name}, State) ->
   % First, find all the bees and "unregister" them, or delete them from the bee list so we don't
   % route any requests this way
-  Bees = bees:find_all_by_name(Name),
+  Bees = lists:filter(fun(B) -> B#bee.status =:= ready end, bees:find_all_by_name(Name)),
   lists:map(fun(Bee) -> bees:update(Bee#bee{status = unavailable}) end, Bees),
   % Next, do this in an rpc call to shutdown the nodes
   App = apps:find_by_name(Name),
