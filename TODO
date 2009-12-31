@@ -15,3 +15,4 @@ TODO:
 * Ensure apps update only on call, not otherwise
 * Add automated test scripts to watch processes
 * Add more eunit tests
+* Add bee_srv to all node types

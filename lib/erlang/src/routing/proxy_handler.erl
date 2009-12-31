@@ -54,7 +54,7 @@ proxy_init(ClientSock) ->
     % We only give 30 seconds to the proxy pid to be given control of the socket
     % this is MORE than enough time for the socket to be given a chance to prepare
     % to be handled by the proxy accept request.
-    send_and_terminate(ClientSock, error, ?APP_ERROR("Proxy is b0rked because of bee selection timeout in init"))
+    send_and_terminate(ClientSock, error, ?APP_ERROR(503, "Proxy is b0rked because of bee selection timeout in init"))
   end.
 
 % Initiate and engage the chosen bee.
@@ -96,7 +96,7 @@ engage_bee(ClientSock, RequestPid, RoutingKey, ForwardReq, Req, {ok, #bee{host =
       ?NOTIFY({bee, cannot_connect, Bee}),
       send_and_terminate(
         ClientSock, 503,
-        ?APP_ERROR("503 Service Unavailable")
+        ?APP_ERROR(503, "503 Service Unavailable")
       );
     {error,econnreset} ->
       timer:sleep(200),
@@ -113,17 +113,17 @@ engage_bee(ClientSock, _RequestPid, Hostname, _ForwardReq, _Req, ?BACKEND_TIMEOU
   ?LOG(error, "Error getting bee because of timeout: ~p", [Hostname]),
   send_and_terminate(
     ClientSock, ?BACKEND_TIMEOUT_MSG, 
-    ?APP_ERROR(io_lib:format("Error: ~p", [?BACKEND_TIMEOUT_MSG]))
+    ?APP_ERROR(404, io_lib:format("Error: ~p", [?BACKEND_TIMEOUT_MSG]))
   );
 engage_bee(ClientSock, _RequestPid, Hostname, _ForwardReq, _Req, {error, Reason}) ->
   send_and_terminate(
     ClientSock, Reason, 
-    ?APP_ERROR(io_lib:format("Error on ~p: ~p", [Hostname, Reason]))
+    ?APP_ERROR(404, io_lib:format("Error on ~p: ~p", [Hostname, Reason]))
   );
 engage_bee(ClientSock, _RequestPid, Hostname, _ForwardReq, _Req, Else) ->
   send_and_terminate(
     ClientSock, Else, 
-    ?APP_ERROR(io_lib:format("Error on ~p: ~p", [Hostname, Else]))
+    ?APP_ERROR(404, io_lib:format("Error on ~p: ~p", [Hostname, Else]))
   ).
 
 % Handle all the proxy functions here

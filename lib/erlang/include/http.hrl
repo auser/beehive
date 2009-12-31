@@ -18,13 +18,12 @@
     </div>
   </body></html>", [Cont])).
 
--define (APP_ERROR (Msg), io_lib:format("<html>
+-define (APP_ERROR (Code, Msg), io_lib:format("HTTP/1.1 ~p Internal Server Error\r\n\r\n<html>
   <head><title>Uh oh! We made a boo boo</title></head>
   <body>
     <h1>Beehive Error</h1>
     <p>~s</p>
-  </body></html>", [Msg])).
-
+  </body></html>", [Code, Msg])).
 
 % Error page
 -define (ERROR_HTML (App), io_lib:format("HTTP/1.1 200 Internal Server Error\r\n\r\n<html>

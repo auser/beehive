@@ -171,3 +171,13 @@ nodename(Node) -> lists:takewhile(fun(Chr) -> Chr =/= $@ end, atom_to_list(Node)
 % Turn the proplists into atoms
 atomize([], Acc) -> Acc;
 atomize([{K,V}|Rest], Acc) -> atomize(Rest, [{misc_utils:to_atom(K), V}|Acc]).
+
+% Reload all the beehive modules
+reload_all() ->
+  F = fun(M) -> 
+    code:purge(M),
+    code:soft_purge(M),
+    {module, M} = code:load_file(M),
+    {ok, M}
+  end,
+  [F(M) || {M,P} <- code:all_loaded(), is_list(P) andalso string:str(P, "beehive") > 0 ].
