@@ -10,6 +10,7 @@ class VerifyCloud < Test::Unit::TestCase
   
   def setup
     @host="getbeehive.com"
+    # @host="beehive.com:8080"
     @token = get_token("root@getbeehive.com", 'test')
   end
   
@@ -21,7 +22,7 @@ class VerifyCloud < Test::Unit::TestCase
  def test_get_basics
   got = get('/')
   assert !got.empty?
-  assert_equal got['beehive'], ["app", "node", "bees", "stats"]
+  assert_equal got['beehive'], ["apps", "nodes", "bees", "stats"]
  end
  
  def test_get_bees
@@ -34,7 +35,7 @@ class VerifyCloud < Test::Unit::TestCase
  def test_list_users
    got = get("/users")
    assert_non_empty_enumerable got['users']
-   assert_equal got['users'].first['email'], "root@#{host}"
+   assert_equal got['users']["root@getbeehive.com"], {"level" => "1"}
  end
 
  def get_token(email, password)
@@ -45,7 +46,7 @@ class VerifyCloud < Test::Unit::TestCase
  def test_create_user
    # curl -XPOST -d"{"email":"newuser@example.com", "password":"testsecret", "level":"1", "token":"$TOKEN"}" http://getbeehive.com:8080/users/new
    user = post("/users/new", {:email => 'albert@example.com', :password=>'realtivity', :token => token})
-   assert_equal user["email"], 'albert@example.com'
+   assert_equal user["user"], 'albert@example.com'
    assert get('/users')['users']['albert@example.com']
  end
  

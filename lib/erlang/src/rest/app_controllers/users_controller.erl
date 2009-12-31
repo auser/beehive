@@ -14,14 +14,12 @@
 
 get(_) -> 
   All = users:all(),
-  {struct, [{
+  {struct, ?BINIFY([{
     "users",
     lists:map(fun(A) ->
-      {struct, ?BINIFY([
-        {"email", A#user.email}
-      ])}
+      {A#user.email, ?BINIFY([{"level", A#user.level}])}
     end, All)
-  }]}.
+  }])}.
 
 post([Name, "keys", "new"], Data) ->
   auth_utils:run_if_admin(fun(_) ->

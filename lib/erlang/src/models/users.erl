@@ -131,7 +131,12 @@ validate_user_proplists(PropList) ->
           _ -> {Key, bh_md5:hex(Val)}
         end;
       token -> {Key, none};
-      level -> {Key, misc_utils:to_integer(Val)};
+      level -> 
+        Lvl = case Val of
+          undefined -> ?REGULAR_USER_LEVEL;
+          T -> misc_utils:to_integer(T)
+        end,
+        {Key, Lvl};
       _ -> {Key, Val}
     end
   end, PropList).

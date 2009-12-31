@@ -21,21 +21,24 @@ jsonify(JsonifiableBody) ->
   ].
 
 binify(Proplist) ->
-  lists:map(fun({Key, V}) ->
-    case V of
-      List when is_list(List) ->
-        case io_lib:char_list(List) of
-          true -> {Key, misc_utils:to_bin(List)};
-          false -> 
-            % check to see if the head is lists of strings
-            case V of
-              ListOfStrings when is_list(hd(ListOfStrings)) ->
-                {Key, lists:map(fun(E) -> misc_utils:to_bin(E) end, V)};
-              _Else ->
-                {Key, {struct, binify(V)}}
-            end
-        end;
-      Tuple when is_tuple(Tuple) -> {Key, binify(Tuple)};
-      E -> {Key, misc_utils:to_bin(E)}
-    end
-  end, Proplist).
+  lists:map(fun(Ele) -> binify1(Ele) end, Proplist).
+
+binify1({Key, V}) ->
+  case V of
+    List when is_list(List) ->
+      case io_lib:char_list(List) of
+        true -> {Key, misc_utils:to_bin(List)};
+        false -> 
+          % check to see if the head is lists of strings
+          case V of
+            ListOfStrings when is_list(hd(ListOfStrings)) ->
+              {Key, lists:map(fun(E) -> misc_utils:to_bin(E) end, V)};
+            _Else ->
+              {Key, {struct, binify(V)}}
+          end
+      end;
+    Tuple when is_tuple(Tuple) -> {Key, binify(Tuple)};
+    E -> {Key, misc_utils:to_bin(E)}
+  end;
+binify1(Ele) ->
+  misc_utils:to_bin(Ele).

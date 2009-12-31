@@ -28,22 +28,20 @@ get(["mine", RangeList]) ->
   )};
 get([]) -> 
   {struct, [
-    {"routers", [format_nodes(fun node_manager:get_routers/0)]},
+    {"routers", format_nodes(fun node_manager:get_routers/0)},
     {"bees", format_nodes(fun node_manager:get_nodes/0)},
     {"storage", format_nodes(fun node_manager:get_storage/0)}
     ]
   }.
   
 format_nodes(F) ->
-  Nodes = lists:append(
-    lists:map(fun(#node{name = Name, host = Host} = _Node) ->
-      ?BINIFY([
+  lists:map(fun(#node{name = Name, host = Host} = _Node) ->
+      {struct, ?BINIFY([
         {"name", Name},
         {"host", Host}
-      ])
+      ])}
     end, lists:map(fun(N) -> node_manager:dump(N) end, F())
-  )),
-  {struct, Nodes}.
+  ).
 
 post(_Path, _Data) -> "unhandled".
 put(_Path, _Data) -> "unhandled".
