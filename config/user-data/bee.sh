@@ -2,7 +2,8 @@
 
 BEEHIVE_USER_HOME=${1:-'/var/lib/beehive'}
 INSTALL_PREFIX=${2:-''}
-ROUTER_HOST=${3:-''}
+TWITTER_USERNAME=${3:-'getbeehive'}
+ROUTER_HOST=${4:-''}
 SRC_DIR="/tmp/beehive"
 
 sudo apt-get update -y
@@ -54,7 +55,7 @@ sudo cp -R $BEEHIVE_USER_HOME/* /root
 
 # Start the beehive
 if [ -z $ROUTER_HOST ]; then
-  ROUTER_HOST=$(curl -sL 'http://twitter.com/users/getbeehive.json' | jsawk 'return this.status.text')
+  ROUTER_HOST=$(curl -sL "http://twitter.com/users/$TWITTER_USERNAME.json" | jsawk 'return this.status.text')
   ROUTER_ATOM="router@$ROUTER_HOST"
 else
   ROUTER_ATOM=$ROUTER_HOST
