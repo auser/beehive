@@ -1,12 +1,3 @@
-Dir.glob(File.join(File.dirname(__FILE__), "..", "vendor", "gems", "*", "lib")).each do |lib|
-  $LOAD_PATH.unshift(File.expand_path(lib))
-end
-
-require 'rest_client'
-require "yaml"
-require "json"
-require "pp"
-
 module Beehive
   module Command
     
@@ -14,6 +5,7 @@ module Beehive
       
       include Askable
       include Beehive::Connection
+      include Beehive::Rest
       
       attr_accessor :args, :host, :user, :keypair, :prefix
       
@@ -71,38 +63,6 @@ module Beehive
       
       def host
         @host ||= config["host"]
-      end
-      
-      # REST Methods
-      def get(url)
-        r = RestClient.get("http://#{host}/#{url}")
-        JSON.parse(r)
-      end
-      
-      def post(url, params={})
-        j = RestClient.post("http://#{host}/#{url}", params.to_json)
-        r = JSON.parse(j)
-        
-        if r["error"]
-          if r["error"] == "There was a problem authenticating"
-            raise StandardError.new("
-There was an error authenticating
-Check your credentials
-            ")
-          else
-            raise StandardError.new(r["error"])
-          end
-        else
-          return r
-        end
-      end
-      
-      def put(url)
-        
-      end
-      
-      def delete(url)
-        
       end
       
       def get_token
