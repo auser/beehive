@@ -22,7 +22,7 @@ class VerifyCloud < Test::Unit::TestCase
  def test_get_basics
   got = get('/')
   assert !got.empty?
-  assert_equal got['beehive'], ["apps", "nodes", "bees", "stats"]
+  assert_equal got['beehive'], ["apps", "nodes", "bees", "stats", "users"]
  end
  
  def test_get_bees
@@ -50,10 +50,13 @@ class VerifyCloud < Test::Unit::TestCase
    assert get('/users')['users']['albert@example.com']
  end
  
- def test_authenticate
+ def test_list_apps
+   assert_non_empty_enumerable get('/apps')
  end
  
- def test_list_apps
+ def test_create_app
+  app = post("/apps/new", {:name => "test_app", :url => "git://github.com/auser/heroku-sinatra-app.git", :token => token})
+  assert_equal app["app"], "test_app"
  end
  
  def test_can_only_list_my_apps
