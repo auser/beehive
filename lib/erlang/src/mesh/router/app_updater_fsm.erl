@@ -152,7 +152,8 @@ success({bee_started_normally, StartedBee, App}, #bee{app_name = Name, commit_ha
       {stop, normal, Bee};
     CurrentBees ->
       lists:map(fun(B) ->
-        case B#bee.id =:= StartedBee#bee.id andalso B#bee.commit_hash =:= StartedBee#bee.commit_hash of
+        % Terminate all the bees that are of a different sha
+        case B#bee.commit_hash =:= StartedBee#bee.commit_hash of
           true -> skip;
           false ->
             ?LOG(debug, "Terminating old bee: ~p~n", [B]),
