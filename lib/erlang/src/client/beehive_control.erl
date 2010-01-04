@@ -57,6 +57,9 @@ start() ->
   
   halt(0).
 
+% Force reload of the beehive system
+command(Node, reload, []) -> call(Node, misc_utils, reload_all, []);
+
 % List the routers
 command(Node, list, [routers]) -> call(Node, node_manager, get_routers, []);
 command(Node, list, [storage]) -> call(Node, node_manager, get_storage, []);
@@ -124,6 +127,7 @@ show_usage() ->
     app_updated [NameOfApp]         Marks an application as updated
     set_seed [SeedNode]             Set a new seed
     get_seed                        Get the seed node
+    reload                          Reload the beehive system
     list [Type (optional)]          List types (valid types: router, storage, node or nothing)
     
 ", []),
