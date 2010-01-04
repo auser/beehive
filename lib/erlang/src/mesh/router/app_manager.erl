@@ -133,7 +133,6 @@ handle_cast({request_to_start_new_bee, Name}, State) ->
   Bees = bees:find_all_by_name(Name),
   % Don't start a new bee if there is a pending one
   PendingBees = lists:filter(fun(B) -> B#bee.status =:= pending end, Bees),
-  io:format("PendingBees: ~p~n", [PendingBees]),
   case length(PendingBees) > 0 of
     false -> start_new_instance_by_name(Name);
     true -> ok

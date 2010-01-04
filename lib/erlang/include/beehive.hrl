@@ -86,8 +86,8 @@
   bee_picker = bee_strategies,      % Defined the bee picker module (defaults to bee_strategies)
   timeout,
   sticky        = false,            % if an app is sticky, the apps are not requested after timeout time
-  min_instances,
-  max_instances,
+  min_instances = 0,
+  max_instances = 1,
   sha,                              % sha of the latest working push
   updated_at,
   start_command,
