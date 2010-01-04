@@ -79,8 +79,8 @@ init([]) ->
   timer:send_interval(timer:seconds(5), {manage_pending_bees}),
   % Run maintenance
   % timer:send_interval(timer:seconds(20), {ping_bees}),
-  timer:send_interval(timer:minutes(10), {garbage_collection}),
-  
+  timer:send_interval(timer:minutes(5), {garbage_collection}),
+  timer:send_interval(timer:minutes(2), {maintain_bee_counts}),
   timer:send_interval(timer:minutes(2), {clean_up_apps}),
   {ok, #state{}}.
 
@@ -165,6 +165,10 @@ handle_info({manage_pending_bees}, State) ->
       % ?LOG(info, "Garbage cleaning up on: ~p", [Bees#bee.app_name])
     % end, Bees)
   end, PendingBees),
+  {noreply, State};
+
+handle_info({maintain_bee_counts}, State) ->
+  maintain_bee_counts(),
   {noreply, State};
 
 handle_info({ping_bees}, State) ->
@@ -364,6 +368,32 @@ handle_non_ready_bees() ->
     spawn(fun() -> try_to_reconnect_to_bee(B, 5) end)
   end, DownBees),
   ok.
+
+% Maintain bee counts
+maintain_bee_counts() ->
+  Apps = apps:all(),
+  lists:map(fun(App) ->
+      AppBees = bees:find_all_by_name(App#app.name),
+      NumAppBees = length(AppBees),
+      case NumAppBees < App#app.min_instances of
+        true ->
+          % Uh oh, the minimum bees aren't running
+          start_new_instance_by_name(App#app.name);
+        false ->
+          case NumAppBees > App#app.max_instances of
+            true ->
+              % Uh oh, somehow we got too many bees
+              terminate_number_of_bees(AppBees, NumAppBees - App#app.max_instances);
+            false -> ok
+          end
+      end
+    end, Apps),
+  ok.
+
+terminate_number_of_bees(_, 0) -> ok;
+terminate_number_of_bees([Bee|Rest], Count) ->
+  ?NOTIFY({bee, terminate_please, Bee}),
+  terminate_number_of_bees(Rest, Count - 1).
 
 % Spawned off process to try to "save" the bee
 % If not, clean up the instance and delete it from the bees.
