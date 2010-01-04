@@ -11,7 +11,7 @@
 -export ([get/1, post/2, put/2, delete/2]).
 
 get(_) -> 
-  ?JSON_MSG("routes", ["apps", "nodes", "bees", "stats", "users"]).
+  ?JSON_MSG("beehive", ["apps", "nodes", "bees", "stats", "users"]).
 
 post(_Path, _Data) -> error("unhandled").
 put(_Path, _Data) -> error("unhandled").
