@@ -225,7 +225,7 @@ spawn_update_bee_status(Bee, From, Nums) ->
 try_to_connect_to_new_instance(_Bee, 0) -> broken;
 try_to_connect_to_new_instance(Bee, Attempts) ->
   ?LOG(info, "try_to_connect_to_new_instance (~p:~p)", [Bee#bee.host, Bee#bee.port]),
-  case gen_tcp:connect(Bee#bee.host, Bee#bee.port, [binary, {packet, 0}], 2000) of
+  case gen_tcp:connect(Bee#bee.host, Bee#bee.port, [binary, {packet, 0}], 500) of
     {ok, Sock} ->
       gen_tcp:close(Sock),
       ready;
