@@ -18,7 +18,6 @@ get([Name]) ->
     [] -> {struct, [{"error", ?BINIFY("App not found")}]};
     App ->
       AppDetails = [
-        {"name", App#app.name},
         {"url", App#app.url},
         {"routing_param", App#app.routing_param},
         {"owners", lists:map(fun(Owner) -> Owner#user.email end, user_apps:get_owners(App))},
