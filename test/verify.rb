@@ -55,7 +55,7 @@ class VerifyCloud < Test::Unit::TestCase
  end
  
  def test_create_app
-  app = post("/apps/new", {:name => "test_app", :url => "git://github.com/auser/heroku-sinatra-app.git", :token => token})
+  app = post("/apps", {:name => "test_app", :url => "git://github.com/auser/heroku-sinatra-app.git", :token => token})
   assert_equal app["app"], "test_app"
  end
  
