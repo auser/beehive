@@ -140,7 +140,17 @@ get_storage() ->
   pg2:get_members(?STORAGE_SERVERS).  
 
 request_to_terminate_bee(Bee) ->
-  gen_server:cast(?SERVER, {request_to_terminate_bee, Bee}).
+  App = apps:find_by_name(Bee#bee.app_name),
+  Node = Bee#bee.host_node,
+  
+  RealBee = bees:find_by_id(Bee#bee.id),
+  case RealBee#bee.status of
+    % Does the status really matter? This is changed before?
+    _ ->
+      ?LOG(debug, "request_to_terminate_bee: ~p~n", [RealBee]),
+      ok = rpc:call(Node, ?APP_HANDLER, stop_instance, [RealBee, App, self()]),
+      bees:save(RealBee#bee{status = terminated})
+  end.
 
 request_to_terminate_all_bees(Name) ->
   gen_server:cast(?SERVER, {request_to_terminate_all_bees, Name}).
@@ -315,20 +325,6 @@ handle_cast({request_to_terminate_all_bees, Name}, State) ->
   %     false -> ok
   %   end
   % end, Nodes),
-  {noreply, State};
-
-% Kill a bee, yo
-handle_cast({request_to_terminate_bee, Bee}, State) ->
-  App = apps:find_by_name(Bee#bee.app_name),
-  Node = Bee#bee.host_node,
-  
-  RealBee = bees:find_by_id(Bee#bee.id),
-  case RealBee#bee.status of
-    ready ->
-      ?LOG(debug, "request_to_terminate_bee: ~p~n", [RealBee]),
-      rpc:call(Node, ?APP_HANDLER, stop_instance, [RealBee, App, self()]);
-    _ -> ok
-  end,
   {noreply, State};
   
 handle_cast(_Msg, State) ->

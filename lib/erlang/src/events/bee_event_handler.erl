@@ -62,6 +62,10 @@ handle_event({bee, update_status, Bee, Status}, State) ->
   end),
   {ok, State};
 
+% Handle terminate bee
+handle_event({bee, terminate_please, Bee}, State) ->
+  node_manager:request_to_terminate_bee(Bee),
+  {ok, State};
 
 % Caught when a bee is marked as down
 handle_event({bee, bee_down, Bee}, State) ->

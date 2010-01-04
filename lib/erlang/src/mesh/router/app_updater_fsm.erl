@@ -151,16 +151,10 @@ success({bee_started_normally, StartedBee, App}, #bee{app_name = Name, commit_ha
       bees:save(StartedBee#bee{commit_hash = Sha}),
       {stop, normal, Bee};
     CurrentBees ->
+      OtherBees = lists:filter(fun(B) -> B#bee.id =/= StartedBee#bee.id orelse B#bee.commit_hash =/= StartedBee#bee.commit_hash end, CurrentBees),
       lists:map(fun(B) ->
-        % Terminate all the bees that are of a different sha
-        case B#bee.id =:= StartedBee#bee.id andalso B#bee.commit_hash =:= StartedBee#bee.commit_hash of
-          true -> skip;
-          false ->
-            ?LOG(debug, "Terminating old bee: ~p~n", [B]),
-            node_manager:request_to_terminate_bee(B),
-            bees:save(B#bee{status = terminated})
-        end
-      end, CurrentBees),
+        ?NOTIFY({bee, terminate_please, B})
+      end, OtherBees),
       
       apps:create(App#app{sha = Sha}),
       bees:save(StartedBee#bee{commit_hash = Sha}),
