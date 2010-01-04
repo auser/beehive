@@ -117,24 +117,24 @@ handle_call(_Request, _From, State) ->
 % Terminate all instances of every app
 % handle_cast({terminate_all}, State) ->
 %   ?LOG(info, "Terminating all apps", []),
-%   lists:map(fun(_Name, Backends) ->
-%     lists:map(fun(Backend) -> app_handler:stop_instance(Backend, State) end, Backends)
+%   lists:map(fun(_Name, Bees) ->
+%     lists:map(fun(Bee) -> app_handler:stop_instance(Bee, State) end, Bees)
 %     end, bee_srv:all(instances)),
 %   {reply, ok, State};
   
 % Terminate all the instances of a certain application
 % handle_cast({terminate_app_instances, AppName}, State) ->
-%   Backends = bee_srv:lookup(instances, AppName),
-%   lists:map(fun(Backend) -> app_handler:stop_instance(Backend, State) end, Backends),
+%   Bees = bee_srv:lookup(instances, AppName),
+%   lists:map(fun(Bee) -> app_handler:stop_instance(Bee, State) end, Bees),
 %   bee_srv:store(instances, AppName, []),
 %   {noreply, State};
 
 handle_cast({request_to_start_new_bee, Name}, State) ->
-  Backends = bees:find_all_by_name(Name),
+  Bees = bees:find_all_by_name(Name),
   % Don't start a new bee if there is a pending one
-  PendingBackends = lists:filter(fun(B) -> B#bee.status =:= pending end, Backends),
-  io:format("PendingBackends: ~p~n", [PendingBackends]),
-  case length(PendingBackends) > 0 of
+  PendingBees = lists:filter(fun(B) -> B#bee.status =:= pending end, Bees),
+  io:format("PendingBees: ~p~n", [PendingBees]),
+  case length(PendingBees) > 0 of
     false -> start_new_instance_by_name(Name);
     true -> ok
   end,
@@ -158,14 +158,14 @@ handle_info({clean_up}, State) ->
   {noreply, State};
 
 handle_info({manage_pending_bees}, State) ->
-  PendingBackends = lists:filter(fun(B) -> B#bee.status == pending end, bees:all()),
+  PendingBees = lists:filter(fun(B) -> B#bee.status == pending end, bees:all()),
   lists:map(fun(B) ->
       Status = try_to_connect_to_new_instance(B, 10),
       ?NOTIFY({bee, update_status, B, Status})
     % lists:map(fun(B) ->
-      % ?LOG(info, "Garbage cleaning up on: ~p", [Backends#bee.app_name])
-    % end, Backends)
-  end, PendingBackends),
+      % ?LOG(info, "Garbage cleaning up on: ~p", [Bees#bee.app_name])
+    % end, Bees)
+  end, PendingBees),
   {noreply, State};
 
 handle_info({ping_bees}, State) ->
@@ -219,16 +219,16 @@ spawn_update_bee_status(Bee, From, Nums) ->
   end).
 
 % Try to connect to the application instance while it's booting up
-try_to_connect_to_new_instance(_Backend, 0) -> broken;
-try_to_connect_to_new_instance(Backend, Attempts) ->
-  ?LOG(info, "try_to_connect_to_new_instance (~p:~p)", [Backend#bee.host, Backend#bee.port]),
-  case gen_tcp:connect(Backend#bee.host, Backend#bee.port, [binary, {packet, 0}], 2000) of
+try_to_connect_to_new_instance(_Bee, 0) -> broken;
+try_to_connect_to_new_instance(Bee, Attempts) ->
+  ?LOG(info, "try_to_connect_to_new_instance (~p:~p)", [Bee#bee.host, Bee#bee.port]),
+  case gen_tcp:connect(Bee#bee.host, Bee#bee.port, [binary, {packet, 0}], 2000) of
     {ok, Sock} ->
       gen_tcp:close(Sock),
       ready;
     _ -> 
       timer:sleep(200),
-      try_to_connect_to_new_instance(Backend, Attempts - 1)
+      try_to_connect_to_new_instance(Bee, Attempts - 1)
   end.
   
 % Update configuration for an application from a proplist of configuration details
@@ -279,53 +279,53 @@ clean_up() ->
   Apps = apps:all(),
   lists:map(fun(App) -> 
     Bees = bees:find_all_by_name(App#app.name),
-    RunningBackends = lists:filter(fun(B) -> B#bee.status =:= ready end, Bees),
-    Proplist = [{num_backends, erlang:length(RunningBackends)}],
+    RunningBees = lists:filter(fun(B) -> B#bee.status =:= ready end, Bees),
+    Proplist = [{num_backends, erlang:length(RunningBees)}],
     clean_up_instances(Bees, App, Proplist) 
   end, Apps).
   
 % Clean up the instances
 clean_up_instances([], _, Proplist) -> Proplist;
-clean_up_instances([Backend|Rest], App, Proplist) -> 
-  clean_up_instance(Backend, App, Proplist),
+clean_up_instances([Bee|Rest], App, Proplist) -> 
+  clean_up_instance(Bee, App, Proplist),
   clean_up_instances(Rest, App, Proplist).
 
 % Cleanup a single instance
-clean_up_instance(Backend, App, Proplist) ->
+clean_up_instance(Bee, App, Proplist) ->
   % If the instance of the application has been used before
-  case Backend#bee.lastresp_time of
+  case Bee#bee.lastresp_time of
     0 -> Proplist;
-    _Time ->  clean_up_on_app_timeout(Backend, App, Proplist)
+    _Time ->  clean_up_on_app_timeout(Bee, App, Proplist)
   end.
   
 % If the instance is not busy, the timeout has been exceeded and there are other application instances running
-clean_up_on_app_timeout(#bee{lastresp_time=LastReq} = Backend, #app{timeout=Timeout,sticky=Sticky} = App, Proplist) ->
-  _NumBackends = proplists:get_value(num_backends, Proplist),
+clean_up_on_app_timeout(#bee{lastresp_time=LastReq} = Bee, #app{timeout=Timeout,sticky=Sticky} = App, Proplist) ->
+  _NumBees = proplists:get_value(num_backends, Proplist),
 	TimeDiff = date_util:time_difference_from_now(LastReq),
-  % ?LOG(info, "clean_up_on_app_timeout: ~p > ~p, ~p > ~p", [NumBackends, Min, TimeDiff, Timeout]),
+  % ?LOG(info, "clean_up_on_app_timeout: ~p > ~p, ~p > ~p", [NumBees, Min, TimeDiff, Timeout]),
   if
-    % stop_instance(Backend, App, From)
-    % NumBackends > Min andalso 
-    TimeDiff > Timeout andalso Sticky =/= true -> node_manager:request_to_terminate_bee(Backend);
-    true -> clean_up_on_busy_and_stale_status(Backend, App, Proplist)
+    % stop_instance(Bee, App, From)
+    % NumBees > Min andalso 
+    TimeDiff > Timeout andalso Sticky =/= true -> ?NOTIFY({bee, terminate_please, Bee});
+    true -> clean_up_on_busy_and_stale_status(Bee, App, Proplist)
   end.
     
 % If the instance is busy, but hasn't served a request in a long time, kill it
-clean_up_on_busy_and_stale_status(#bee{status = Status, lastresp_time = LastReq} = Backend, #app{timeout = Timeout} = App, Proplist) ->
+clean_up_on_busy_and_stale_status(#bee{status = Status, lastresp_time = LastReq} = Bee, #app{timeout = Timeout} = App, Proplist) ->
 	TimeDiff = date_util:time_difference_from_now(LastReq),
   % ?LOG(info, "clean_up_on_busy_and_stale_status: ~p > ~p + ~p", [TimeDiff, Timeout, ?TIME_BUFFER]),
   if
     Status =:= busy andalso TimeDiff > Timeout + ?TIME_BUFFER -> 
-			node_manager:request_to_terminate_bee(Backend);
-    true -> clean_up_on_long_running_instance(Backend, App, Proplist)
+			?NOTIFY({bee, terminate_please, Bee});
+    true -> clean_up_on_long_running_instance(Bee, App, Proplist)
   end.
 
 % If the application has been running for a while, kill it
-clean_up_on_long_running_instance(#bee{start_time = StartTime} = Backend, _App, Proplist) ->
+clean_up_on_long_running_instance(#bee{start_time = StartTime} = Bee, _App, Proplist) ->
 	TimeDiff = date_util:time_difference_from_now(StartTime),
   % ?LOG(info, "clean_up_on_long_running_instance: ~p > ~p", [TimeDiff, ?RUN_INSTANCE_TIME_PERIOD]),
   if
-    TimeDiff > ?RUN_INSTANCE_TIME_PERIOD -> node_manager:request_to_terminate_bee(Backend);
+    TimeDiff > ?RUN_INSTANCE_TIME_PERIOD -> ?NOTIFY({bee, terminate_please, Bee});
     true -> Proplist
   end.
 
@@ -352,18 +352,18 @@ clean_up_on_long_running_instance(#bee{start_time = StartTime} = Backend, _App, 
 
 % MAINTENANCE
 ping_bees() ->
-  ReadyBackends = lists:filter(fun(B) -> B#bee.status =:= ready end, bees:all()),
+  ReadyBees = lists:filter(fun(B) -> B#bee.status =:= ready end, bees:all()),
   lists:map(fun(B) ->
     spawn_update_bee_status(B, self(), 10)
-  end, ReadyBackends),
+  end, ReadyBees),
   ok.
 
 % GARBAGE COLLECTION
 handle_non_ready_bees() ->
-  DownBackends = lists:filter(fun(B) -> B#bee.status =/= ready andalso B#bee.sticky =:= false end, bees:all()),
+  DownBees = lists:filter(fun(B) -> B#bee.status =/= ready andalso B#bee.sticky =:= false end, bees:all()),
   lists:map(fun(B) ->
     spawn(fun() -> try_to_reconnect_to_bee(B, 5) end)
-  end, DownBackends),
+  end, DownBees),
   ok.
 
 % Spawned off process to try to "save" the bee
