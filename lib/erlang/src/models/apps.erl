@@ -115,6 +115,10 @@ validate_app_proplists(PropList) ->
       routing_param -> {Key, misc_utils:to_atom(Val)};
       min_instances -> {Key, misc_utils:to_integer(Val)};
       max_instances -> {Key, misc_utils:to_integer(Val)};
+      timeout -> case Val of
+        undefined -> 60 * 1000;
+        _ -> {Key, misc_utils:to_integer(Val)}
+      end;
       updated_at -> {Key, date_util:now_to_seconds()};
       _ -> {Key, Val}
     end

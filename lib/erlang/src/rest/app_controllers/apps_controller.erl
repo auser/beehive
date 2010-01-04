@@ -44,7 +44,7 @@ get(_) ->
     end, All)
   }]}.
 
-post(["new"], Data) ->
+post([], Data) ->
   case auth_utils:get_authorized_user(Data) of
     false -> 
       {struct, [{"error", misc_utils:to_bin("No user defined or invalid token")}]};
