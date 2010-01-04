@@ -8,6 +8,7 @@
 
 -module (apps_controller).
 -include ("beehive.hrl").
+-include ("common.hrl").
 -include ("http.hrl").
 -export ([get/1, post/2, put/2, delete/2]).
 
@@ -47,13 +48,17 @@ get(_) ->
 post([], Data) ->
   case auth_utils:get_authorized_user(Data) of
     false -> 
-      {struct, [{"error", misc_utils:to_bin("No user defined or invalid token")}]};
+      ?JSON_ERROR("No user defined or invalid token");
+      % {struct, [{"error", misc_utils:to_bin("No user defined or invalid token")}]};
     ReqUser ->
       case apps:create(Data) of
         {ok, App} when is_record(App, app) -> 
           user_apps:create(ReqUser, App),
           {struct, ?BINIFY([{"app", misc_utils:to_bin(App#app.name)}])};
-        _ -> "There was an error adding bee\n"
+        {error, app_exists} -> ?JSON_ERROR("App exists already");
+        E -> 
+          ?LOG(error, "Unknown error adding app: ~p", [E]),
+          ?JSON_ERROR("Unknown error adding app. The error has been logged")
       end
   end;
 
@@ -74,6 +79,17 @@ post([Name, "deploy"], _Data) ->
   {struct, ?BINIFY([Response])};
     
 post(_Path, _Data) -> "unhandled".
+
+put([Name], Data) ->
+  case auth_utils:get_authorized_user(Data) of
+    false -> 
+      {struct, [{"error", misc_utils:to_bin("No user defined or invalid token")}]};
+    _ReqUser ->
+      case apps:update(Name, Data) of
+        {updated, App} when is_record(App, app) -> ?JSON_RETURN("updated", App#app.name);
+        _ -> ?JSON_ERROR("There was an error adding bee")
+      end
+  end;
 put(_Path, _Data) -> "unhandled".
 
 delete([Name], _Data) ->

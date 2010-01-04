@@ -32,3 +32,7 @@
     <h1>Beehive Error | The site you have requested was not found.</h1>
     <p>Check the url again to make sure you typed it correctly</p>
   </body></html>", [App])).
+
+-define (JSON_ERROR (Msg), {struct, [{error, ?BINIFY(Msg)}]}).
+-define (JSON_MSG (Msg), {struct, [{ok, ?BINIFY(Msg)}]}).
+-define (JSON_RETURN (Name, Msg), {struct, [{Name, ?BINIFY(Msg)}]} ).
