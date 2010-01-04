@@ -300,13 +300,6 @@ find_bee_on_storage_nodes(App, Sha, [Node|Rest]) ->
 internal_stop_instance(#bee{id = Id} = _CalledBee, App, From) when is_record(App, app) ->  
   #bee{commit_hash = Sha, pid = PidPort} = Bee = bees:find_by_id(Id),
   ?LOG(debug, "internal_stop_instance: ~p and ~p~n", [Sha, App#app.name]),
-  % case Sha of
-  %   undefined -> ok;
-  %   _E ->
-  %     StopProplists = [{"[[SHA]]", Sha},{"[[APP_NAME]]", App#app.name}],
-  %     O = ?TEMPLATE_SHELL_SCRIPT_PARSED("stop-bee", StopProplists),
-  %     ?LOG(debug, "stop-bee result: ~p from ~p", [O, StopProplists])
-  % end,
   
   babysitter:stop_process(PidPort),
   
