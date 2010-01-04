@@ -215,9 +215,9 @@ code_change(_OldVsn, State, _Extra) ->
 spawn_update_bee_status(Bee, From, Nums) ->
   spawn(fun() ->
     BeeStatus = try_to_connect_to_new_instance(Bee, Nums),
-    ?LOG(info, "spawn_update_bee_status: ~p", [BeeStatus]),
     RealBee = bees:find_by_id(Bee#bee.id),
-    bees:update(RealBee#bee{status = BeeStatus}),
+    Saved = bees:save(RealBee#bee{status = BeeStatus}),
+    ?LOG(info, "spawn_update_bee_status: ~p result: ~p", [BeeStatus, Saved]),
     From ! {updated_bee_status, BeeStatus}
   end).
 
