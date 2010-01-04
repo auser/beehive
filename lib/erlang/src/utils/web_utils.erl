@@ -27,7 +27,7 @@ binify(List) ->
     false -> binify1(List, [])
   end.
 
-binify1([], Acc) -> Acc;
+binify1([], Acc) -> lists:reverse(Acc);
 binify1([Hd|Rest], Acc) ->
   binify1(Rest, [binify2(Hd)|Acc]).
   
