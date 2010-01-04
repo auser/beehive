@@ -323,7 +323,7 @@ maybe_handle_next_waiting_client(Name, State) ->
   case ?QSTORE:pop(?WAIT_DB, Name) of
     empty -> ok;
     % If the request was made at conn_timeout seconds ago
-    {value, {_Hostname, From, _Pid, InsertTime}} when InsertTime < TOTime ->
+    {value, {_Hostname, From, _Pid, InsertTime}} when InsertTime > TOTime ->
       gen_server:reply(From, ?BACKEND_TIMEOUT_MSG),
       maybe_handle_next_waiting_client(Name, State);
     {value, {{Hostname, _AppMod, _RoutingParam} = Tuple, From, Pid, _InsertTime}} ->
