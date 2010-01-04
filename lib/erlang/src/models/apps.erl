@@ -44,20 +44,22 @@ exist(Name) ->
 
 % Insert a new app
 create(App) when is_record(App, app) ->
-
-  case db:write(App) of
-    ok -> 
-      case exist(App#app.name) of
-        true -> ?NOTIFY({app, updated, App});
-        false -> ?NOTIFY({app, created, App})
-      end,
-      {ok, App};
-    {'EXIT',{aborted,{no_exists,_}}} -> 
-      ?NOTIFY({db, database_not_initialized, app}),
-      {error, database_not_initialized};
-    E ->
-      io:format("Unknown error: ~p~n", [E]),
-      {error, did_not_write}
+  case exist(App#app.name) of
+    false ->
+      case db:write(App) of
+        ok -> 
+          ?NOTIFY({app, created, App}),
+          {ok, App};
+        {'EXIT',{aborted,{no_exists,_}}} -> 
+          ?NOTIFY({db, database_not_initialized, app}),
+          {error, database_not_initialized};
+        E ->
+          io:format("Unknown error: ~p~n", [E]),
+          {error, did_not_write}
+      end;
+    true ->
+      % ?NOTIFY({app, updated, App}),
+      {error, app_exists}
   end;
 create(NewProps) ->
   create(new(NewProps)).
@@ -74,7 +76,8 @@ update_by_name(Name) ->
 update([], _) -> ok;
 update(App, NewProps) when is_record(App, app) ->
   NewApp = update_proplist_for_app(App, NewProps),
-  save(NewApp);
+  ok = save(NewApp),
+  {updated, App};
 update(Name, NewProps) ->
   App = find_by_name(Name),
   update(App, NewProps).
@@ -115,6 +118,10 @@ validate_app_proplists(PropList) ->
       routing_param -> {Key, misc_utils:to_atom(Val)};
       min_instances -> {Key, misc_utils:to_integer(Val)};
       max_instances -> {Key, misc_utils:to_integer(Val)};
+      sticky -> case Val of
+        "true" -> {Key, true};
+        _ -> {Key, false}
+      end;
       timeout -> case Val of
         undefined -> 60 * 1000;
         _ -> {Key, misc_utils:to_integer(Val)}

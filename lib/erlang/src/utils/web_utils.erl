@@ -20,10 +20,18 @@ jsonify(JsonifiableBody) ->
     })
   ].
 
-binify(Proplist) ->
-  lists:map(fun(Ele) -> binify1(Ele) end, Proplist).
+binify([]) -> misc_utils:to_bin("[]");
+binify(List) ->
+  case io_lib:char_list(List) of
+    true -> misc_utils:to_bin(List);
+    false -> binify1(List, [])
+  end.
 
-binify1({Key, V}) ->
+binify1([], Acc) -> Acc;
+binify1([Hd|Rest], Acc) ->
+  binify1(Rest, [binify2(Hd)|Acc]).
+  
+binify2({Key, V}) ->
   case V of
     List when is_list(List) ->
       case io_lib:char_list(List) of
@@ -40,5 +48,5 @@ binify1({Key, V}) ->
     Tuple when is_tuple(Tuple) -> {Key, binify(Tuple)};
     E -> {Key, misc_utils:to_bin(E)}
   end;
-binify1(Ele) ->
+binify2(Ele) ->
   misc_utils:to_bin(Ele).
