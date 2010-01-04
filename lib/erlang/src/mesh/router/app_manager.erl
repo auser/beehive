@@ -378,7 +378,7 @@ maintain_bee_counts() ->
       case NumAppBees < App#app.min_instances of
         true ->
           % Uh oh, the minimum bees aren't running
-          start_new_instance_by_name(App#app.name);
+          start_number_of_bees(App#app.name, App#app.min_instances - NumAppBees);
         false ->
           case NumAppBees > App#app.max_instances of
             true ->
@@ -390,6 +390,14 @@ maintain_bee_counts() ->
     end, Apps),
   ok.
 
+start_number_of_bees(_, 0) -> ok;
+start_number_of_bees(Name, Count) ->
+  % This entire method will only start 1 instance at a time because
+  % we track the pending instances in app_handler.
+  % But keep this in here for the time being until we should address it
+  start_new_instance_by_name(Name),
+  start_number_of_bees(Name, Count - 1).
+  
 terminate_number_of_bees(_, 0) -> ok;
 terminate_number_of_bees([Bee|Rest], Count) ->
   ?NOTIFY({bee, terminate_please, Bee}),
