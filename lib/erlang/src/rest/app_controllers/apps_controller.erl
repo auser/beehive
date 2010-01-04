@@ -11,7 +11,28 @@
 -include ("http.hrl").
 -export ([get/1, post/2, put/2, delete/2]).
 
-get([]) -> 
+
+get([Name]) ->
+  case apps:find_by_name(Name) of
+    [] -> {struct, [{"error", ?BINIFY("App not found")}]};
+    App ->
+      {struct, [{
+        Name, ?BINIFY([
+          {"name", App#app.name},
+          {"url", App#app.url},
+          {"routing_param", App#app.routing_param},
+          {"owners", lists:map(fun(Owner) -> Owner#user.email end, user_apps:get_owners(App))},
+          {"updated_at", App#app.updated_at},
+          {"bee_picker", App#app.bee_picker},
+          {"min_instances", App#app.min_instances},
+          {"max_instances", App#app.max_instances},
+          {"timeout", App#app.timeout},
+          {"sticky", App#app.sticky},
+          {"latest_sha", App#app.sha}
+        ])
+      }]}
+  end;
+get(_) -> 
   All = apps:all(),
   {struct, [{
     "apps",
