@@ -389,16 +389,18 @@ maintain_bee_counts() ->
   lists:map(fun(App) ->
       AppBees = lists:filter(fun(B) -> B#bee.status =:= ready end, bees:find_all_by_name(App#app.name)),
       NumAppBees = length(AppBees),
-      case NumAppBees < App#app.min_instances of
+      Min = misc_utils:to_integer(App#app.min_instances),
+      Max = misc_utils:to_integer(App#app.max_instances),
+      case NumAppBees < Min of
         true ->
           % Uh oh, the minimum bees aren't running
-          start_number_of_bees(App#app.name, App#app.min_instances - NumAppBees);
+          start_number_of_bees(App#app.name, Min - NumAppBees);
         false ->
-          case NumAppBees > App#app.max_instances of
+          case NumAppBees > Max of
             true ->
               % Uh oh, somehow we got too many bees
               ?LOG(debug, "The number of bees running exceeds the number of maximum bees: ~p", [NumAppBees]),
-              terminate_number_of_bees(AppBees, NumAppBees - App#app.max_instances);
+              terminate_number_of_bees(AppBees, NumAppBees - Max);
             false -> ok
           end
       end
