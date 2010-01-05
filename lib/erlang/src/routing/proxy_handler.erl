@@ -140,7 +140,6 @@ proxy_loop(#state{client_socket = CSock, server_socket = SSock, server_pid = SPi
 		{tcp_closed, SPid, _Sock} ->
   	  terminate(normal, State);
 		{tcp_closed, CPid, _Sock} ->
-		  ?LOG(debug, "Client cut off the connection", []),
   	  terminate(normal, State);
   	{tcp_error, SSock} ->
   	  ?LOG(error, "tcp_error on server: ~p", [SSock]),
