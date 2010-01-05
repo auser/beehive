@@ -102,6 +102,7 @@ initialize({go, From}, #state{start_command = StartCmd, port_options = Opts, var
       string:strip(PidStr, both, $\n)
     after 2000 -> exit({error, port_pid})
   end,
+  io:format("PortPid: ~p~n", [PortPid]),
   {next_state, running, State#state{port_process = Port, caller = From, port_pid = PortPid}};
   
 initialize(_Event, State) ->
@@ -254,4 +255,3 @@ kill_os_process(#state{port_pid = PortPid, vars = Vars, stop_command = StopCmd} 
       open_port({spawn, Command}, [stderr_to_stdout]),
       ok
   end.
-  
