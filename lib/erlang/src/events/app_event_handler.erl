@@ -201,11 +201,11 @@ handle_launch_app(App, Host, Sha) ->
   end.
 
 % Kill off all other bees
-kill_other_bees(#bee{app_name = Name} = StartedBee) ->
+kill_other_bees(#bee{app_name = Name, id = StartedId, commit_hash = StartedSha} = StartedBee) ->
   case bees:find_all_by_name(Name) of
     [] ->
       ok;
     CurrentBees ->
-      OtherBees = lists:filter(fun(B) -> B#bee.id =/= StartedBee#bee.id orelse B#bee.commit_hash =/= StartedBee#bee.commit_hash end, CurrentBees),
+      OtherBees = lists:filter(fun(B) -> B#bee.id =/= StartedId orelse B#bee.commit_hash =/= StartedSha end, CurrentBees),
       lists:map(fun(B) -> ?NOTIFY({bee, terminate_please, B}) end, OtherBees)
   end.

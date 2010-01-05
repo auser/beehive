@@ -103,7 +103,7 @@ pulling({go, From}, #state{bee = #bee{app_name = AppName} = Bee} = State) ->
           {next_state, starting, State#state{bee = Bee#bee{storage_node = Node}, from = From}};
         _ ->
           io:format("Error?~n"),
-          {error, no_app, State}
+          {stop, no_app, State#state{from = From}}
       end
   end;
   

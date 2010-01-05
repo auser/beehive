@@ -46,7 +46,7 @@ exist(Name) ->
 create(App) when is_record(App, app) ->
   case exist(App#app.name) of
     false ->
-      case db:write(App) of
+      case save(App) of
         ok -> 
           ?NOTIFY({app, created, App}),
           {ok, App};
