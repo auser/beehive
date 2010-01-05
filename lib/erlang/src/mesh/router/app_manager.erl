@@ -203,8 +203,8 @@ handle_info(_Info, State) ->
 %% cleaning up. When it returns, the gen_server terminates with Reason.
 %% The return value is ignored.
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-  terminate_all(),
+terminate(Reason, _State) ->
+  ?LOG(info, "Terminating app_manager because: ~p", [Reason]),
   ok.
 
 %%--------------------------------------------------------------------
