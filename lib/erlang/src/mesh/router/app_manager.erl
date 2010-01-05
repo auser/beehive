@@ -84,7 +84,7 @@ init([]) ->
   % Run maintenance
   % timer:send_interval(timer:seconds(20), {ping_bees}),
   timer:send_interval(timer:minutes(5), {garbage_collection}),
-  timer:send_interval(timer:minutes(2), {maintain_bee_counts}),
+  % timer:send_interval(timer:minutes(2), {maintain_bee_counts}),
   timer:send_interval(timer:minutes(2), {clean_up_apps}),
   {ok, #state{}}.
 
