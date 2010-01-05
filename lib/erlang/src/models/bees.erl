@@ -28,11 +28,11 @@
   find_by_id/1,
   find_all_grouped_by_host/0,
   create/1,
-  update/1, transactional_update/1,
+  update/1,
   delete/1, delete/3,
   all/0, 
   new/1,
-  save/1,
+  save/1,transactional_save/1,
   is_the_same_as/2
 ]).
 
@@ -81,7 +81,7 @@ save(Bee) ->
   end.
 
 % Grrr update!
-transactional_update(F) ->
+transactional_save(F) ->
   db:transaction(F()).
   
 update(Backend) -> 

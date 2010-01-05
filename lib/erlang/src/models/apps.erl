@@ -20,6 +20,8 @@
   update/2, 
   update_by_name/1,
   delete/1, new/1, 
+  save/1,
+  transactional_save/1,
   update_proplist_for_app/2,
   build_on_disk_app_name/1
 ]).
@@ -88,6 +90,9 @@ delete(Name) ->
 
 all() ->
   db:find(qlc:q([ B || B <- mnesia:table(app) ])).
+
+transactional_save(F) ->
+  db:transaction(F()).
 
 save(App) when is_record(App, app) ->
   db:write(App).

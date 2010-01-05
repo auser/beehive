@@ -140,11 +140,18 @@ handle_info(flush_old_processes, State) ->
   end, ets:tab2list(?LAUNCHERS_PID_TO_APP)),
   {ok, State};
 
-handle_info({bee_started_normally, Bee, App}, State) ->
+handle_info({bee_started_normally, #bee{commit_hash = Sha} = Bee, #app{name = AppName} = App}, State) ->
+  % StartedBee#bee{commit_hash = Sha}, App#app{sha = Sha}
   ?LOG(debug, "app_event_handler got bee_started_normally: ~p, ~p", [Bee, App]),
-  apps:save(App),
-  bees:save(Bee),
-  kill_other_bees(Bee),
+  transactional_save(fun() ->
+    RealApp = apps:find_by_name(AppName),
+    apps:save(App#app{sha = Sha}),
+  end),
+  bees:transactional_save(fun() ->
+    RealBee = bees:find_by_id(Bee#bee.id),
+    bees:save(RealBee#bee{lastresp_time = date_util:now_to_seconds()})
+  end),
+  ok = kill_other_bees(Bee),
   {ok, State};
   
 handle_info(Info, State) ->
@@ -207,5 +214,6 @@ kill_other_bees(#bee{app_name = Name, id = StartedId, commit_hash = StartedSha} 
       ok;
     CurrentBees ->
       OtherBees = lists:filter(fun(B) -> B#bee.id =/= StartedId orelse B#bee.commit_hash =/= StartedSha end, CurrentBees),
-      lists:map(fun(B) -> ?NOTIFY({bee, terminate_please, B}) end, OtherBees)
+      lists:map(fun(B) -> ?NOTIFY({bee, terminate_please, B}) end, OtherBees),
+      ok
   end.
