@@ -362,6 +362,8 @@ ping_bees() ->
 
 % GARBAGE COLLECTION
 handle_non_ready_bees() ->
+  TerminatedBees = lists:filter(fun(B) -> B#bee.status =:= terminated end, bees:all()),
+  [ cleanup_bee(B) || B <- TerminatedBees ],
   DownBees = lists:filter(fun(B) -> B#bee.status =/= ready andalso B#bee.sticky =:= false end, bees:all()),
   lists:map(fun(B) ->
     spawn(fun() -> try_to_reconnect_to_bee(B, 5) end)
