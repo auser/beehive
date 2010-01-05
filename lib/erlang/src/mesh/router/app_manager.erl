@@ -420,6 +420,7 @@ try_to_reconnect_to_bee(B, Num) ->
 
 % Cleanup the bee. Remove traces of the bee from the system
 cleanup_bee(B) ->
+  (catch node_manager:request_to_terminate_bee(B)),
   ?QSTORE:delete_queue(?WAIT_DB, B#bee.app_name),
   bees:delete(B).
 
