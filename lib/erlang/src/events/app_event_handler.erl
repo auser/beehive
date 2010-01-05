@@ -153,7 +153,10 @@ handle_info({bee_started_normally, #bee{commit_hash = Sha} = Bee, #app{name = Ap
   end),
   ok = kill_other_bees(Bee),
   {ok, State};
-  
+
+handle_info({bee_terminated, _Bee}, State) ->
+  {ok, State};  
+
 handle_info(Info, State) ->
   ?LOG(debug, "app_event_handler info: ~p", [Info]),
   % apps:create(App),

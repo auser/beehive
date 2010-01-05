@@ -149,8 +149,7 @@ handle_cast(_Msg, State) ->
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------  
 handle_info({bee_terminated, Bee}, State) ->
-  RealBee = bees:find_by_id(Bee#bee.id),
-  bees:update(RealBee#bee{status = terminated}),
+  ?NOTIFY({bee, bee_terminated, Bee}),
   {noreply, State};
 
 handle_info({clean_up}, State) ->

@@ -367,8 +367,7 @@ handle_info({update_node_stats}, State) ->
   {noreply, State};
 
 handle_info({bee_terminated, Bee}, State) ->
-  RealBee = bees:find_by_id(Bee#bee.id),
-  bees:update(RealBee#bee{status = terminated}),
+  ?NOTIFY({bee, bee_terminated, Bee}),
   {noreply, State};
   
 handle_info(Info, State) ->
