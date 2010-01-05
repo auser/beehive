@@ -143,9 +143,9 @@ handle_info(flush_old_processes, State) ->
 handle_info({bee_started_normally, #bee{commit_hash = Sha} = Bee, #app{name = AppName} = App}, State) ->
   % StartedBee#bee{commit_hash = Sha}, App#app{sha = Sha}
   ?LOG(debug, "app_event_handler got bee_started_normally: ~p, ~p", [Bee, App]),
-  transactional_save(fun() ->
+  apps:transactional_save(fun() ->
     RealApp = apps:find_by_name(AppName),
-    apps:save(App#app{sha = Sha}),
+    apps:save(RealApp#app{sha = Sha})
   end),
   bees:transactional_save(fun() ->
     RealBee = bees:find_by_id(Bee#bee.id),
@@ -208,7 +208,7 @@ handle_launch_app(App, Host, Sha) ->
   end.
 
 % Kill off all other bees
-kill_other_bees(#bee{app_name = Name, id = StartedId, commit_hash = StartedSha} = StartedBee) ->
+kill_other_bees(#bee{app_name = Name, id = StartedId, commit_hash = StartedSha} = _StartedBee) ->
   case bees:find_all_by_name(Name) of
     [] ->
       ok;
