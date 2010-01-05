@@ -111,7 +111,7 @@ launching(Event, State) ->
 pending({updated_bee_status, BackendStatus}, #state{app = App, bee = Bee, from = From, latest_sha = Sha} = State) ->
   ?LOG(info, "Application started ~p: ~p", [BackendStatus, App#app.name]),
   % App started normally
-  From ! {bee_started_normally, Bee, App#app{sha = Sha}},
+  From ! {bee_started_normally, Bee#bee{status = BackendStatus}, App#app{sha = Sha}},
   {stop, normal, State};
   
 pending(Event, State) ->

@@ -142,26 +142,16 @@ starting(Event, Bee) ->
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, starting]),
   {next_state, launching, Bee}.
 
-success({bee_started_normally, StartedBee, App}, #bee{app_name = Name, commit_hash = Sha} = Bee) ->
+success({bee_started_normally, StartedBee, App}, #bee{commit_hash = Sha} = _Bee) ->
   io:format("bee_started_normally: ~p for new hash: ~p~n", [StartedBee, Sha]),
+  % Move these!
+  apps:create(App),
+  bees:save(StartedBee),
+  kill_other_bees(StartedBee),
   
-  case bees:find_all_by_name(Name) of
-    [] ->
-      apps:create(App#app{sha = Sha}),
-      bees:save(StartedBee#bee{commit_hash = Sha}),
-      {stop, normal, Bee};
-    CurrentBees ->
-      OtherBees = lists:filter(fun(B) -> B#bee.id =/= StartedBee#bee.id orelse B#bee.commit_hash =/= StartedBee#bee.commit_hash end, CurrentBees),
-      lists:map(fun(B) ->
-        ?NOTIFY({bee, terminate_please, B})
-      end, OtherBees),
-      
-      apps:create(App#app{sha = Sha}),
-      bees:save(StartedBee#bee{commit_hash = Sha}),
-      
-      {stop, normal, Bee}
-  end;
-
+  app_manager:kill_other_bees(StartedBee#bee{commit_hash = Sha}, App#app{sha = Sha}),
+  {stop, normal, StartedBee};
+  
 success(Event, Bee) ->
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, success]),
   {stop, normal, Bee}.
@@ -263,3 +253,13 @@ code_change(_OldVsn, BeeName, Bee, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
+
+% Kill off all other bees
+kill_other_bees(#bee{app_name = Name} = StartedBee) ->
+  case bees:find_all_by_name(Name) of
+    [] ->
+      ok;
+    CurrentBees ->
+      OtherBees = lists:filter(fun(B) -> B#bee.id =/= StartedBee#bee.id orelse B#bee.commit_hash =/= StartedBee#bee.commit_hash end, CurrentBees),
+      lists:map(fun(B) -> ?NOTIFY({bee, terminate_please, B}) end, OtherBees)
+  end.

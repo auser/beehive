@@ -139,7 +139,10 @@ handle_info(flush_old_processes, State) ->
     end
   end, ets:tab2list(?LAUNCHERS_PID_TO_APP)),
   {ok, State};
-handle_info(_Info, State) ->
+handle_info(Info, State) ->
+  ?LOG(debug, "app_event_handler info: ~p", [Info]),
+  % apps:create(App),
+  % bees:save(StartedBee);
   {ok, State}.
 
 %%--------------------------------------------------------------------
