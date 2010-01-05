@@ -36,6 +36,10 @@
 -define (APP_HANDLER, app_handler).
 -define (STORAGE_SRV, bh_storage_srv).
 
+-record (state, {
+  bee,
+  from
+}).
 
 %%====================================================================
 %% API
@@ -71,7 +75,7 @@ init([App]) when is_record(App, app) ->
   init([App#app.name]);
 
 init([AppName])  ->
-  {ok, pulling, #bee{app_name = AppName}}.
+  {ok, pulling, #state{bee = #bee{app_name = AppName}}}.
 
 %%--------------------------------------------------------------------
 %% Function:
@@ -85,7 +89,7 @@ init([AppName])  ->
 %% the current state name BeeName is called to handle the event. It is also
 %% called if a timeout occurs.
 %%--------------------------------------------------------------------
-pulling({go, _From}, #bee{app_name = AppName} = Bee) ->
+pulling({go, From}, #state{bee = #bee{app_name = AppName} = Bee} = State) ->
   PendingBees = lists:filter(fun(B) -> B#bee.status =:= pending end, bees:find_all_by_name(AppName)),
   case length(PendingBees) > 0 of
     true -> 
@@ -96,29 +100,29 @@ pulling({go, _From}, #bee{app_name = AppName} = Bee) ->
         App when is_record(App, app) ->
           % rpc:call(Node, ?STORAGE_SRV, pull_repos, [App, self()]);
           rpc:call(Node, ?STORAGE_SRV, build_bee, [App, self()]),
-          {next_state, starting, Bee#bee{storage_node = Node}};
+          {next_state, starting, State#state{bee = Bee#bee{storage_node = Node}, from = From}};
         _ ->
           io:format("Error?~n"),
-          {error, no_app, Bee}
+          {error, no_app, State}
       end
   end;
   
-pulling(Event, Bee) ->
+pulling(Event, State) ->
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, pulling]),
-  {next_state, pulling, Bee}.
+  {next_state, pulling, State}.
 
-squashing({pulled, _Info}, Bee) ->
-  {next_state, starting, Bee};
+squashing({pulled, _Info}, State) ->
+  {next_state, starting, State};
 
-squashing({error, Code}, Bee) ->
+squashing({error, Code}, State) ->
   io:format("Error: ~p~n", [Code]),
-  {stop, Code, Bee};
+  {stop, Code, State};
 
-squashing(Event, Bee) ->
+squashing(Event, State) ->
   io:format("Received: ~p~n", [Event]),
-  {next_state, squashing, Bee}.
+  {next_state, squashing, State}.
 
-starting({bee_built, Info}, #bee{app_name = AppName} = Bee) ->
+starting({bee_built, Info}, #state{bee = #bee{app_name = AppName} = Bee} = State) ->
   % Return is bee_size dir_size
   % Strip off the last newline... stupid bash
   BeeSize = proplists:get_value(bee_size, Info),
@@ -134,31 +138,27 @@ starting({bee_built, Info}, #bee{app_name = AppName} = Bee) ->
   
   NewBee = Bee#bee{bee_size = BeeSize, dir_size = DirSize, host_node = Node, commit_hash = Sha},
   io:format("bee_built: ~p for new hash: ~p~n", [NewBee, Sha]),
-  {next_state, success, NewBee};
+  {next_state, success, State#state{bee = NewBee}};
 
-starting({error, could_not_pull_bee}, Bee) ->
-  {stop, could_not_pull_bee, Bee};
-starting(Event, Bee) ->
+starting({error, could_not_pull_bee}, State) ->
+  {stop, could_not_pull_bee, State};
+  
+starting(Event, State) ->
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, starting]),
-  {next_state, launching, Bee}.
+  {next_state, launching, State}.
 
-success({bee_started_normally, StartedBee, App}, #bee{commit_hash = Sha} = _Bee) ->
+success({bee_started_normally, StartedBee, App}, #state{bee = #bee{commit_hash = Sha} = _Bee, from = From} = State) ->
   io:format("bee_started_normally: ~p for new hash: ~p~n", [StartedBee, Sha]),
-  % Move these!
-  apps:create(App),
-  bees:save(StartedBee),
-  kill_other_bees(StartedBee),
+  From ! {bee_started_normally, StartedBee#bee{commit_hash = Sha}, App#app{sha = Sha}},
+  {stop, normal, State#state{bee = StartedBee}};
   
-  app_manager:kill_other_bees(StartedBee#bee{commit_hash = Sha}, App#app{sha = Sha}),
-  {stop, normal, StartedBee};
-  
-success(Event, Bee) ->
+success(Event, State) ->
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, success]),
-  {stop, normal, Bee}.
+  {stop, normal, State}.
   
-state_name(Event, Bee) ->
+state_name(Event, State) ->
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, state_name]),
-  {next_state, state_name, Bee}.
+  {next_state, state_name, State}.
 
 %%--------------------------------------------------------------------
 %% Function:
@@ -175,10 +175,10 @@ state_name(Event, Bee) ->
 %% gen_fsm:sync_send_event/2,3, the instance of this function with the same
 %% name as the current state name BeeName is called to handle the event.
 %%--------------------------------------------------------------------
-state_name(Event, _From, Bee) ->
+state_name(Event, _From, State) ->
   Reply = ok,
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, state_name]),
-  {reply, Reply, state_name, Bee}.
+  {reply, Reply, state_name, State}.
 
 %%--------------------------------------------------------------------
 %% Function:
@@ -191,9 +191,9 @@ state_name(Event, _From, Bee) ->
 %% gen_fsm:send_all_state_event/2, this function is called to handle
 %% the event.
 %%--------------------------------------------------------------------
-handle_event(Event, BeeName, Bee) ->
+handle_event(Event, BeeName, State) ->
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, BeeName]),
-  {next_state, BeeName, Bee}.
+  {next_state, BeeName, State}.
 
 %%--------------------------------------------------------------------
 %% Function:
@@ -210,9 +210,9 @@ handle_event(Event, BeeName, Bee) ->
 %% gen_fsm:sync_send_all_state_event/2,3, this function is called to handle
 %% the event.
 %%--------------------------------------------------------------------
-handle_sync_event(_Event, _From, BeeName, Bee) ->
+handle_sync_event(_Event, _From, BeeName, State) ->
   Reply = ok,
-  {reply, Reply, BeeName, Bee}.
+  {reply, Reply, BeeName, State}.
 
 %%--------------------------------------------------------------------
 %% Function:
@@ -224,12 +224,12 @@ handle_sync_event(_Event, _From, BeeName, Bee) ->
 %% other message than a synchronous or asynchronous event
 %% (or a system message).
 %%--------------------------------------------------------------------
-handle_info({get_state}, _BeeName, Bee) ->
-  {reply, Bee, Bee};
-handle_info({stop}, _BeeName, Bee) ->
-  {stop, normal, Bee};
-handle_info(Info, BeeName, Bee) ->
-  apply(?MODULE, BeeName, [Info, Bee]).
+handle_info({get_state}, _BeeName, State) ->
+  {reply, State, State};
+handle_info({stop}, _BeeName, State) ->
+  {stop, normal, State};
+handle_info(Info, BeeName, State) ->
+  apply(?MODULE, BeeName, [Info, State]).
   % {next_state, BeeName, Bee}.
 
 %%--------------------------------------------------------------------
@@ -239,7 +239,7 @@ handle_info(Info, BeeName, Bee) ->
 %% necessary cleaning up. When it returns, the gen_fsm terminates with
 %% Reason. The return value is ignored.
 %%--------------------------------------------------------------------
-terminate(_Reason, _BeeName, _Bee) ->
+terminate(_Reason, _BeeName, _State) ->
   ok.
 
 %%--------------------------------------------------------------------
@@ -247,19 +247,9 @@ terminate(_Reason, _BeeName, _Bee) ->
 %% code_change(OldVsn, BeeName, Bee, Extra) -> {ok, BeeName, NewBee}
 %% Description: Convert process state when code is changed
 %%--------------------------------------------------------------------
-code_change(_OldVsn, BeeName, Bee, _Extra) ->
-  {ok, BeeName, Bee}.
+code_change(_OldVsn, BeeName, State, _Extra) ->
+  {ok, BeeName, State}.
 
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-
-% Kill off all other bees
-kill_other_bees(#bee{app_name = Name} = StartedBee) ->
-  case bees:find_all_by_name(Name) of
-    [] ->
-      ok;
-    CurrentBees ->
-      OtherBees = lists:filter(fun(B) -> B#bee.id =/= StartedBee#bee.id orelse B#bee.commit_hash =/= StartedBee#bee.commit_hash end, CurrentBees),
-      lists:map(fun(B) -> ?NOTIFY({bee, terminate_please, B}) end, OtherBees)
-  end.

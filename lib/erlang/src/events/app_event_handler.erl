@@ -139,6 +139,13 @@ handle_info(flush_old_processes, State) ->
     end
   end, ets:tab2list(?LAUNCHERS_PID_TO_APP)),
   {ok, State};
+
+handle_info({bee_started_normally, Bee, App}, State) ->
+  apps:create(App),
+  bees:save(Bee),
+  kill_other_bees(Bee),
+  {ok, State};
+  
 handle_info(Info, State) ->
   ?LOG(debug, "app_event_handler info: ~p", [Info]),
   % apps:create(App),
@@ -190,4 +197,14 @@ handle_launch_app(App, Host, Sha) ->
       app_launcher_fsm:launch(P, self()),
       ets:insert(?LAUNCHERS_APP_TO_PID, {App, P, Now}),
       ets:insert(?LAUNCHERS_PID_TO_APP, {P, App, Now})
+  end.
+
+% Kill off all other bees
+kill_other_bees(#bee{app_name = Name} = StartedBee) ->
+  case bees:find_all_by_name(Name) of
+    [] ->
+      ok;
+    CurrentBees ->
+      OtherBees = lists:filter(fun(B) -> B#bee.id =/= StartedBee#bee.id orelse B#bee.commit_hash =/= StartedBee#bee.commit_hash end, CurrentBees),
+      lists:map(fun(B) -> ?NOTIFY({bee, terminate_please, B}) end, OtherBees)
   end.
