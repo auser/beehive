@@ -96,7 +96,8 @@ CMD="/usr/sbin/chroot $MOUNT_LOCATION \
 echo "start_command $CMD"
 
 # Right now, this umounts all... consider: grep -v $SHA again
-STOPCMD="ps ax -o '%p %r %y %x %c' | grep [[PID]] | awk '{print \$1}' | /usr/bin/xargs /bin/kill -INT; \
+STOPCMD="ps ax -o '%p %r %y %x %c' | grep [[PID]] | awk '{print \$1}' | /usr/bin/xargs /bin/kill -INT; 
+  ps ax -o '%p %r %y %x %c' | grep [[PID]] | awk '{print \$1}' | /usr/bin/xargs /bin/kill -9;\
   MOUNTED=\$(mount | grep $MOUNT_LOCATION | awk '{a[i++]=\$3} END {for (j=i-1; j>=0;) print a[j--] }'); \
   for i in \$MOUNTED; do sudo umount \$i -f >/dev/null 2>&1; done"
 
