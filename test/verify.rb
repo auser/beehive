@@ -60,7 +60,7 @@ class VerifyCloud < Test::Unit::TestCase
  
  def test_delete_app
   app = delete("/apps/test_app?token=#{token}")
-  p app
+  assert_equal app["app"], "deleted"
   # app = delete("/apps/test_app", {:token => token})
  end
  
