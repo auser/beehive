@@ -10,7 +10,6 @@ class VerifyCloud < Test::Unit::TestCase
   
   def setup
     @host="getbeehive.com"
-    # @host="beehive.com:8080"
     @token = get_token("root@getbeehive.com", 'test')
   end
   
@@ -59,6 +58,11 @@ class VerifyCloud < Test::Unit::TestCase
   assert_equal app["app"], "test_app"
  end
  
+ def test_delete_app
+  app = delete("/apps/test_app", {:token => token})
+ end
+ 
+ # pending
  def test_can_only_list_my_apps
  end
  
