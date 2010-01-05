@@ -59,7 +59,9 @@ class VerifyCloud < Test::Unit::TestCase
  end
  
  def test_delete_app
-  app = delete("/apps/test_app", {:token => token})
+  app = delete("/apps/test_app?token=#{token}")
+  p app
+  # app = delete("/apps/test_app", {:token => token})
  end
  
  # pending

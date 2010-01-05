@@ -19,6 +19,20 @@ jsonify(JsonifiableBody) ->
         ]
     })
   ].
+  
+% Turn query strings into proplists
+% String = token=hsdhfhdf&big=bear
+query_params_to_proplist(QueryString) ->
+  Strings = string:tokens(QueryString, "&"),
+  lists:flatten(lists:map(fun(Str) -> handle_single_query_key(Str, []) end, Strings)).
+
+handle_single_query_key([$=|Rest], Acc) -> handle_single_query_value(Rest, lists:reverse(Acc), []);
+handle_single_query_key([], _Acc) -> [];
+handle_single_query_key([Chr|Rest], Acc) -> handle_single_query_key(Rest, [Chr|Acc]).
+
+handle_single_query_value([], Key, Val) -> {misc_utils:to_atom(Key), misc_utils:to_list(lists:reverse(Val))};
+handle_single_query_value([Chr|Rest], K, Val) -> handle_single_query_value(Rest, K, [Chr|Val]).
+  
 
 binify([]) -> misc_utils:to_bin("[]");
 binify(List) ->

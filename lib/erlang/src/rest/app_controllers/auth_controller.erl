@@ -10,9 +10,9 @@
 -include ("http.hrl").
 -include ("beehive.hrl").
 
--export ([get/1, post/2, put/2, delete/2]).
+-export ([get/2, post/2, put/2, delete/2]).
 
-get(_) -> 
+get(_, _Data) -> 
   {struct, [{"beehive", <<"app, node, bees, stats">>}]}.
 
 post([], Data) ->

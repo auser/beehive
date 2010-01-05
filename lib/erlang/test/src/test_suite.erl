@@ -7,5 +7,6 @@ all_test_() ->
     {module, bh_md5_test},
     {module, string_test},
     {module, bh_host_test},
+    {module, web_utils_test},
     {module, misc_utils_test}
   ].

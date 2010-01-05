@@ -10,10 +10,10 @@
 -include ("beehive.hrl").
 -include ("common.hrl").
 -include ("http.hrl").
--export ([get/1, post/2, put/2, delete/2]).
+-export ([get/2, post/2, put/2, delete/2]).
 
 
-get([Name]) ->
+get([Name], _Data) ->
   case apps:find_by_name(Name) of
     [] -> {struct, [{"error", ?BINIFY("App not found")}]};
     App ->
@@ -34,7 +34,7 @@ get([Name]) ->
         {struct, ?BINIFY(AppDetails)}
       }]}
   end;
-get(_) -> 
+get(_, _Data) -> 
   All = apps:all(),
   {struct, [{
     "apps",
@@ -92,6 +92,7 @@ put([Name], Data) ->
 put(_Path, _Data) -> "unhandled".
 
 delete([Name], Data) ->
+  io:format("Data: ~p~n", [Data]),
   case auth_utils:get_authorized_user(Data) of
     false -> ?JSON_ERROR("No user defined or invalid token");
     _ReqUser ->

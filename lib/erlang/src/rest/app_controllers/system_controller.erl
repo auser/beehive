@@ -8,9 +8,9 @@
 
 -module (system_controller).
 -include ("http.hrl").
--export ([get/1, post/2, put/2, delete/2]).
+-export ([get/2, post/2, put/2, delete/2]).
 
-get(_) -> 
+get(_, _Data) -> 
   {struct, [{"beehive", ?BINIFY(["routes"])}]}.
 
 post(["_reload"], Data) ->

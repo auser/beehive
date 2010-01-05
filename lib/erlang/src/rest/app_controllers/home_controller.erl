@@ -8,9 +8,9 @@
 
 -module (home_controller).
 -include ("http.hrl").
--export ([get/1, post/2, put/2, delete/2]).
+-export ([get/2, post/2, put/2, delete/2]).
 
-get(_) -> 
+get(_, _Data) -> 
   ?JSON_MSG("beehive", ["apps", "nodes", "bees", "stats", "users"]).
 
 post(_Path, _Data) -> error("unhandled").

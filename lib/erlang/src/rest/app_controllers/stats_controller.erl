@@ -12,13 +12,13 @@
 -include ("common.hrl").
 -include ("http.hrl").
 
--export ([get/1, post/2, put/2, delete/2]).
+-export ([get/2, post/2, put/2, delete/2]).
     
 % PATH HANDLING
-get([]) ->
+get([], _Data) ->
   format_proxy_state();
 
-get(_UnsupportedPath) ->
+get(_UnsupportedPath, _Data) ->
   "GET".
 
 post("/new", Data) ->

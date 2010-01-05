@@ -116,9 +116,12 @@ dispatch_requests(Req) ->
 handle("/favicon.ico", Req) -> Req:respond({200, [{"Content-Type", "text/html"}], ""});
 
 handle(Path, Req) ->
-  BaseController = lists:concat([top_level_request(clean_path(Path)), "_controller"]),
+  BaseController = lists:concat([top_level_request(Path), "_controller"]),
   CAtom = list_to_atom(BaseController),
-  ControllerPath = parse_controller_path(clean_path(Path)),
+  ControllerPath = parse_controller_path(Path),
+  
+  QueryString = lists:map(fun({K,V}) -> {misc_utils:to_atom(K), misc_utils:to_list(V)} end, Req:parse_qs()),
+  Data = lists:flatten([QueryString|decode_data_from_request(Req)]),
   
   case CAtom of
     home ->
@@ -126,10 +129,7 @@ handle(Path, Req) ->
       Req:ok({"text/html", IndexContents});
     ControllerAtom -> 
     Meth = clean_method(Req:get(method)),
-    case Meth of
-      get -> run_controller(Req, ControllerAtom, Meth, [ControllerPath]);
-      _ -> run_controller(Req, ControllerAtom, Meth, [ControllerPath, decode_data_from_request(Req)])
-    end
+    run_controller(Req, ControllerAtom, Meth, [ControllerPath, Data])
   end.
 
 % Call the controller action here
@@ -167,6 +167,13 @@ clean_path(Path) ->
   case string:str(Path, "?") of
     0 -> Path;
     N -> string:substr(Path, 1, N - 1)
+  end.
+
+% Get the query params from the path
+query_params(Path) ->
+  case string:str(Path, "?") of
+    0 -> "";
+    N -> string:substr(Path, N+1)
   end.
 
 % Query about the top level request path is
