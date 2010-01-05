@@ -325,7 +325,7 @@ clean_up_on_app_timeout(#bee{lastresp_time=LastReq} = Bee, #app{timeout=Timeout,
 % If the instance is busy, but hasn't served a request in a long time, kill it
 clean_up_on_busy_and_stale_status(#bee{status = Status, lastresp_time = LastReq} = Bee, #app{timeout = Timeout} = App, Proplist) ->
 	TimeDiff = date_util:time_difference_from_now(LastReq),
-  ?LOG(info, "clean_up_on_busy_and_stale_status: ~p > ~p + ~p", [TimeDiff, Timeout, ?TIME_BUFFER]),
+  % ?LOG(info, "clean_up_on_busy_and_stale_status: ~p > ~p + ~p", [TimeDiff, Timeout, ?TIME_BUFFER]),
   if
     Status =:= busy andalso TimeDiff > Timeout + ?TIME_BUFFER -> 
 			?NOTIFY({bee, terminate_please, Bee});
@@ -335,7 +335,7 @@ clean_up_on_busy_and_stale_status(#bee{status = Status, lastresp_time = LastReq}
 % If the application has been running for a while, kill it
 clean_up_on_long_running_instance(#bee{start_time = StartTime} = Bee, _App, Proplist) ->
 	TimeDiff = date_util:time_difference_from_now(StartTime),
-  ?LOG(info, "clean_up_on_long_running_instance: ~p > ~p", [TimeDiff, ?RUN_INSTANCE_TIME_PERIOD]),
+  % ?LOG(info, "clean_up_on_long_running_instance: ~p > ~p", [TimeDiff, ?RUN_INSTANCE_TIME_PERIOD]),
   if
     TimeDiff > ?RUN_INSTANCE_TIME_PERIOD -> ?NOTIFY({bee, terminate_please, Bee});
     true -> Proplist

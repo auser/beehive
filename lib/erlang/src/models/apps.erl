@@ -128,7 +128,7 @@ validate_app_proplists(PropList) ->
         _ -> {Key, false}
       end;
       timeout -> case Val of
-        undefined -> {Key, 60 * 1000};
+        undefined -> {Key, 10 * 1000};
         _ -> {Key, misc_utils:to_integer(Val)*1000}
       end;
       updated_at -> {Key, date_util:now_to_seconds()};
