@@ -22,3 +22,4 @@ TODO:
 * Authentication for REST
 * Vacation
 * App environment setup (allow for modular app environments?)
+* Bug - /apps deploy with min/max instances
