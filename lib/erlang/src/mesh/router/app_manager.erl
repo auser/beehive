@@ -308,14 +308,16 @@ clean_up_on_app_timeout(#bee{lastresp_time=LastReq} = Bee, #app{timeout=Timeout,
   if
     % stop_instance(Bee, App, From)
     % NumBees > Min andalso 
-    TimeDiff > Timeout andalso Sticky =/= true -> ?NOTIFY({bee, terminate_please, Bee});
+    TimeDiff > Timeout andalso Sticky =/= true -> 
+      ?LOG(debug, "The bee has passed it's prime: ~p > ~p: ~p (sticky: ~p)", [TimeDiff, Timeout, Sticky]),
+      ?NOTIFY({bee, terminate_please, Bee});
     true -> clean_up_on_busy_and_stale_status(Bee, App, Proplist)
   end.
     
 % If the instance is busy, but hasn't served a request in a long time, kill it
 clean_up_on_busy_and_stale_status(#bee{status = Status, lastresp_time = LastReq} = Bee, #app{timeout = Timeout} = App, Proplist) ->
 	TimeDiff = date_util:time_difference_from_now(LastReq),
-  % ?LOG(info, "clean_up_on_busy_and_stale_status: ~p > ~p + ~p", [TimeDiff, Timeout, ?TIME_BUFFER]),
+  ?LOG(info, "clean_up_on_busy_and_stale_status: ~p > ~p + ~p", [TimeDiff, Timeout, ?TIME_BUFFER]),
   if
     Status =:= busy andalso TimeDiff > Timeout + ?TIME_BUFFER -> 
 			?NOTIFY({bee, terminate_please, Bee});
@@ -325,7 +327,7 @@ clean_up_on_busy_and_stale_status(#bee{status = Status, lastresp_time = LastReq}
 % If the application has been running for a while, kill it
 clean_up_on_long_running_instance(#bee{start_time = StartTime} = Bee, _App, Proplist) ->
 	TimeDiff = date_util:time_difference_from_now(StartTime),
-  % ?LOG(info, "clean_up_on_long_running_instance: ~p > ~p", [TimeDiff, ?RUN_INSTANCE_TIME_PERIOD]),
+  ?LOG(info, "clean_up_on_long_running_instance: ~p > ~p", [TimeDiff, ?RUN_INSTANCE_TIME_PERIOD]),
   if
     TimeDiff > ?RUN_INSTANCE_TIME_PERIOD -> ?NOTIFY({bee, terminate_please, Bee});
     true -> Proplist
@@ -363,9 +365,12 @@ ping_bees() ->
 % GARBAGE COLLECTION
 handle_non_ready_bees() ->
   TerminatedBees = lists:filter(fun(B) -> B#bee.status =:= terminated end, bees:all()),
+  ?LOG(debug, "garbage_collection on terminated: ~p", [TerminatedBees]),
   [ cleanup_bee(B) || B <- TerminatedBees ],
+  
   DownBees = lists:filter(fun(B) -> B#bee.status =/= ready andalso B#bee.sticky =:= false end, bees:all()),
   lists:map(fun(B) ->
+    ?LOG(debug, "trying to reconnect to broken bee: ~p", [B]),
     spawn(fun() -> try_to_reconnect_to_bee(B, 5) end)
   end, DownBees),
   ok.
@@ -374,7 +379,7 @@ handle_non_ready_bees() ->
 maintain_bee_counts() ->
   Apps = apps:all(),
   lists:map(fun(App) ->
-      AppBees = bees:find_all_by_name(App#app.name),
+      AppBees = lists:filter(fun(B) -> B#bee.status =:= ready end, bees:find_all_by_name(App#app.name)),
       NumAppBees = length(AppBees),
       case NumAppBees < App#app.min_instances of
         true ->
@@ -384,6 +389,7 @@ maintain_bee_counts() ->
           case NumAppBees > App#app.max_instances of
             true ->
               % Uh oh, somehow we got too many bees
+              ?LOG(debug, "The number of bees running exceeds the number of maximum bees: ~p", [NumAppBees]),
               terminate_number_of_bees(AppBees, NumAppBees - App#app.max_instances);
             false -> ok
           end
