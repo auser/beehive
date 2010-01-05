@@ -249,6 +249,9 @@ kill_os_process(#state{port_pid = PortPid, vars = Vars, stop_command = StopCmd} 
   open_port({spawn, Command}, [stderr_to_stdout]),
   receive
     _E -> ok
-    after 3000 -> ok
+    after 2000 -> 
+      % If it doesn't return after 2 seconds, seriously make it try again
+      open_port({spawn, Command}, [stderr_to_stdout]),
+      ok
   end.
   
