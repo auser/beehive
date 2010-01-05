@@ -57,6 +57,9 @@ start() ->
   
   halt(0).
 
+% Force garbage_collection
+command(Node, gc, []) -> call(Node, app_manager, garbage_collection, []);
+
 % Force reload of the beehive system
 command(Node, reload, []) -> call(Node, misc_utils, reload_all, []);
 
