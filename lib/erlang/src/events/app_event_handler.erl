@@ -141,7 +141,8 @@ handle_info(flush_old_processes, State) ->
   {ok, State};
 
 handle_info({bee_started_normally, Bee, App}, State) ->
-  apps:create(App),
+  ?LOG(debug, "app_event_handler got bee_started_normally: ~p, ~p", [Bee, App]),
+  apps:save(App),
   bees:save(Bee),
   kill_other_bees(Bee),
   {ok, State};
