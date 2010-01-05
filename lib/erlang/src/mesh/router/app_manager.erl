@@ -21,7 +21,8 @@
   terminate_app_instances/1,
   add_application/1,
   spawn_update_bee_status/3,
-  request_to_start_new_bee/1
+  request_to_start_new_bee/1,
+  garbage_collection/0
 ]).
 
 %% gen_server callbacks
@@ -55,6 +56,9 @@ add_application(ConfigProplist) ->
 
 request_to_start_new_bee(Name) ->
   gen_server:cast(?SERVER, {request_to_start_new_bee, Name}).
+  
+garbage_collection() ->
+  gen_server:cast(?SERVER, {garbage_collection}).
 
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
@@ -137,6 +141,10 @@ handle_cast({request_to_start_new_bee, Name}, State) ->
     false -> start_new_instance_by_name(Name);
     true -> ok
   end,
+  {noreply, State};
+
+handle_cast({garbage_collection}, State) ->
+  handle_non_ready_bees(),
   {noreply, State};
 
 handle_cast(_Msg, State) ->
