@@ -170,11 +170,11 @@ clean_path(Path) ->
   end.
 
 % Get the query params from the path
-query_params(Path) ->
-  case string:str(Path, "?") of
-    0 -> "";
-    N -> string:substr(Path, N+1)
-  end.
+% query_params(Path) ->
+%   case string:str(Path, "?") of
+%     0 -> "";
+%     N -> string:substr(Path, N+1)
+%   end.
 
 % Query about the top level request path is
 top_level_request(Path) ->
