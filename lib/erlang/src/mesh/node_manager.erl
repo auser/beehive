@@ -147,7 +147,6 @@ request_to_terminate_bee(Bee) ->
   case RealBee#bee.status of
     % Does the status really matter? This is changed before?
     _ ->
-      ?LOG(debug, "request_to_terminate_bee: ~p~n", [RealBee]),
       ok = rpc:call(Node, ?APP_HANDLER, stop_instance, [RealBee, App, self()]),
       bees:save(RealBee#bee{status = terminated})
   end.

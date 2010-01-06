@@ -4,8 +4,9 @@ CC							= erlc
 ERL							= erl
 EBIN						= ebin
 INCLUDE_DIRS 		= include
-CFLAGS					= +debug_info -W0 -I $(INCLUDE_DIRS) -pa $(EBIN) -I gen-erl/
-COMPILE					= $(CC) $(CFLAGS) -o $(EBIN)
+EBIN_DIRS				= -pa $(EBIN) -pz $(wildcard deps/*/ebin) -pz $(wildcard include/*/ebin)
+CFLAGS					= +debug_info -W0 -I $(INCLUDE_DIRS) $(EBIN_DIRS) -noinput +B
+ECOMPILE        = $(ERL) $(CFLAGS)
 DEPS_DIR 				= deps
 EBIN_DIRS				= $(wildcard $(DEPS_DIR)/*/ebin) $(wildcard include/*/ebin)
 TEST_DIR				= test
@@ -28,20 +29,16 @@ mochi:
 	@(cd deps/mochiweb;$(MAKE))
 
 boot:
-	(cd ebin; $(ERL) -pa src -pa ebin -pz deps/*/ebin -noshell -run make_boot write_scripts beehive $(VERSION);)
-	(cd ebin; $(ERL) -pa src -pa ebin -pz deps/*/ebin -noshell -run make_boot write_scripts router $(VERSION);)
-	(cd ebin; $(ERL) -pa src -pa ebin -pz deps/*/ebin -noshell -run make_boot write_scripts storage $(VERSION);)
-	(cd ebin; $(ERL) -pa src -pa ebin -pz deps/*/ebin -noshell -run make_boot write_scripts bee $(VERSION);)
-
+	(cd ebin; $(ECOMPILE) -noshell -run make_boot write_scripts beehive $(VERSION) router $(VERSION) storage $(VERSION) bee $(VERSION);)
+	
 compile: $(TEST_EBIN_DIR) deps
-	@$(ERL) -pa $(EBIN_DIRS) -pa $(EBIN) -noinput +B -eval 'case make:all() of up_to_date -> halt(0); error -> halt(1) end.'
+	@$(ECOMPILE) -eval 'case make:all() of up_to_date -> halt(0); error -> halt(1) end.'
 	
 debug: $(TEST_EBIN_DIR)
-	@$(ERL) -pa $(EBIN_DIRS) -pa $(EBIN) -noinput +B -eval 'case make:all([{d, debug}]) of up_to_date -> halt(0); error -> halt(1) end.'
+	@$(ECOMPILE) -eval 'case make:all([{d, debug}]) of up_to_date -> halt(0); error -> halt(1) end.'
 
 test: compile
-	$(ERL) 	-noshell -pa $(EBIN) \
-					-pa deps/*/ebin \
+	$(ECOMPILE)	-noshell \
 					-pa $(TEST_EBIN_DIR) \
 					-s test_suite test \
 					-s init stop
@@ -65,7 +62,7 @@ install: compile boot
 	
 edoc:
 	@echo Generating $(APP) documentation from srcs
-	@$(ERL) -noinput -eval 'edoc:application($(APP), "./", [{doc, "doc/"}, {files, "src/"}])' -s erlang halt
+	@$(ECOMPILE) -noinput -eval 'edoc:application($(APP), "./", [{doc, "doc/"}, {files, "src/"}])' -s erlang halt
 
 $(TEST_EBIN_DIR):
 	@mkdir -p $(TEST_EBIN_DIR)
