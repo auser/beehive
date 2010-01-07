@@ -6,11 +6,12 @@ CONFIG=$1
 
 make
 
-if [[ ! -f ebin/babysitter*.boot ]]; then
+if [ ! -f ebin/babysitter*.boot ]; then
 	make boot
 fi
 
 erl -pa $PWD/ebin \
+    -pa deps/*/ebin \
     -s reloader \
     -babysitter \
     -boot babysitter-$VERSION

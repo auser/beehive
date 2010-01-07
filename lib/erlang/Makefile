@@ -23,7 +23,7 @@ all: compile boot
 deps: mochi babysitter
 
 babysitter:
-	@(cd deps/babysitter;$(MAKE))
+	@(cd deps/babysitter;$(MAKE) boot)
 	
 mochi:
 	@(cd deps/mochiweb;$(MAKE))

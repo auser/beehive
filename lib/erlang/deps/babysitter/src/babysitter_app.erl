@@ -11,7 +11,12 @@
 
 -export([start/2, stop/1]).
 
-start(_Type, _Args) -> babysitter_sup:start_link().
+start(_Type, _Args) -> 
+  lists:map(fun(A) ->
+    io:format("Starting ~p...", [A]),
+    A:start([])
+  end, [exec]),
+  babysitter_sup:start_link().
 
 stop(_State) -> 
   io:format("Stopping babysitter_app...~n"),

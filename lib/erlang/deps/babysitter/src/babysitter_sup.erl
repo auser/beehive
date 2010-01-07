@@ -11,8 +11,7 @@
 
 %% API
 -export([
-  start_link/0,
-  start_child/3
+  start_link/0
 ]).
 
 %% Supervisor callbacks
@@ -22,10 +21,7 @@
 
 %%====================================================================
 %% API functions
-%%====================================================================
-start_child(Name, Command, Opts) -> 
-  supervisor:start_child(babysitter_process_sup, [Name, Command, Opts]).
-  
+%%====================================================================  
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the supervisor

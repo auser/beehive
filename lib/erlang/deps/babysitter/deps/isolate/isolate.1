@@ -1,0 +1,172 @@
+.\" $ Id: $
+.Dd February 1, 2009
+.Dt ISOLATE 1
+.Os
+.Sh NAME
+.Nm isolate
+.Nd isolate untrustworthy processes
+.Sh SYNOPSIS
+.Nm
+.Op Fl hTvS
+.Op Fl M Ar megabytes
+.Op Fl D Ar path
+.Op Fl a Ar bytes
+.Op Fl c Ar bytes
+.Op Fl d Ar bytes
+.Op Fl f Ar files
+.Op Fl m Ar bytes
+.Op Fl n Ar bytes
+.Op Fl p Ar processes
+.Op Fl r Ar bytes
+.Op Fl s Ar bytes
+.Op Fl t Ar seconds
+.Op Fl z Ar bytes
+.Ar program
+.Op Ar program arguments...
+.Sh DESCRIPTION
+.Nm
+isolates
+.Ar program
+(the 
+.Em isolatee Ns )
+by running it with a randomly selected unprivileged UID
+(the 
+.Em isolator Ns ),
+with constrained resource limits, and chrooted. The purpose of
+.Nm
+is to protect your machine and your data from untrustworthy isolatees and
+their untrustworthy input.
+.Pp
+.Nm
+automatically discovers the library dependencies of
+.Ar program
+and copies them into the chroot environment. On FreeBSD,
+.Nm
+uses devfs to provide the isolatee with device nodes.
+.Pp
+If the isolatee links against libX11.so,
+.Nm
+generates an
+.Em untrusted
+X11 authentication token for the isolatee, to protect
+.Em trusted
+windows from the isolatee. For example, isolatees will not be able to log
+keystrokes intended for trusted windows, and will not be able to take
+screenshots of trusted windows.
+.Pp
+Basic options:
+.Bl -tag -width indent
+.It Fl D Ar path
+The path to a directory or file to be copied into the isolation environment,
+in case the isolatee needs additional support files.
+.It Fl h
+Print the help message.
+.It Fl M Ar megabytes
+Make the isolation environment a memory filesystem (see mdmfs(8)) instead of
+a normal on-disk directory. Incompatible with -S. The argument to -M is the
+size in MB of the filesystem. This option greatly improves isolate's startup
+and shutdown times.
+.It Fl S
+Save the isolation environment after the program exits. (By default the
+environment is destroyed.) Ownership of the environment will be given to the
+invoker. Incompatible with -M.
+.It Fl v
+Print verbose messages.
+.El
+.Pp
+Resource limit options:
+.Pp
+.Bl -tag -width indent
+.It Fl a Ar bytes
+The maximum amount of virtual memory the process is allowed to map.
+(RLIMIT_AS)
+.It Fl c Ar bytes
+The largest size of core file the process can create. (RLIMIT_CORE)
+.It Fl d Ar bytes
+The maximum size of the process' data segment. (RLIMIT_DATA)
+.It Fl f Ar files
+The maximum number of files to allow the process to open. (RLIMIT_NOFILE)
+.It Fl m Ar bytes
+The maximum amount of memory a process may lock into memory. (RLIMIT_MEMLOCK)
+.It Fl n Ar bytes
+The maximum amount of network socket buffer memory for the isolator.
+(RLIMIT_SBSIZE) Not available on Linux.
+.It Fl p Ar processes
+The maximum number of simultaneous processes for this user ID. (RLIMIT_NPROC)
+.It Fl r Ar bytes
+The maximum size of the process' resident set size. (RLIMIT_RSS)
+.It Fl s Ar bytes
+The maximum size of the process' stack. (RLIMIT_STACK)
+.It Fl t Ar seconds
+The maximum amount of CPU time the process will be allotted. (RLIMIT_CPU)
+.It Fl T Ar trusted
+Flip this bird if you'd like to set a trusted X11 cookie.
+.It Fl z Ar bytes
+The largest file the process can create. (RLIMIT_FSIZE)
+.El
+.Pp
+Numeric values for arguments can be given in decimal, hexadecimal, or octal
+notation. For more information on the exact meaning of each limit, see the
+setrlimit(2) manual page. The default values will usually be safe yet allow
+the program to run normally; you should only need to supply a non-default
+value in special cases. Use -v to show the values of the limits.
+.Pp
+Note that the effective default value is the default value given or the
+invoking user's current limit, whichever is lower.
+.Sh SECURITY
+.Nm
+must be setuid root in order to operate correctly. All due caution has been
+taken in its implementation, but there may still be bugs. Please report any
+problems to the author.
+.Pp
+Note that
+.Nm
+does not necessarily protect the isolatee from its environment; its goal is
+to protect the environment from the isolatee.
+.Sh EXAMPLES
+To isolate the shell, you will need to provide some useful programs and their
+libraries, and you will need to allow the isolatee to open some files and
+fork some processes:
+.Pp
+.Dl isolate -D /bin -D /lib -p 3 -f 10 sh
+.Pp
+However, note that many Linux distributions put tons of stuff in /bin and/or
+/lib, so this example might not be practical for you.
+.Pp
+Many programs need extra virtual memory, and may fail silently or weirdly if
+they don't get it. To pass a file to the isolatee as an argument, you will
+need to tell
+.Nm
+to copy it into the isolation environment:
+.Pp
+.Dl isolate -a 0x4000000 -D foo.txt vim foo.txt
+.Pp
+You can also isolate multiple programs in a pipeline. In this example,
+multiple isolatees, separately isolated, can communicate via standard in and
+standard out:
+.Pp
+.Dl cat input.png | isolate pngtopnm | isolate pnmtojpeg > output.jpg
+.Pp
+.Sh SEE ALSO
+.Xr setrlimit(2) ,
+.Xr chroot(2) ,
+.Xr setresuid(2) ,
+.Xr xauth(1) ,
+.Xr mdmfs(8) ,
+.Xr devfs(5) ,
+.Xr devfs(8) ,
+.Xr devfs.conf(5) ,
+.Xr devfs.rules(5)
+.Sh COMPATIBILITY
+.Nm
+was written on FreeBSD and later ported to Linux. The Linux port is not yet
+feature complete (missing memory filesystem and device filesystem support).
+These are bugs and will be fixed. The two platforms support some different
+resource limits, and the Linux-specific limits are not yet supported.
+.Sh HISTORY
+.Nm
+was written by Chris Palmer <chris@isecpartners.com> for FreeBSD and Linux.
+Sebastian Ng helped on an earlier version.
+.Sh BUGS AND MISSING FEATURES
+Numerous. Please report problems to the author!
+
