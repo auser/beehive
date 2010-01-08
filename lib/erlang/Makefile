@@ -53,7 +53,7 @@ install: compile boot babysitter_install
 	@mkdir -p $(PREFIX)/var/log/beehive
 	
 	@cp -r ebin src include ./../../LICENSE deps $(TARGET_DIR)
-	for i in ebin/*.beam; do install $$i $(TARGET_DIR)/$$i; done
+	# for i in ebin/*.beam; do install $$i $(TARGET_DIR)/$$i; done
 	
 	# copy the shell templates to the beehive home
 	@cp -r shell_templates $(PREFIX)/var/lib/beehive

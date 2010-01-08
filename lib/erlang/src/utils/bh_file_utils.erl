@@ -7,8 +7,14 @@
 %%%-------------------------------------------------------------------
 
 -module (bh_file_utils).
-
+-include ("common.hrl").
 -compile (export_all).
+
+relative_or_abs_path(List) ->
+  case filelib:is_file(F = filename:join([?BEEHIVE_HOME_DIR, List])) of
+    true  -> F;
+    false -> filename:join([?BH_ROOT, List])
+  end.
 
 % Find a file either absolute or relative
 abs_or_relative_filepath(P) ->

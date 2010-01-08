@@ -8,11 +8,13 @@
 
 -module (beehive).
 -include ("beehive.hrl").
+-include ("common.hrl").
 -behaviour(application).
 
 -export([start/2, stop/1]).
 
 start(_Type, Args) -> 
+  io:format("Dir: ~p~n", [?BH_ROOT]),
   beehive_sup:start_link(Args).
 
 stop(State) -> 

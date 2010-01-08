@@ -31,7 +31,7 @@ search_for_application_value_from_environment(Param, Default) ->
 %%--------------------------------------------------------------------
 read() ->
   ConfigFile = case application:get_env(beehive, config_file) of
-    undefined -> ?CONFIG_FILE;
+    undefined -> ?USER_OR_BH("include/config.cfg");
     {ok, Cf} -> Cf
   end,
   read(ConfigFile).

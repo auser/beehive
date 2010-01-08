@@ -17,23 +17,24 @@ end()).
   erlang:apply(Mod, Fun, Args)).
 -endif.
 
--define (CONFIG_FILE, case os:getenv("ROUTER_CONFIG") of
-	undefined -> "include/config.cfg";
-	F -> F
-end).
+% Root of the modules
+-define (BH_ROOT, fun() ->
+  filename:dirname(filename:dirname(code:which(?MODULE)))
+  end()).
 
+% Defined beehive home path
 -define (BEEHIVE_HOME_DIR, fun() ->
   case os:getenv("BEEHIVE_HOME") of
-    false -> os:getenv("HOME");
+    false -> "/var/lib/beehive";
     E -> E
   end
 end()).
+
+-define (USER_OR_BH (List), bh_file_utils:relative_or_abs_path(List)).
 -define (BH_RELATIVE_DIR (List), filename:join([?BEEHIVE_HOME_DIR, List])).
 
--define (FIXTURES_DIR, bh_file_utils:relative_path("test/fixtures")).
 % Figure this out... Hm
--define (SHELL_SCRIPTS_DIR, filename:join([?BEEHIVE_HOME_DIR, "shell_templates"])).
-
+-define (SHELL_SCRIPTS_DIR, ?USER_OR_BH("shell_templates")).
 -define (SHELL_SCRIPT_PATH (Name), filename:join([?SHELL_SCRIPTS_DIR, lists:append([Name, ".sh"])])).
 -define (SHELL_SCRIPT (Name), fun() ->
   case file:read_file(?SHELL_SCRIPT_PATH(Name)) of
@@ -44,8 +45,5 @@ end()).
     end
  end()
 ).
--define (TEMPLATE_SHELL_SCRIPT (Name, Params), fun() ->
-    string_utils:template_command_string(?SHELL_SCRIPT(Name), Params)
-  end()
-).
+-define (TEMPLATE_SHELL_SCRIPT (Name, Params), fun() -> string_utils:template_command_string(?SHELL_SCRIPT(Name), Params) end()).
 -define (TEMPLATE_SHELL_SCRIPT_PARSED (Name, Params), misc_utils:shell_fox(Name, Params)).
