@@ -14,8 +14,11 @@ Quickstart
 To start an application, issue a command similar to:
 
     babysitter:spawn_new([
-      {start_command, "thin --port [[PORT]] -R config.ru start"},
+      {start_command, "thin --port [[PORT]] -R home/app/config.ru start"},
       {cd, "/path/to/app"},
+      {image, "app.img"},
+      {dirs,  ["/var/lib/gems/1.8", "/usr/bin", "/usr/lib/ruby/"]},
+      {env, ["GEM_HOME=/home/.gems"]},
       {variables, [{"[[PORT]]", "5001"}]}
     ], self()).
 
@@ -31,3 +34,8 @@ The spawn_new/2 command takes a proplist and the caller. The proplist can contai
 To stop the application, simply pass in the Pid of the process to:
 
     babysitter:stop_process(Pid)
+    
+Credit
+---
+* Credit where credit is due, the basis of the babysitter port-program is based off the brilliant work of [Erlexec](http://code.google.com/p/erlexec/)
+* The isolation process is based on [isolate](http://code.google.com/p/isolate/)

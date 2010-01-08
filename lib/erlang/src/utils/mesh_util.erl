@@ -10,9 +10,13 @@
 
 -export([
          init_db_slave/1,
-         add_db_slave/2,
-         get_random_pid/1
+         add_db_slave/2
         ]).
+
+-export ([
+  get_random_pid/1,
+  get_best_pid/1
+]).
 
 init_db_slave([]) -> ok; % safeguard
 init_db_slave(SeedNode) ->
@@ -47,8 +51,32 @@ clean_mnesia_from(SlaveNode) ->
   rpc:call(SlaveNode, mnesia, delete_schema, [[SlaveNode]]),
   rpc:call(SlaveNode, db, start, []).
 
+
+% Strategies for load balancing across the process groups for distributing the 
+% load and code handling 
 get_random_pid(Name) ->
-  L = case (catch pg2:get_members(Name)) of
+  L = ensure_get_group_by_name(Name),
+  if L == [] ->
+      {error, {no_process, Name}};
+      true ->
+        {_,_,X} = erlang:now(),
+        {ok, lists:nth((X rem length(L)) + 1, L)}
+  end.
+
+get_best_pid(Name) ->
+  L = ensure_get_group_by_name(Name),
+  M = lists:map(fun(Pid) ->
+    [{message_queue_len, Messages}] = erlang:process_info(Pid, [message_queue_len]),
+    {Pid, Messages}
+  end, L),
+  case lists:keysort(2, M) of
+    [{Pid, _} | _] -> Pid;
+    [] -> {error, empty_process_group}
+  end.
+  
+% Internal method
+ensure_get_group_by_name(Name) ->
+  case (catch pg2:get_members(Name)) of
     {'EXIT'} ->
       pg2:create(Name),
       timer:sleep(100),
@@ -58,12 +86,4 @@ get_random_pid(Name) ->
       pg2:get_members(Name);
     Other when is_list(Other) ->
       Other
-    end,
-    if 
-      L == [] ->
-        {error, {no_process, Name}};
-        true ->
-          {_,_,X} = erlang:now(),
-          {ok, lists:nth((X rem length(L)) + 1, L)}
     end.
-

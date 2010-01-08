@@ -23,8 +23,11 @@ all: compile boot
 deps: mochi babysitter
 
 babysitter:
+	@(cd deps/babysitter;$(MAKE))
+
+babysitter_install:
 	@(cd deps/babysitter;$(MAKE) boot)
-	
+
 mochi:
 	@(cd deps/mochiweb;$(MAKE))
 
@@ -43,14 +46,15 @@ test: compile
 					-s test_suite test \
 					-s init stop
 
-install: compile boot
+install: compile boot babysitter_install
 	@mkdir -p $(BIN_DIR)
 	@mkdir -p $(TARGET_DIR)/bin
 	@mkdir -p $(PREFIX)/var/lib/beehive/db
 	@mkdir -p $(PREFIX)/var/log/beehive
 	
-	@cp -r ebin include ./../../LICENSE deps $(TARGET_DIR)
+	@cp -r ebin src include ./../../LICENSE deps $(TARGET_DIR)
 	for i in ebin/*.beam; do install $$i $(TARGET_DIR)/$$i; done
+	
 	# copy the shell templates to the beehive home
 	@cp -r shell_templates $(PREFIX)/var/lib/beehive
 	

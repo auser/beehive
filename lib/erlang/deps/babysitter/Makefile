@@ -12,6 +12,14 @@ APP							= babysitter
 SUBDIRS         = deps/*
 TARGET_DIR			= $(PREFIX)/$(LIBDIR)/$(APP)-$(VERSION)
 
+ERL_INTERFACE   = $(shell erl -eval 'io:format("~s~n", [code:lib_dir(erl_interface)])' -s init stop -noshell)
+CCFLAGS        += -DHAVE_CONFIG_H -I. -Ic_src/ -O -Wall -I$(ERL_INTERFACE)/include
+CLDFLAGS       += -L$(ERL_INTERFACE)/lib -lei -lerl_interface -lcap
+CC              = g++
+EXECUTABLE      = priv/bin/exec-port
+CCOMPILE        = $(CC) $(CCFLAGS)
+EXEC_ROOT       = c_src/exec
+
 all: compile
 
 boot: deps
@@ -23,10 +31,21 @@ compile: $(TEST_EBIN_DIR)
 deps: isolate erlexec
 
 isolate:
-	(cd deps/isolate && $(MAKE))
+	(cd c_src/isolate && $(MAKE))
+	@(cp c_src/isolate/isolate priv/bin/)
 
-erlexec:
-	(cd deps/erlexec && $(MAKE))	
+erlexec: exec.o ei++.o
+	$(CC) -Wall -g -I/usr/lib/erlang/lib/erl_interface-3.6.2/include -g -O2 -o $(EXECUTABLE) $(EXEC_ROOT)/exec.o $(EXEC_ROOT)/ei++.o  -L/usr/lib/erlang/lib/erl_interface-3.6.2/lib -lei -lcap
+	$(CCOMPILE) -g -O2 -o $(EXECUTABLE) $(EXEC_ROOT)/exec.o $(EXEC_ROOT)/ei++.o $(CLDFLAGS)
+	@(chmod +x $(EXECUTABLE))
+	@(rm $(EXEC_ROOT)/*.o)
+	
+ei++.o:
+	$(CCOMPILE) -o $(EXEC_ROOT)/ei++.o -c $(EXEC_ROOT)/ei++.cpp
+
+exec.o:
+	$(CCOMPILE) -o $(EXEC_ROOT)/exec.o -c $(EXEC_ROOT)/exec.cpp
+
 
 test: compile
 	$(ECOMPILE) 	-noshell \

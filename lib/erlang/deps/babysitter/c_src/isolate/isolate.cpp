@@ -782,6 +782,7 @@ static void clean_up() throw () {
 
 void signal_handler(int received) {
       cerr << "Received signal " << received << endl;
+      ensure_no_processes();
       clean_up();
       cerr << endl;
       cout << endl;
@@ -856,13 +857,13 @@ int main(int argc, char *argv[]) {
       /* We need to set this so that the loader can find libs in /usr/local/lib. */
       const char* default_env_vars[] = {
         "LD_LIBRARY_PATH=/lib;/usr/lib;/usr/local/lib", 
-        "HOME=/"
+        "HOME=/home"
       };
       const int max_env_vars = 1000;
       char *env_vars[max_env_vars];
       
-      memcpy(env_vars, default_env_vars, (min((int)max_env_vars, (int)sizeof(default_env_vars)) * sizeof(char)));
-      curr_env_vars = sizeof(default_env_vars) / sizeof(char);
+      memcpy(env_vars, default_env_vars, (min((int)max_env_vars, (int)sizeof(default_env_vars)) * sizeof(char *)));
+      curr_env_vars = sizeof(default_env_vars) / sizeof(char *);
       
       /* Parse command line. */
 
@@ -890,6 +891,7 @@ int main(int argc, char *argv[]) {
             case 'e':
                   if (curr_env_vars <= max_env_vars)
                     env_vars[curr_env_vars++] = strdup(optarg);
+                    cout << "Added env " << env_vars[curr_env_vars-1] << endl;
                   break;
             case 'i':
                   image_path = string(optarg);
@@ -979,7 +981,6 @@ int main(int argc, char *argv[]) {
 
       isolator = random_uid();
       invoker = getuid();
-
 
       /* Ensure the confinement root exists and is correct. */
 
@@ -1094,7 +1095,20 @@ int main(int argc, char *argv[]) {
                     cerr << "Could not make " << pth << " executable: " << strerror(errno) << endl;
                     _exit(1);
               }
-
+              
+              /* Add a copy of the user's /etc/passwd */
+              string etc_pass_file = string(confinement_path + "/etc/passwd");
+              ofstream etc_pass(etc_pass_file.c_str());
+              etc_pass << "me:x:" << isolator << ":" << isolator << ":me:/home:bin/bash" ;
+              etc_pass << flush;
+              etc_pass.close();
+              
+              /* Add default /etc/hosts */
+              string hosts_file_path = string(confinement_path + "/etc/hosts");
+              ofstream hosts_file(hosts_file_path.c_str());
+              hosts_file << "127.0.0.1    localhost" ;
+              hosts_file << flush;
+              hosts_file.close();
 
               /* Copy the support directories into the isolation environment. */
               copy_support_paths(sprt_pths);
@@ -1228,7 +1242,7 @@ int main(int argc, char *argv[]) {
             lmt_tm = min(lmt_tm, get_resource_limit(RLIMIT_CPU));
 
 
-            /* We are ready for launch. */          
+            /* We are ready for launch. */
             execve(fl_pth.c_str(), argv, env_vars);
             cerr << "Could not execute " << *argv << ": " << strerror(errno) << endl;
             _exit(errno);

@@ -42,7 +42,7 @@ stop_process(Arg) ->
 
 isolate_command() ->
   Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
-  filename:join([Dir, "deps", "isolate", "isolate"]).
+  filename:join([Dir, "priv", "bin", "isolate"]).
   
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
@@ -154,13 +154,15 @@ build_isolate_command(Opts) ->
       AlwaysIncludedDir = " -D /bin -D /lib",
       case fetch_value(dirs, Opts) of
         [] -> AlwaysIncludedDir;
-        Dirs -> lists:flatten([AlwaysIncludedDir, " -D ", string:join(Dirs, "-D ")])
+        Dirs -> lists:flatten([AlwaysIncludedDir, " -D ", string:join(Dirs, " -D ")])
       end;
       Skel -> lists:flatten([" -b ", Skel])
   end,
-  ConfineDirectory = lists:flatten([" -C ", fetch_value(confine_dir, Opts)]),
-  ProcessCount = lists:flatten([" -p ", fetch_value(num_processes, Opts)]),
-  FilesCount = lists:flatten([" -f ", fetch_value(files_count, Opts)]),
+  ConfineDirectory = build_cli_option("-C", confine_dir, Opts),
+  ProcessCount = build_cli_option("-p", num_processes, Opts),
+  FilesCount = build_cli_option("-f", files_count, Opts),
+  Mount = build_cli_option("-i", image, Opts),
+  Env = build_cli_option("-e", env, Opts),
   
   lists:flatten(["exec ", 
     babysitter:isolate_command(), 
@@ -168,10 +170,21 @@ build_isolate_command(Opts) ->
     SkelOrDirs,
     ProcessCount,
     FilesCount,
+    Mount,
+    Env,
     " ",
     Command
   ]).
 
+% Build the command-line option
+build_cli_option(Switch, Param, Opts) -> 
+  case fetch_value(Param, Opts) of
+    [] -> [];
+    undefined -> [];
+    E -> lists:flatten([" ", Switch, " ", E])
+  end.
+
+% Accept only know execution options
 build_exec_opts([], Acc) -> Acc;
 build_exec_opts([{cd, _V}=T|Rest], Acc) -> build_exec_opts(Rest, [T|Acc]);
 build_exec_opts([{env, _V}=T|Rest], Acc) -> build_exec_opts(Rest, [T|Acc]);
@@ -184,10 +197,12 @@ build_exec_opts([_Else|Rest], Acc) -> build_exec_opts(Rest, Acc).
 
 % Fetch values and defaults
 fetch_value(vars, Opts) -> opt_or_default(vars, [], Opts);
+fetch_value(env, Opts) -> opt_or_default(env, [], Opts);
 fetch_value(num_processes, Opts) -> opt_or_default(num_processes, "5", Opts);
 fetch_value(files_count, Opts) -> opt_or_default(files_count, "5", Opts);
 fetch_value(confine_dir, Opts) -> opt_or_default(confine_dir, "/var/confine", Opts);
 fetch_value(skel, Opts) -> opt_or_default(skel, undefined, Opts);
+fetch_value(image, Opts) -> opt_or_default(image, undefined, Opts);
 fetch_value(dirs, Opts) -> opt_or_default(dirs, [], Opts);
 fetch_value(start_command, Opts) -> opt_or_default(start_command, "thin -- -R config.ru start", Opts).
 

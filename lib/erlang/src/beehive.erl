@@ -12,7 +12,8 @@
 
 -export([start/2, stop/1]).
 
-start(_Type, Args) -> beehive_sup:start_link(Args).
+start(_Type, Args) -> 
+  beehive_sup:start_link(Args).
 
 stop(State) -> 
   io:format("Stopping beehive...~n"),

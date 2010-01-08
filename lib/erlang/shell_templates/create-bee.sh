@@ -18,50 +18,11 @@ fi
 cd $WORKING_DIRECTORY
 
 APP_DIR=$WORKING_DIRECTORY/$APP_NAME
-GIT_REPOS_DIR=$APP_DIR/home/app
+GIT_REPOS_DIR=$APP_DIR/app
 FILESYSTEM=ext3
 
 echo "app_dir $APP_DIR"
 rm -rf $APP_DIR
-
-SKEL_DIR="$BASE_DIR/base_skel"
-
-mkdir -p $APP_DIR
-
-# If we have a skeleton directory, then we'll use this as a base, rather
-# than (re)creating it every time
-if [ ! -d "$SKEL_DIR" ]; then
-  # Make a base chroot directory
-  mkdir -p $SKEL_DIR
-  mkdir -p $SKEL_DIR/home
-  mkdir -p $SKEL_DIR/etc
-  mkdir -p $SKEL_DIR/bin
-  mkdir -p $SKEL_DIR/lib
-  mkdir -p $SKEL_DIR/usr
-  mkdir -p $SKEL_DIR/dev
-  mkdir -p $SKEL_DIR/var
-  mkdir -p $SKEL_DIR/tmp
-  mkdir -p $SKEL_DIR/proc
-
-  cd $SKEL_DIR
-
-  if [ -d /lib64 ]; then
-    mkdir -p lib64/ >/dev/null 2>&1
-  fi
-  if [ ! -e dev/null ]; then
-    mknod dev/null c 1 3 >/dev/null 2>&1
-  fi
-  if [ ! -e dev/zero ]; then
-    mknod dev/zero c 1 5 >/dev/null 2>&1
-  fi
-
-  chmod 666 dev/null
-  chmod 666 dev/zero
-fi
-
-if [ ! -d $APP_DIR/home ]; then
-  cp -R $SKEL_DIR/* $APP_DIR/
-fi
 
 echo "done $APP_DIR"
 

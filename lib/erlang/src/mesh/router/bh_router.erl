@@ -15,7 +15,7 @@
 
 start(_Type, Args) -> 
   lists:map(fun(App) ->
-    io:format("---> starting ~p~n", [App]),
+    io:format("---> Starting ~p~n", [App]),
     App:start()
   end, []),
   bh_router_sup:start_link(Args).
