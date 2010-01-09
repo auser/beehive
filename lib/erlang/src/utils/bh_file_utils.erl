@@ -11,11 +11,16 @@
 -compile (export_all).
 
 relative_or_abs_path(List) ->
-  case filelib:is_file(F = filename:join([?BEEHIVE_HOME_DIR, List])) of
-    true  -> F;
-    false -> filename:join([?BH_ROOT, List])
+  case abs_or_relative_filepath(List) of
+    true -> List;
+    _ ->
+      case filelib:is_file(F = filename:join([?BEEHIVE_HOME_DIR, List])) of
+        true  -> F;
+        false -> 
+          lists:flatten([?BH_ROOT, "/", List])
+      end
   end.
-
+  
 % Find a file either absolute or relative
 abs_or_relative_filepath(P) ->
   case filelib:is_file(P) of
@@ -23,7 +28,7 @@ abs_or_relative_filepath(P) ->
     false ->
       case filelib:is_file(relative_path(P)) of
         true -> relative_path(P);
-        false -> throw({error, not_a_file})
+        false -> {error, not_a_file}
       end
   end.
 

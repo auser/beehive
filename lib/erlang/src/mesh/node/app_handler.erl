@@ -228,7 +228,7 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
     {"[[START_TIME]]", misc_utils:to_list(StartedAt)},
     {"[[APP_NAME]]", App#app.name}
   ],
-  {Proplist1, Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("mount-bee", Vars),
+  {Proplist1, Status} = ?APP_TEMPLATE_SHELL_SCRIPT_PARSED("mount-bee", Vars),
   AppRootPath = proplists:get_value(path, Proplist1),
   
   Bee  = #bee{

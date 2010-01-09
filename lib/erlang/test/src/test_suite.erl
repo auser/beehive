@@ -8,5 +8,6 @@ all_test_() ->
     {module, string_test},
     {module, bh_host_test},
     {module, web_utils_test},
+    {module, app_utils_test},
     {module, misc_utils_test}
   ].

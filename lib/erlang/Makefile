@@ -8,7 +8,6 @@ EBIN_DIRS				= -pa $(EBIN) -pz $(wildcard deps/*/ebin) -pz $(wildcard include/*/
 CFLAGS					= +debug_info -W0 -I $(INCLUDE_DIRS) $(EBIN_DIRS) -noinput +B
 ECOMPILE        = $(ERL) $(CFLAGS)
 DEPS_DIR 				= deps
-EBIN_DIRS				= $(wildcard $(DEPS_DIR)/*/ebin) $(wildcard include/*/ebin)
 TEST_DIR				= test
 TEST_EBIN_DIR		= $(TEST_DIR)/ebin
 APP							= beehive
@@ -42,6 +41,7 @@ debug: $(TEST_EBIN_DIR)
 
 test: compile
 	$(ECOMPILE)	-noshell \
+					-pa $(EBIN_DIRS) \
 					-pa $(TEST_EBIN_DIR) \
 					-s test_suite test \
 					-s init stop

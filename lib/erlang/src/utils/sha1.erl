@@ -23,8 +23,6 @@ fun_apply(S, FunRead, FunTransform) ->
 		Data -> FunTransform(Data)
 	end.
 
-%read_unsafe(File) ->  {ok, L} = file:read_file(File), 	L.
-
 bin2hex(B) ->
 	L = binary_to_list(B),
 	LH0 = map(fun(X)->integer_to_list(X,16) end, L),
