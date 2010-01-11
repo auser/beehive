@@ -37,11 +37,11 @@ init([]) ->
   process_flag(trap_exit, true),
   
   Opts = [named_table, set],
-  ets:new(?UPDATERS_PID_TO_APP, Opts),
-  ets:new(?UPDATERS_APP_TO_PID, Opts),
+  (catch ets:new(?UPDATERS_PID_TO_APP, Opts)),
+  (catch ets:new(?UPDATERS_APP_TO_PID, Opts)),
   
-  ets:new(?LAUNCHERS_PID_TO_APP, Opts),
-  ets:new(?LAUNCHERS_APP_TO_PID, Opts),
+  (catch ets:new(?LAUNCHERS_PID_TO_APP, Opts)),
+  (catch ets:new(?LAUNCHERS_APP_TO_PID, Opts)),
   
   {ok, _TRef} = timer:send_interval(5000, flush_old_processes),
   
