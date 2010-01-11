@@ -18,7 +18,7 @@ start(Type, Args) ->
     io:format("---> starting ~p~n", [App]),
     App:start()
   end, [crypto]),
-  babysitter_app:start(Type, Args),
+  % babysitter_app:start(Type, Args),
   bh_node_sup:start_link(Args).
 
 stop(State) -> 
