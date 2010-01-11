@@ -172,6 +172,7 @@ build_isolate_command(Opts) ->
   User = build_cli_option("-u", user, Opts),
   
   lists:flatten([
+    "exec ",
     babysitter:isolate_command(), 
     ConfineDirectory,
     SkelOrDirs,
