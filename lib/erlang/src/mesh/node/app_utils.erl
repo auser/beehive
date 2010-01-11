@@ -27,10 +27,10 @@ app_template_parsed(Type, Proplist, DefaultProps) ->
   
 % Internal
 merge_props([], _, Acc) -> Acc;
-merge_props([{K, _V}=Tuple|Rest], TemplateProps, Acc) ->
+merge_props([{K, V}=Tuple|Rest], TemplateProps, Acc) ->
   NewAcc = case proplists:get_value(K, TemplateProps) of
     undefined -> [Tuple|Acc];
-    Val -> [{K, Val}|Acc]
+    Val -> [{K, lists:flatten([Val, V])}|Acc]
   end,
   merge_props(Rest, TemplateProps, NewAcc).
     
