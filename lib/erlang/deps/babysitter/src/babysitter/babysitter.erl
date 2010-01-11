@@ -103,7 +103,7 @@ handle_cast(_Msg, State) ->
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
 handle_info({'EXIT', Pid, _Status} = Tuple, State) ->
-  io:format("Os process: ~p died~n", [Pid]),
+  io:format("Os process: ~p died~n", [Tuple]),
   case ets:lookup(?PID_TO_CALLER, Pid) of
     [{Pid, Caller}] -> 
       ets:delete(?PID_TO_CALLER, Pid),
