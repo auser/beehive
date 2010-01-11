@@ -105,7 +105,7 @@ engage_bee(ClientSock, RequestPid, RoutingKey, ForwardReq, Req, {ok, #bee{host =
     Error ->
       ?LOG(error, "Connection to remote TCP server: ~p:~p ~p", [Host, Port, Error]),
       ?NOTIFY({bee, cannot_connect, Bee}),
-      timer:sleep(500),
+      timer:sleep(1000),
       GetBee = ?BENCHMARK_LOG("Getting bee for routing key after an error", bee_srv, get_bee, [RequestPid, RoutingKey]),
       engage_bee(ClientSock, RequestPid, RoutingKey, ForwardReq, Req, GetBee)
   end;
