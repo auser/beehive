@@ -19,6 +19,7 @@
 % Get the application type of the template
 app_template_parsed(Type, Proplist, Env) ->
   File = ?USER_OR_BH(["app_templates", "/", Type, ".erl"]),
+  io:format("Looking in ~p for app template~n", [File]),
   {ok, L} = file:consult(File),
   OrigProps = template_proplists(L, Proplist, []),
   case proplists:get_value(env, OrigProps) of
