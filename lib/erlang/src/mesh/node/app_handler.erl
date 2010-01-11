@@ -237,7 +237,9 @@ initialize_application(#app{template = Template} = App, PropLists, AppLauncher, 
     io_lib:format("APP_NAME=\"~s\"", [App#app.name] )
   ]),
   
-  StartProplist = ?APP_TEMPLATE_SHELL_SCRIPT_PARSED(Template, Vars, Env),
+  DefaultProps = [{env, Env}, {image, ImagePath}],
+  
+  StartProplist = ?APP_TEMPLATE_SHELL_SCRIPT_PARSED(Template, Vars, DefaultProps),
   % AppRootPath = proplists:get_value(path, Proplist1),
   
   Bee  = #bee{

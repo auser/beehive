@@ -17,19 +17,22 @@
 
 % Type template
 % Get the application type of the template
-app_template_parsed(Type, Proplist, Env) ->
+app_template_parsed(Type, Proplist, DefaultProps) ->
   File = ?USER_OR_BH(["app_templates", "/", Type, ".erl"]),
   io:format("Looking in ~p for app template~n", [File]),
   {ok, L} = file:consult(File),
-  OrigProps = template_proplists(L, Proplist, []),
-  case proplists:get_value(env, OrigProps) of
-    undefined -> [{env, Env}|OrigProps];
-    Value ->
-      OldProps = proplists:delete(env, OrigProps),
-      [{env, [lists:flatten([Value, " ", Env])]}|OldProps]
-  end.
+  DefaultAndUserDrivenProps = merge_props(DefaultProps, Proplist, []),
+  template_proplists(L, DefaultAndUserDrivenProps, []).
   
 % Internal
+merge_props([], _, Acc) -> Acc;
+merge_props([{K, _V}=Tuple|Rest], TemplateProps, Acc) ->
+  NewAcc = case proplists:get_value(K, TemplateProps) of
+    undefined -> [{Tuple|Acc}];
+    Val -> [{K, Val}|Acc]
+  end.
+    
+
 template_proplists([], _Proplists, Acc) -> lists:reverse(Acc);
 template_proplists([{K, V}|Rest], Proplists, Acc) ->
   template_proplists(Rest, Proplists, [{K, template_command_string(V, Proplists)}|Acc]).
