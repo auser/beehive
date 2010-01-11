@@ -219,11 +219,11 @@ initialize_application(#app{template = Template} = App, PropLists, AppLauncher, 
   ],
   
   Env = lists:append([
-    [lists:flatten(["SHA=\"", Sha, "\""])],
-    [lists:flatten(["LOCAL_PORT=\"", misc_utils:to_list(Port), "\""])],
-    [lists:flatten(["LOCAL_HOST=\"", Host, "\""])],
-    [lists:flatten(["STARTED_AT=\"", misc_utils:to_list(StartedAt), "\""])],
-    [lists:flatten(["APP_NAME=\"", App#app.name, "\""])]
+    [lists:flatten([" SHA=\"", Sha, "\" "])],
+    [lists:flatten([" LOCAL_PORT=\"", misc_utils:to_list(Port), "\" "])],
+    [lists:flatten([" LOCAL_HOST=\"", Host, "\" "])],
+    [lists:flatten([" STARTED_AT=\"", misc_utils:to_list(StartedAt), "\" "])],
+    [lists:flatten([" APP_NAME=\"", App#app.name, "\" "])]
   ]),
   
   DefaultProps = [{env, Env}, {image, ImagePath}],
