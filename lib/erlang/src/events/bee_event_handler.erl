@@ -86,8 +86,10 @@ handle_event({bee, bee_terminated, Bee}, State) when is_record(Bee, bee) ->
 handle_event({bee, cannot_connect, Id}, State) ->
   % bees:transactional_save(fun() ->
   ?LOG(debug, "{bee, cannot_connect, ~p}", [Id]),
-  RealBee = bees:find_by_id(Id),
-  bees:update(RealBee#bee{status = down}),
+  spawn(fun() ->
+    RealBee = bees:find_by_id(Id),
+    bees:update(RealBee#bee{status = down})
+  end),
   % end),
   {ok, State};
 
