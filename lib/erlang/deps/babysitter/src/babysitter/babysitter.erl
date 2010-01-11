@@ -169,8 +169,9 @@ build_isolate_command(Opts) ->
   ProcessCount = build_cli_option("-p", num_processes, Opts),
   FilesCount = build_cli_option("-f", files_count, Opts),
   Mount = build_cli_option("-i", image, Opts),
+  User = build_cli_option("-u", user, Opts),
   
-  lists:flatten(["exec ", 
+  lists:flatten([
     babysitter:isolate_command(), 
     ConfineDirectory,
     SkelOrDirs,
@@ -178,6 +179,7 @@ build_isolate_command(Opts) ->
     FilesCount,
     Mount,
     Env,
+    User,
     " ",
     Command
   ]).
@@ -203,6 +205,7 @@ build_exec_opts([_Else|Rest], Acc) -> build_exec_opts(Rest, Acc).
 
 % Fetch values and defaults
 fetch_value(vars, Opts) -> opt_or_default(vars, [], Opts);
+fetch_value(user, Opts) -> opt_or_default(user, undefined, Opts);
 fetch_value(env_vars, Opts) -> opt_or_default(env_vars, [], Opts);
 fetch_value(num_processes, Opts) -> opt_or_default(num_processes, "5", Opts);
 fetch_value(files_count, Opts) -> opt_or_default(files_count, "5", Opts);
