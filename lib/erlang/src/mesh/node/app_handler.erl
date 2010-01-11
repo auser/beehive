@@ -226,7 +226,7 @@ initialize_application(#app{template = Template} = App, PropLists, AppLauncher, 
     [lists:flatten([" APP_NAME=\"", App#app.name, "\" "])]
   ]),
   
-  DefaultProps = [{env, Env}, {image, ImagePath}],
+  DefaultProps = [{env_vars, Env}, {image, ImagePath}],
   
   StartProplist = ?APP_TEMPLATE_SHELL_SCRIPT_PARSED(Template, Vars, DefaultProps),
   % AppRootPath = proplists:get_value(path, Proplist1),
