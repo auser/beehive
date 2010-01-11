@@ -224,7 +224,8 @@ initialize_application(#app{template = Template} = App, PropLists, AppLauncher, 
     [lists:flatten(["LOCAL_HOST=\"", Host, "\""])],
     [lists:flatten(["STARTED_AT=\"", misc_utils:to_list(StartedAt), "\""])],
     [lists:flatten(["APP_NAME=\"", App#app.name, "\""])],
-    ["RACK_ENV=production"]
+    ["RACK_ENV=production"],
+    ["PATH=$PATH:/usr/bin:/bin:/usr/local/bin"]
   ],
   
   StdOut = lists:flatten(["/var/log/beehive/", App#app.name, ".log"]),
