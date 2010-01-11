@@ -21,27 +21,10 @@ app_template_parsed(Type, Proplist, DefaultProps) ->
   File = ?USER_OR_BH(["app_templates", "/", Type, ".erl"]),
   io:format("Looking in ~p for app template~n", [File]),
   {ok, L} = file:consult(File),
-  TemplatedStartCommands = lists:flatten(template_proplists(L, Proplist, [])),
-  merge_props(TemplatedStartCommands, DefaultProps, []).
+  TemplatedStartCommands = template_proplists(L, Proplist, []),
+  lists:flatten([TemplatedStartCommands|DefaultProps]).
   
 % Internal
-merge_props([], [], Acc) -> Acc;
-merge_props([], Proplists, Acc) -> [Proplists|Acc];
-merge_props(Proplists, [], Acc) -> [Proplists|Acc];
-merge_props([{env_vars, _V}=Tuple|Rest], TemplateProps, Acc) ->
-  NewAcc = case proplists:get_value(env_vars, TemplateProps) of
-    undefined -> [Tuple|Acc];
-    Val -> [{env_vars, [Val] }|Acc]
-  end,
-  merge_props(Rest, TemplateProps, NewAcc);
-merge_props([{K, V}=Tuple|Rest], TemplateProps, Acc) ->
-  NewAcc = case proplists:get_value(K, TemplateProps) of
-    undefined -> [Tuple|Acc];
-    Val -> [{K, lists:flatten([Val, V])}|Acc]
-  end,
-  merge_props(Rest, TemplateProps, NewAcc).
-    
-
 template_proplists([], _Proplists, Acc) -> lists:reverse(Acc);
 template_proplists([{K, V}|Rest], Proplists, Acc) ->
   template_proplists(Rest, Proplists, [{K, template_command_string(V, Proplists)}|Acc]).
