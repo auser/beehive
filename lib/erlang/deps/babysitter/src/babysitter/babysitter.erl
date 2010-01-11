@@ -158,11 +158,16 @@ build_isolate_command(Opts) ->
       end;
       Skel -> lists:flatten([" -b ", Skel])
   end,
+  
+  Env = case build_cli_option("-e", env_vars, Opts) of
+    [] -> [];
+    EnvElse -> lists:flatten([" -e ", string:join(EnvElse, " -D ")])
+  end,
+  
   ConfineDirectory = build_cli_option("-C", confine_dir, Opts),
   ProcessCount = build_cli_option("-p", num_processes, Opts),
   FilesCount = build_cli_option("-f", files_count, Opts),
   Mount = build_cli_option("-i", image, Opts),
-  Env = build_cli_option("-e", env_vars, Opts),
   
   lists:flatten(["exec ", 
     babysitter:isolate_command(), 
