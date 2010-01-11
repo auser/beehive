@@ -88,7 +88,7 @@ handle_event({bee, cannot_connect, Bee}, State) ->
   % bees:transactional_save(fun() ->
   RealBee = bees:find_by_id(Bee#bee.id),
   io:format("{bee, cannot_connect, ~p}", [RealBee]),
-  bees:update(RealBee#bee{status = down})
+  bees:update(RealBee#bee{status = down}),
   % end),
   {ok, State};
 
