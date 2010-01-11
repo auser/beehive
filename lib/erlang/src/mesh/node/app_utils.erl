@@ -28,10 +28,10 @@ app_template_parsed(Type, Proplist, DefaultProps) ->
 merge_props([], [], Acc) -> Acc;
 merge_props([], Proplists, Acc) -> [Proplists|Acc];
 merge_props(Proplists, [], Acc) -> [Proplists|Acc];
-merge_props([{env, V}=Tuple|Rest], TemplateProps, Acc) ->
-  NewAcc = case proplists:get_value(env, TemplateProps) of
+merge_props([{env_vars, V}=Tuple|Rest], TemplateProps, Acc) ->
+  NewAcc = case proplists:get_value(env_vars, TemplateProps) of
     undefined -> [Tuple|Acc];
-    Val -> [{env, [Val] }|Acc]
+    Val -> [{env_vars, [Val] }|Acc]
   end,
   merge_props(Rest, TemplateProps, NewAcc);
 merge_props([{K, V}=Tuple|Rest], TemplateProps, Acc) ->
