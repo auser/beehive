@@ -253,13 +253,11 @@ initialize_application(#app{template = Template} = App, PropLists, AppLauncher, 
     start_time              = StartedAt
   },
       
-  case Status of
-    0 ->
+  case babysitter:spawn_new(StartProplist, self()) of
+    ok ->
       % Store the app in the local ets table
       ets:insert(?TAB_ID_TO_BEE, {Id, Bee}),
       ets:insert(?TAB_NAME_TO_BEE, {App#app.name, Bee}),
-      
-      babysitter:spawn_new(StartProplist, self()),
       
       AppLauncher ! {started_bee, Bee},
       Bee;

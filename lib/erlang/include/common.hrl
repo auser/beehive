@@ -48,4 +48,4 @@ end()).
 -define (TEMPLATE_SHELL_SCRIPT (Name, Params), fun() -> string_utils:template_command_string(?SHELL_SCRIPT(Name), Params) end()).
 -define (TEMPLATE_SHELL_SCRIPT_PARSED (Name, Params), misc_utils:shell_fox(Name, Params)).
 
--define (APP_TEMPLATE_SHELL_SCRIPT_PARSED (Name, Proplists), app_utils:app_template_parsed(Name, Proplists)).
+-define (APP_TEMPLATE_SHELL_SCRIPT_PARSED (Name, Proplists, Env), app_utils:app_template_parsed(Name, Proplists, Env)).

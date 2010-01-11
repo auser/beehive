@@ -9,7 +9,7 @@
 -module (app_utils).
 -include ("common.hrl").
 -export ([
-  app_template_parsed/2
+  app_template_parsed/3
 ]).
 
 % For testing
@@ -17,11 +17,11 @@
 
 % Type template
 % Get the application type of the template
-app_template_parsed(Type, Proplistm Env) ->
+app_template_parsed(Type, Proplist, Env) ->
   File = ?USER_OR_BH(["app_templates", "/", Type, ".erl"]),
   {ok, L} = file:consult(File),
   OrigProps = template_proplists(L, Proplist, []),
-  case get_value(env, OrigProps) of
+  case proplists:get_value(env, OrigProps) of
     undefined -> [{env, Env}|OrigProps];
     Value ->
       OldProps = proplists:delete(env, OrigProps),
