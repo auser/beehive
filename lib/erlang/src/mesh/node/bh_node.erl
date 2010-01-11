@@ -17,8 +17,7 @@ start(_Type, Args) ->
   lists:map(fun(App) ->
     io:format("---> starting ~p~n", [App]),
     App:start()
-  end, [crypto]),
-  babysitter:start_link(),
+  end, [crypto, babysitter_app]),
   bh_node_sup:start_link(Args).
 
 stop(State) -> 
