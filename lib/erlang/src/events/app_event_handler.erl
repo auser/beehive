@@ -43,7 +43,7 @@ init([]) ->
   ets:new(?LAUNCHERS_PID_TO_APP, Opts),
   ets:new(?LAUNCHERS_APP_TO_PID, Opts),
   
-  {ok, _TRef} = timer:send_interval(10000, flush_old_processes),
+  {ok, _TRef} = timer:send_interval(5000, flush_old_processes),
   
   {ok, #state{}}.
 
