@@ -180,7 +180,7 @@ build_isolate_command(Opts) ->
 
 % Build the command-line option
 build_cli_option(Switch, Param, Opts) -> 
-  io:format("build_cli_option: ~p, ~p~n", [Switch, Param]),
+  io:format("build_cli_option: ~p, ~p~n", [Switch, fetch_value(Param, Opts)]),
   case fetch_value(Param, Opts) of
     [] -> [];
     undefined -> [];
