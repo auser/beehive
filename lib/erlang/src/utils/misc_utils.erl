@@ -178,8 +178,8 @@ proplist_merge_helper(List, Other) ->
   case io_lib:char_list(List) of
     true ->
       lists:append([[List], [Other]]);
-    false ->
-      lists:flatten([[List], [Other]])
+    _ ->
+      lists:append([List|Other])
   end.
 
 % name of the local node

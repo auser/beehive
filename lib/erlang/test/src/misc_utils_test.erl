@@ -25,6 +25,9 @@ propmerge_test_() ->
     ?_assertEqual([{a, "a"}, {b, "b"}, {c, ["c", "not c"]}],
       misc_utils:proplist_merge([{a, "a"}, {b, "b"}, {c, "c"}], [{c, "not c"}])
     ),
+    ?_assertEqual([{a, "a"}, {b, "b"}, {c, ["c", "not c", "hello"]}],
+      misc_utils:proplist_merge([{a, "a"}, {b, "b"}, {c, ["c"]}], [{c, [["not c"], ["hello"]]}])
+    ),
     ?_assertEqual([{a, "a"}, {b, "b"}, {c, ["c", "not c"]}, {d, "doggie"}],
       misc_utils:proplist_merge([{a, "a"}, {b, "b"}, {c, "c"}], [{c, "not c"}, {d, "doggie"}])
     )
