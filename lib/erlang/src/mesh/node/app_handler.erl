@@ -228,7 +228,7 @@ initialize_application(#app{template = Template} = App, PropLists, AppLauncher, 
   
   StdOut = lists:flatten(["/var/log/beehive/", App#app.name, ".log"]),
   
-  DefaultProps = [{env_vars, Env}, {image, ImagePath}, {stdout, StdOut}, {stderr, StdOut}],
+  DefaultProps = [{env_vars, Env}, {image, ImagePath}, {stdout, StdOut}, {stderr, StdOut}, {files_count, "103"}],
   
   StartProplist = ?APP_TEMPLATE_SHELL_SCRIPT_PARSED(Template, Vars, DefaultProps),
   % AppRootPath = proplists:get_value(path, Proplist1),
