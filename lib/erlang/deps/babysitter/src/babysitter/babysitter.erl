@@ -181,7 +181,7 @@ build_cli_option(Switch, Param, Opts) ->
   case fetch_value(Param, Opts) of
     [] -> [];
     undefined -> [];
-    E -> lists:flatten([" ", Switch, " ", E])
+    E -> lists:flatten([" ", Switch, " \"", E, "\""])
   end.
 
 % Accept only know execution options
