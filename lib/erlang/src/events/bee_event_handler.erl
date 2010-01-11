@@ -83,9 +83,9 @@ handle_event({bee, bee_terminated, Bee}, State) when is_record(Bee, bee) ->
   {ok, State};
 
 % Catch a cannot connect error
-handle_event({bee, cannot_connect, Bee}, State) ->
+handle_event({bee, cannot_connect, Id}, State) ->
   % bees:transactional_save(fun() ->
-  RealBee = bees:find_by_id(Bee#bee.id),
+  RealBee = bees:find_by_id(Id),
   ?LOG(debug, "{bee, cannot_connect, ~p}", [RealBee]),
   bees:update(RealBee#bee{status = down}),
   % end),
