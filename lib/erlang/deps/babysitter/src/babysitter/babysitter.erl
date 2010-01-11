@@ -142,7 +142,7 @@ handle_spawn_new(Opts) ->
   exec:run_link(RealCommand, ExecOpts).
 
 handle_stop_process(Pid) when is_pid(Pid) ->
-  babysitter_process:stop(Pid).
+  exec:stop(Pid).
 
 build_isolate_command(Opts) ->
   Vars    = fetch_value(vars, Opts),
