@@ -148,9 +148,7 @@ build_isolate_command(Opts) ->
   Vars    = fetch_value(vars, Opts),
   DefinedCommand = fetch_value(start_command, Opts),
   Command = string_utils:template_command_string(DefinedCommand, Vars),
-  
-  io:format("build_isolate_command: ~p~n", [Opts]),
-  
+    
   SkelOrDirs = case fetch_value(skel, Opts) of
     undefined ->
       AlwaysIncludedDir = " -D /bin -D /lib",
@@ -180,7 +178,6 @@ build_isolate_command(Opts) ->
 
 % Build the command-line option
 build_cli_option(Switch, Param, Opts) -> 
-  io:format("build_cli_option: ~p, ~p~n", [Switch, fetch_value(Param, Opts)]),
   case fetch_value(Param, Opts) of
     [] -> [];
     undefined -> [];
