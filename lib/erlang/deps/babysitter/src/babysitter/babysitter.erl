@@ -162,7 +162,6 @@ build_isolate_command(Opts) ->
   Env = case fetch_value(env_vars, Opts) of
     [] -> [];
     EnvElse -> 
-      io:format("EnvElse: ~p~n", [EnvElse]),
       lists:flatten([" -e ", string:join(EnvElse, " -e ")])
   end,
   

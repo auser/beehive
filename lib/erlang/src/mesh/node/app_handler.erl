@@ -219,11 +219,11 @@ initialize_application(#app{template = Template} = App, PropLists, AppLauncher, 
   ],
   
   Env = [
-    [lists:flatten([" SHA=\"", Sha, "\"\n "])],
-    [lists:flatten([" LOCAL_PORT=\"", misc_utils:to_list(Port), "\"\n "])],
-    [lists:flatten([" LOCAL_HOST=\"", Host, "\"\n "])],
-    [lists:flatten([" STARTED_AT=\"", misc_utils:to_list(StartedAt), "\"\n "])],
-    [lists:flatten([" APP_NAME=\"", App#app.name, "\"\n "])]
+    [lists:flatten([" SHA=\"", Sha, "\""])],
+    [lists:flatten([" LOCAL_PORT=\"", misc_utils:to_list(Port), "\""])],
+    [lists:flatten([" LOCAL_HOST=\"", Host, "\""])],
+    [lists:flatten([" STARTED_AT=\"", misc_utils:to_list(StartedAt), "\""])],
+    [lists:flatten([" APP_NAME=\"", App#app.name, "\""])]
   ],
   
   StdOut = lists:flatten(["/var/log/beehive/", App#app.name, ".log"]),
