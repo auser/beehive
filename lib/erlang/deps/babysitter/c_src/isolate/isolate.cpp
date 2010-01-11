@@ -752,6 +752,15 @@ static void clean_up() throw () {
       {
         if (system( (UMOUNT + ' ' + confinement_path + "/home").c_str() )) {
               cerr << "WARNING: Could not unmount " << image_path << endl;
+              sleep(5);
+              if (system( (UMOUNT + ' ' + confinement_path + "/home").c_str() )) {
+                cerr << "WARNING: Could not unmount " << image_path << endl;
+                sleep(5);
+                if (system( (UMOUNT + ' ' + confinement_path + "/home").c_str() )) {
+                      cerr << "Error: Could not unmount " << image_path << endl;
+                      exit(3);
+                }
+              }
         }
       }
 
