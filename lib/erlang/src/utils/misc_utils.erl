@@ -162,7 +162,12 @@ new_or_previous_value(NewProplist, [{K,V}|Rest], Acc) ->
   
 % Merge the two proplists, so that if there are overlapping values, make them be appended
 proplist_merge(A, B) -> proplist_merge1(A, B, []).
-proplist_merge1([], _, Acc) -> lists:reverse(Acc);
+proplist_merge1([], [], Acc) -> lists:reverse(Acc);
+proplist_merge1([], [{K,_V}=Tuple|Rest], Acc) ->
+  case proplists:get_value(K, Acc) of
+    undefined -> proplist_merge1([], Rest, [Tuple|Acc]);
+    _Else -> proplist_merge1([], Rest, Acc)
+  end;
 proplist_merge1([{K,V}=Tuple|Rest], B, Acc) ->
   case proplists:get_value(K, B) of
     undefined -> proplist_merge1(Rest, B, [Tuple|Acc]);
