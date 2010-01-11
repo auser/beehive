@@ -13,7 +13,7 @@
 
 -export([start/2, stop/1]).
 
-start(Type, Args) -> 
+start(_Type, Args) -> 
   lists:map(fun(App) ->
     io:format("---> starting ~p~n", [App]),
     App:start()

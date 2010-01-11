@@ -8,7 +8,7 @@ SRC_DIR="/tmp/beehive"
 
 sudo apt-get update -y
 sudo apt-get install -y curl git-core
-sudo apt-get install -y build-essential libc6-dev m4 libssl-dev libncurses5 libncurses5-dev
+sudo apt-get install -y build-essential libc6-dev m4 libssl-dev libncurses5 libncurses5-dev libcap-dev
 sudo apt-get install -y ruby rubygems ruby-dev libopenssl-ruby
 sudo apt-get install -y spidermonkey-bin
 sudo apt-get install -y erlang-nox erlang-base-hipe erlang-dev erlang-tools

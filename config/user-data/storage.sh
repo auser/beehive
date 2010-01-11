@@ -3,7 +3,7 @@ BEEHIVE_USER_HOME=${1:-'/var/lib/beehive'}
 INSTALL_PREFIX=${2:-''}
 
 sudo apt-get update
-sudo apt-get install -y build-essential m4 libssl-dev libncurses5 libncurses5-dev
+sudo apt-get install -y build-essential m4 libssl-dev libncurses5 libncurses5-dev libcap-dev
 sudo apt-get install -y git git-core
 sudo apt-get install -y rubygems1.8 spidermonkey-bin
 sudo apt-get install -y erlang-nox erlang-base-hipe erlang-dev erlang-tools
