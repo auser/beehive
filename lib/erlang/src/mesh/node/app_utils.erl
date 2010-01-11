@@ -17,10 +17,16 @@
 
 % Type template
 % Get the application type of the template
-app_template_parsed(Type, Proplist) ->
+app_template_parsed(Type, Proplistm Env) ->
   File = ?USER_OR_BH(["app_templates", "/", Type, ".erl"]),
-  {ok, L} = file:consult(File),   
-  template_proplists(L, Proplist, []).
+  {ok, L} = file:consult(File),
+  OrigProps = template_proplists(L, Proplist, []),
+  case get_value(env, OrigProps) of
+    undefined -> [{env, Env}|OrigProps];
+    Value ->
+      OldProps = proplists:delete(env, OrigProps),
+      [{env, lists:flatten([Value, Env])}|OldProps]
+  end.
   
 % Internal
 template_proplists([], _Proplists, Acc) -> lists:reverse(Acc);

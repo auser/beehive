@@ -91,7 +91,8 @@
   sha,                              % sha of the latest working push
   updated_at,
   start_command,
-  stop_command
+  stop_command,
+  template = "rack"                 % default to a rack app template
 }).
 
 % Launching app record

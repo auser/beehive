@@ -210,7 +210,7 @@ internal_start_new_instance(App, Sha, Port, AppLauncher, From) ->
   end.
 
 % Initialize the node
-initialize_application(App, PropLists, AppLauncher, _From) ->
+initialize_application(#app{template = Template} = App, PropLists, AppLauncher, _From) ->
   Sha = proplists:get_value(sha, PropLists),
   Port = proplists:get_value(port, PropLists),
   ImagePath = proplists:get_value(bee_image, PropLists),
@@ -228,8 +228,17 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
     {"[[START_TIME]]", misc_utils:to_list(StartedAt)},
     {"[[APP_NAME]]", App#app.name}
   ],
-  {Proplist1, Status} = ?APP_TEMPLATE_SHELL_SCRIPT_PARSED("mount-bee", Vars),
-  AppRootPath = proplists:get_value(path, Proplist1),
+  
+  Env = [
+    [io_lib:format("SHA=%s", Sha)],
+    [io_lib:format("LOCAL_PORT=%s", Port)],
+    [io_lib:format("LOCAL_HOST=%s", Host)],
+    [io_lib:format("STARTED_AT=%s", misc_utils:to_list(StartedAt))],
+    [io_lib:format("APP_NAME=%s", App#app.name)]
+  ],
+  
+  StartProplist = ?APP_TEMPLATE_SHELL_SCRIPT_PARSED(Template, Vars, Env),
+  % AppRootPath = proplists:get_value(path, Proplist1),
   
   Bee  = #bee{
     id                      = Id,
@@ -237,7 +246,7 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
     host                    = Host,
     host_node               = node(self()),
     storage_node            = StorageNode,
-    path                    = AppRootPath,
+    % path                    = AppRootPath,
     port                    = Port,
     status                  = pending,
     commit_hash             = Sha,
@@ -250,18 +259,10 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
       ets:insert(?TAB_ID_TO_BEE, {Id, Bee}),
       ets:insert(?TAB_NAME_TO_BEE, {App#app.name, Bee}),
       
-      StartCommand1 = proplists:get_value(start_command, Proplist1),
-      StartCommand = string:strip(StartCommand1, both, $\n),
+      babysitter:spawn_new(StartProplist, self()),
       
-      StopCommand1 = proplists:get_value(stop_command, Proplist1),
-      StopCommand = string:strip(StopCommand1, both, $\n),
-      
-      StartVars = [{start_command, StartCommand},{stop_command, StopCommand},{variables, Vars}],
-      PortPid = babysitter:spawn_new(StartVars, self()),
-      
-      NewBee = Bee#bee{pid = PortPid},
-      AppLauncher ! {started_bee, NewBee},
-      NewBee;
+      AppLauncher ! {started_bee, Bee},
+      Bee;
     Code ->
       AppLauncher ! {error, Code}
   end.
