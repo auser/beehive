@@ -252,7 +252,8 @@ initialize_application(#app{template = Template} = App, PropLists, AppLauncher, 
     commit_hash             = Sha,
     start_time              = StartedAt
   },
-      
+  
+  io:format("------ App handler using babysitter spawn_new: ~p~n", [StartProplist]),
   case babysitter:spawn_new(StartProplist, self()) of
     ok ->
       % Store the app in the local ets table
