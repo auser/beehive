@@ -26,7 +26,9 @@ app_template_parsed(Type, Proplist, DefaultProps) ->
   template_proplists(L, DefaultAndUserDrivenProps, []).
   
 % Internal
-merge_props([], _, Acc) -> Acc;
+merge_props([], [], Acc) -> Acc;
+merge_props([], Proplists, Acc) -> [Proplists|Acc];
+merge_props(Proplists, [], Acc) -> [Proplists|Acc];
 merge_props([{K, V}=Tuple|Rest], TemplateProps, Acc) ->
   NewAcc = case proplists:get_value(K, TemplateProps) of
     undefined -> [Tuple|Acc];
