@@ -860,7 +860,6 @@ int main(int argc, char *argv[]) {
       string_set sprt_pths;
       string confinement_root = DEFAULT_CONFINEMENT_ROOT;
       string skel_dir;
-      string user;
       
       int curr_env_vars;
       /* Set default environment variables */
@@ -878,7 +877,7 @@ int main(int argc, char *argv[]) {
       /* Parse command line. */
 
       char c;
-      while (-1 != (c = getopt(argc, argv, "a:b:c:C:d:D:e:f:i:hm:M:n:p:r:s:St:u:Tvz:"))) {
+      while (-1 != (c = getopt(argc, argv, "a:b:c:C:d:D:e:f:i:hm:M:n:p:r:s:St:Tvz:"))) {
             switch (c) {
             case 'a':
                   lmt_all = strtoll(optarg, NULL, 0);
@@ -938,9 +937,6 @@ int main(int argc, char *argv[]) {
             case 'T':
                   cookie_trust = "trusted";
                   break;
-            case 'u':
-                  user = string(optarg);
-                  break;
             case 'v':
                   vrbs = true;
                   break;
@@ -991,25 +987,8 @@ int main(int argc, char *argv[]) {
 
       /* Create a random UID for the isolator. */
       // TODO: If invoker is root, allow them to specify a UID?
-      if(!user.empty()) {
-        uid_t uid=user.c_str();
-        
-        if ((p = getpwuid(uid)) == NULL)
-          perror("getpwuid() error");
-          isolator = random_uid();
-        else {
-          printf("getpwuid() returned the following info for uid %d:\n",
-                 (int) uid);
-          printf("  pw_name  : %s\n",       p->pw_name);
-          printf("  pw_uid   : %d\n", (int) p->pw_uid);
-          printf("  pw_gid   : %d\n", (int) p->pw_gid);
-          printf("  pw_dir   : %s\n",       p->pw_dir);
-          printf("  pw_shell : %s\n",       p->pw_shell);
-          isolator = uid;
-        }
-      } else {
-        isolator = random_uid();
-      }
+      
+      isolator = random_uid();
 
       invoker = getuid();
 
