@@ -31,7 +31,7 @@ merge_props(Proplists, [], Acc) -> [Proplists|Acc];
 merge_props([{env, V}=Tuple|Rest], TemplateProps, Acc) ->
   NewAcc = case proplists:get_value(env, TemplateProps) of
     undefined -> [Tuple|Acc];
-    Val -> [{env, [lists:append([Val, V])] }|Acc]
+    Val -> [{env, [Val] }|Acc]
   end,
   merge_props(Rest, TemplateProps, NewAcc);
 merge_props([{K, V}=Tuple|Rest], TemplateProps, Acc) ->
