@@ -175,7 +175,7 @@ proplist_merge1([{K,V}=Tuple|Rest], B, Acc) ->
   end.
 
 proplist_merge_helper(List, Other) ->
-  lists:append([[List], [Other]]).
+  lists:append([lists:flatten([List]), lists:flatten([Other])]).
 
 % name of the local node
 localnode(Name) ->
