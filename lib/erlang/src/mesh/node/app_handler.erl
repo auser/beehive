@@ -297,7 +297,7 @@ internal_stop_instance(#bee{id = Id, os_pid = OsPid, pid = PidPort, port = Port,
   #bee{commit_hash = Sha} = Bee = bees:find_by_id(Id),
   ?LOG(debug, "internal_stop_instance: ~p and ~p", [Sha, App#app.name]),
   
-  exec:kill(OsPid, "SIGINT"),
+  exec:kill(OsPid, "SIGHUP"),
   timer:sleep(100),
   babysitter:stop_process(PidPort),
   
