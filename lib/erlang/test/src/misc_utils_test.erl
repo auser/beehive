@@ -19,3 +19,10 @@ chop_test_() ->
     ?_assertEqual([{path, "/Users/arilerner/Sites/get\ beehive.com"}], misc_utils:chop(["path /Users/arilerner/Sites/get\ beehive.com"])),
     ?_assertEqual([{omg, "what the eff"}, {call, "ghostbusters"}], misc_utils:chop(["omg what the eff\ncall ghostbusters"]))
   ].
+
+propmerge_test_() ->
+  [
+    ?_assertEqual([{a, "a"}, {b, "b"}, {c, ["c", "not c"]}],
+    misc_utils:proplist_merge([{a, "a"}, {b, "b"}, {c, "c"}], [{c, "not c"}])
+    )
+  ].

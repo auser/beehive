@@ -22,7 +22,7 @@ app_template_parsed(Type, Proplist, DefaultProps) ->
   io:format("Looking in ~p for app template~n", [File]),
   {ok, L} = file:consult(File),
   TemplatedStartCommands = template_proplists(L, Proplist, []),
-  lists:flatten([TemplatedStartCommands|DefaultProps]).
+  misc_utils:proplist_merge(TemplatedStartCommands, DefaultProps).
   
 % Internal
 template_proplists([], _Proplists, Acc) -> lists:reverse(Acc);
