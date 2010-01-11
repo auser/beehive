@@ -174,8 +174,6 @@ proplist_merge1([{K,V}=Tuple|Rest], B, Acc) ->
     Else -> proplist_merge1(Rest, lists:delete(K, B), [{K, proplist_merge_helper(V, Else)}|Acc])
   end.
 
-proplist_merge_helper(List, OtherList) when is_list(List), is_list(OtherList) ->
-  lists:flatten([List, OtherList]);
 proplist_merge_helper(List, Other) ->
   lists:append([[List], [Other]]).
 
