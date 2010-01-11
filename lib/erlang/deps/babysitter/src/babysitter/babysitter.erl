@@ -159,7 +159,7 @@ build_isolate_command(Opts) ->
       Skel -> lists:flatten([" -b ", Skel])
   end,
   
-  Env = case build_cli_option("-e", env_vars, Opts) of
+  Env = case fetch_value(env_vars, Opts) of
     [] -> [];
     EnvElse -> 
       io:format("EnvElse: ~p~n", [EnvElse]),
