@@ -229,7 +229,7 @@ initialize_application(#app{template = Template} = App, PropLists, AppLauncher, 
     {"[[APP_NAME]]", App#app.name}
   ],
   
-  Env = lists:flatten([
+  Env = lists:append([
     io_lib:format("SHA=\"~s\"", [Sha]), " ",
     io_lib:format("LOCAL_PORT=\"~s\"", [misc_utils:to_list(Port)]), " ",
     io_lib:format("LOCAL_HOST=\"~s\"", [Host]), " ",
