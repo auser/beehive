@@ -28,9 +28,10 @@ app_template_parsed(Type, Proplist, DefaultProps) ->
 merge_props([], _, Acc) -> Acc;
 merge_props([{K, _V}=Tuple|Rest], TemplateProps, Acc) ->
   NewAcc = case proplists:get_value(K, TemplateProps) of
-    undefined -> [Tuple|Acc}];
+    undefined -> [Tuple|Acc];
     Val -> [{K, Val}|Acc]
-  end.
+  end,
+  merge_props(Rest, TemplateProps, NewAcc).
     
 
 template_proplists([], _Proplists, Acc) -> lists:reverse(Acc);
