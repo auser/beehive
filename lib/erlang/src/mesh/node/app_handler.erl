@@ -297,14 +297,6 @@ internal_stop_instance(#bee{id = Id, os_pid = OsPid, pid = PidPort, port = Port,
   #bee{commit_hash = Sha} = Bee = bees:find_by_id(Id),
   ?LOG(debug, "internal_stop_instance: ~p and ~p", [Sha, App#app.name]),
   
-  % Being nice and sending the child processes a nice little please close before sending the real one...
-  % TODO: Clean this up into exec-port
-  StopCommand = lists:flatten(["ps ax -o '%p %r %y %x %c' | grep ", 
-                              misc_utils:to_list(OsPid), 
-                              " | awk '{print \$1}' | /usr/bin/xargs /bin/kill -INT;"]),
-  ?LOG(debug, "Issuing command: ~s to stop", [StopCommand]),
-  os:cmd(StopCommand),
-  timer:sleep(100),
   babysitter:stop_process(PidPort),
   
   case ets:lookup(?TAB_ID_TO_BEE, {App#app.name, Host, Port}) of
