@@ -90,7 +90,7 @@ handle_event({bee, cannot_connect, Bee}, State) ->
   %   io:format("{bee, cannot_connect, ~p}", [RealBee]),
   %   bees:update(RealBee#bee{status = down})
   % end),
-  bees:update(RealBee#bee{status = down}),
+  bees:update(Bee#bee{status = down}),
   {ok, State};
 
 handle_event({bee, closing_stats, #bee{id = Id} = Backend, StatsProplist}, State) ->
