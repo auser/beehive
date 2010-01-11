@@ -21,7 +21,7 @@ app_template_parsed(Type, Proplist, DefaultProps) ->
   File = ?USER_OR_BH(["app_templates", "/", Type, ".erl"]),
   io:format("Looking in ~p for app template~n", [File]),
   {ok, L} = file:consult(File),
-  TemplatedStartCommands = template_proplists(L, Proplist, []),
+  TemplatedStartCommands = lists:flatten(template_proplists(L, Proplist, [])),
   merge_props(TemplatedStartCommands, DefaultProps, []).
   
 % Internal
