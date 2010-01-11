@@ -26,7 +26,7 @@ app_template_parsed(Type, Proplist, Env) ->
     undefined -> [{env, Env}|OrigProps];
     Value ->
       OldProps = proplists:delete(env, OrigProps),
-      [{env, lists:flatten([Value, Env])}|OldProps]
+      [{env, lists:flatten([Value, " ", Env])}|OldProps]
   end.
   
 % Internal
