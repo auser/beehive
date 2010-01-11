@@ -66,7 +66,8 @@
   dir_size,
   storage_node,
   start_time    = 0,        % starting time
-  pid,                      % pid of os port process
+  pid,                      % pid of the port process tracker
+  os_pid,                   % pid of the os port process
   sticky        = false,    % keep this bee around, don't remove it from the bee list if it dies
   lastresp_time = 0,
   lasterr       = 0,

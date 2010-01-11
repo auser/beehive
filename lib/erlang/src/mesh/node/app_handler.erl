@@ -250,9 +250,9 @@ initialize_application(#app{template = Template} = App, PropLists, AppLauncher, 
   
   io:format("------ App handler using babysitter spawn_new: ~p~n", [StartProplist]),
   case babysitter:spawn_new(StartProplist, self()) of
-    {ok, ProcessPid, _SysPid} ->
+    {ok, ProcessPid, SysPid} ->
       % Store the app in the local ets table
-      NewBee = Bee#bee{pid = ProcessPid},
+      NewBee = Bee#bee{pid = ProcessPid, os_pid = SysPid},
       ets:insert(?TAB_ID_TO_BEE, {Id, NewBee}),
       ets:insert(?TAB_NAME_TO_BEE, {App#app.name, NewBee}),
       
@@ -293,10 +293,15 @@ find_bee_on_storage_nodes(App, Sha, [Node|Rest]) ->
   end.
 
 % kill the instance of the application  
-internal_stop_instance(#bee{id = Id} = _CalledBee, App, From) when is_record(App, app) ->  
+internal_stop_instance(#bee{id = Id, os_pid = PidID} = _CalledBee, App, From) when is_record(App, app) ->  
   #bee{commit_hash = Sha, pid = PidPort} = Bee = bees:find_by_id(Id),
   ?LOG(debug, "internal_stop_instance: ~p and ~p", [Sha, App#app.name]),
   
+  % Being nice and sending the child processes a nice little please close before sending the real one...
+  % TODO: Clean this up into exec-port
+  StopCommand = lists:flatten(["ps ax -o '%p %r %y %x %c' | grep ", misc_utils:to_list(PidId), " | awk '{print \$1}' | /usr/bin/xargs /bin/kill -INT;"]),
+  os:cmd(StopCommand),
+  timer:sleep(100),
   babysitter:stop_process(PidPort),
   
   case ets:lookup(?TAB_ID_TO_BEE, {App#app.name, Bee#bee.host, Bee#bee.port}) of
