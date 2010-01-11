@@ -27,8 +27,7 @@
          terminate/2, code_change/3]).
 
 -record(state, {
-  max_bees,             % maximum number of bees on this host
-  available_ports          % available ports on this node
+  max_bees             % maximum number of bees on this host
 }).
 -define(SERVER, ?MODULE).
 
@@ -84,12 +83,9 @@ init([]) ->
   ets:new(?TAB_NAME_TO_BEE, Opts),
   
   MaxBackends     = ?MAX_BACKENDS_PER_HOST,
-  % set a list of ports that the node can use to deploy applications
-  AvailablePorts  = lists:seq(?STARTING_PORT, ?STARTING_PORT + MaxBackends),
   
   {ok, #state{
-    max_bees = MaxBackends,
-    available_ports = AvailablePorts
+    max_bees = MaxBackends
   }}.
 
 %%--------------------------------------------------------------------
@@ -101,24 +97,18 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%-------------------------------------------------------------------- 
-handle_call({start_new_instance, App, Sha, AppLauncher, From}, _From, #state{
-                                      available_ports = AvailablePorts} = State) ->
+handle_call({start_new_instance, App, Sha, AppLauncher, From}, _From, State) ->
   
   Port = bh_host:unused_port(),
   
   % Then start it :)
   ?LOG(debug, "internal_start_new_instance: ~p, ~p, ~p, ~p, ~p~n", [App, Sha, Port, AppLauncher, From]),
   internal_start_new_instance(App, Sha, Port, AppLauncher, From),
-  NewAvailablePorts = lists:delete(Port, AvailablePorts),
-  {reply, ok, State#state{
-    available_ports = NewAvailablePorts
-  }};
+  {reply, ok, State};
 
-handle_call({stop_instance, Backend, App, From}, _From, #state{available_ports = AvailablePorts} = State) ->
-  Port = Backend#bee.port,
+handle_call({stop_instance, Backend, App, From}, _From, State) ->
   internal_stop_instance(Backend, App, From),
-  NewAvailablePorts = [Port|AvailablePorts],
-  {reply, ok, State#state{available_ports = lists:reverse(NewAvailablePorts)}};
+  {reply, ok, State};
 
 handle_call({has_app_named, Name}, _From, State) ->
   Reply = case ets:lookup(?TAB_NAME_TO_BEE, Name) of
@@ -143,12 +133,11 @@ handle_call(_Request, _From, State) ->
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
 % Good spot for optimization
-handle_cast({stop_app, App, From}, State) ->
+handle_cast({stop_app, App, _From}, State) ->
   AppBees = lists:flatten(ets:match(?TAB_NAME_TO_BEE, {App#app.name, '$1'})),
   
   io:format("Terminating AppBees: ~p~n", [AppBees]),  
-  NewAvailablePorts = handle_terminate_app_bees(AppBees, App, From, []),
-  {noreply, State#state{available_ports = NewAvailablePorts}};
+  {noreply, State};
   
 handle_cast(_Msg, State) ->
   {noreply, State}.
@@ -325,11 +314,5 @@ next_free_honeycomb(App) ->
   ]),
   proplists:get_value(dir, Proplists).
   
-handle_terminate_app_bees([], _App, _From, AvailablePorts) -> AvailablePorts;
-handle_terminate_app_bees([#bee{port = Port} = Bee|Rest], App, From, AvailablePorts) ->
-  internal_stop_instance(Bee, App, From),
-  NewAvailablePorts = [Port|AvailablePorts],
-  handle_terminate_app_bees(Rest, App, From, NewAvailablePorts).
-
 handle_pid_exit(_Pid, _Reason, State) ->
   State.

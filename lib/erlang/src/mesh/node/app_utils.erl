@@ -22,6 +22,7 @@ app_template_parsed(Type, Proplist, DefaultProps) ->
   io:format("Looking in ~p for app template~n", [File]),
   {ok, L} = file:consult(File),
   DefaultAndUserDrivenProps = merge_props(DefaultProps, Proplist, []),
+  io:format("DefaultAndUserDrivenProps: ~p~n", [DefaultAndUserDrivenProps]),
   template_proplists(L, DefaultAndUserDrivenProps, []).
   
 % Internal
@@ -43,7 +44,5 @@ template_command_string(List, Proplists) when is_list(List) ->
     true -> string_utils:template_command_string(List, Proplists);
     false -> lists:map(fun(L) -> string_utils:template_command_string(L, Proplists) end, List)
   end;
-template_command_string(Atom, Proplists) when is_atom(Atom) -> 
-  template_command_string(lists:flatten(["[[", erlang:atom_to_list(Atom), "]]"]), Proplists);
 template_command_string(V, Proplists) ->
   string_utils:template_command_string(V, Proplists).

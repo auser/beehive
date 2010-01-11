@@ -35,6 +35,7 @@ subst(Acc, Old, New,_Str) ->
 %   {[[PORT]], "80"}
 template_command_string(OriginalCommand, []) -> OriginalCommand;
 template_command_string(OriginalCommand, [{_Str, undefined}|T]) -> template_command_string(OriginalCommand, T);
+template_command_string(OriginalCommand, [{Atom, _}|T]) when is_atom(Atom) -> template_command_string(OriginalCommand, T);
 template_command_string(OriginalCommand, [{Str, Replace}|T]) ->
   NewCommand = string_utils:gsub(OriginalCommand, Str, Replace),
   template_command_string(NewCommand, T).

@@ -23,5 +23,6 @@ templated_string_test_() ->
   [
     ?_assertEqual("red apples", string_utils:template_command_string("[[ADJECTIVE]] apples",  [{"[[ADJECTIVE]]", "red"}])),
     ?_assertEqual("blue grapes", string_utils:template_command_string("[[ADJECTIVE]] [[NOUN]]",  [{"[[ADJECTIVE]]", "blue"}, {"[[NOUN]]", "grapes"}])),
-    ?_assertEqual("[[ADJECTIVE]] apples", string_utils:template_command_string("[[ADJECTIVE]] apples",  [{"[[NOUN]]", "pear"}]))
+    ?_assertEqual("[[ADJECTIVE]] apples", string_utils:template_command_string("[[ADJECTIVE]] apples",  [{"[[NOUN]]", "pear"}])),
+    ?_assertEqual("[[ADJECTIVE]] apples", string_utils:template_command_string("[[ADJECTIVE]] apples",  [{"[[NOUN]]", "pear"}, {pickles, "pecans"}]))
   ].
