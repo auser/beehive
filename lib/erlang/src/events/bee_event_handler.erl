@@ -77,10 +77,9 @@ handle_event({bee, bee_down, Bee}, State) ->
 
 % Caught when a bee is terminated
 handle_event({bee, bee_terminated, Bee}, State) when is_record(Bee, bee) ->
-  bees:transactional_save(fun() ->
-    RealBee = bees:find_by_id(Bee#bee.id),
-    bees:update(RealBee#bee{status = terminated})
-  end),
+  RealBee = bees:find_by_id(Bee#bee.id),
+  io:format("{bee, cannot_connect, ~p}", [RealBee]),
+  bees:update(RealBee#bee{status = terminated}),
   {ok, State};
 
 % Catch a cannot connect error
