@@ -78,7 +78,7 @@ handle_event({bee, bee_down, Bee}, State) ->
 % Caught when a bee is terminated
 handle_event({bee, bee_terminated, Bee}, State) when is_record(Bee, bee) ->
   RealBee = bees:find_by_id(Bee#bee.id),
-  io:format("{bee, cannot_connect, ~p}", [RealBee]),
+  ?LOG(debug, "{bee, bee_terminated, ~p}", [RealBee]),
   bees:update(RealBee#bee{status = terminated}),
   {ok, State};
 
@@ -86,7 +86,7 @@ handle_event({bee, bee_terminated, Bee}, State) when is_record(Bee, bee) ->
 handle_event({bee, cannot_connect, Bee}, State) ->
   % bees:transactional_save(fun() ->
   RealBee = bees:find_by_id(Bee#bee.id),
-  io:format("{bee, cannot_connect, ~p}", [RealBee]),
+  ?LOG(debug, "{bee, cannot_connect, ~p}", [RealBee]),
   bees:update(RealBee#bee{status = down}),
   % end),
   {ok, State};
