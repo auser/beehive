@@ -1212,7 +1212,7 @@ int main(int argc, char *argv[]) {
             set_resource_limit(RLIMIT_AS, lmt_all);
             set_resource_limit(RLIMIT_CORE, lmt_cr);
             set_resource_limit(RLIMIT_DATA, lmt_dta);
-            set_resource_limit(RLIMIT_NOFILE, lmt_fls);
+            //set_resource_limit(RLIMIT_NOFILE, lmt_fls);
             set_resource_limit(RLIMIT_FSIZE, lmt_fl_sz);
             set_resource_limit(RLIMIT_MEMLOCK, lmt_mlck);
 #ifndef linux
