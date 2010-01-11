@@ -68,7 +68,7 @@ REST="true"
 VERBOSE=0
 STRATEGY="random"
 RELOADER_OPTS="-s reloader"
-ERL_OPTS="-pa $BEEHIVE_SRC/ebin -pa $BEEHIVE_SRC/include -pz $BEEHIVE_SRC/deps/*/ebin -pz $BEEHIVE_SRC/deps/babysitter/ebin/*"
+ERL_OPTS="-pa $BEEHIVE_SRC/ebin -pa $BEEHIVE_SRC/include -pz $BEEHIVE_SRC/deps/*/ebin -pz $BEEHIVE_SRC/deps/babysitter/ebin/"
 
 SHORTOPTS="hm:n:dp:t:g:r:s:vi:e:b:q:l:z:c:"
 LONGOPTS="help,version,client_port,type,bee_strategy,routing_parameter,seed,mnesia_dir,daemonize"
