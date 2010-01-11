@@ -161,7 +161,9 @@ build_isolate_command(Opts) ->
   
   Env = case build_cli_option("-e", env_vars, Opts) of
     [] -> [];
-    EnvElse -> lists:flatten([" -e ", string:join(EnvElse, " -D ")])
+    EnvElse -> 
+      io:format("EnvElse: ~p~n", [EnvElse]),
+      lists:flatten([" -e ", string:join(EnvElse, " -e ")])
   end,
   
   ConfineDirectory = build_cli_option("-C", confine_dir, Opts),
