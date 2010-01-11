@@ -229,13 +229,13 @@ initialize_application(#app{template = Template} = App, PropLists, AppLauncher, 
     {"[[APP_NAME]]", App#app.name}
   ],
   
-  Env = [
-    [io_lib:format("SHA=~s", [Sha])],
-    [io_lib:format("LOCAL_PORT=~s", [misc_utils:to_list(Port)])],
-    [io_lib:format("LOCAL_HOST=~s", [Host])],
-    [io_lib:format("STARTED_AT=~s", [misc_utils:to_list(StartedAt)] )],
+  Env = lists:flatten([
+    [io_lib:format("SHA=~s", [Sha])], " "
+    [io_lib:format("LOCAL_PORT=~s", [misc_utils:to_list(Port)])], " "
+    [io_lib:format("LOCAL_HOST=~s", [Host])], " "
+    [io_lib:format("STARTED_AT=~s", [misc_utils:to_list(StartedAt)] )], " "
     [io_lib:format("APP_NAME=~s", [App#app.name] )]
-  ],
+  ]),
   
   StartProplist = ?APP_TEMPLATE_SHELL_SCRIPT_PARSED(Template, Vars, Env),
   % AppRootPath = proplists:get_value(path, Proplist1),
