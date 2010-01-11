@@ -13,11 +13,12 @@
 
 -export([start/2, stop/1]).
 
-start(_Type, Args) -> 
+start(Type, Args) -> 
   lists:map(fun(App) ->
     io:format("---> starting ~p~n", [App]),
     App:start()
-  end, [crypto, babysitter_app]),
+  end, [crypto]),
+  babysitter_app:start(Type, Args),
   bh_node_sup:start_link(Args).
 
 stop(State) -> 
