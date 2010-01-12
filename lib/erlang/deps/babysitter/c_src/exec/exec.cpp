@@ -483,7 +483,7 @@ int main(int argc, char* argv[])
     kill(0, SIGTERM); // Kill all children in our process group
 
     TimeVal now(TimeVal::NOW);
-    TimeVal deadline(now, 6, 0);
+    TimeVal deadline(now, 20, 0);
 
     while (children.size() > 0) {
         sigsetjmp(jbuf, 1);

@@ -143,7 +143,9 @@ handle_spawn_new(Opts) ->
 
 handle_stop_process(Pid) when is_pid(Pid) ->
   % Send a SIGTERM
-  exec:kill(Pid, 15).
+  exec:kill(Pid, 15),
+  timer:sleep(200),
+  exec:stop(Pid).
 
 build_isolate_command(Opts) ->
   Vars    = fetch_value(vars, Opts),
