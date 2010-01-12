@@ -750,6 +750,7 @@ static void clean_up() throw () {
       
       if(!image_path.empty())
       {
+        cerr << "Current user " << getuid() << ":" << getgid() << endl;
         if (system( (UMOUNT + ' ' + confinement_path + "/home").c_str() )) {
           cerr << "WARNING: Could not unmount " << image_path << endl;
           cerr << "Current user " << getuid() << ":" << getgid() << endl;
