@@ -142,7 +142,8 @@ handle_spawn_new(Opts) ->
   exec:run_link(RealCommand, ExecOpts).
 
 handle_stop_process(Pid) when is_pid(Pid) ->
-  exec:stop(Pid).
+  % Send a SIGTERM
+  exec:kill(Pid, 15).
 
 build_isolate_command(Opts) ->
   Vars    = fetch_value(vars, Opts),
