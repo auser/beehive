@@ -298,8 +298,8 @@ internal_stop_instance(#bee{id = Id, os_pid = OsPid, pid = PidPort, port = Port,
   ?LOG(debug, "internal_stop_instance: ~p and ~p", [Sha, App#app.name]),
   
   % Send a SIGHUP
-  % exec:kill(OsPid, 1),
-  % timer:sleep(100),
+  exec:kill(OsPid, 15),
+  timer:sleep(500),
   babysitter:stop_process(PidPort),
   
   case ets:lookup(?TAB_ID_TO_BEE, {App#app.name, Host, Port}) of
