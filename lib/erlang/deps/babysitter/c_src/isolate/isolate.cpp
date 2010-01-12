@@ -751,16 +751,9 @@ static void clean_up() throw () {
       if(!image_path.empty())
       {
         if (system( (UMOUNT + ' ' + confinement_path + "/home").c_str() )) {
-              cerr << "WARNING: Could not unmount " << image_path << endl;
-              sleep(5);
-              if (system( (UMOUNT + ' ' + confinement_path + "/home").c_str() )) {
-                cerr << "WARNING: Could not unmount " << image_path << endl;
-                sleep(5);
-                if (system( (UMOUNT + ' ' + confinement_path + "/home").c_str() )) {
-                      cerr << "Error: Could not unmount " << image_path << endl;
-                      exit(3);
-                }
-              }
+          cerr << "WARNING: Could not unmount " << image_path << endl;
+          cout << "Current user " << getuid() << ":" << getgid() << endl;
+          sleep(5);
         }
       }
 
