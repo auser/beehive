@@ -16,7 +16,7 @@ start(_Type, _Args) ->
   %   io:format("Starting ~p...", [A]),
   %   A:start([])
   % end, [exec]),
-  exec:start_link([{debug, true}]),
+  exec:start_link([{alarm, Secs},{debug, true}]),
   babysitter_sup:start_link().
 
 stop(_State) -> 
