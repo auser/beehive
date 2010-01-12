@@ -568,7 +568,7 @@ int stop_child(CmdInfo& ci, int transId, const TimeVal& now, bool notify)
     if (ci.kill_cmd_pid > 0 || ci.sigterm) {
         double diff = ci.deadline.diff(now);
         if (debug)
-            fprintf(stderr, "Deadline: %.3f\r\n", diff);
+            fprintf(stderr, "Deadline: %.3f %i\r\n", diff, ci.cmd_pid);
         // There was already an attempt to kill it.
         if (ci.sigterm && ci.deadline.diff(now) < 0) {
             // More than 5 secs elapsed since the last kill attempt
