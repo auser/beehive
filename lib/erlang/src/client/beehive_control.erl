@@ -57,6 +57,9 @@ start() ->
   
   halt(0).
 
+% Stop the router
+command(Node, stop_beehive, []) -> call(Node, init, stop, []);
+
 % Force garbage_collection
 command(Node, gc, []) -> call(Node, app_manager, garbage_collection, []);
 
@@ -127,6 +130,7 @@ show_usage() ->
     -n                              Local node to connect
     
     COMMANDS
+    stop                            Stop the beehive server entirely
     app_updated [NameOfApp]         Marks an application as updated
     set_seed [SeedNode]             Set a new seed
     get_seed                        Get the seed node

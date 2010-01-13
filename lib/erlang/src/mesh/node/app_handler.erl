@@ -293,7 +293,7 @@ find_bee_on_storage_nodes(App, Sha, [Node|Rest]) ->
   end.
 
 % kill the instance of the application  
-internal_stop_instance(#bee{id = Id, os_pid = OsPid, pid = PidPort, port = Port, host = Host} = _CalledBee, App, From) when is_record(App, app) ->  
+internal_stop_instance(#bee{id = Id, pid = PidPort, port = Port, host = Host} = _CalledBee, App, From) when is_record(App, app) ->  
   #bee{commit_hash = Sha} = Bee = bees:find_by_id(Id),
   ?LOG(debug, "internal_stop_instance: ~p and ~p", [Sha, App#app.name]),
   
