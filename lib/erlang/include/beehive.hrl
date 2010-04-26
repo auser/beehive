@@ -91,9 +91,9 @@
   max_instances = 1,
   sha,                              % sha of the latest working push
   updated_at,
-  start_command,
-  stop_command,
-  template = "rack"                 % default to a rack app template
+  start_command,                % TODO: Remove this
+  stop_command,                 % TODO: Remove this
+  template = rack                   % default to a rack app template
 }).
 
 % Launching app record

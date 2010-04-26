@@ -44,7 +44,7 @@
 %% Description: Starts the server
 %%--------------------------------------------------------------------
 start_link() ->
-  gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+  gen_server:start_link({local, ?SERVER}, ?SERVER, [], []).
 
 stop() ->
   gen_server:call(?SERVER, {stop}).
@@ -100,7 +100,6 @@ init([]) ->
 handle_call({start_new_instance, App, Sha, AppLauncher, From}, _From, State) ->
   
   Port = bh_host:unused_port(),
-  
   % Then start it :)
   ?LOG(debug, "internal_start_new_instance: ~p, ~p, ~p, ~p, ~p~n", [App, Sha, Port, AppLauncher, From]),
   internal_start_new_instance(App, Sha, Port, AppLauncher, From),
@@ -224,6 +223,7 @@ initialize_application(#app{template = Template} = App, PropLists, AppLauncher, 
     [lists:flatten(["LOCAL_HOST=\"", Host, "\""])],
     [lists:flatten(["STARTED_AT=\"", misc_utils:to_list(StartedAt), "\""])],
     [lists:flatten(["APP_NAME=\"", App#app.name, "\""])],
+    % [lists:flatten(["HOME=\"\""])]
     ["RACK_ENV=production"],
     ["PATH=$PATH:/usr/bin:/bin:/usr/local/bin"]
   ],
@@ -311,13 +311,15 @@ internal_stop_instance(#bee{id = Id, pid = PidPort, port = Port, host = Host} = 
 % Get a new honeycomb location for the new bee
 next_free_honeycomb(App) ->
   BaseDir = config:search_for_application_value(squashed_storage, ?BH_RELATIVE_DIR("apps"), storage),
+  erlang:display(BaseDir),
   UniqueName = apps:build_on_disk_app_name(App),
-  {Proplists, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("next-free-honeycomb", [
-    {"[[APP_NAME]]", App#app.name},
-    {"[[SLOT_DIR]]", bh_md5:hex(UniqueName)},
-    {"[[DESTINATION]]", BaseDir}
-  ]),
-  proplists:get_value(dir, Proplists).
+  % {Proplists, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("next-free-honeycomb", [
+  %   {"[[APP_NAME]]", App#app.name},
+  %   {"[[SLOT_DIR]]", bh_md5:hex(UniqueName)},
+  %   {"[[DESTINATION]]", BaseDir}
+  % ]),
+  {ok, _Pid} = babysitter:run(App#app.template, mount, app_utils:build_app_env(App, [{rootdir, BaseDir}, {appdir, UniqueName}])).
+  % proplists:get_value(dir, Proplists).
   
 handle_pid_exit(_Pid, _Reason, State) ->
   State.

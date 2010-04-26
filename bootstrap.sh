@@ -75,6 +75,7 @@ if [ -f "${babysitter_dir}/priv/bin/babysitter" ]; then
   found_msg
   pushd ${babysitter_dir}
   $GIT pull origin master
+  make
   popd
 else
   not_found_msg
@@ -94,6 +95,7 @@ if [ -f "${mochiweb_dir}/ebin/mochiweb.beam" ]; then
   found_msg
   pushd ${mochiweb_dir}
   $GIT pull origin master
+  make
   popd
 else
   not_found_msg
