@@ -1,0 +1,5 @@
+TODO LIST
+=========
+
+* Make pidfile reading thread-safe and atomic
+* Investigate ei_connect for raw integration

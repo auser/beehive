@@ -1,0 +1,9 @@
+@author Ari Lerner <arilerner@mac.com>
+@copyright 2010 Ari Lerner
+@version $Id$
+@title Babysitter
+
+@doc
+== Introduction ==
+
+Babysitter's entire purpose is to allow a developer to start a process on the system from the erlang vm and have it monitored similarly to how the supervisors in erlang work
