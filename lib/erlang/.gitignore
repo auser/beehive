@@ -7,6 +7,5 @@ repos
 apps/
 Makefile
 ./Makefile
-
 deps/babysitter/ebin/*.beam
 deps/mochiweb/ebin/*.beam
