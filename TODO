@@ -21,6 +21,7 @@ TODO:
 * Oauth? Http/basic
 * Authentication for REST
 * Vacation
+* Add babysitter in
 * App environment setup (allow for modular app environments?)
 * Bug - /apps deploy with min/max instances
 * Bug - Find when device is busy unmounting...
