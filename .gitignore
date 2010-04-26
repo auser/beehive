@@ -20,3 +20,4 @@ ebin/beehive-*.tar.gz
 coverage
 rdoc
 pkg
+lib/erlang/Makefile

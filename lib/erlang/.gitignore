@@ -5,3 +5,5 @@ ebin/*.script
 *.log
 repos
 apps/
+Makefile
+./Makefile
