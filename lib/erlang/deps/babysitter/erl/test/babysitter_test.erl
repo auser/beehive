@@ -79,11 +79,6 @@ test_status_listing_of_a_process() ->
   babysitter:kill_pid(Pid).
 
 test_babysitter_config_actions() ->
-  config_read(),
-  babysitter:run(rack, bundle, [{env, "NAME=bob"}]),
-  ok.
-
-config_read() ->
-  Dir = filename:dirname(code:which(?MODULE)),
-  ConfigDir = filename:join([Dir, "..", "..", "config", "apps"]),
-  babysitter_config:read(ConfigDir).
+  {ok, _ErlProcess, Pid} = babysitter:bs_spawn_run("sleep 201.1", [{env, "NAME=ari"}]),
+  ?assert(true == babysitter:running(Pid)),
+  babysitter:kill_pid(Pid).

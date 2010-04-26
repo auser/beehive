@@ -73,6 +73,9 @@ babysitter_dir="lib/erlang/deps/babysitter"
 babysitter_git_url="git://github.com/auser/babysitter.git"
 if [ -f "${babysitter_dir}/priv/bin/babysitter" ]; then
   found_msg
+  pushd ${babysitter_dir}
+  $GIT pull origin master
+  popd
 else
   not_found_msg
   cecho "Building babysitter" $green
@@ -80,6 +83,25 @@ else
   $GIT clone ${babysitter_git_url}
   pushd babysitter
   ./bootstrap.sh
+  popd
+  popd
+fi
+
+cecho "Checking for mochiweb" $green
+mochiweb_dir="lib/erlang/deps/mochiweb"
+mochiweb_git_url="http://github.com/basho/mochiweb.git"
+if [ -f "${mochiweb_dir}/ebin/mochiweb.beam" ]; then
+  found_msg
+  pushd ${mochiweb_dir}
+  $GIT pull origin master
+  popd
+else
+  not_found_msg
+  cecho "Building mochiweb" $green
+  pushd `dirname ${mochiweb_dir}`
+  $GIT clone ${mochiweb_git_url}
+  pushd mochiweb
+  make
   popd
   popd
 fi

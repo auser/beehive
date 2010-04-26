@@ -9,9 +9,16 @@
 -include ("babysitter.hrl").
 
 %% API
--export ([run/3]).
 -export ([
-  bs_spawn_run/2, bs_run/2, kill_pid/1, status/1, list/0
+  run/3,
+  running/1,
+  status/1,
+  list/0
+]).
+% PRIVATE
+% These are exported for testing reasons only
+-export ([
+  bs_spawn_run/2, bs_run/2, kill_pid/1
 ]).
 
 -export([start_link/0, start_link/1, stop/0]).
@@ -47,6 +54,12 @@ run(AppType, Action, Opts) ->
   case Action of
     start -> bs_spawn_run(Command, Options);
     _E -> bs_run(Command, Options)
+  end.
+
+running(Pid) ->
+  case ets:lookup(?PID_MONITOR_TABLE, Pid) of
+    [{_Key, _X}|_Rest] -> true;
+    _ -> false
   end.
 
 %%-------------------------------------------------------------------
@@ -89,9 +102,11 @@ init([Options]) ->
   process_flag(trap_exit, true),  
   Exe   = build_port_command(Options),
   Debug = proplists:get_value(verbose, Options, default(verbose)),
+  Config = proplists:get_value(config_dir, Options, default(config_dir)),
   try
     debug(Debug, "exec: port program: ~s\n", [Exe]),
     Port = erlang:open_port({spawn, Exe}, [binary, exit_status, {packet, 2}, nouse_stdio, hide]),
+    babysitter_config:read(Config),
     {ok, #state{port=Port, debug=Debug}}
   catch _:Reason ->
     {stop, io:format("Error starting port '~p': ~200p", [Exe, Reason])}
@@ -230,7 +245,7 @@ get_transaction(Q, I, OldQ) ->
 default() -> 
     [{debug, false},  
      {verbose, false},  
-     {config_dir, false}, 
+     {config_dir, filename:join([filename:dirname(code:which(?MODULE)), "..", "..", "config", "apps"]) },
      {port_program, default(port_program)}].
 
 default(port_program) -> 
