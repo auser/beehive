@@ -52,7 +52,7 @@ else
 	LDFLAGS=$(LDFLAGS_COMMON) -flat_namespace -undefined suppress
 	LDBUNDLE_FLAGS=$(LDFLAGS) -bundle
 endif
-LD_LIBRARIES += -lerl_interface -lei -lstdc++
+LD_LIBRARIES += -lerl_interface -lei
 
 # DONT TOUCH BELOW HERE!
 #

@@ -21,3 +21,4 @@ coverage
 rdoc
 pkg
 lib/erlang/Makefile
+VERSION

@@ -17,7 +17,9 @@ config.log
 config.status
 .deps
 .DS_Store
-priv/
+priv/lib
+priv/bin
+priv/neotoma
 VERSION
 build/
 Makefile
