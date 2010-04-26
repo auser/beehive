@@ -22,3 +22,4 @@ rdoc
 pkg
 lib/erlang/Makefile
 VERSION
+configure
