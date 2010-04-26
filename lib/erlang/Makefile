@@ -1,12 +1,17 @@
-LIBDIR					= $(shell erl -eval 'io:format("~s~n", [code:lib_dir()])' -s init stop -noshell)
+PACKAGE_NAME 		= babysitter
+PACKAGE_VERSION = 0.1
+VSN 						= $(PACKAGE_VERSION)
+RELDIR 					= releases/$(PACKAGE_NAME)-$(PACKAGE_VERSION)
+ERL_ROOT_DIR		= /usr/local/homebrew/Cellar/erlang/R13B04/lib/erlang
+LIBDIR					= $(ERL_ROOT_DIR)/lib
 VERSION					= $(shell cat VERSION | tr -d '\n')
-CC							= erlc
+ERLC						= erlc
 ERL							= erl
 EBIN						= ebin
 INCLUDE_DIRS 		= include
+EBIN_DIR 				:= ./ebin
 EBIN_DIRS				= -pa $(EBIN) -pz $(wildcard deps/*/ebin) -pz $(wildcard include/*/ebin)
-CFLAGS					= +debug_info -W0 -I $(INCLUDE_DIRS) $(EBIN_DIRS) -noinput +B
-ECOMPILE        = $(ERL) $(CFLAGS)
+ECOMPILE        = $(ERL) +debug_info -W0 -I $(INCLUDE_DIRS) $(EBIN_DIRS) -noinput +B
 DEPS_DIR 				= deps
 TEST_DIR				= test
 TEST_EBIN_DIR		= $(TEST_DIR)/ebin
@@ -14,6 +19,16 @@ APP							= beehive
 BIN_DIR					= $(PREFIX)/usr/bin
 TARGET_DIR			= $(PREFIX)/$(LIBDIR)/$(APP)-$(VERSION)
 SCRIPTS					= beehive_env queen start_beehive
+DOC_DIR 				= ../doc
+SILENCE 				= @
+
+export ROOT_DIR = /Users/alerner/Development/erlang/mine/beehive/lib/erlang
+ 
+ifeq ($(shell uname),Linux)
+	ARCH = linux
+else
+	ARCH = macosx
+endif
 
 RELFILE = $(EBIN)/$(APP)-$(VERSION).rel
 
@@ -66,7 +81,7 @@ install: compile boot babysitter_install
 	
 edoc:
 	@echo Generating $(APP) documentation from srcs
-	@$(ECOMPILE) -noinput -eval 'edoc:application($(APP), "./", [{doc, "doc/"}, {files, "src/"}])' -s erlang halt
+	@$(ECOMPILE) -noinput -eval 'edoc:application($(APP), "./", [{dir, "$(DOC_DIR)"}, {vsn, "$(VSN)"}])' -s erlang halt
 
 $(TEST_EBIN_DIR):
 	@mkdir -p $(TEST_EBIN_DIR)
