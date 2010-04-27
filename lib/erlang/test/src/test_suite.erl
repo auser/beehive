@@ -10,5 +10,6 @@ all_test_() ->
     {module, web_utils_test},
     {module, app_utils_test},
     {module, misc_utils_test},
-    {module, app_handler_test}
+    {module, app_handler_test},
+    {module, node_manager_test}
   ].

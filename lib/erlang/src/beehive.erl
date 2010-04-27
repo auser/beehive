@@ -11,16 +11,14 @@
 -include ("common.hrl").
 -behaviour(application).
 
+-define (APPS, [os_mon, mnesia, beehive]).
+
 -export([start/2, stop/1]).
 
-start(_Type, Args) -> 
+start(_Type, _Args) -> 
   io:format("Dir: ~p~n", [?BH_ROOT]),
-  beehive_sup:start_link(Args).
+  lists:foldr(fun(App) -> application:start(App) end, ?APPS).
 
 stop(State) -> 
-  io:format("Stopping beehive...~n"),
-  lists:map(fun(App) ->
-    io:format("---> stopping ~p~n", [App]),
-    App:stop(State)
-  end, [os_mon, mnesia]),
+  lists:foldr(fun(App) -> App:stop(State) end, ?APPS),
   ok.

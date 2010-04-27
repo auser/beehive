@@ -12,7 +12,7 @@
 -include ("common.hrl").
 
 %% API
--export([start_link/0, add_handler/1, notify/1]).
+-export([start_link/0, stop/0, add_handler/1, notify/1]).
 
 -define(SERVER, ?MODULE).
 -define (EVENT_HANDLERS, [
@@ -33,6 +33,15 @@ start_link() ->
   % Add the defined event handlers
   lists:map(fun(Handler) -> add_handler(Handler) end, ?EVENT_HANDLERS),
   O.
+
+%%-------------------------------------------------------------------
+%% @spec () ->    {ok, Value}
+%% @doc Stop
+%%      
+%% @end
+%%-------------------------------------------------------------------
+stop() ->
+  gen_event:stop(?SERVER).
 
 %%--------------------------------------------------------------------
 %% Function: add_handler(Module) -> ok | {'EXIT',Reason} | term()

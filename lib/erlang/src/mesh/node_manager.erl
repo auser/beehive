@@ -15,6 +15,7 @@
 -export([
   start_link/0,
   start_link/2,
+  stop/0,
   request_to_terminate_bee/1,
   request_to_terminate_all_bees/1,
   add_slave_node/1,
@@ -89,6 +90,9 @@ start_link(bee, Seed) ->
     Else ->
       ?LOG(error, "Could not start router link: ~p~n", [Else])
   end.
+  
+stop() ->
+  gen_server:cast(?MODULE, stop).
 
 is_a(router) ->
   case whereis(bee_srv) of
@@ -201,7 +205,7 @@ init([Type, SeedList]) ->
     '' -> ok;
     _ ->
       ?LOG(debug, "Connecting as type ~p to seed ~p", [Type, Seed]),
-      net_adm:ping(node()), % start distributed
+      net_kernel:connect_node(Seed), % start distributed
       join(Seed)
   end,
   
