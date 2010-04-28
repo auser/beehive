@@ -56,7 +56,6 @@ test_send(Group, Parent, Count) ->
 
 loop_send(_, _, 0) -> ok;
 loop_send(Group, Parent, Count) ->
-  erlang:display(Count),
   receive
     stop -> ok;
     X -> 
