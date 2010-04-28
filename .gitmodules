@@ -1,0 +1,9 @@
+[submodule "lib/ruby/beehive/vendor/gems/yajl-ruby"]
+	path = lib/ruby/beehive/vendor/gems/yajl-ruby
+	url = http://github.com/brianmario/yajl-ruby.git
+[submodule "lib/ruby/beehive/vendor/gems/rest-client"]
+	path = lib/ruby/beehive/vendor/gems/rest-client
+	url = http://github.com/archiloque/rest-client.git
+[submodule "lib/ruby/beehive/vendor/gems/mime-types"]
+	path = lib/ruby/beehive/vendor/gems/mime-types
+	url = http://github.com/halostatue/mime-types.git

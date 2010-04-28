@@ -1,7 +1,7 @@
 Dir.glob(File.join(File.dirname(__FILE__), "..", "vendor", "gems", "*", "lib")).each do |lib|
   $LOAD_PATH.unshift(File.expand_path(lib))
 end
-
+require "rubygems"
 require 'rest_client'
 require "yaml"
 require "yajl/json_gem"
