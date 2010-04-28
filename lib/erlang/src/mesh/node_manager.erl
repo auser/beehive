@@ -58,42 +58,43 @@ start_link() ->
   start_link(Type, Seed).
 
 start_link(Type, Seed) ->
-  case config:search_for_application_value(node_type, router, beehive) of
-    router -> start_link(router, Seed);
-    storage -> start_link(storage, Seed);
-    bee -> start_link(bee, Seed)
-  end.
+  % case config:search_for_application_value(node_type, router, beehive) of
+  %   router -> start_link(router, Seed);
+  %   storage -> start_link(storage, Seed);
+  %   bee -> start_link(bee, Seed)
+  % end,
+  gen_server:start_link({local, ?MODULE}, ?MODULE, [Type, Seed], []).
   
 
-start_link(router, Seed) -> 
-  case gen_server:start_link({local, ?MODULE}, ?MODULE, [router, Seed], []) of
-    {ok, Pid} ->
-      pg2:create(?ROUTER_SERVERS),
-      ok = pg2:join(?ROUTER_SERVERS, Pid),
-      {ok, Pid};
-    Else ->
-      ?LOG(error, "Could not start router link: ~p~n", [Else])
-  end;
-
-start_link(storage, Seed) ->
-  case gen_server:start_link({local, ?MODULE}, ?MODULE, [storage, Seed], []) of
-    {ok, Pid} ->
-      pg2:create(?STORAGE_SERVERS),
-      ok = pg2:join(?STORAGE_SERVERS, Pid),
-      {ok, Pid};
-    Else ->
-      ?LOG(error, "Could not start router link: ~p~n", [Else])
-  end;  
-
-start_link(bee, Seed) -> 
-  case gen_server:start_link({local, ?MODULE}, ?MODULE, [bee, Seed], []) of
-    {ok, Pid} ->
-      pg2:create(?NODE_SERVERS),
-      ok = pg2:join(?NODE_SERVERS, Pid),
-      {ok, Pid};
-    Else ->
-      ?LOG(error, "Could not start router link: ~p~n", [Else])
-  end.
+% start_link(router, Seed) -> 
+%   case gen_server:start_link({local, ?MODULE}, ?MODULE, [router, Seed], []) of
+%     {ok, Pid} ->
+%       pg2:create(?ROUTER_SERVERS),
+%       ok = pg2:join(?ROUTER_SERVERS, Pid),
+%       {ok, Pid};
+%     Else ->
+%       ?LOG(error, "Could not start router link: ~p~n", [Else])
+%   end;
+% 
+% start_link(storage, Seed) ->
+%   case gen_server:start_link({local, ?MODULE}, ?MODULE, [storage, Seed], []) of
+%     {ok, Pid} ->
+%       pg2:create(?STORAGE_SERVERS),
+%       ok = pg2:join(?STORAGE_SERVERS, Pid),
+%       {ok, Pid};
+%     Else ->
+%       ?LOG(error, "Could not start router link: ~p~n", [Else])
+%   end;  
+% 
+% start_link(bee, Seed) -> 
+%   case gen_server:start_link({local, ?MODULE}, ?MODULE, [bee, Seed], []) of
+%     {ok, Pid} ->
+%       pg2:create(?NODE_SERVERS),
+%       ok = pg2:join(?NODE_SERVERS, Pid),
+%       {ok, Pid};
+%     Else ->
+%       ?LOG(error, "Could not start router link: ~p~n", [Else])
+%   end.
   
 stop() ->
   gen_server:cast(?MODULE, stop).
@@ -234,8 +235,8 @@ init([Type, SeedList]) ->
   
   case SlaveDb of
     true ->
-      ?LOG(info, "Initializing slave db from seed: ~p", [Seed]),
-      mesh_util:init_db_slave(Seed);
+      ?LOG(info, "Initializing slave db from seed: ~p", [Seed]);
+      % mesh_util:init_db_slave(Seed);
     false -> ok
   end,
   
