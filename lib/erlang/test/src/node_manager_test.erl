@@ -36,3 +36,8 @@ test_get_node_of_type() ->
   ?assertEqual(node_manager:get_nodes(), []),
   ?assertEqual(node_manager:get_storage(), []).
 
+test_get_seed() ->
+  Pid = spawn_link(fun() -> timer:sleep(10) end),
+  node_manager:set_seed(Pid),
+  ?assertEqual(Pid, node_manager:get_seed()),
+  ok.
