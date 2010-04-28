@@ -67,7 +67,13 @@ start_link(Type, Seed) ->
       ?LOG(error, "Could not start link because ~p~n", [Else]),
       throw({error, {could_not_start_node_manager, Else}})
   end.
-    
+
+%%-------------------------------------------------------------------
+%% @spec () ->    ok
+%% @doc Stop the node_manager
+%%      
+%% @end
+%%-------------------------------------------------------------------
 stop() ->
   gen_server:cast(?SERVER, stop).
 
