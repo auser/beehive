@@ -58,65 +58,30 @@ start_link() ->
   start_link(Type, Seed).
 
 start_link(Type, Seed) ->
-  % case config:search_for_application_value(node_type, router, beehive) of
-  %   router -> start_link(router, Seed);
-  %   storage -> start_link(storage, Seed);
-  %   bee -> start_link(bee, Seed)
-  % end,
-  gen_server:start_link({local, ?MODULE}, ?MODULE, [Type, Seed], []).
-  
-
-% start_link(router, Seed) -> 
-%   case gen_server:start_link({local, ?MODULE}, ?MODULE, [router, Seed], []) of
-%     {ok, Pid} ->
-%       pg2:create(?ROUTER_SERVERS),
-%       ok = pg2:join(?ROUTER_SERVERS, Pid),
-%       {ok, Pid};
-%     Else ->
-%       ?LOG(error, "Could not start router link: ~p~n", [Else])
-%   end;
-% 
-% start_link(storage, Seed) ->
-%   case gen_server:start_link({local, ?MODULE}, ?MODULE, [storage, Seed], []) of
-%     {ok, Pid} ->
-%       pg2:create(?STORAGE_SERVERS),
-%       ok = pg2:join(?STORAGE_SERVERS, Pid),
-%       {ok, Pid};
-%     Else ->
-%       ?LOG(error, "Could not start router link: ~p~n", [Else])
-%   end;  
-% 
-% start_link(bee, Seed) -> 
-%   case gen_server:start_link({local, ?MODULE}, ?MODULE, [bee, Seed], []) of
-%     {ok, Pid} ->
-%       pg2:create(?NODE_SERVERS),
-%       ok = pg2:join(?NODE_SERVERS, Pid),
-%       {ok, Pid};
-%     Else ->
-%       ?LOG(error, "Could not start router link: ~p~n", [Else])
-%   end.
-  
-stop() ->
-  gen_server:cast(?MODULE, stop).
-
-is_a(router) ->
-  case whereis(bee_srv) of
-    undefined -> false;
-    _ -> true
-  end;
-
-is_a(storage) ->
-  case whereis(bh_storage_srv) of
-    undefined -> false;
-    _ -> true
-  end;
-
-is_a(bee) ->
-  case whereis(app_handler) of
-    undefined -> false;
-    _ -> true
+  GroupName = internal_get_group_name(Type),
+  case gen_server:start_link({local, ?MODULE}, ?MODULE, [Type, Seed], []) of
+    {ok, Pid} = T ->
+      pg2:create(GroupName), ok = pg2:join(GroupName, Pid), 
+      T;
+    Else ->
+      ?LOG(error, "Could not start link because ~p~n", [Else]),
+      throw({error, {could_not_start_node_manager, Else}})
   end.
+    
+stop() ->
+  gen_server:cast(?SERVER, stop).
 
+% Check how we were started and which node the group is in
+is_a(Type) ->
+  GroupName = internal_get_group_name(Type),
+  lists:member(erlang:whereis(?MODULE), pg2:get_members(GroupName)).
+
+%%-------------------------------------------------------------------
+%% @spec (Msg) ->    {ok, Value}
+%% @doc Notify the event manager on the routers
+%%      
+%% @end
+%%-------------------------------------------------------------------
 notify(Msg) ->
   case is_a(router) of
     true -> ?EVENT_MANAGER:notify(Msg);
@@ -126,7 +91,8 @@ notify(Msg) ->
         Routers -> rpc:call(node(hd(Routers)), ?EVENT_MANAGER, notify, [Msg])
       end
   end.
-  
+
+
 get_host() -> gen_server:call(?SERVER, {get_host}).
 
 join([]) -> ok;
@@ -136,17 +102,14 @@ join(SeedNode) ->
     pang -> error
   end.
 
-get_routers() -> 
-  pg2:create(?ROUTER_SERVERS),
-  pg2:get_members(?ROUTER_SERVERS).
-  
-get_nodes() -> 
-  pg2:create(?NODE_SERVERS),
-  pg2:get_members(?NODE_SERVERS).
+get_routers() -> get_node_of_type(router).
+get_nodes() -> get_node_of_type(bee).
+get_storage() -> get_node_of_type(storage).
 
-get_storage() ->
-  pg2:create(?STORAGE_SERVERS),
-  pg2:get_members(?STORAGE_SERVERS).  
+get_node_of_type(Type) ->
+  GroupName = internal_get_group_name(Type),
+  pg2:create(GroupName),
+  pg2:get_members(GroupName).
 
 request_to_terminate_bee(Bee) ->
   App = apps:find_by_name(Bee#bee.app_name),
@@ -214,32 +177,8 @@ init([Type, SeedList]) ->
       join(Seed)
   end,
   
-  SlaveDb = case Type of
-    router ->
-      case SeedList of
-        '' -> 
-          % Initializing root router
-          case db:start() of
-            true -> false;
-            false -> 
-              db:init(), 
-              false
-          end;
-        _ -> true
-      end;
-    storage -> true;
-    bee ->
-      % Bee initialization stuff
-      true
-  end,
-  
-  case SlaveDb of
-    true ->
-      ?LOG(info, "Initializing slave db from seed: ~p", [Seed]);
-      % mesh_util:init_db_slave(Seed);
-    false -> ok
-  end,
-  
+  db:start(),
+    
   timer:send_interval(timer:seconds(10), {stay_connected_to_seed}),
   timer:send_interval(timer:seconds(30), {update_node_stats}),
   % timer:send_interval(timer:minutes(1), {update_node_pings}),
@@ -278,21 +217,13 @@ handle_call({can_pull_new_app}, _From, State) ->
 handle_call({get_seed}, _From, #state{seed = Seed} = State) ->
   {reply, Seed, State};
 handle_call({set_seed, SeedPid}, _From, #state{type = Type} = State) when is_pid(SeedPid) ->
-  ListType = case Type of
-    router -> ?ROUTER_SERVERS;
-    storage -> ?STORAGE_SERVERS;
-    bee -> ?NODE_SERVERS
-  end,
+  ListType = internal_get_group_name(Type),
   pg2:create(ListType),
   ok = pg2:join(ListType, self()),
   join(node(SeedPid)),
   {reply, ok, State#state{seed = SeedPid}};
 handle_call({set_seed, SeedNode}, _From, #state{type = Type} = State) ->
-  ListType = case Type of
-    router -> ?ROUTER_SERVERS;
-    storage -> ?STORAGE_SERVERS;
-    bee -> ?NODE_SERVERS
-  end,
+  ListType = internal_get_group_name(Type),
   pg2:create(ListType),
   ok = pg2:join(ListType, self()),
   join(SeedNode),
@@ -305,6 +236,7 @@ handle_call({dump, Pid}, _From, State) ->
   Host = rpc:call(Name, bh_host, myip, []),
   Node = #node{ name = Name, host = Host },
   {reply, Node, State};
+  
 handle_call(_Request, _From, State) ->
   Reply = ok,
   {reply, Reply, State}.
@@ -315,6 +247,8 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
+handle_cast(stop, State) ->
+  {stop, normal, State};
 handle_cast({request_to_terminate_all_bees, Name}, State) ->
   % First, find all the bees and "unregister" them, or delete them from the bee list so we don't
   % route any requests this way
@@ -322,7 +256,7 @@ handle_cast({request_to_terminate_all_bees, Name}, State) ->
   lists:map(fun(Bee) -> request_to_terminate_bee(Bee) end, Bees),
   % next let's terminate all the bees
   {noreply, State};
-  
+
 handle_cast(_Msg, State) ->
   {noreply, State}.
 
@@ -378,6 +312,7 @@ handle_info(Info, State) ->
 %% The return value is ignored.
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
+  pg2:delete(?STORAGE_SERVERS), pg2:delete(?NODE_SERVERS), pg2:delete(?ROUTER_SERVERS),
   ok.
 
 %%--------------------------------------------------------------------
@@ -408,7 +343,7 @@ get_next_available(Group, Count, M, F, A) ->
 % Get the next nodes of the same type
 get_other_nodes(Type) ->
   case Type of
-    bee -> get_nodes();
+    node -> get_nodes();
     storage -> get_storage();
     router -> get_routers()
   end.
@@ -419,4 +354,13 @@ ping_node([H|Rest]) ->
   case net_adm:ping(node(H)) of
     pong -> node(H);
     pang -> ping_node(Rest)
+  end.
+
+% Get group name
+internal_get_group_name(Type) ->
+  case Type of
+    router -> ?ROUTER_SERVERS;
+    storage -> ?STORAGE_SERVERS;
+    node -> ?NODE_SERVERS;
+    _ -> false
   end.
