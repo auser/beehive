@@ -13,8 +13,7 @@
 
 %% API
 -export([
-  start_link/0,
-  start_link/2,
+  start_link/0, start_link/2,
   stop/0,
   request_to_terminate_bee/1,
   request_to_terminate_all_bees/1,
@@ -55,12 +54,17 @@
 %%--------------------------------------------------------------------
 start_link() -> 
   Seed = config:search_for_application_value(seed, node(), beehive),
+  Type = config:search_for_application_value(node_type, router, beehive),
+  start_link(Type, Seed).
+
+start_link(Type, Seed) ->
   case config:search_for_application_value(node_type, router, beehive) of
     router -> start_link(router, Seed);
     storage -> start_link(storage, Seed);
     bee -> start_link(bee, Seed)
   end.
   
+
 start_link(router, Seed) -> 
   case gen_server:start_link({local, ?MODULE}, ?MODULE, [router, Seed], []) of
     {ok, Pid} ->
