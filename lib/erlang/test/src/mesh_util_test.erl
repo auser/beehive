@@ -23,8 +23,9 @@ starting_test_() ->
 
 test_get_random_pid() ->
   reset(),
-  OnePids = lists:map(fun(_X) -> Pid = spawn(fun() -> timer:sleep(10) end), pg2:join(one, Pid), Pid end, lists:seq(1,10)),
-  TwoPids = lists:map(fun(_X) -> Pid = spawn(fun() -> timer:sleep(10) end), pg2:join(two, Pid), Pid end, lists:seq(11,20)),
+  Parent = self(),
+  OnePids = lists:map(fun(X) -> test_send(one, Parent, X) end, lists:seq(1, 10)),
+  TwoPids = lists:map(fun(X) -> test_send(two, Parent, X) end, lists:seq(1, 10)),
   {ok, OnePid} = mesh_util:get_random_pid(one),
   ?assert(lists:member(OnePid, OnePids)),
   {ok, TwoPid1} = mesh_util:get_random_pid(two),
@@ -35,9 +36,8 @@ test_get_random_pid() ->
 
 test_get_best_pid() ->
   reset(),
-  Seq = lists:seq(1, 3),
   Parent = self(),
-  OnePids = lists:map(fun(X) -> test_send(one, Parent, X) end, Seq),  
+  OnePids = lists:map(fun(X) -> test_send(one, Parent, X) end, lists:seq(1, 3)),  
   [ Pid ! {hello, "World"} || Pid <- OnePids ],
   {ok, OnePid} = mesh_util:get_best_pid(one),
   ?assert(lists:member(OnePid, OnePids)),

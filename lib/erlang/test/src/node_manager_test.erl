@@ -18,15 +18,12 @@ starting_test_() ->
       fun setup/0,
       fun teardown/1,
       [
-        fun test_starting_node_manager/0,
         fun test_is_a_type/0,
-        fun test_get_node_of_type/0
+        fun test_get_node_of_type/0,
+        fun test_get_seed/0
       ]
     }
   }.
-
-test_starting_node_manager() ->
-  ok.
 
 test_is_a_type() ->
   ?assert(node_manager:is_a(router)).
@@ -37,7 +34,7 @@ test_get_node_of_type() ->
   ?assertEqual(node_manager:get_storage(), []).
 
 test_get_seed() ->
-  Pid = spawn_link(fun() -> timer:sleep(10) end),
+  Pid = spawn_link(fun() -> timer:sleep(1) end),
   node_manager:set_seed(Pid),
   ?assertEqual(Pid, node_manager:get_seed()),
   ok.
