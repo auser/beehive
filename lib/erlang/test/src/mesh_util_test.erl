@@ -28,9 +28,11 @@ test_get_random_pid() ->
   TwoPids = lists:map(fun(_X) -> Pid = spawn(fun() -> timer:sleep(10) end), pg2:join(two, Pid), Pid end, lists:seq(11,20)),
   {ok, OnePid} = mesh_util:get_random_pid(one),
   ?assert(lists:member(OnePid, OnePids)),
-  {ok, TwoPid} = mesh_util:get_random_pid(two),
-  ?assert(lists:member(TwoPid, TwoPids)),
-  ok.
+  {ok, TwoPid1} = mesh_util:get_random_pid(two),
+  ?assert(lists:member(TwoPid1, TwoPids)),
+  {ok, TwoPid2} = mesh_util:get_random_pid(two),
+  ?assert(lists:member(TwoPid2, TwoPids)),
+  ?assertEqual({error, {no_process, unknown}}, mesh_util:get_random_pid(unknown)).
 
 test_get_best_pid() ->
   ok.
