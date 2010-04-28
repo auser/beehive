@@ -35,3 +35,4 @@ test_get_node_of_type() ->
   ?assertEqual(node_manager:get_routers(), [erlang:whereis(node_manager)]),
   ?assertEqual(node_manager:get_nodes(), []),
   ?assertEqual(node_manager:get_storage(), []).
+

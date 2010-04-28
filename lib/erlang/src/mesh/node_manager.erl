@@ -112,11 +112,13 @@ get_routers() -> get_node_of_type(router).
 get_nodes() -> get_node_of_type(bee).
 get_storage() -> get_node_of_type(storage).
 
+% Get the members
 get_node_of_type(Type) ->
   GroupName = internal_get_group_name(Type),
   pg2:create(GroupName),
   pg2:get_members(GroupName).
 
+% 
 request_to_terminate_bee(Bee) ->
   App = apps:find_by_name(Bee#bee.app_name),
   Node = Bee#bee.host_node,
