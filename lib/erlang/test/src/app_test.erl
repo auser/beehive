@@ -16,7 +16,7 @@
 test() ->
   try
     db:clear_table(app),
-    schema:install(),
+    db:start(),
     create_test(),
     find_by_name_test(),
     delete_test()

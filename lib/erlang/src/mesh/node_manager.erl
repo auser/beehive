@@ -214,7 +214,7 @@ init([Type, SeedList]) ->
       case SeedList of
         '' -> 
           % Initializing root router
-          case db:already_initialized() of
+          case db:start() of
             true -> false;
             false -> 
               db:init(), 

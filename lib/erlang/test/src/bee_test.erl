@@ -15,7 +15,7 @@
 test() -> 
   try
     db:clear_table(bee),
-    schema:install(),
+    db:start(),
     create_test(),
     find_by_name_test(),
     all_test(),
@@ -29,7 +29,7 @@ test() ->
 
 create_test() ->
   db:clear_table(bee),
-  schema:install(),
+  db:start(),
   Be1 = #bee{id={"test_app", {127,0,0,1}, 8090}, app_name = "test_app"},
   bees:create(Be1),
   {atomic,Results1} = mnesia:transaction(fun() -> mnesia:match_object(#bee{_='_'}) end),
