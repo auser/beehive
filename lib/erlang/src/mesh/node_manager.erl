@@ -160,7 +160,7 @@ find_application_location(AppName) ->
 
 add_slave_node(SlaveNode) ->
   join(SlaveNode),
-  mesh_util:add_db_slave(slave, SlaveNode).
+  db:add_slave(slave, SlaveNode).
 
 %%====================================================================
 %% gen_server callbacks

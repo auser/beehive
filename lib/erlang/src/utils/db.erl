@@ -14,7 +14,7 @@
 % SCHEMAs
 % app, bee, user, user_app
 -export ([
-  init/0, 
+  init/0, add_slave/1,
   start/0, start/1,
   stop/0,
   write/1,
@@ -42,7 +42,7 @@ start() -> start([]).
 start(Nodes) ->
   ok = ensure_running(),
   ok = ensure_dir(),
-  ok = init_db(Nodes),
+  ok = add_slave(Nodes),
   ok = wait_for_tables(),
   ok.
 
@@ -67,7 +67,7 @@ ensure_dir() ->
   end.
 
 % Thanks to RabbitMQ for the idea
-init_db(Nodes) ->
+add_slave(Nodes) ->
   case mnesia:change_config(extra_db_nodes, Nodes -- [node()]) of
     {ok, []} ->  
       case mnesia:system_info(use_dir) of

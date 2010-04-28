@@ -11,5 +11,6 @@ all_test_() ->
     {module, app_utils_test},
     {module, misc_utils_test},
     {module, app_handler_test},
-    {module, node_manager_test}
+    {module, node_manager_test},
+    {module, mesh_util_test}
   ].
