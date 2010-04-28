@@ -1,13 +1,12 @@
 -module (mesh_util_test).
 -include_lib("eunit/include/eunit.hrl").
 
+-export ([loop_send/3]).
+
 setup() ->
-  pg2:create(one),
-  pg2:create(two),
   ok.
   
 teardown(_X) ->
-  pg2:delete(one), pg2:delete(two),
   ok.
 
 starting_test_() ->
@@ -23,8 +22,8 @@ starting_test_() ->
   }.
 
 test_get_random_pid() ->
-  OnePids = lists:map(
-    fun(_X) -> Pid = spawn(fun() -> timer:sleep(10) end), pg2:join(one, Pid), Pid end, lists:seq(1,10)),
+  reset(),
+  OnePids = lists:map(fun(_X) -> Pid = spawn(fun() -> timer:sleep(10) end), pg2:join(one, Pid), Pid end, lists:seq(1,10)),
   TwoPids = lists:map(fun(_X) -> Pid = spawn(fun() -> timer:sleep(10) end), pg2:join(two, Pid), Pid end, lists:seq(11,20)),
   {ok, OnePid} = mesh_util:get_random_pid(one),
   ?assert(lists:member(OnePid, OnePids)),
@@ -35,4 +34,32 @@ test_get_random_pid() ->
   ?assertEqual({error, {no_process, unknown}}, mesh_util:get_random_pid(unknown)).
 
 test_get_best_pid() ->
-  ok.
+  reset(),
+  Seq = lists:seq(1, 3),
+  Parent = self(),
+  OnePids = lists:map(fun(X) -> test_send(one, Parent, X) end, Seq),  
+  [ Pid ! {hello, "World"} || Pid <- OnePids ],
+  {ok, OnePid} = mesh_util:get_best_pid(one),
+  ?assert(lists:member(OnePid, OnePids)),
+  ?assertEqual({error, {no_process, unknown}}, mesh_util:get_best_pid(unknown)),
+  [ Pid ! stop || Pid <- OnePids ].
+  
+% Internal
+reset() ->
+  pg2:delete(one), pg2:delete(two),
+  pg2:create(one), pg2:create(two).
+
+test_send(Group, Parent, Count) ->
+  Pid = spawn(?MODULE, loop_send, [Group, Parent, Count]),
+  pg2:join(Group, Pid),
+  Pid.
+
+loop_send(_, _, 0) -> ok;
+loop_send(Group, Parent, Count) ->
+  erlang:display(Count),
+  receive
+    stop -> ok;
+    X -> 
+      self() ! {self(), X}, self() ! {self(), X},
+      loop_send(Group, Parent, Count)
+  end.

@@ -25,15 +25,15 @@ get_random_pid(Name) ->
   end.
 
 get_best_pid(Name) ->
-  L = ensure_get_group_by_name(Name),
-  M = lists:map(fun(Pid) ->
-    [{message_queue_len, Messages}] = erlang:process_info(Pid, [message_queue_len]),
-    {Pid, Messages}
-  end, L),
-  case lists:keysort(2, M) of
-    [{Pid, _} | _] -> Pid;
-    [] -> {error, empty_process_group}
-  end.
+  case ensure_get_group_by_name(Name) of
+    [] -> {error, {no_process, Name}};
+    L ->
+      M = lists:map(fun(Pid) -> [{message_queue_len, Messages}] = erlang:process_info(Pid, [message_queue_len]), {Pid, Messages} end, L),
+      case lists:keysort(2, M) of
+        [{Pid, _} | _] -> {ok, Pid};
+        [] -> {error, empty_process_group}
+      end
+    end.
   
 % Internal method
 ensure_get_group_by_name(Name) ->
