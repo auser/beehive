@@ -10,7 +10,7 @@
 
 -export ([check/1]).
 
-check(bee) -> check_for_all();
+check(node) -> check_for_all();
 check(storage) -> check_for_all();
 check(router) -> check_for_all().
 
@@ -24,12 +24,15 @@ check_db_directory() ->
     Dir ->
       case filelib:is_dir(Dir) of
         true -> ok;
-        false -> erlang:throw({db, directory, no_exists})
-      end,
-      case writeable(Dir) of
-        true -> ok;
-        false -> erlang:throw({db, directory, not_writeable})
+        false -> 
+          % If the directory doesn't exist yet, let's create it
+          filelib:ensure_dir(Dir)
+          % erlang:throw(error, {db_directory, no_exists, Dir})
       end
+      % case writeable(Dir) of
+      %   true -> ok;
+      %   false -> erlang:throw(error, {db_directory, not_writeable, Dir})
+      % end
   end.
   
 writeable(F) ->

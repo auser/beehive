@@ -117,9 +117,9 @@ ensure_logfile_exists(FullFilepath) ->
   case (catch file:open(FullFilepath, [append])) of
     {ok, F} -> F;
     _E -> 
-      FullPath = filename:join([filename:absname("/opt"), FullFilepath]),
-      filelib:ensure_dir(FullPath),
-      {ok, F} = file:open(FullFilepath, [write]),
+      FullPath = filename:join([filename:absname("./"), filename:basename(FullFilepath)]),
+      filelib:ensure_dir(filename:dirname(FullPath)),
+      {ok, F} = file:open(FullPath, [write]),
       F
   end.
 

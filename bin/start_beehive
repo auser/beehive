@@ -68,7 +68,7 @@ REST="true"
 VERBOSE=0
 STRATEGY="random"
 RELOADER_OPTS="-s reloader"
-ERL_OPTS="-pa $BEEHIVE_SRC/ebin -pa $BEEHIVE_SRC/include -pz $BEEHIVE_SRC/deps/*/ebin -pz $BEEHIVE_SRC/deps/babysitter/ebin/"
+ERL_OPTS="-pa $BEEHIVE_SRC/ebin -pa $BEEHIVE_SRC/include -pz $BEEHIVE_SRC/deps/*/ebin -pz $BEEHIVE_SRC/deps/babysitter/erl/ebin/"
 
 SHORTOPTS="hm:n:dp:t:g:r:s:vi:e:b:q:l:z:c:"
 LONGOPTS="help,version,client_port,type,bee_strategy,routing_parameter,seed,mnesia_dir,daemonize"
@@ -175,7 +175,7 @@ if [ $TYPE != 'router' ]; then
 	ROUTER_OPTS="$ROUTER_OPTS run_rest_server false"
 fi
 
-if [ ! -d $MNESIA_DIR ]; then
+if [ ! -d `dirname $MNESIA_DIR` ]; then
 	echo "
 --- There was an error ---
 The database directory $MNESIA_DIR does not exist
@@ -266,7 +266,7 @@ fi
 erl $ERL_OPTS \
     $RELOADER_OPTS \
 		-mnesia dir \'$MNESIA_DIR\' \
-		-name $NAME \
+		-sname $NAME \
 		$BEEHIVE_OPTS \
 		$APP_OPTS \
 		$DAEMONIZE_ARGS \

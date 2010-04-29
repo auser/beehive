@@ -25,8 +25,9 @@ module Beehive
           opts.on('-r', '--very_debugging') {|v| Beehive.very_debugging = true}
           
           opts.on("-o host", "--host host", 'The remote host') {|u| @host = u }
-          opts.on("-u user", "--user user", 'The user') {|u| @user = u }
-          opts.on("-p prefix", "--prefix prefix") {|u| @prefix = u }
+          opts.on("-u user", "--user user", 'Your user') {|u| @user = u }
+          opts.on("-p password", "--password password", 'Your password') {|u| @password = u }
+          opts.on("-f prefix", "--prefix prefix") {|u| @prefix = u }
           opts.on("-k keypair", "--keypair keypair") {|u| @keypair = Keypair.new(u) }
           
           opts.banner = "Usage: beehive [options]"
@@ -67,6 +68,7 @@ module Beehive
       
       def get_token
         creds = {"email" => user, "password" => password}
+        p creds
         r = post("auth", creds)
         
         unless @token = r["token"]

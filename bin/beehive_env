@@ -4,7 +4,7 @@ APP=beehive
 LIBDIR=$(erl -eval 'io:format("~s~n", [code:lib_dir()])' -s init stop -noshell)
 VERSION="0.1"
 INSTALLED_DIR=$LIBDIR/$APP-$VERSION
-SCRIPT_DIR=$(dirname $0)
+SCRIPT_DIR=$(dirname $0)/../lib/erlang/scripts
 BEEHIVE_PREFIX=''
 if [ -z $BEEHIVE_HOME ]; then
   export BEEHIVE_HOME=$BEEHIVE_PREFIX/var/lib/beehive

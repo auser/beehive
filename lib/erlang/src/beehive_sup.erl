@@ -34,8 +34,7 @@ start_link(Args) ->
     {ok, Pid} ->
       application:start(NodeType),
       {ok, Pid};
-    Else ->
-      io:format("There was an error: ~p~n", [Else])
+    Else -> Else
   end.
 
 %%====================================================================
