@@ -223,11 +223,11 @@ if [ ! -z $CONFIG_FILE ]; then
 fi
 
 # Make sure the name has an '@' symbol
-if [ $(echo "$NAME" | $grep '@') ]; then
-  NAME=$NAME
-else
-  NAME="$NAME@$HOSTNAME"
-fi
+# if [ $(echo "$NAME" | $grep '@') ]; then
+#   NAME=$NAME
+# else
+#   NAME="$NAME@$HOSTNAME"
+# fi
 
 if [ -n $SEED ]; then
   BEEHIVE_OPTS="$BEEHIVE_OPTS seed '$SEED' "
@@ -238,7 +238,7 @@ case $TYPE in
     TYPE='router'
     APP_OPTS=$ROUTER_OPTS;;
   'node'|'n'|'bee'|'b' )
-    TYPE='bee'
+    TYPE='node'
     APP_OPTS=$NODE_OPTS;;
   'storage'|'s' )
     TYPE='storage'
@@ -266,7 +266,7 @@ fi
 erl $ERL_OPTS \
     $RELOADER_OPTS \
 		-mnesia dir \'$MNESIA_DIR\' \
-		-sname $NAME \
+		-name $NAME \
 		$BEEHIVE_OPTS \
 		$APP_OPTS \
 		$DAEMONIZE_ARGS \

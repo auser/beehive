@@ -68,8 +68,8 @@ module Beehive
       
       def get_token
         creds = {"email" => user, "password" => password}
-        p creds
-        r = post("auth", creds)
+        p host
+        r = post("auth", creds.to_json)
         
         unless @token = r["token"]
           raise r["error"] 

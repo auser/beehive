@@ -43,7 +43,7 @@ start(Nodes) ->
   ok = ensure_running(),
   ok = ensure_dir(),
   ok = add_slave(Nodes),
-  ok = wait_for_tables(),
+  % ok = wait_for_tables(),
   ok.
 
 dir() -> mnesia:system_info(directory).
@@ -181,7 +181,7 @@ wait_for_tables() -> wait_for_tables(table_names()).
 wait_for_tables(TableNames) ->
   case check_schema_integrity() of
     ok ->
-      case mnesia:wait_for_tables(TableNames, 30000) of
+      case mnesia:wait_for_tables(TableNames, 60000) of
         ok -> ok;
         {timeout, BadTabs} -> throw({error, {timeout_waiting_for_tables, BadTabs}});
         {error, Reason} -> throw({error, {failed_waiting_for_tables, Reason}})

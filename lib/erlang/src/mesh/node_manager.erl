@@ -58,8 +58,14 @@ start_link() ->
   start_link(Type, Seed).
 
 start_link(Type, Seed) ->
+  % Init groups
+  pg2:create(?ROUTER_SERVERS), pg2:create(?STORAGE_SERVERS), pg2:create(?NODE_SERVERS),
   GroupName = internal_get_group_name(Type),
-  case gen_server:start_link({local, ?MODULE}, ?MODULE, [Type, Seed], []) of
+  SeedArg = case Seed of
+    '' -> [];
+    E -> E
+  end,
+  case gen_server:start_link({local, ?MODULE}, ?MODULE, [Type, SeedArg], []) of
     {ok, Pid} = T ->
       pg2:create(GroupName), ok = pg2:join(GroupName, Pid), 
       T;
@@ -109,7 +115,7 @@ join(SeedNode) ->
   end.
 
 get_routers() -> get_node_of_type(router).
-get_nodes() -> get_node_of_type(bee).
+get_nodes() -> get_node_of_type(node).
 get_storage() -> get_node_of_type(storage).
 
 % Get the members
@@ -176,14 +182,13 @@ add_slave_node(SlaveNode) ->
 init([Type, SeedList]) ->
   process_flag(trap_exit, true),  
   
-  Seed = misc_utils:to_atom(SeedList),
-  case Seed of
-    '' -> ok;
-    _ ->
-      ?LOG(debug, "Connecting as type ~p to seed ~p", [Type, Seed]),
-      net_kernel:connect_node(Seed), % start distributed
-      join(Seed)
-  end,
+  Seeds = lists:flatten(convert_to_suitable_seeds([SeedList], [])),
+  lists:map(fun(Seed) ->
+    case net_kernel:connect_node(Seed) of
+      true -> join(Seed);
+      false -> ok
+    end
+  end, Seeds),
   
   db:start(),
     
@@ -194,7 +199,7 @@ init([Type, SeedList]) ->
   LocalHost = bh_host:myip(),
   
   {ok, #state{
-    seed = Seed,
+    seed = Seeds,
     type = Type,
     host = LocalHost
   }}.
@@ -279,25 +284,13 @@ handle_info({stopped_bee, Bee}, State) ->
   bees:update(RealBee#bee{status = down}),
   {noreply, State};
   
-handle_info({stay_connected_to_seed}, #state{seed = SeedNode, type = Type} = State) ->
+handle_info({stay_connected_to_seed},  #state{seed = SeedNode} = State) ->
+  erlang:display(SeedNode),
   case SeedNode of
     [] ->
       {noreply, State};
-    _Else ->
-      case net_adm:ping(SeedNode) of
-        pong -> 
-          {noreply, State};
-        pang -> 
-          RespondingSeed = case ping_node(get_other_nodes(Type)) of
-            [] -> SeedNode;
-            E -> 
-              case E =:= node(self()) of
-                true -> SeedNode;
-                false -> E
-              end
-          end,
-          {noreply, State#state{seed = RespondingSeed}}
-      end
+    Else ->
+      {noreply, stay_connected_to_seeds(Else, State)}
   end;
   
 handle_info({update_node_stats}, State) ->
@@ -320,7 +313,6 @@ handle_info(Info, State) ->
 %% The return value is ignored.
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-  pg2:delete(?STORAGE_SERVERS), pg2:delete(?NODE_SERVERS), pg2:delete(?ROUTER_SERVERS),
   ok.
 
 %%--------------------------------------------------------------------
@@ -372,3 +364,27 @@ internal_get_group_name(Type) ->
     node -> ?NODE_SERVERS;
     _ -> false
   end.
+
+% Convert to suitable seed nodes
+convert_to_suitable_seeds([], Acc) -> Acc;
+convert_to_suitable_seeds([StrHost|T], Acc) ->
+  convert_to_suitable_seeds(T, [misc_utils:to_atom(StrHost)|Acc]).
+
+stay_connected_to_seeds(Seeds,  #state{type = Type} = State) ->
+  lists:map(fun(Seed) ->
+    case net_kernel:connect_node(Seed) of
+      true -> 
+        join(Seed),
+        {noreply, State};
+      false -> 
+        RespondingSeed = case ping_node(get_other_nodes(Type)) of
+          [] -> Seed;
+          E -> 
+            case E =:= node(self()) of
+              true -> Seed;
+              false -> E
+            end
+        end,
+        {noreply, State#state{seed = RespondingSeed}}
+    end
+  end, Seeds).
