@@ -435,7 +435,7 @@ globally_registered_name(#state{module = Mod} = _State) -> Mod.%erlang:list_to_a
 start_cluster(State) ->
   global:sync(), % otherwise we may not see the other pids yet
   ?TRACE("Starting server:", globally_registered_name(State)),
-  RegisterResp = global:re_register_name(globally_registered_name(State), self()),
+  RegisterResp = global:register_name(globally_registered_name(State), self()),
   {RegisterResp, State}.
 
 % The elements are a list of proplists from the this or other servers  

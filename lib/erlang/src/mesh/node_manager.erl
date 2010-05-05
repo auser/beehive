@@ -70,6 +70,11 @@ start(Name, Mod, Args, Opts) ->
 get_servers() ->
   {ok, Plist} = gen_cluster:plist(?MODULE),
   Plist.
+
+get_servers(router) -> proplists:get_value(router_srv, get_servers(), []);
+get_servers(node) -> proplists:get_value(app_handler, get_servers(), []);
+get_servers(storage) -> proplists:get_value(bh_storage_srv, get_servers(), []);
+
 get_servers(PidType) ->
   case proplists:get_value(PidType, get_servers()) of
     undefined -> [];
@@ -80,7 +85,7 @@ leader_pid() -> hd(leader_pids([])).
 leader_pids(_State) -> [global:whereis_name(?MODULE)].
 
 is_a(Type) -> 
-  gen_cluster:call({global, leader_pid()}, {is_a, Type}).
+  gen_cluster:call(leader_pid(), {is_a, Type}).
 
 notify(Msg) ->
   erlang:display(Msg),
@@ -171,7 +176,8 @@ handle_info(_Info, State) ->
 %% cleaning up. When it returns, the gen_server terminates with Reason.
 %% The return value is ignored.
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{type = Type} = _State) ->
+  application:stop(Type),
   ok.
 
 %%--------------------------------------------------------------------
