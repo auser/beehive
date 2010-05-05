@@ -4,7 +4,7 @@
 
 setup() ->
   event_manager:start_link(),
-  node_manager:start_link(),
+  node_manager:start_count(2),
   ok.
   
 teardown(_X) ->

@@ -122,7 +122,7 @@ init(Args) ->
   % ServerMod = erlang:list_to_atom(ServerName),
   
   % application:start(sasl),
-  ok = application:start(Type),
+  application:start(Type),
   timer:send_interval(timer:minutes(1), {update_node_pings}),
   
   LocalHost = bh_host:myip(),
@@ -155,7 +155,8 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast(stop, State) ->
+handle_cast(stop, #state{type = Type} = State) ->
+  application:stop(Type),
   {stop, normal, State};
 handle_cast(_Msg, State) ->
   {noreply, State}.
@@ -176,8 +177,7 @@ handle_info(_Info, State) ->
 %% cleaning up. When it returns, the gen_server terminates with Reason.
 %% The return value is ignored.
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{type = Type} = _State) ->
-  application:stop(Type),
+terminate(_Reason, _State) ->
   ok.
 
 %%--------------------------------------------------------------------
