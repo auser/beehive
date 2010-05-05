@@ -2,7 +2,6 @@
 #define EI_DECODE_H
 
 #include <ei.h>
-#include <erl_nif.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

@@ -5,7 +5,7 @@
   {id, "babysitter"},
   {modules,      []},
   {registered,   []},
-  {applications, [kernel, stdlib, sasl]},
+  {applications, [kernel, stdlib]},
   {mod, {babysitter_app, []}},
   {env, [
     {debug, 3}

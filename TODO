@@ -15,7 +15,7 @@ TODO:
 * Ensure apps update only on call, not otherwise
 * Add automated test scripts to watch processes
 * Add more eunit tests
-* Add bee_srv to all node types
+* Add router_srv to all node types
 * Fix race condition with restart/deploy for when a restart is issued when there is a startup going on. Add padding/queue?
 * Fix bee_timeout when app is starting
 * Oauth? Http/basic

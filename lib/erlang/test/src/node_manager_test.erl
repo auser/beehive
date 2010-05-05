@@ -26,12 +26,14 @@ starting_test_() ->
   }.
 
 test_is_a_type() ->
+  erlang:display(global:whereis_name(node_manager)),
   ?assert(node_manager:is_a(router)).
 
 test_get_node_of_type() ->
-  ?assertEqual(node_manager:get_routers(), [erlang:whereis(node_manager)]),
-  ?assertEqual(node_manager:get_nodes(), []),
-  ?assertEqual(node_manager:get_storage(), []).
+  erlang:display(node_manager:get_servers()),
+  ?assertEqual([erlang:whereis(node_manager)], node_manager:get_servers(router)),
+  ?assertEqual([], node_manager:get_servers(node)),
+  ?assertEqual([], node_manager:get_servers(storage)).
 
 test_get_seed() ->
   Pid = spawn_link(fun() -> timer:sleep(1) end),

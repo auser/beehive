@@ -1,6 +1,6 @@
 -define (APP_PID_TABLE, 'babysitter_app_pid_table').
 -define (PID_MONITOR_TABLE, 'babysitter_mon').
--define (BABYSITTER_CONFIG_DB, babysitter_config_db).
+-define (BABYSITTER_CONFIG_DB, 'babysitter_config_db').
 
 -define (DBG (Bool, Fmt, Args),
   case Bool of

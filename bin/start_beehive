@@ -31,7 +31,7 @@ OPTIONS
 	-s, --seed                          Pass in the seed node
 	-l, --log_path                      Path of the logs
 	-p, --client_port                   Port to run the router
-	-i, --initial_bees                  Initial bees to start the bee_srv
+	-i, --initial_bees                  Initial bees to start the router_srv
 	-t, --type                          Type of node to start (default: router)
 	-g, --bee_strategy                  Strategy to choose a bee. (default: random)
 	-z, --git_repos_path                Git repos path

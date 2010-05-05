@@ -13,7 +13,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, start_link/1]).
 -export ([
   instance/0,
   status/0,
@@ -64,8 +64,8 @@ garbage_collection() ->
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-start_link() ->
-  gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+start_link() -> gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+start_link(Args) -> gen_server:start_link({local, ?SERVER}, ?MODULE, Args, []).
 
 %%====================================================================
 %% gen_server callbacks
@@ -123,14 +123,14 @@ handle_call(_Request, _From, State) ->
 %   ?LOG(info, "Terminating all apps", []),
 %   lists:map(fun(_Name, Bees) ->
 %     lists:map(fun(Bee) -> app_handler:stop_instance(Bee, State) end, Bees)
-%     end, bee_srv:all(instances)),
+%     end, router_srv:all(instances)),
 %   {reply, ok, State};
   
 % Terminate all the instances of a certain application
 % handle_cast({terminate_app_instances, AppName}, State) ->
-%   Bees = bee_srv:lookup(instances, AppName),
+%   Bees = router_srv:lookup(instances, AppName),
 %   lists:map(fun(Bee) -> app_handler:stop_instance(Bee, State) end, Bees),
-%   bee_srv:store(instances, AppName, []),
+%   router_srv:store(instances, AppName, []),
 %   {noreply, State};
 
 handle_cast({request_to_start_new_bee, Name}, State) ->

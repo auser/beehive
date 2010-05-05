@@ -5,7 +5,7 @@
   {id, "bh_node_srv"},
   {modules,      []},
   {registered,   []},
-  {applications, [kernel, stdlib, sasl]},
+  {applications, [kernel, stdlib]},
   {mod, {bh_node, []}},
   {env, [
     {app_dir, undefined}

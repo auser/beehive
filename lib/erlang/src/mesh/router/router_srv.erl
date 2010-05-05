@@ -1,24 +1,24 @@
 %%%-------------------------------------------------------------------
-%%% File    : bee_srv.erl
+%%% File    : router_srv.erl
 %%% Author  : Ari Lerner
 %%% Description : 
 %%%
 %%% Created :  Wed Oct  7 22:37:21 PDT 2009
 %%%-------------------------------------------------------------------
 
--module (bee_srv).
+-module (router_srv).
 
 -include ("beehive.hrl").
 -include ("common.hrl").
 -include_lib("kernel/include/inet.hrl").
 
--behaviour(gen_server).
+-behaviour(gen_cluster).
 
 %% External exports
 -export([
   start_link/0,
-  start_link/1, 
-  start_link/3
+  start_link/1,
+  seed_nodes/1
 ]).
 -export([ get_bee/2, 
           get_proxy_state/0,
@@ -37,24 +37,26 @@
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
+% gen_cluster callback
+-export([handle_join/3, handle_leave/4]).
+
 %%%----------------------------------------------------------------------
 %%% API
 %%%----------------------------------------------------------------------
+seed_nodes(_State) -> whereis(node_manager).
 
 start_link() ->
   LocalPort   = config:search_for_application_value(client_port, 8080,     router),
-  ConnTimeout = config:search_for_application_value(client_port, 120*1000, router),
-  ActTimeout  = config:search_for_application_value(client_port, 120*1000, router),
+  ConnTimeout = config:search_for_application_value(connection_timeout, 120*1000, router),
+  ActTimeout  = config:search_for_application_value(activity_timeout, 120*1000, router),
   
-  start_link(LocalPort, ConnTimeout, ActTimeout).
+  Args = [{local_port, LocalPort}, {connection_timeout, ConnTimeout}, {activity_timeout, ActTimeout}],
+  start_link(Args).
   
-%% start_link/1 used by supervisor
-start_link([LocalPort, ConnTimeout, ActTimeout]) ->
-  start_link(LocalPort, ConnTimeout, ActTimeout).
-
 %% start_link/3 used by everyone else
-start_link(LocalPort, ConnTimeout, ActTimeout) ->
-  gen_server:start_link({local, ?MODULE}, ?MODULE, [LocalPort, ConnTimeout, ActTimeout], []).
+start_link(Args) ->
+  erlang:display(Args),
+  gen_server:start_link({local, ?MODULE}, ?MODULE, Args, []).
 
 %% Choose an available back-end host
 get_bee(Pid, Hostname) ->
@@ -109,7 +111,11 @@ maybe_handle_next_waiting_client(Name) ->
 %%          ignore               |
 %%          {stop, Reason}
 %%----------------------------------------------------------------------
-init([LocalPort, ConnTimeout, ActTimeout]) ->
+init(Args) ->
+  erlang:display({?MODULE, init, Args}),
+  LocalPort = proplists:get_value(local_port, Args),
+  ConnTimeout = proplists:get_value(connection_timeout, Args),
+  ActTimeout = proplists:get_value(activity_timeout, Args),
   process_flag(trap_exit, true),
   ?NOTIFY({?MODULE, init}),
   
@@ -118,7 +124,7 @@ init([LocalPort, ConnTimeout, ActTimeout]) ->
   LocalHost = bh_host:myip(),
   
   add_bees_from_config(),
-
+  
   % {ok, TOTimer} = timer:send_interval(1000, {check_waiter_timeouts}),
   {ok, #proxy_state{
     local_port = LocalPort, 
@@ -143,7 +149,7 @@ init([LocalPort, ConnTimeout, ActTimeout]) ->
 handle_call({Pid, get_bee, Hostname}, From, State) ->
   % If this is a request for an internal application, then serve that first
   % These are abnormal applications because they MUST be running for every router
-  % and bee_srv. 
+  % and router_srv. 
   case Hostname of
     base ->
       Port = config:search_for_application_value(beehive_app_port, 4999, router), 
@@ -241,6 +247,29 @@ terminate(_Reason, State) ->
 %% Returns: {ok, NewState}
 %%----------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
+  {ok, State}.
+
+
+%%--------------------------------------------------------------------
+%% Function: handle_join(JoiningPid, Pidlist, State) -> {ok, State} 
+%%     JoiningPid = pid(),
+%%     Pidlist = list() of pids()
+%% Description: Called whenever a node joins the cluster via this node
+%% directly. JoiningPid is the node that joined. Note that JoiningPid may
+%% join more than once. Pidlist contains all known pids. Pidlist includes
+%% JoiningPid.
+%%--------------------------------------------------------------------
+handle_join(_JoiningPid, _Pidlist, State) ->
+  {ok, State}.
+
+%%--------------------------------------------------------------------
+%% Function: handle_leave(LeavingPid, Pidlist, Info, State) -> {ok, State} 
+%%     JoiningPid = pid(),
+%%     Pidlist = list() of pids()
+%% Description: Called whenever a node joins the cluster via another node and
+%%     the joining node is simply announcing its presence.
+%%--------------------------------------------------------------------
+handle_leave(_LeavingPid, _Pidlist, _Info, State) ->
   {ok, State}.
 
 %%%----------------------------------------------------------------------

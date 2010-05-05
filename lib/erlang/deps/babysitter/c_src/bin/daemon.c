@@ -216,6 +216,7 @@ int main (int argc, char const *argv[])
       } else {
         // Everything went well
       }
+      free(buf);
     } else {
       // Something else
     }

@@ -6,6 +6,7 @@
 -include ("babysitter.hrl").
 
 -export ([
+  init/0,
   read/1,
   get/2,
   get_raw_config/1
@@ -14,16 +15,25 @@
 -define (CONF_EXTENSION, ".conf").
 
 %%-------------------------------------------------------------------
+%% @spec () ->    {ok, Value}
+%% @doc Init the config
+%%      
+%% @end
+%%-------------------------------------------------------------------
+init() ->
+  case ets:info(?BABYSITTER_CONFIG_DB) of
+    undefined -> ets:new(?BABYSITTER_CONFIG_DB, [set, named_table, protected]);
+    _ -> ok
+  end.
+
+%%-------------------------------------------------------------------
 %% @spec (Dir::list()) -> {ok, FileNames}
 %% @doc Take a directory of files and read and parse them into the 
 %%      ets database.
 %% @end
 %%-------------------------------------------------------------------
 read(Dir) ->
-  case ets:info(?BABYSITTER_CONFIG_DB) of
-    undefined -> ets:new(?BABYSITTER_CONFIG_DB, [named_table]);
-    _ -> ok
-  end,
+  init(),
   case filelib:is_dir(Dir) of
     true -> read_dir(Dir);
     false ->
@@ -82,6 +92,7 @@ read_dir(Dir) ->
 read_files([], Acc) -> {ok, lists:reverse(Acc)};
 read_files([File|Rest], Acc) ->
   {Filename, Config} = parse_config_file(File),
+  init(),
   ets:insert(?BABYSITTER_CONFIG_DB, [{Filename, Config}]),
   read_files(Rest, [Filename|Acc]).
 

@@ -68,6 +68,26 @@ else
   found_msg
 fi
 
+cecho "Checking for gen_cluster" $green
+gen_cluster_dir="lib/erlang/deps/gen_cluster"
+gen_cluster_git_url="git://github.com/auser/gen_cluster.git"
+if [ -f "${gen_cluster_dir}/ebin/gen_cluster.beam" ]; then
+  found_msg
+  pushd ${gen_cluster_dir}
+  $GIT pull origin master
+  make
+  popd
+else
+  not_found_msg
+  cecho "Building gen_cluster" $green
+  pushd `dirname ${gen_cluster_dir}`
+  $GIT clone ${gen_cluster_git_url}
+  pushd gen_cluster
+  make
+  popd
+  popd
+fi
+
 cecho "Checking for babysitter" $green
 babysitter_dir="lib/erlang/deps/babysitter"
 babysitter_git_url="git://github.com/auser/babysitter.git"

@@ -48,7 +48,7 @@ post("/new", Data) ->
     {stop_command, StopCmd}
   ],
   
-  bee_srv:add_application(ConfigProplist),
+  router_srv:add_application(ConfigProplist),
   
   Out = {added, misc_utils:to_bin(Name)},
   {json, 200, [], Out};
@@ -65,7 +65,7 @@ delete(_Path, _Data) -> "unhandled".
 
 format_proxy_state() ->
   Backends = bees:all(),
-  State = bee_srv:get_proxy_state(),
+  State = router_srv:get_proxy_state(),
   StateHeaders = ?BINIFY([
     {"proxy_start_time", State#proxy_state.start_time},
     {"current_time", date_util:now_to_seconds()},

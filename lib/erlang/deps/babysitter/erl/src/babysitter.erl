@@ -79,11 +79,9 @@ list() -> gen_server:call(?SERVER, {port, {list}}).
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-start_link() ->
-  gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
+start_link() -> start_link([]).
 start_link(Options) ->
-  gen_server:start_link({local, ?SERVER}, ?MODULE, [Options], []).
+  gen_server:start_link({local, ?SERVER}, ?SERVER, [Options], []).
 
 stop() ->
   gen_server:call(?SERVER, stop).
@@ -104,12 +102,17 @@ init([Options]) ->
   Debug = proplists:get_value(verbose, Options, default(verbose)),
   Config = proplists:get_value(config_dir, Options, default(config_dir)),
   try
+    babysitter_config:init(),
+    babysitter_config:read(Config)
+  catch _:_Reason ->
+    ok
+  end,
+  try
     debug(Debug, "exec: port program: ~s\n", [Exe]),
     Port = erlang:open_port({spawn, Exe}, [binary, exit_status, {packet, 2}, nouse_stdio, hide]),
-    babysitter_config:read(Config),
     {ok, #state{port=Port, debug=Debug}}
   catch _:Reason ->
-    {stop, io:format("Error starting port '~p': ~200p", [Exe, Reason])}
+    {stop, {error, {port_could_not_start, Exe, Reason}}}
   end.
 
 %%--------------------------------------------------------------------

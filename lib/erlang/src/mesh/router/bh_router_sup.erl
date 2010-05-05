@@ -42,11 +42,11 @@ start_link(Args) ->
 %% to find out about restart strategy, maximum restart frequency and child
 %% specifications.
 %%--------------------------------------------------------------------
-init(_Args) ->
-  AppSrv = {the_bee_srv_sup, {bee_srv_sup, start_link, []}, permanent,2000,worker,dynamic},
-  HttpCl = {the_socket_server, {socket_server_sup, start_link, []}, permanent,2000,worker,dynamic},
-  BeeStatSrv = {the_bh_bee_stats_srv, {bh_bee_stats_srv, start_link, []}, permanent,2000,worker,dynamic},
-  AppManagerSrv  = {the_app_manager,{app_manager, start_link,[]}, permanent, 2000, worker, dynamic},
+init(Args) ->
+  AppSrv = {the_router_srv_sup, {router_srv_sup, start_link, Args}, permanent,2000,worker,dynamic},
+  HttpCl = {the_socket_server, {socket_server_sup, start_link, Args}, permanent,2000,worker,dynamic},
+  BeeStatSrv = {the_bh_bee_stats_srv, {bh_bee_stats_srv, start_link, Args}, permanent,2000,worker,dynamic},
+  AppManagerSrv  = {the_app_manager,{app_manager, start_link, Args}, permanent, 2000, worker, dynamic},
   
   AppsToStart = [AppManagerSrv,AppSrv,BeeStatSrv,HttpCl],
   
