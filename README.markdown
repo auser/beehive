@@ -54,4 +54,4 @@ For more information about each particular part of the project, there are README
 
 ### Copyright
 
-Copyright (c) 2009 Ari Lerner. See LICENSE for details.
+Copyright (c) 2010 Ari Lerner. See LICENSE for details.
