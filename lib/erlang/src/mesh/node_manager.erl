@@ -5,7 +5,7 @@
 -module (node_manager).
 
 -behaviour(gen_cluster).
--define (DEBUG, true).
+-define (DEBUG, false).
 -define (TRACE(X, M), case ?DEBUG of
   true -> io:format(user, "TRACE ~p:~p ~p ~p~n", [?MODULE, ?LINE, X, M]);
   false -> ok
@@ -58,7 +58,7 @@ start_server(Mod, Args, Opts) -> start(?MODULE, Mod, Args, Opts).
 start_server(Name, Mod, Args, Opts) -> start(Name, Mod, Args, Opts).
 
 start(Name, Mod, Args, Opts) ->
-  Seed = config:search_for_application_value(seed, self(), beehive),
+  Seed = config:search_for_application_value(seed, undefined, beehive),
   Type = config:search_for_application_value(node_type, router, beehive),
   
   RealArgs = lists:flatten([[{seed, Seed}, {node_type, Type}], Args]),
@@ -66,7 +66,6 @@ start(Name, Mod, Args, Opts) ->
     undefined -> gen_cluster:start_link({local, Name}, Mod, RealArgs, Opts);
     _ -> gen_cluster:start_link(Mod, RealArgs, Opts)
   end.
-
 
 get_servers() ->
   {ok, Plist} = gen_cluster:plist(?MODULE),
@@ -81,8 +80,7 @@ leader_pid() -> hd(leader_pids([])).
 leader_pids(_State) -> [global:whereis_name(?MODULE)].
 
 is_a(Type) -> 
-  gen_cluster:call(leader_pid(), {is_a, Type}).
-  
+  gen_cluster:call({global, leader_pid()}, {is_a, Type}).
 
 notify(Msg) ->
   erlang:display(Msg),
@@ -95,7 +93,7 @@ notify(Msg) ->
 %% @end
 %%-------------------------------------------------------------------
 stop() ->
-  gen_server:cast(?SERVER, stop).
+  gen_cluster:cast(?SERVER, stop).
 
 %%====================================================================
 %% gen_server callbacks
@@ -115,16 +113,11 @@ init(Args) ->
   db:start(),
   timer:send_interval(timer:seconds(30), {update_node_stats}),
   
-  ServerName = lists:append([erlang:atom_to_list(Type), "_srv"]),
-  ServerMod = erlang:list_to_atom(ServerName),
-    
-  % spawn(fun() ->
-    application:start(sasl),
-    application:set_env(Type, gen_cluster_known, self()),
-    ok = application:start(Type),
-    erlang:display({server_mod, whereis(ServerMod)}),
-    % gen_cluster:add_child(self(), ServerMod, whereis(ServerMod)),
-  % end),
+  % ServerName = lists:append([erlang:atom_to_list(Type), "_srv"]),
+  % ServerMod = erlang:list_to_atom(ServerName),
+  
+  % application:start(sasl),
+  ok = application:start(Type),
   timer:send_interval(timer:minutes(1), {update_node_pings}),
   
   LocalHost = bh_host:myip(),
@@ -147,6 +140,7 @@ handle_call({is_a, QueryType}, _From, #state{type = Type} = State) ->
   Reply = QueryType =:= Type,
   {reply, Reply, State};
 handle_call(_Request, _From, State) ->
+  % erlang:display({call, Request}),
   Reply = ok,
   {reply, Reply, State}.
 

@@ -5,7 +5,7 @@
   {id, "beehive_srv"},
   {modules,      []},
   {registered,   []},
-  {applications, [kernel, stdlib, sasl]},
+  {applications, [kernel, stdlib]},
   {mod, {beehive, []}},
   {env, [
     {node_type, router},

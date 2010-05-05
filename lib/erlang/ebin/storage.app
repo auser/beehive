@@ -5,7 +5,7 @@
   {id, "beehive_storage_srv"},
   {modules,      []},
   {registered,   []},
-  {applications, [kernel, stdlib, sasl]},
+  {applications, [kernel, stdlib]},
   {mod, {bh_storage, []}},
   {env, [
     {git_port, undefined},

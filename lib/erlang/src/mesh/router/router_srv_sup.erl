@@ -44,7 +44,6 @@ init([start_module, Module]) ->
   {ok, {{simple_one_for_one, 5, 10}, [ModSrv]}};
 
 init(Args) ->
-  erlang:display({?MODULE, Args}),
   % gen_cluster:start_link({local, Name}, Mod, RealArgs, Opts);
   AppSrv  = {the_router_srv,{gen_cluster, start_link, [{local, router_srv}, router_srv, Args, []]}, permanent,2000,worker,dynamic},
   BHApps  = {the_beehive,{rest_server, start_link, Args}, permanent,2000,worker,dynamic},

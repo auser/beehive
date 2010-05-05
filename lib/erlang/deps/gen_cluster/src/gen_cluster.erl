@@ -357,10 +357,9 @@ update_all_server_state(State, UpdateFun) ->
 %%--------------------------------------------------------------------
 join_existing_cluster(State) ->
   Servers = get_seed_nodes(State),
-  erlang:display(({join_existing_cluster, Servers})),
   connect_to_servers(Servers),
   global:sync(), % otherwise we may not see the pid yet
-  LeaderPids = get_leader_pids(State),
+  LeaderPids = lists:append([Servers, get_leader_pids(State)]),
   NewState = sync_with_leaders(LeaderPids, State),
   {ok, NewState}.
 
@@ -371,13 +370,14 @@ sync_with_leader(Pid, State) when is_pid(Pid) ->
   case is_process_alive(Pid) andalso Pid =/= self() of
     false -> State;
     true ->
-      case catch gen_cluster:call(Pid, {'$gen_cluster', join, State#state.local_plist}, 500) of
+      case catch gen_cluster:call(Pid, {'$gen_cluster', join, State#state.local_plist}, 1000) of
         {ok, KnownPlist} ->
           case add_pids_to_plist(KnownPlist, State) of
             {ok, NewInformedState} -> NewInformedState#state{leader_pids = Pid};
             _Else -> State
           end;
         Error ->
+          % erlang:display({error, Error}),
           ?TRACE("Error joining", {error, {could_not_join, Error}}),
           State
       end
@@ -393,17 +393,19 @@ connect_to_servers(ServerNames) ->
           skip; % do nothing
       _ -> 
          ?TRACE("connecting to server: ", Server),
-         Node = Server,
-         case net_adm:ping(Node) of
-             pong ->
-                 ok;
-             _ ->
-                 ?TRACE("WARNING: ping of Node failed:", Node) % should this be a bigger failure? how should we handle this so that way the first server doesn't always have to have this problem?
-         end
+         connect_to_server(Server)
       end
     end,
     ServerNames),
    {ok, ServerRefs}.
+
+connect_to_server(Pid) when is_pid(Pid) -> connect_to_server(node(Pid));
+connect_to_server(Node) ->
+  case net_adm:ping(Node) of
+    pong -> ok;
+    _ ->
+      ?TRACE("WARNING: ping of Node failed:", Node) % should this be a bigger failure? how should we handle this so that way the first server doesn't always have to have this problem?
+  end.
 
 %%--------------------------------------------------------------------
 %% Func: start_cluster_if_needed(State) -> {{ok, yes}, NewState} |
@@ -524,11 +526,14 @@ get_seed_nodes(State) ->
   Servers = [],
   Mod = State#state.module,
   ExtState = State#state.state,
+  case erlang:module_loaded(Mod) of
+    true -> ok;
+    false -> code:load_file(Mod)
+  end,
   Servers1 = case erlang:function_exported(Mod, seed_nodes, 1) of
-    true -> lists:append([Mod:seed_nodes(ExtState), Servers]);
+    true -> [Mod:seed_nodes(ExtState)|Servers];
     false -> Servers
   end,
-
   Servers2 = case init:get_argument(gen_cluster_known) of
     {ok, [[Server]]} ->
       lists:append([list_to_atom(Server), Servers1]);
@@ -546,15 +551,13 @@ get_seed_nodes(State) ->
   % "node@nohost".
   % "foo@bar".
   Servers3 = case os:getenv("GEN_CLUSTER_SEED_CONFIG") of
-    false -> [];
+    false -> Servers2;
     File ->
       case file:consult(File) of
         {ok, Terms} -> lists:append(Servers2, Terms);
         _ -> Servers2
       end
-  end,
-  
-  erlang:display({seed_nodes, Mod, Servers3}),
+  end,  
   Servers3.
 
 get_leader_pids(#state{module = Mod, leader_pids = LeaderPid, seed = Seed, state = ExtState} = State) ->

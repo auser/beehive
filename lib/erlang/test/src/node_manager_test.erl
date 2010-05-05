@@ -30,7 +30,6 @@ test_is_a_type() ->
   ?assert(node_manager:is_a(router)).
 
 test_get_node_of_type() ->
-  erlang:display(node_manager:get_servers()),
   ?assertEqual([erlang:whereis(node_manager)], node_manager:get_servers(router)),
   ?assertEqual([], node_manager:get_servers(node)),
   ?assertEqual([], node_manager:get_servers(storage)).

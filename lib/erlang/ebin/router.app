@@ -5,7 +5,7 @@
   {id, "beehive_srv"},
   {modules,      []},
   {registered,   []},
-  {applications, [kernel, stdlib, sasl]},
+  {applications, [kernel, stdlib]},
   {mod, {bh_router, []}},
   {env, [
     {client_port, undefined},

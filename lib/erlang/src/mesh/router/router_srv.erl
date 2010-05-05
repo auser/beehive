@@ -55,7 +55,6 @@ start_link() ->
   
 %% start_link/3 used by everyone else
 start_link(Args) ->
-  erlang:display(Args),
   gen_server:start_link({local, ?MODULE}, ?MODULE, Args, []).
 
 %% Choose an available back-end host
@@ -112,7 +111,6 @@ maybe_handle_next_waiting_client(Name) ->
 %%          {stop, Reason}
 %%----------------------------------------------------------------------
 init(Args) ->
-  erlang:display({?MODULE, init, Args}),
   LocalPort = proplists:get_value(local_port, Args),
   ConnTimeout = proplists:get_value(connection_timeout, Args),
   ActTimeout = proplists:get_value(activity_timeout, Args),
@@ -228,9 +226,9 @@ handle_info({'EXIT', Pid, Reason}, State) ->
 	  _ ->
       {noreply, State}
   end;
-handle_info(Info, State) ->
-    error_logger:format("~s:handle_info: got ~w\n", [?MODULE, Info]),
-    {noreply, State}.
+handle_info(_Info, State) ->
+  % error_logger:format("~s:handle_info: got ~w\n", [?MODULE, Info]),
+  {noreply, State}.
 
 %%----------------------------------------------------------------------
 %% Func: terminate/2
