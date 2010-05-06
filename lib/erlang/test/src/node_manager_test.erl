@@ -20,7 +20,8 @@ starting_test_() ->
       [
         fun test_is_a_type/0,
         fun test_get_node_of_type/0,
-        fun test_get_seed/0
+        fun test_get_seed/0,
+        fun test_sort_servers_by_load/0
       ]
     }
   }.
@@ -29,7 +30,6 @@ test_is_a_type() ->
   ?assert(node_manager:is_a(router)).
 
 test_get_node_of_type() ->
-  erlang:display(node_manager:get_servers()),
   ?assertEqual([global:whereis_name(router_srv)], node_manager:get_servers(router)),
   ?assertEqual([], node_manager:get_servers(node)),
   ?assertEqual([], node_manager:get_servers(storage)).
@@ -38,4 +38,12 @@ test_get_seed() ->
   % Pid = spawn_link(fun() -> timer:sleep(1) end),
   % node_manager:set_seed(Pid),
   % ?assertEqual(Pid, node_manager:get_seed()),
+  ok.
+
+test_sort_servers_by_load() ->
+  {ok, Pid1} = node_manager:start_server(router_srv), {ok, Pid2} = node_manager:start_server(router_srv),
+  {NextAvailable, _Load} = node_manager:get_next_available(router),
+  Routers = node_manager:get_servers(router),
+  ?assert(lists:member(NextAvailable, Routers)),
+  lists:map(fun(P) -> gen_cluster:cast(P, stop) end, [Pid1, Pid2]),
   ok.

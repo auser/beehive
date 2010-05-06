@@ -115,7 +115,6 @@ init(Args) ->
   ConnTimeout = proplists:get_value(connection_timeout, Args),
   ActTimeout = proplists:get_value(activity_timeout, Args),
   process_flag(trap_exit, true),
-  ?NOTIFY({?MODULE, init}),
   
   Pid     = whereis(tcp_socket_server),
   
@@ -203,7 +202,9 @@ handle_call(Request, From, State) ->
 handle_cast({maybe_handle_next_waiting_client, Hostname}, State) ->
   maybe_handle_next_waiting_client(Hostname, State),
   {noreply, State};
-  
+
+handle_cast(stop, State) -> 
+  {stop, normal, State};
 handle_cast(Msg, State) ->
   error_logger:format("~s:handle_cast: got ~w\n", [?MODULE, Msg]),
   {noreply, State}.

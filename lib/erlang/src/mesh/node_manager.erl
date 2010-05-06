@@ -23,6 +23,7 @@ end).
   leader_pid/0, leader_pids/1,
   stop/0,
   dump/1,
+  get_next_available/1,
   notify/1
 ]).
 
@@ -71,7 +72,7 @@ start_server(Mod, Args, Opts) -> start(?MODULE, Mod, Args, Opts).
 start_server(Name, Mod, Args, Opts) -> start(Name, Mod, Args, Opts).
 
 start(Name, Mod, Args, Opts) ->
-  Seed = config:search_for_application_value(seed, undefined, beehive),
+  Seed = config:search_for_application_value(seed, global:whereis_name(node_manager), beehive),
   Type = config:search_for_application_value(node_type, router, beehive),
   
   RealArgs = lists:flatten([[{seed, Seed}, {node_type, Type}], Args]),
@@ -112,14 +113,25 @@ notify(Msg) ->
   erlang:display(Msg),
   ok.
 
+%%====================================================================
+%% server-specific methods
+%%====================================================================
+get_next_available(Type) when is_atom(Type) ->
+  % statistics(run_queue)
+  case get_servers(Type) of
+    [] -> {error, none};
+    Servers ->
+      [H|_Rest] = sort_servers_by_load(Servers),
+      H
+  end.
+  
 %%-------------------------------------------------------------------
 %% @spec () ->    ok
 %% @doc Stop the node_manager
 %%      
 %% @end
 %%-------------------------------------------------------------------
-stop() ->
-  gen_cluster:cast(?SERVER, stop).
+stop() -> gen_cluster:cast(?SERVER, stop).
 
 %%====================================================================
 %% gen_server callbacks
@@ -241,3 +253,10 @@ handle_leave(LeavingPid, Pidlist, Info, State) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
+sort_servers_by_load(Servers) -> 
+  lists:sort(fun({_Node1, Load1},{_Node2, Load2}) -> Load1 < Load2 end, get_server_load(Servers, [])).
+
+get_server_load([], Acc) -> Acc;
+get_server_load([H|Rest], Acc) ->
+  Stat = rpc:call(node(H), erlang, statistics, [run_queue]),
+  get_server_load(Rest, [{H, Stat}|Acc]).
