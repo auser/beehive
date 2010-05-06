@@ -249,7 +249,7 @@ initialize_application(#app{template = Template} = App, PropLists, AppLauncher, 
   },
   
   io:format("------ App handler using babysitter spawn_new: ~p~n", [StartProplist]),
-  case babysitter:spawn_new(StartProplist, self()) of
+  case babysitter:spawn_new(DefaultProps, self()) of
     {ok, ProcessPid, SysPid} ->
       % Store the app in the local ets table
       NewBee = Bee#bee{pid = ProcessPid, os_pid = SysPid},

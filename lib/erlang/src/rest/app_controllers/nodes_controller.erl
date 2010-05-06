@@ -28,20 +28,24 @@ get(["mine", RangeList], _Data) ->
   )};
 get(_, _Data) -> 
   {struct, [
-    {"routers", format_nodes(fun node_manager:get_routers/0)},
-    {"bees", format_nodes(fun node_manager:get_nodes/0)},
-    {"storage", format_nodes(fun node_manager:get_storage/0)}
+    {"routers", format_nodes(node_manager:get_servers(router))},
+    {"bees", format_nodes(node_manager:get_servers(nodes))},
+    {"storage", format_nodes(node_manager:get_servers(storage))}
     ]
   }.
   
-format_nodes(F) ->
-  lists:map(fun(#node{name = Name, host = Host} = _Node) ->
-      {struct, ?BINIFY([
-        {"name", Name},
-        {"host", Host}
-      ])}
-    end, lists:map(fun(N) -> node_manager:dump(N) end, F())
-  ).
+format_nodes(List) -> format_nodes(List, []).
+format_nodes([], Acc) -> Acc;
+format_nodes([H|Rest], Acc) ->
+  erlang:display({node, H}),
+  format_nodes(Rest, [format_node(H)|Acc]).
+
+format_node(Pid) when is_pid(Pid) ->
+  #node{name = Name, host = Host} = node_manager:dump(Pid),
+  {struct, ?BINIFY([
+    {"name", Name},
+    {"host", Host}
+  ])}.
 
 post(_Path, _Data) -> "unhandled".
 put(_Path, _Data) -> "unhandled".

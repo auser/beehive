@@ -3,6 +3,7 @@
 %% @copyright 05/03/10 Ari Lerner <arilerner@mac.com>
 %% @doc The basic node_manager to manage the different nodes in beehive
 -module (node_manager).
+-include ("beehive.hrl").
 
 -behaviour(gen_cluster).
 -define (DEBUG, false).
@@ -21,6 +22,7 @@ end).
   is_a/1,
   leader_pid/0, leader_pids/1,
   stop/0,
+  dump/1,
   notify/1
 ]).
 
@@ -52,6 +54,17 @@ start_count(Count) ->
   {ok, Pids}.
 
 % Start servers
+%%-------------------------------------------------------------------
+%% @spec (Mod)
+%%       (Mod, Args)
+%%       (Mod, Args, Opts)
+%%       (Name, Mod, Args, Opts)
+%%        ->    {ok, Value}
+%%              | {error, Reason}
+%% @doc Start the node_manager
+%%      
+%% @end
+%%-------------------------------------------------------------------
 start_server(Mod) -> start_server(Mod, [], []).
 start_server(Mod, Args) -> start_server(Mod, Args, []).
 start_server(Mod, Args, Opts) -> start(?MODULE, Mod, Args, Opts).
@@ -67,6 +80,12 @@ start(Name, Mod, Args, Opts) ->
     _ -> gen_cluster:start_link(Mod, RealArgs, Opts)
   end.
 
+%%-------------------------------------------------------------------
+%% @spec () ->    List
+%% @doc Get all the servers known by the node_manager
+%%      
+%% @end
+%%-------------------------------------------------------------------
 get_servers() ->
   {ok, Plist} = gen_cluster:plist(?MODULE),
   Plist.
@@ -80,6 +99,8 @@ get_servers(PidType) ->
     undefined -> [];
     E -> E
   end.
+
+dump(Pid) -> gen_server:call(leader_pid(), {dump, Pid}).
 
 leader_pid() -> hd(leader_pids([])).
 leader_pids(_State) -> [global:whereis_name(?MODULE)].
@@ -144,6 +165,11 @@ init(Args) ->
 handle_call({is_a, QueryType}, _From, #state{type = Type} = State) ->
   Reply = QueryType =:= Type,
   {reply, Reply, State};
+handle_call({dump, Pid}, _From, State) ->
+  Name = node(Pid),
+  Host = rpc:call(Name, bh_host, myip, []),
+  Node = #node{ name = Name, host = Host },
+  {reply, Node, State};
 handle_call(_Request, _From, State) ->
   % erlang:display({call, Request}),
   Reply = ok,
