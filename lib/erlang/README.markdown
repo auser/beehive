@@ -6,8 +6,8 @@ Getting started
 
 To start the router:
 
-    make && make boot
-    ./scripts/start_beehive.sh
+    make
+    ./bin/start_beehive
 
 This will start the basic router with the default options. The default node type that gets started is the router type. You can start a node (see glossary below) with the following command. Node that the -s argument refers to a seed node. This is any node already in the mesh.
 
