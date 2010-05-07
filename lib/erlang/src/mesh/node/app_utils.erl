@@ -10,39 +10,11 @@
 -include ("beehive.hrl").
 -include ("common.hrl").
 -export ([
-  app_template_parsed/3,
-  build_app_env/2
+  app_template_parsed/3
 ]).
 
 % For testing
 -export ([template_proplists/3]).
-
-%%-------------------------------------------------------------------
-%% @spec (App:app()) ->    {ok, Value}
-%% @doc Build environment variables for the application
-%%      
-%% @end
-%%-------------------------------------------------------------------
-build_app_env(App, Other) ->
-  OtherEnvs = lists:map(fun build_env/1, Other),
-  lists:flatten([
-    build_env({name, App#app.name}),
-    build_env({url, App#app.url}),
-    build_env({sha, App#app.sha}),
-    OtherEnvs
-  ]).
-
-build_env({Key, Value}) ->
-  T = lists:flatten([
-    string:to_upper(erlang:atom_to_list(Key)),
-    "=\"",
-    Value,
-    "\""
-  ]),
-  case Value of
-    undefined -> [];
-    _ -> {env, T}
-  end.
 
 % Type template
 % Get the application type of the template

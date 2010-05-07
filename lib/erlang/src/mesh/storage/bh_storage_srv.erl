@@ -9,7 +9,7 @@
 -module (bh_storage_srv).
 -include ("beehive.hrl").
 -include ("common.hrl").
--behaviour(gen_server).
+-behaviour(gen_cluster).
 
 %% API
 -export([
@@ -19,12 +19,17 @@
   build_bee/2,
   locate_git_repo/1,
   lookup_squashed_repos/2,
-  has_squashed_repos/2
+  has_squashed_repos/2,
+  seed_nodes/1
 ]).
 
-%% gen_server callbacks
+%% gen_cluster callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
+
+% gen_cluster callback
+-export([handle_join/3, handle_leave/4]).
+
 
 -record(state, {
   scratch_disk,
@@ -37,18 +42,19 @@
 %%====================================================================
 %% API
 %%====================================================================
+seed_nodes(_State) -> global:whereis_name(node_manager).
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
 pull_repos(AppName, Caller) ->
-  gen_server:cast(?SERVER, {pull_repos, AppName, Caller}).
+  gen_cluster:cast(?SERVER, {pull_repos, AppName, Caller}).
 
 build_bee(AppName, Caller) ->
-  gen_server:cast(?SERVER, {build_bee, AppName, Caller}).
+  gen_cluster:cast(?SERVER, {build_bee, AppName, Caller}).
 
 locate_git_repo(Name) ->
-  gen_server:call(?SERVER, {locate_git_repo, Name}).
+  gen_cluster:call(?SERVER, {locate_git_repo, Name}).
 
 lookup_squashed_repos(App, Sha) ->
   handle_lookup_squashed_repos(App, Sha).
@@ -59,15 +65,14 @@ has_squashed_repos(App, Sha) ->
     E -> E
   end.
 
-% get_next_available_storage
 can_pull_new_app() ->
-  gen_server:call(?SERVER, {can_pull_new_app}).
+  gen_cluster:call(?SERVER, {can_pull_new_app}).
 
 start_link() ->
-  gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+  gen_cluster:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %%====================================================================
-%% gen_server callbacks
+%% gen_cluster callbacks
 %%====================================================================
 
 %%--------------------------------------------------------------------
@@ -134,38 +139,58 @@ handle_cast({pull_repos, App, Caller}, State) ->
 
 handle_cast({build_bee, App, Caller}, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} = State) ->
   {ok, ReposUrl} = handle_repos_lookup(App),
-  OutFile = lists:append([handle_find_application_location(App, State), ".img"]),
+  % OutFile = lists:append([handle_find_application_location(App, State), ".img"]),
+  % 
+  % io:format("creating bee: ~p~n", [{ReposUrl, ScratchDisk, SquashedDisk, App#app.name, OutFile}]),
+  % {Proplists, Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("create-bee", [
+  %   {"[[GIT_REPOS]]", ReposUrl},
+  %   {"[[WORKING_DIRECTORY]]", ScratchDisk},
+  %   {"[[SQUASHED_DIRECTORY]]", SquashedDisk},
+  %   {"[[APP_NAME]]", App#app.name},
+  %   {"[[OUTFILE]]", OutFile}
+  % ]),
+  OtherOpts = [
+    {working_directory, lists:flatten([ScratchDisk, "/", App#app.name])},
+    {squashed_root, lists:flatten([SquashedDisk, "/", App#app.name])},
+    {repos, ReposUrl},
+    {path, "/usr/bin:/usr/local/bin:/bin"}
+  ],
+  CmdOpts = apps:build_app_env(App, OtherOpts),
   
-  io:format("creating bee: ~p~n", [{ReposUrl, ScratchDisk, SquashedDisk, App#app.name, OutFile}]),
-  {Proplists, Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("create-bee", [
-    {"[[GIT_REPOS]]", ReposUrl},
-    {"[[WORKING_DIRECTORY]]", ScratchDisk},
-    {"[[SQUASHED_DIRECTORY]]", SquashedDisk},
-    {"[[APP_NAME]]", App#app.name},
-    {"[[OUTFILE]]", OutFile}
-  ]),
-  case Status of
-    0 ->
-      io:format("Proplists: ~p~n", [Proplists]),
-      Reply = case proplists:is_defined(bee_size, Proplists) of
-        true -> 
-          Path = proplists:get_value(outdir, Proplists),
-          ets:insert(?TAB_NAME_TO_PATH, {App, Path}),
-          {bee_built, Proplists};
-        false -> 
-          {error, "Could not create bee"}
-      end,
-      Caller ! Reply,
-      {noreply, State};
-    1 ->
-      Reply = {error, could_not_pull_bee},
-      Caller ! Reply,
-      {noreply, State};
-    Else ->
-      Reply = {error, Else},
-      Caller ! Reply,
-      {noreply, State}
-  end;
+  lists:map(fun(Dir) ->
+    file:make_dir(Dir)
+  end, [ScratchDisk, SquashedDisk]),
+  
+  X = babysitter:run(App#app.template, bundle, CmdOpts),
+  erlang:display({babysitter, X}),
+  Caller ! {unimplemented, come_back_soon},
+  {noreply, State};
+  % Status = 1,
+  % case Status of
+  %   0 ->
+  %     io:format("Proplists: ~p~n", [Proplists]),
+  %     Reply = case proplists:is_defined(bee_size, Proplists) of
+  %       true -> 
+  %         Path = proplists:get_value(outdir, Proplists),
+  %         ets:insert(?TAB_NAME_TO_PATH, {App, Path}),
+  %         {bee_built, Proplists};
+  %       false -> 
+  %         {error, "Could not create bee"}
+  %     end,
+  %     Caller ! Reply,
+  %     {noreply, State};
+  %   1 ->
+  %     Reply = {error, could_not_pull_bee},
+  %     Caller ! Reply,
+  %     {noreply, State};
+  %   Else ->
+  %     Reply = {error, Else},
+  %     Caller ! Reply,
+  %     {noreply, State}
+  % end;
+
+handle_cast(stop, State) ->
+  {stop, normal, State};
 handle_cast(_Msg, State) ->
   {noreply, State}.
 
@@ -180,9 +205,9 @@ handle_info(_Info, State) ->
 
 %%--------------------------------------------------------------------
 %% Function: terminate(Reason, State) -> void()
-%% Description: This function is called by a gen_server when it is about to
+%% Description: This function is called by a gen_cluster when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any necessary
-%% cleaning up. When it returns, the gen_server terminates with Reason.
+%% cleaning up. When it returns, the gen_cluster terminates with Reason.
 %% The return value is ignored.
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
@@ -194,6 +219,30 @@ terminate(_Reason, _State) ->
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
+
+
+%%--------------------------------------------------------------------
+%% Function: handle_join(JoiningPid, Pidlist, State) -> {ok, State} 
+%%     JoiningPid = pid(),
+%%     Pidlist = list() of pids()
+%% Description: Called whenever a node joins the cluster via this node
+%% directly. JoiningPid is the node that joined. Note that JoiningPid may
+%% join more than once. Pidlist contains all known pids. Pidlist includes
+%% JoiningPid.
+%%--------------------------------------------------------------------
+handle_join(_JoiningPid, _Pidlist, State) ->
+  {ok, State}.
+
+%%--------------------------------------------------------------------
+%% Function: handle_leave(LeavingPid, Pidlist, Info, State) -> {ok, State} 
+%%     JoiningPid = pid(),
+%%     Pidlist = list() of pids()
+%% Description: Called whenever a node joins the cluster via another node and
+%%     the joining node is simply announcing its presence.
+%%--------------------------------------------------------------------
+handle_leave(_LeavingPid, _Pidlist, _Info, State) ->
+  {ok, State}.
+
 
 %%--------------------------------------------------------------------
 %%% Internal functions

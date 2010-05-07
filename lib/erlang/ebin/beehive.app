@@ -9,7 +9,7 @@
   {mod, {beehive, []}},
   {env, [
     {node_type, router},
-    {config_file, undefined},
+    {config_file, "/var/beehive/config"},
     {seed, []},
     {user_defined_event_handler, undefined},
     {log_level, 0},

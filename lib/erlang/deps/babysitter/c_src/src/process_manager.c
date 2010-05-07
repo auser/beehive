@@ -153,29 +153,28 @@ int expand_command(const char* command, int* argc, char ***argv, int *using_a_sc
   
   if (!strncmp(command, "#!", 2)) {
     // We are running a shell script command
-    char *filename = NULL;
-    int size, fd;
+    char *filename = strdup("/tmp/babysitter.XXXXXXX");
+    int size, fd = -1;
+    FILE *sfp;
     // Note for the future cleanup, that we'll be running a script to cleanup
     running_script = 1;
-    snprintf(filename, 40, "/tmp/babysitter.XXXXXXXXX");
+    
     // Make a tempfile in the filename format
-    if ((fd = mkstemp(filename)) == -1) {
+    if ((fd = mkstemp(filename)) == -1 || (sfp = fdopen(fd, "w+")) == NULL) {
+      if (fd != -1) {
+        unlink(filename);
+        close(fd);
+      }
       fprintf(stderr, "Could not open tempfile: %s\n", filename);
       return -1;
     }
     size = strlen(command);
     // Print the command into the file
-    if (write(fd, command, size) == -1) {
+    if (fwrite(command, size, 1, sfp) == -1) {
       fprintf(stderr, "Could not write command to tempfile: %s\n", filename);
       return -1;
     }
-
-    // Confirm that the command is written
-    if (fsync(fd) == -1) {
-      fprintf(stderr, "fsync failed for tempfile: %s\n", filename);
-      return -1;
-    }
-
+    fclose(sfp);
     // Close the file descriptor
     close(fd);
 
@@ -195,9 +194,11 @@ int expand_command(const char* command, int* argc, char ***argv, int *using_a_sc
     }
 
     // Run in a new process
-    command_argv[0] = filename;
+    command_argv = (char **) malloc(1 * sizeof(char *));
+    command_argv[0] = strdup(filename);
     command_argv[1] = NULL;
     command_argc = 1;
+    free(filename);
   } else {
     int prefix;
     char *cp, *cmdname, *expanded_command;
@@ -278,6 +279,15 @@ pid_t pm_execute(int should_wait, const char* command, const char *cd, int nice,
     // In parent process
     if (nice != INT_MAX && setpriority(PRIO_PROCESS, pid, nice) < 0) 
       ;
+    if (running_script && should_wait) {
+      struct stat buffer;
+      if (stat(command_argv[0], &buffer) != 0) {
+        printf("file doesn't exist when it should because: %s\n", strerror(errno));
+      } else {
+        usleep(5000); // Race-condition... figure out something better please!
+        if( remove( command_argv[0] ) != 0 ) perror( "Error deleting file" );
+      }
+    }
     return pid;
   }
 }

@@ -46,7 +46,10 @@ parsing_dir_test() ->
   {ok, BCLookup} = babysitter_config:get(rack, bundle),
   [{rack, EtsLookup}] = ets:lookup(?BABYSITTER_CONFIG_DB, rack),
   BundleLookup = proplists:get_value(bundle, EtsLookup),
-  ?assertEqual(BundleLookup, BCLookup).
+  ?assertEqual(BundleLookup, BCLookup),
+  {ok, List} = babysitter_config:list_configs(),
+  ?assertEqual(List, [rack, default, java]),
+  ok.
 
 % Internal functions
 config_read() ->

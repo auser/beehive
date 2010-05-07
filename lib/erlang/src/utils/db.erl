@@ -43,7 +43,7 @@ start(Nodes) ->
   ok = ensure_running(),
   ok = ensure_dir(),
   ok = add_slave(Nodes),
-  % ok = wait_for_tables(),
+  ok = wait_for_tables(),
   ok.
 
 dir() -> mnesia:system_info(directory).
@@ -135,6 +135,14 @@ create_tables() ->
     case mnesia:create_table(Tab, TabAttr) of
       {atomic, ok} -> ok;
       {aborted, Reason} -> throw({error, {table_creation_failed, Tab, TabAttr, Reason}})
+    end,
+    % Pluralize the table (to match the model module)
+    Pluralized = erlang:list_to_atom(lists:append([erlang:atom_to_list(Tab), "s"])),
+    erlang:display({database, Pluralized}),
+    code:load_file(Pluralized),
+    case erlang:function_exported(Pluralized, initialize, 0) of
+      true -> Pluralized:initialize();
+      false -> ok
     end
   end, Databases),
   ok.

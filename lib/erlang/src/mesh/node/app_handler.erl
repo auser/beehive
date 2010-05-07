@@ -9,7 +9,7 @@
 -module (app_handler).
 -include ("beehive.hrl").
 -include ("common.hrl").
--behaviour(gen_server).
+-behaviour(gen_cluster).
 
 %% API
 -export([
@@ -18,13 +18,16 @@
   start_new_instance/4,
   stop_instance/3, stop_app/2,
   can_deploy_new_app/0,
-  has_app_named/1
+  has_app_named/1,
+  seed_nodes/1
 ]).
 
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
+% gen_cluster callback
+-export([handle_join/3, handle_leave/4]).
 
 -record(state, {
   max_bees             % maximum number of bees on this host
@@ -43,29 +46,31 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
+seed_nodes(_State) -> global:whereis_name(node_manager).
+
 start_link() ->
-  gen_server:start_link({local, ?SERVER}, ?SERVER, [], []).
+  gen_cluster:start_link({local, ?SERVER}, ?SERVER, [], []).
 
 stop() ->
-  gen_server:call(?SERVER, {stop}).
+  gen_cluster:call(?SERVER, {stop}).
   
 can_deploy_new_app() ->
-  gen_server:call(?SERVER, {can_deploy_new_app}).
+  gen_cluster:call(?SERVER, {can_deploy_new_app}).
   
 start_new_instance(App, Sha, AppLauncher, From) ->
-  gen_server:call(?SERVER, {start_new_instance, App, Sha, AppLauncher, From}).
+  gen_cluster:call(?SERVER, {start_new_instance, App, Sha, AppLauncher, From}).
 
 stop_instance(Bee, App, From) ->
-  gen_server:call(?SERVER, {stop_instance, Bee, App, From}).
+  gen_cluster:call(?SERVER, {stop_instance, Bee, App, From}).
 
 has_app_named(Name) ->
-  gen_server:call(?SERVER, {has_app_named, Name}).
+  gen_cluster:call(?SERVER, {has_app_named, Name}).
   
 stop_app(App, From) ->
-  gen_server:cast(?SERVER, {stop_app, App, From}).
+  gen_cluster:cast(?SERVER, {stop_app, App, From}).
 
 %%====================================================================
-%% gen_server callbacks
+%% gen_cluster callbacks
 %%====================================================================
 
 %%--------------------------------------------------------------------
@@ -75,7 +80,7 @@ stop_app(App, From) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([]) ->
+init(_Args) ->
   process_flag(trap_exit, true),
   
   Opts = [named_table, set],
@@ -181,6 +186,28 @@ terminate(_Reason, _State) ->
 %% Description: Convert process state when code is changed
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
+  {ok, State}.
+
+%%--------------------------------------------------------------------
+%% Function: handle_join(JoiningPid, Pidlist, State) -> {ok, State} 
+%%     JoiningPid = pid(),
+%%     Pidlist = list() of pids()
+%% Description: Called whenever a node joins the cluster via this node
+%% directly. JoiningPid is the node that joined. Note that JoiningPid may
+%% join more than once. Pidlist contains all known pids. Pidlist includes
+%% JoiningPid.
+%%--------------------------------------------------------------------
+handle_join(_JoiningPid, _Pidlist, State) ->
+  {ok, State}.
+
+%%--------------------------------------------------------------------
+%% Function: handle_leave(LeavingPid, Pidlist, Info, State) -> {ok, State} 
+%%     JoiningPid = pid(),
+%%     Pidlist = list() of pids()
+%% Description: Called whenever a node joins the cluster via another node and
+%%     the joining node is simply announcing its presence.
+%%--------------------------------------------------------------------
+handle_leave(_LeavingPid, _Pidlist, _Info, State) ->
   {ok, State}.
 
 %%--------------------------------------------------------------------

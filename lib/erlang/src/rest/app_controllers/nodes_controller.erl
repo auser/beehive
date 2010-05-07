@@ -29,16 +29,14 @@ get(["mine", RangeList], _Data) ->
 get(_, _Data) -> 
   {struct, [
     {"routers", format_nodes(node_manager:get_servers(router))},
-    {"bees", format_nodes(node_manager:get_servers(nodes))},
+    {"nodes", format_nodes(node_manager:get_servers(node))},
     {"storage", format_nodes(node_manager:get_servers(storage))}
     ]
   }.
   
 format_nodes(List) -> format_nodes(List, []).
 format_nodes([], Acc) -> Acc;
-format_nodes([H|Rest], Acc) ->
-  erlang:display({node, H}),
-  format_nodes(Rest, [format_node(H)|Acc]).
+format_nodes([H|Rest], Acc) -> format_nodes(Rest, [format_node(H)|Acc]).
 
 format_node(Pid) when is_pid(Pid) ->
   #node{name = Name, host = Host} = node_manager:dump(Pid),

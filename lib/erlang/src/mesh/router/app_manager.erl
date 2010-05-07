@@ -450,7 +450,7 @@ cleanup_bee(B) ->
 % there is an available host to start the bee on
 start_new_instance_by_name(Name) ->
   io:format("start_new_instance_by_name(~p)~n", [Name]),
-  case node_manager:get_next_available_host() of
+  case node_manager:get_next_available(node) of
     false -> false;
     Host ->
       App = apps:find_by_name(Name),

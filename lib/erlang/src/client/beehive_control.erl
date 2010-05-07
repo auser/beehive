@@ -67,9 +67,9 @@ command(Node, gc, []) -> call(Node, app_manager, garbage_collection, []);
 command(Node, reload, []) -> call(Node, misc_utils, reload_all, []);
 
 % List the routers
-command(Node, list, [routers]) -> call(Node, node_manager, get_routers, []);
-command(Node, list, [storage]) -> call(Node, node_manager, get_storage, []);
-command(Node, list, [nodes])   -> call(Node, node_manager, get_nodes, []);
+command(Node, list, [routers]) -> call(Node, node_manager, get_servers, [router]);
+command(Node, list, [storage]) -> call(Node, node_manager, get_servers, [storage]);
+command(Node, list, [nodes])   -> call(Node, node_manager, get_servers, [node]);
 command(Node, list, []) -> 
   RouterPids  = command(Node, list, [routers]),
   Routers = lists:map(fun(P) -> node(P) end, RouterPids),

@@ -1,6 +1,6 @@
 -define(LOG(LogLevel, LogFormat, LogArgs), 
         % try
-        case event_manager:notify({log, LogLevel, LogFormat, LogArgs, ?FILE, ?LINE}) of
+        case node_manager:notify({log, LogLevel, LogFormat, LogArgs, ?FILE, ?LINE}) of
           ok -> ok;
           {error, _} -> throw({error, logging_exception})
         end

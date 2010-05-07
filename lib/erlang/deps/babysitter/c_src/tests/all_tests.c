@@ -18,6 +18,7 @@ static char * all_tests() {
   mu_run_test(test_starting_a_process);
   mu_run_test(test_killing_a_process);
   mu_run_test(test_chomp_stringing);
+  mu_run_test(test_running_a_process_as_a_script);
   return 0;
 }
 

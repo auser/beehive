@@ -42,7 +42,7 @@ ensure_get_group_by_name(Name) ->
       pg2:create(Name),
       timer:sleep(100),
       pg2:get_members(Name);
-    {error, Reason} -> [];
+    {error, _Reason} -> [];
     Other when is_list(Other) ->
       Other
     end.

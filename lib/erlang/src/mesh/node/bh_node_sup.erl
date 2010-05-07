@@ -44,7 +44,7 @@ start_link(Args) ->
 %%--------------------------------------------------------------------
 init(Args) ->
   AppHandler  = {the_app_handler,{app_handler, start_link,[]}, permanent, 2000, worker, dynamic},
-  BabySitter  = {the_babysitter,{babysitter_app, start,[[], Args]}, permanent, 2000, worker, dynamic},
+  BabySitter  = {the_babysitter,{babysitter, start_link,[Args]}, permanent, 2000, worker, dynamic},
   
   AppsToStart =[AppHandler, BabySitter],
   

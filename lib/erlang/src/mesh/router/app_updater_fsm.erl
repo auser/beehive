@@ -95,7 +95,8 @@ pulling({go, From}, #state{bee = #bee{app_name = AppName} = Bee} = State) ->
     true -> 
       {stop, already_pending_bees, Bee};
     false -> 
-      Node = node_manager:get_next_available_storage(),
+      Pid = node_manager:get_next_available(storage),
+      Node = node(Pid),
       case apps:find_by_name(AppName) of
         App when is_record(App, app) ->
           % rpc:call(Node, ?STORAGE_SRV, pull_repos, [App, self()]);
@@ -129,7 +130,7 @@ starting({bee_built, Info}, #state{bee = #bee{app_name = AppName} = Bee} = State
   DirSize = proplists:get_value(dir_size, Info),
   Sha = proplists:get_value(sha, Info),
   
-  Node = node_manager:get_next_available_host(),
+  Node = node_manager:get_next_available(node),
   
   App = apps:find_by_name(AppName),
   io:format("app_launcher_fsm for node: ~p~n", [Node]),

@@ -23,7 +23,8 @@
   save/1,
   transactional_save/1,
   update_proplist_for_app/2,
-  build_on_disk_app_name/1
+  build_on_disk_app_name/1,
+  build_app_env/2
 ]).
 
 % Find the first application named Name
@@ -148,3 +149,28 @@ build_on_disk_app_name(App) ->
   lists:flatten([
     lists:append([App#app.name, misc_utils:to_list(App#app.updated_at)])
   ]).
+
+%%-------------------------------------------------------------------
+%% @spec (App:app()) ->    {ok, Value}
+%% @doc Build environment variables for the application
+%%      
+%% @end
+%%-------------------------------------------------------------------
+build_app_env(App, Other) ->
+  OtherEnvs = lists:map(fun build_env/1, Other),
+  lists:flatten([
+    build_env({name, App#app.name}),
+    build_env({url, App#app.url}),
+    build_env({sha, App#app.sha}),
+    OtherEnvs
+  ]).
+
+build_env({Key, Value}) ->
+  T = lists:flatten([
+    string:to_upper(erlang:atom_to_list(Key)),
+    "=",Value,""
+  ]),
+  case Value of
+    undefined -> [];
+    _ -> {env, T}
+  end.

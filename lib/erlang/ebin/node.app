@@ -1,4 +1,4 @@
-{application, bee,
+{application, node,
  [
   {description, "Beehive bee app"},
   {vsn, "0.1"},

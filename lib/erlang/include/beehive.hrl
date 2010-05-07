@@ -93,7 +93,7 @@
   updated_at,
   start_command,                % TODO: Remove this
   stop_command,                 % TODO: Remove this
-  template = rack                   % default to a rack app template
+  template = default                % default app
 }).
 
 % Launching app record

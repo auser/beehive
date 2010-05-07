@@ -24,7 +24,8 @@ end).
   stop/0,
   dump/1,
   get_next_available/1,
-  notify/1
+  notify/1,
+  read_babysitter_config/0
 ]).
 
 %% gen_server callbacks
@@ -110,19 +111,33 @@ is_a(Type) ->
   gen_cluster:call(leader_pid(), {is_a, Type}).
 
 notify(Msg) ->
-  erlang:display(Msg),
+  erlang:display({notify, Msg}),
+  rpc:call(node(leader_pid()), event_manager, notify, [Msg]),    
   ok.
 
 %%====================================================================
 %% server-specific methods
 %%====================================================================
-get_next_available(Type) when is_atom(Type) ->
-  % statistics(run_queue)
+%%-------------------------------------------------------------------
+%% @spec (Type) ->    Server Node
+%% @doc Get the next available server of type::atom()
+%%  This will get the next available server that has the lowest
+%%  projected load
+%%      
+%% @end
+%%-------------------------------------------------------------------
+get_next_available(Type) -> get_next_available(Type, 3).
+get_next_available(_Type, 0) -> {error, none};
+get_next_available(Type, Count) ->
   case get_servers(Type) of
-    [] -> {error, none};
+    [] -> 
+      % Should we be starting an instance automagically?
+      application:start(Type),
+      timer:sleep(500),
+      get_next_available(Type, Count - 1);
     Servers ->
-      [H|_Rest] = sort_servers_by_load(Servers),
-      H
+      [{Node, _Weight}|_Rest] = sort_servers_by_load(Servers),
+      Node
   end.
   
 %%-------------------------------------------------------------------
@@ -146,15 +161,15 @@ stop() -> gen_cluster:cast(?SERVER, stop).
 %%--------------------------------------------------------------------
 init(Args) ->
   Type = proplists:get_value(node_type, Args, router),
-  
-  % Start the database
-  db:start(),
+
   timer:send_interval(timer:seconds(30), {update_node_stats}),
+    
+  % Get babysitter situated
+  babysitter_config:init(),  
+  read_babysitter_config(),
   
-  % ServerName = lists:append([erlang:atom_to_list(Type), "_srv"]),
-  % ServerMod = erlang:list_to_atom(ServerName),
-  
-  % application:start(sasl),
+  % Start the database and application
+  db:start(),
   application:start(Type),
   timer:send_interval(timer:minutes(1), {update_node_pings}),
   
@@ -260,3 +275,14 @@ get_server_load([], Acc) -> Acc;
 get_server_load([H|Rest], Acc) ->
   Stat = rpc:call(node(H), erlang, statistics, [run_queue]),
   get_server_load(Rest, [{H, Stat}|Acc]).
+
+read_babysitter_config() ->
+  Dir = filename:dirname(code:which(?MODULE)),
+  DefaultConfigDir = filename:join([Dir, "..", "app_templates"]),
+  ConfigDir       = misc_utils:to_list(config:search_for_application_value(config_dir, DefaultConfigDir, beehive)),
+  try
+    babysitter_config:read(ConfigDir)
+  catch _X:Reason ->
+    erlang:display({error, {read_babysitter_config, Reason}}),
+    ok
+  end.

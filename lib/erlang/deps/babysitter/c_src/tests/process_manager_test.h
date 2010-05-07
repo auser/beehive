@@ -81,6 +81,23 @@ char *test_starting_a_process()
   pm_free_process(test_process); return 0;
 }
 
+char *test_running_a_process_as_a_script()
+{
+  process_t *test_process = NULL;
+  pm_new_process(&test_process);
+  
+  mu_assert(!pm_malloc_and_set_attribute(&test_process->command, "#!/bin/bash\ntouch /tmp/blah"), "copy command failed");
+  pm_run_process(test_process);
+  
+  struct stat buffer;
+  
+  int status = stat("/tmp/blah", &buffer);
+  mu_assert(status == 0, "command to run didn't work");
+  unlink("/tmp/blah");
+  
+  pm_free_process(test_process); return 0;
+}
+
 char *test_killing_a_process()
 {
   process_t *test_process = NULL;

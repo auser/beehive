@@ -12,7 +12,7 @@
 -include_lib("stdlib/include/qlc.hrl").
 
 -export ([
-  add_root_user/0,
+  initialize/0,
   find_by_email/1,
   find_all_by_email/1,
   all/0,
@@ -104,6 +104,9 @@ create_new_token_for(Email, Password) ->
   end.
   
 
+initialize() ->
+  add_root_user().
+  
 % Add the initial root user
 % email: root@getbeehive.com
 % password: 098f6bcd4621d373cade4e832627b4f6

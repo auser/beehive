@@ -46,7 +46,7 @@ mochi:
 	@(cd deps/mochiweb;$(MAKE))
 
 boot: compile
-	(cd ebin; $(ECOMPILE) -noshell -run make_boot write_scripts beehive $(VERSION) router $(VERSION) storage $(VERSION) bee $(VERSION);)
+	(cd ebin; $(ECOMPILE) -noshell -run make_boot write_scripts beehive $(VERSION) router $(VERSION) storage $(VERSION) node $(VERSION);)
 	
 compile: $(TEST_EBIN_DIR)
 	@$(ECOMPILE) -eval 'case make:all() of up_to_date -> halt(0); error -> halt(1) end.'

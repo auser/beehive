@@ -35,9 +35,9 @@ check_db_directory() ->
       % end
   end.
   
-writeable(F) ->
-    case file:read_file_info(F) of
-      {ok, Tuple} when element(4, Tuple) =:= read_write -> true;
-      {ok, Tuple} when element(4, Tuple) =:= write -> true;
-      _ -> false
-    end.
+% writeable(F) ->
+%     case file:read_file_info(F) of
+%       {ok, Tuple} when element(4, Tuple) =:= read_write -> true;
+%       {ok, Tuple} when element(4, Tuple) =:= write -> true;
+%       _ -> false
+%     end.

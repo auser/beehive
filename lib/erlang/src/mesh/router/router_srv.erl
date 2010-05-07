@@ -43,7 +43,7 @@
 %%%----------------------------------------------------------------------
 %%% API
 %%%----------------------------------------------------------------------
-seed_nodes(_State) -> whereis(node_manager).
+seed_nodes(_State) -> global:whereis_name(node_manager).
 
 start_link() ->
   LocalPort   = config:search_for_application_value(client_port, 8080,     router),
@@ -55,38 +55,38 @@ start_link() ->
   
 %% start_link/3 used by everyone else
 start_link(Args) ->
-  gen_server:start_link({local, ?MODULE}, ?MODULE, Args, []).
+  gen_cluster:start_link({local, ?MODULE}, ?MODULE, Args, []).
 
 %% Choose an available back-end host
 get_bee(Pid, Hostname) ->
-  gen_server:call(?MODULE, {Pid, get_bee, Hostname}, infinity).
+  gen_cluster:call(?MODULE, {Pid, get_bee, Hostname}, infinity).
 
 %% Get the overall status summary of the balancer
 get_proxy_state() ->
-  gen_server:call(?MODULE, {get_proxy_state}).
+  gen_cluster:call(?MODULE, {get_proxy_state}).
 
 %% Get the status summary for a back-end host.
 get_host(Host) ->
-  gen_server:call(?MODULE, {get_host, Host}).
+  gen_cluster:call(?MODULE, {get_host, Host}).
 
 update_bee_status(Backend, Status) ->
-  gen_server:cast(?MODULE, {update_bee_status, Backend, Status}).
+  gen_cluster:cast(?MODULE, {update_bee_status, Backend, Status}).
 
 %% Reset a back-end host's status to 'ready'
 reset_host(Hostname) ->
-  gen_server:call(?MODULE, {reset_host, Hostname}).
+  gen_cluster:call(?MODULE, {reset_host, Hostname}).
 
 %% Reset a back-end host's status to Status
 %% Status = up|down
 reset_host(Hostname, Status) ->
-  gen_server:call(?MODULE, {reset_host, Hostname, Status}).
+  gen_cluster:call(?MODULE, {reset_host, Hostname, Status}).
 
 %% Reset all back-end hosts' status to 'up'
 reset_all() ->
-  gen_server:call(?MODULE, {reset_all}).
+  gen_cluster:call(?MODULE, {reset_all}).
 
 add_bee(NewBE) when is_record(NewBE, bee) ->
-  gen_server:call(?MODULE, {add_bee, NewBE});
+  gen_cluster:call(?MODULE, {add_bee, NewBE});
 
 % Add a bee by name, host and port
 add_bee({Name, Host, Port}) ->
@@ -94,10 +94,10 @@ add_bee({Name, Host, Port}) ->
 
 %% Delete a back-end host from the balancer's list.
 del_bee(Host) ->
-  gen_server:call(?MODULE, {del_bee, Host}).
+  gen_cluster:call(?MODULE, {del_bee, Host}).
   
 maybe_handle_next_waiting_client(Name) ->
-  gen_server:cast(?MODULE, {maybe_handle_next_waiting_client, Name}).
+  gen_cluster:cast(?MODULE, {maybe_handle_next_waiting_client, Name}).
 
 %%%----------------------------------------------------------------------
 %%% Callback functions from gen_server
@@ -111,10 +111,10 @@ maybe_handle_next_waiting_client(Name) ->
 %%          {stop, Reason}
 %%----------------------------------------------------------------------
 init(Args) ->
-  LocalPort = proplists:get_value(local_port, Args),
-  ConnTimeout = proplists:get_value(connection_timeout, Args),
-  ActTimeout = proplists:get_value(activity_timeout, Args),
   process_flag(trap_exit, true),
+  LocalPort = proplists:get_value(local_port, Args, 8080),
+  ConnTimeout = proplists:get_value(connection_timeout, Args, 30),
+  ActTimeout = proplists:get_value(activity_timeout, Args, 10),
   
   Pid     = whereis(tcp_socket_server),
   
@@ -236,8 +236,8 @@ handle_info(_Info, State) ->
 %% Purpose: Shutdown the server
 %% Returns: any (ignored by gen_server)
 %%----------------------------------------------------------------------
-terminate(_Reason, State) ->
-  timer:cancel(State#proxy_state.to_timer),
+terminate(_Reason, _State) ->
+  % timer:cancel(State#proxy_state.to_timer),
   ok.
 
 %%----------------------------------------------------------------------
@@ -352,7 +352,7 @@ maybe_handle_next_waiting_client(Name, State) ->
     empty -> ok;
     % If the request was made at conn_timeout seconds ago
     {value, {_Hostname, From, _Pid, InsertTime}} when InsertTime > TOTime ->
-      gen_server:reply(From, ?BACKEND_TIMEOUT_MSG),
+      gen_cluster:reply(From, ?BACKEND_TIMEOUT_MSG),
       maybe_handle_next_waiting_client(Name, State);
     {value, {{Hostname, _AppMod, _RoutingParam} = Tuple, From, Pid, _InsertTime}} ->
       ?LOG(info, "Handling Q: ~p (~p)", [Hostname, Tuple]),
@@ -361,7 +361,7 @@ maybe_handle_next_waiting_client(Name, State) ->
         % choose_bee puts the request in the pending queue, so we don't have
         % to take care of that here
         ?MUST_WAIT_MSG -> ok;
-        {ok, B} -> gen_server:reply(From, {ok, B})
+        {ok, B} -> gen_cluster:reply(From, {ok, B})
       end
   end.
   

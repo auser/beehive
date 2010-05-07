@@ -60,4 +60,5 @@ add_handler(Module) ->
 %% Description: Sends the Event through the event manager.
 %%--------------------------------------------------------------------
 notify(Event) -> 
+  erlang:display({?MODULE, notify, Event}),
   gen_event:notify(?SERVER, Event).
