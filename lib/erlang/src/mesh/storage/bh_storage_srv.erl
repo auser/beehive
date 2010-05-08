@@ -149,9 +149,12 @@ handle_cast({build_bee, App, Caller}, #state{scratch_disk = ScratchDisk, squashe
   %   {"[[APP_NAME]]", App#app.name},
   %   {"[[OUTFILE]]", OutFile}
   % ]),
+  WorkingDir = lists:flatten([ScratchDisk, "/", App#app.name]),
+  SquashedDir = lists:flatten([SquashedDisk, "/"]),
+  
   OtherOpts = [
-    {working_directory, lists:flatten([ScratchDisk, "/", App#app.name])},
-    {squashed_root, lists:flatten([SquashedDisk, "/", App#app.name])},
+    {working_directory, WorkingDir},
+    {squashed_directory, SquashedDir},
     {repos, ReposUrl},
     {path, "/usr/bin:/usr/local/bin:/bin"}
   ],
@@ -159,7 +162,7 @@ handle_cast({build_bee, App, Caller}, #state{scratch_disk = ScratchDisk, squashe
   
   lists:map(fun(Dir) ->
     file:make_dir(Dir)
-  end, [ScratchDisk, SquashedDisk]),
+  end, [WorkingDir, SquashedDir]),
   
   X = babysitter:run(App#app.template, bundle, CmdOpts),
   erlang:display({babysitter, X}),
