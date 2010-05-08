@@ -166,11 +166,12 @@ build_app_env(App, Other) ->
   ]).
 
 build_env({Key, Value}) ->
+  RealValue = case Value of
+    undefined -> "undefined";
+    _ -> Value
+  end,
   T = lists:flatten([
     string:to_upper(erlang:atom_to_list(Key)),
-    "=",Value,""
+    "=",RealValue,""
   ]),
-  case Value of
-    undefined -> [];
-    _ -> {env, T}
-  end.
+  {env, T}.

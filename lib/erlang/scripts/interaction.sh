@@ -14,4 +14,5 @@ curl -i $HOST/apps
 curl -i -XPOST -d"{\"name\":\"beehive\", \"url\":\"git://github.com/auser/getbeehive.com.git\", \"token\":$TOKEN}" $HOST/apps
 curl -i $HOST/apps
 
+# Delete the app we added
 curl -i -XDELETE -d"{\"token\":\"$TOKEN\"}" $HOST/apps/beehive
