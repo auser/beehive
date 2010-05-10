@@ -29,7 +29,7 @@ bef <- "before" `pre`;
 aft <- "after" `post`;
   
 string <- bracketed_string / nonbracketed_string ~;
-bracketed_string <- '{' str:(!'}' (.))* '}' `proplists:get_value(str, Node)`;
+bracketed_string <- 'do' str:(!'end' (.))* 'end' `proplists:get_value(str, Node)`;
 nonbracketed_string <- (!crlf .)* ~;
 
 comment <- '#' (!crlf .)* crlf ~;

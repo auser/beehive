@@ -60,6 +60,10 @@ neotoma_git_url="http://github.com/seancribbs/neotoma.git"
 cecho "Neotoma..." $blue no
 if [ -d "${NEOTOMA_DIR}" ]; then
   found_msg
+  pushd ${NEOTOMA_DIR}
+  $GIT pull origin master
+  make
+  popd
 else
   not_found_msg
   cecho "Building Neotoma" $green

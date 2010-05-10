@@ -26,7 +26,8 @@ test_simple_parsing() ->
     ["bundle: \"hello\"\n", [{bundle, [{command, "\"hello\""}]}]],
     ["bundle.before: \"world\"\n", [{bundle, [{pre, "\"world\""}]}]],
     ["bundle.after: lickity\n", [{bundle, [{post, "lickity"}]}]],
-    ["bundle: {echo 'hello'\n echo 'bob'}", [{bundle, [{command, "echo 'hello'\n echo 'bob'"}]}]]
+    ["mount: echo 'hello world' | awk 'BEGIN {print $2} END'\n", [{mount, [{command, "echo 'hello world' | awk 'BEGIN {print $2} END'"}]}]],
+    ["bundle: do echo 'hello'\n echo 'bob'end", [{bundle, [{command, " echo 'hello'\n echo 'bob'"}]}]]
   ],
   lists:map(fun([H|T]) ->
     ?assertEqual(hd(T), babysitter_config_parser:parse(H))

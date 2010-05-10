@@ -9,6 +9,7 @@
 static char * all_tests() {
   mu_run_test(test_new_process);
   mu_run_test(test_pm_check_pid_status);
+  mu_run_test(test_safe_quoting_string);
   mu_run_test(test_pm_malloc_and_set_attribute);
   mu_run_test(test_pm_add_env);
   mu_run_test(test_pm_valid_process);

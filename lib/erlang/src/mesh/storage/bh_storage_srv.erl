@@ -9,6 +9,8 @@
 -module (bh_storage_srv).
 -include ("beehive.hrl").
 -include ("common.hrl").
+-include_lib("kernel/include/file.hrl").
+
 -behaviour(gen_cluster).
 
 %% API
@@ -138,57 +140,42 @@ handle_cast({pull_repos, App, Caller}, State) ->
   end;
 
 handle_cast({build_bee, App, Caller}, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} = State) ->
-  {ok, ReposUrl} = handle_repos_lookup(App),
-  % OutFile = lists:append([handle_find_application_location(App, State), ".img"]),
-  % 
-  % io:format("creating bee: ~p~n", [{ReposUrl, ScratchDisk, SquashedDisk, App#app.name, OutFile}]),
-  % {Proplists, Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("create-bee", [
-  %   {"[[GIT_REPOS]]", ReposUrl},
-  %   {"[[WORKING_DIRECTORY]]", ScratchDisk},
-  %   {"[[SQUASHED_DIRECTORY]]", SquashedDisk},
-  %   {"[[APP_NAME]]", App#app.name},
-  %   {"[[OUTFILE]]", OutFile}
-  % ]),
-  WorkingDir = lists:flatten([ScratchDisk, "/", App#app.name]),
-  SquashedDir = lists:flatten([SquashedDisk, "/", App#app.name]),
+  case handle_repos_lookup(App) of
+    {ok, ReposUrl} ->
+      WorkingDir = lists:flatten([ScratchDisk, "/", App#app.name]),
+      SquashedDir = lists:flatten([SquashedDisk, "/", App#app.name]),
+      FinalLocation = lists:flatten([SquashedDir, "/", App#app.name, ".bee"]),
   
-  OtherOpts = [
-    {working_directory, WorkingDir},
-    {squashed_directory, SquashedDir},
-    {repos, ReposUrl},
-    {path, "/usr/bin:/usr/local/bin:/bin"}
-  ],
-  CmdOpts = apps:build_app_env(App, OtherOpts),
+      OtherOpts = [
+        {working_directory, WorkingDir},
+        {squashed_directory, SquashedDir},
+        {squashed_file, FinalLocation},
+        {repos, ReposUrl},
+        {path, "/usr/bin:/usr/local/bin:/bin"}
+      ],
+      CmdOpts = apps:build_app_env(App, OtherOpts),
   
-  lists:map(fun(Dir) -> file:make_dir(Dir) end, [WorkingDir, SquashedDir]),
-  
-  X = babysitter:run(App#app.template, bundle, CmdOpts),
-  erlang:display({babysitter, X}),
-  Caller ! {unimplemented, come_back_soon},
+      lists:map(fun(Dir) -> file:make_dir(Dir) end, [WorkingDir, SquashedDir]),
+      
+      case babysitter:run(App#app.template, bundle, CmdOpts) of
+        {ok, OsPid} ->
+          ets:insert(?TAB_NAME_TO_PATH, {App, FinalLocation}),
+          BeeSize = case file:read_file_info(FinalLocation) of
+            {ok, FileInfo} -> FileInfo#file_info.size;
+            _E -> 0.0
+          end,
+          Resp = [{bee_size, BeeSize}, {os_pid, OsPid}],
+          Caller ! {bee_built, Resp};
+        Else ->
+          Err = {error, {babysitter, Else}},
+          erlang:display(Err),
+          Caller ! Err
+      end;
+    {error, not_found} ->
+      erlang:display({error, not_found, App}),
+      Caller ! {error, not_found}
+  end,
   {noreply, State};
-  % Status = 1,
-  % case Status of
-  %   0 ->
-  %     io:format("Proplists: ~p~n", [Proplists]),
-  %     Reply = case proplists:is_defined(bee_size, Proplists) of
-  %       true -> 
-  %         Path = proplists:get_value(outdir, Proplists),
-  %         ets:insert(?TAB_NAME_TO_PATH, {App, Path}),
-  %         {bee_built, Proplists};
-  %       false -> 
-  %         {error, "Could not create bee"}
-  %     end,
-  %     Caller ! Reply,
-  %     {noreply, State};
-  %   1 ->
-  %     Reply = {error, could_not_pull_bee},
-  %     Caller ! Reply,
-  %     {noreply, State};
-  %   Else ->
-  %     Reply = {error, Else},
-  %     Caller ! Reply,
-  %     {noreply, State}
-  % end;
 
 handle_cast(stop, State) ->
   {stop, normal, State};

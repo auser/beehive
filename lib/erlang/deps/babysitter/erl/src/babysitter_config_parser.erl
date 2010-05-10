@@ -63,7 +63,7 @@ parse(Input) ->
   p(Input, Index, 'string', fun(I,D) -> (p_choose([fun 'bracketed_string'/2, fun 'nonbracketed_string'/2]))(I,D) end, fun(Node, Idx) -> Node end).
 
 'bracketed_string'(Input, Index) ->
-  p(Input, Index, 'bracketed_string', fun(I,D) -> (p_seq([p_string("{"), p_label('str', p_zero_or_more(p_seq([p_not(p_string("}")), p_anything()]))), p_string("}")]))(I,D) end, fun(Node, Idx) -> proplists:get_value(str, Node) end).
+  p(Input, Index, 'bracketed_string', fun(I,D) -> (p_seq([p_string("do"), p_label('str', p_zero_or_more(p_seq([p_not(p_string("end")), p_anything()]))), p_string("end")]))(I,D) end, fun(Node, Idx) -> proplists:get_value(str, Node) end).
 
 'nonbracketed_string'(Input, Index) ->
   p(Input, Index, 'nonbracketed_string', fun(I,D) -> (p_zero_or_more(p_seq([p_not(fun 'crlf'/2), p_anything()])))(I,D) end, fun(Node, Idx) -> Node end).

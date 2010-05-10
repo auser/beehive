@@ -124,10 +124,8 @@ squashing(Event, State) ->
   {next_state, squashing, State}.
 
 starting({bee_built, Info}, #state{bee = #bee{app_name = AppName} = Bee} = State) ->
-  % Return is bee_size dir_size
   % Strip off the last newline... stupid bash
   BeeSize = proplists:get_value(bee_size, Info),
-  DirSize = proplists:get_value(dir_size, Info),
   Sha = proplists:get_value(sha, Info),
   
   Node = node_manager:get_next_available(node),
@@ -137,7 +135,7 @@ starting({bee_built, Info}, #state{bee = #bee{app_name = AppName} = Bee} = State
   {ok, P} = app_launcher_fsm:start_link(App, Node, Sha),
   app_launcher_fsm:launch(P, self()),
   
-  NewBee = Bee#bee{bee_size = BeeSize, dir_size = DirSize, host_node = Node, commit_hash = Sha},
+  NewBee = Bee#bee{bee_size = BeeSize, host_node = Node, commit_hash = Sha},
   io:format("bee_built: ~p for new hash: ~p~n", [NewBee, Sha]),
   {next_state, success, State#state{bee = NewBee}};
 

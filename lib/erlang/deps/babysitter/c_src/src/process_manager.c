@@ -216,7 +216,7 @@ int expand_command(const char* command, int* argc, char ***argv, int *using_a_sc
     expanded_command = calloc(strlen(full_filepath) + strlen(command + prefix) + 1, sizeof(char));
     strcat(expanded_command, full_filepath); 
     strcat(expanded_command, command + prefix);
-
+    
     command_argv = (char **) malloc(4 * sizeof(char *));
     command_argv[0] = strdup(getenv("SHELL"));
     command_argv[1] = "-c";
@@ -248,17 +248,18 @@ pid_t pm_execute(int should_wait, const char* command, const char *cd, int nice,
   char **command_argv = {0};
   int command_argc = 0;
   int running_script = 0;
-  
-  if (expand_command((const char*)str_chomp(command), &command_argc, &command_argv, &running_script)) ;
-  
-  command_argv[command_argc] = 0;
-  
+    
   // Now actually RUN it!
   pid_t pid;
   if (should_wait)
     pid = vfork();
   else
     pid = fork();
+  
+  char* chomped_string = str_chomp(command);
+  char* safe_chomped_string = str_safe_quote(chomped_string);
+  if (expand_command((const char*)safe_chomped_string, &command_argc, &command_argv, &running_script)) ;
+  command_argv[command_argc] = 0;
   
   switch (pid) {
   case -1: 
@@ -288,6 +289,9 @@ pid_t pm_execute(int should_wait, const char* command, const char *cd, int nice,
         if( remove( command_argv[0] ) != 0 ) perror( "Error deleting file" );
       }
     }
+    // These are free'd later, anyway
+    // if (chomped_string) free(chomped_string); 
+    // if (safe_chomped_string) free(safe_chomped_string);
     return pid;
   }
 }

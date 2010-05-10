@@ -37,5 +37,6 @@ const char *find_binary(const char *file);
 int string_index(const char* cmds[], const char *cmd);
 int argify(const char *line, char ***argv_ptr);
 char* str_chomp(const char *string);
+char* str_safe_quote(const char *str);
 
 #endif

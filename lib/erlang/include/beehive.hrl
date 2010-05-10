@@ -63,7 +63,6 @@
   temp_name,
   commit_hash,
   bee_size,
-  dir_size,
   storage_node,
   start_time    = 0,        % starting time
   pid,                      % pid of the port process tracker
@@ -102,7 +101,6 @@
   temp_name,
   commit_hash,
   bee_size,
-  dir_size,
   storage_node,
   host_node,
   id,

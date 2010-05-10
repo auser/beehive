@@ -34,6 +34,20 @@ char* str_chomp(const char *string)
   return s;
 }
 
+char* str_safe_quote(const char *str)
+{
+  int len = 0;
+  char *s, *res;
+  len = strlen(str);
+  
+  res = (char*)malloc(sizeof(char*) * len);
+  res = strdup(str);
+  for (s = res; *s != (char)'\0'; s++)
+    if (*s == '"') *s = '\"';
+  
+  return res;
+}
+
 const char *find_binary(const char *file)
 {
   char buf[BUFFER_SZ];
@@ -72,7 +86,7 @@ const char *find_binary(const char *file)
     
   } while(*path++ == ':');
   
-  return "\0";
+  return file;
 }
 
 

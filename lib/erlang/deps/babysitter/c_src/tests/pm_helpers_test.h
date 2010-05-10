@@ -15,7 +15,7 @@ char *test_pm_abs_path() {
 char *test_find_binary() {
   mu_assert(!strcmp(find_binary("/bin/bash"), "/bin/bash"), "/bin/bash was not an absolute path and could not be found");
   mu_assert(!strcmp(find_binary("bash"), "/bin/bash"), "/bin/bash was not an absolute path and could not be found");
-  mu_assert(!strcmp(find_binary("made_up_binary"), "\0"), "made_up_binary was found?!? ");
+  mu_assert(!strcmp(find_binary("made_up_binary"), "made_up_binary"), "made_up_binary was found?!? ");
   return 0;
 }
 
@@ -33,5 +33,10 @@ char *test_chomp_stringing() {
   mu_assert(!strcmp(str_chomp(" hello world "), "hello world"), "str_chomp is bunk");
   mu_assert(!strcmp(str_chomp("\nhello world "), "hello world"), "str_chomp is bunk");
   mu_assert(!strcmp(str_chomp("\r\n\thello world\n "), "hello world"), "str_chomp is bunk");
+  return 0;
+}
+
+char *test_safe_quoting_string() {
+  mu_assert(!strcmp(str_safe_quote("hello \"world\""), "hello \"world\""), "str_safe_quote failed?");
   return 0;
 }

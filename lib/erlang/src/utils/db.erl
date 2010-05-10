@@ -189,9 +189,17 @@ wait_for_tables() -> wait_for_tables(table_names()).
 wait_for_tables(TableNames) ->
   case check_schema_integrity() of
     ok ->
-      case mnesia:wait_for_tables(TableNames, 60000) of
+      case catch mnesia:wait_for_tables(TableNames, 5000) of
         ok -> ok;
-        {timeout, BadTabs} -> throw({error, {timeout_waiting_for_tables, BadTabs}});
+        {timeout, _BadTabs} ->
+          error_logger:warning_msg(
+            "Could not wait for the tables to be ready: ~p~n"
+            "moving database to backup location "
+            "and recreating schema from scratch~n",
+            [timeout]),
+          ok = move_db(),
+          ok = create_schema();
+          % throw({error, {timeout_waiting_for_tables, BadTabs}});
         {error, Reason} -> throw({error, {failed_waiting_for_tables, Reason}})
       end;
     {error, Reason} ->
