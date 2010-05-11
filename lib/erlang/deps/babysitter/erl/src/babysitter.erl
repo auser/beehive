@@ -45,13 +45,12 @@ run(AppType, Action, Opts) ->
   end,
   ConfigCommand = element(2, Config),
   % Certainly cannot run without a command
-  ECommand = case ConfigCommand of
+  Command = case ConfigCommand of
     undefined -> element(2, element(2, babysitter_config:get(default, Action)));
     E -> E
   end,
   Options = convert_config_to_runable_proplist([{do_before, 1}, {do_after, 3}], Config, Opts),
   
-  Command = lists:append(["#!/bin/bash\n", ECommand]),
   case Action of
     start -> bs_spawn_run(Command, Options);
     _E -> bs_run(Command, Options)

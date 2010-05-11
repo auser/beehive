@@ -146,9 +146,7 @@ generate_unique_name() ->
   end.
   
 build_on_disk_app_name(App) ->
-  lists:flatten([
-    lists:append([App#app.name, misc_utils:to_list(App#app.updated_at)])
-  ]).
+  App#app.name.
 
 %%-------------------------------------------------------------------
 %% @spec (App:app()) ->    {ok, Value}
@@ -162,6 +160,7 @@ build_app_env(App, Other) ->
     build_env({name, App#app.name}),
     build_env({url, App#app.url}),
     build_env({sha, App#app.sha}),
+    build_env({path, "/usr/bin:/usr/local/bin:/bin"}),
     OtherEnvs
   ]).
 

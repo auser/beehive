@@ -144,18 +144,17 @@ handle_cast({build_bee, App, Caller}, #state{scratch_disk = ScratchDisk, squashe
     {ok, ReposUrl} ->
       WorkingDir = lists:flatten([ScratchDisk, "/", App#app.name]),
       SquashedDir = lists:flatten([SquashedDisk, "/", App#app.name]),
+      lists:map(fun(Dir) -> file:make_dir(Dir) end, [ScratchDisk, WorkingDir, SquashedDisk, SquashedDir]),
+      
       FinalLocation = lists:flatten([SquashedDir, "/", App#app.name, ".bee"]),
   
       OtherOpts = [
         {working_directory, WorkingDir},
         {squashed_directory, SquashedDir},
         {squashed_file, FinalLocation},
-        {repos, ReposUrl},
-        {path, "/usr/bin:/usr/local/bin:/bin"}
+        {repos, ReposUrl}
       ],
       CmdOpts = apps:build_app_env(App, OtherOpts),
-  
-      lists:map(fun(Dir) -> file:make_dir(Dir) end, [WorkingDir, SquashedDir]),
       
       case babysitter:run(App#app.template, bundle, CmdOpts) of
         {ok, OsPid} ->
@@ -262,10 +261,12 @@ handle_lookup_squashed_repos(Name, Sha) ->
     _ -> 
       SquashedDir = config:search_for_application_value(squashed_storage, ?BH_RELATIVE_DIR("squashed"), storage),
       {ok, Folders} = file:list_dir(SquashedDir),
+      erlang:display({folders, Name, Folders}),
       case lists:member(Name, Folders) of
         true ->
           Dir = filename:join([SquashedDir, Name]),
-          FullFilePath = filename:join([Dir, lists:append([Name, ".", Sha, ".img"])]),
+          FullFilePath = lists:flatten([Dir, "/", Name, ".bee"]),
+          erlang:display({full_filepath, FullFilePath}),
           case filelib:is_file(FullFilePath) of
             true -> FullFilePath;
             false -> false

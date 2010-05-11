@@ -218,54 +218,78 @@ internal_start_new_instance(App, Sha, Port, AppLauncher, From) ->
   case find_and_transfer_bee(App, Sha) of
     {ok, Node, LocalPath} ->
       Proplists = [{sha, Sha}, {port, Port}, {bee_image, LocalPath}, {storage_node, Node}],
-      initialize_application(App, Proplists, AppLauncher, From);
+      case mount_application(App, Proplists) of
+        {ok, _Other} ->
+          initialize_application(App, Proplists, AppLauncher, From);
+        Error -> Error
+      end;
     E -> 
       io:format("Error: ~p~n", [E]),
       E
   end.
 
+mount_application(App, PropLists) ->
+  ScratchDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("tmp"), storage),
+  RunDir = config:search_for_application_value(squashed_storage, ?BH_RELATIVE_DIR("run"), storage),
+  UniqueName = apps:build_on_disk_app_name(App),
+
+  WorkingDir = lists:flatten([ScratchDisk, "/", App#app.name]),
+  MountedDir = lists:flatten([RunDir, "/", UniqueName]),
+  BeeImage = proplists:get_value(bee_image, PropLists),
+  Port = misc_utils:to_list(proplists:get_value(port, PropLists)),
+  
+  OtherOpts = [
+    {working_directory, WorkingDir},
+    {target_directory, MountedDir},
+    {bee_image, BeeImage},
+    {run_dir, RunDir},
+    {port, Port}
+  ],
+  lists:map(fun(Dir) -> file:make_dir(Dir) end, [RunDir, ScratchDisk, WorkingDir, MountedDir]),
+  EnvOpts = apps:build_app_env(App, OtherOpts),
+  CmdOpts = lists:flatten([{cd, MountedDir}|EnvOpts]),
+  
+  erlang:display({cmd_opts, CmdOpts}),
+  
+  babysitter:run(App#app.template, mount, CmdOpts).
+
 % Initialize the node
-initialize_application(#app{template = Template} = App, PropLists, AppLauncher, _From) ->
+initialize_application(App, PropLists, AppLauncher, _From) ->
+  erlang:display({initialize_application, PropLists}),
   Sha = proplists:get_value(sha, PropLists),
   Port = proplists:get_value(port, PropLists),
   ImagePath = proplists:get_value(bee_image, PropLists),
   StorageNode = proplists:get_value(storage_node, PropLists),
   
-  Host = bh_host:myip(),
-  Id = {App#app.name, Host, Port},
+  ScratchDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("tmp"), storage),
+  RunningDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("run"), storage),
+  
+  WorkingDir = lists:flatten([ScratchDisk, "/", App#app.name]),
+  RunningDir = lists:flatten([RunningDisk, "/", App#app.name]),
+  
+  HostIp = bh_host:myip(),
+  Id = {App#app.name, HostIp, Port},
   StartedAt = date_util:now_to_seconds(),
   
-  Vars = [
-    {"[[BEE_IMAGE]]", ImagePath},
-    {"[[HOST_IP]]", Host},
-    {"[[PORT]]", misc_utils:to_list(Port)},
-    {"[[SHA]]", Sha},
-    {"[[START_TIME]]", misc_utils:to_list(StartedAt)},
-    {"[[APP_NAME]]", App#app.name}
+  OtherOpts = [
+    {bee_image, ImagePath},
+    {host_ip, HostIp},
+    {port, misc_utils:to_list(Port)},
+    {start_time, misc_utils:to_list(StartedAt)},
+    {working_directory, WorkingDir},
+    {run_dir, RunningDir}
   ],
+  EnvOpts = apps:build_app_env(App, OtherOpts),
+  lists:map(fun(Dir) -> file:make_dir(Dir) end, [ScratchDisk, WorkingDir, RunningDisk, RunningDir]),
+  CmdOpts = lists:flatten([{cd, RunningDir}, EnvOpts]),
   
-  Env = [
-    [lists:flatten(["SHA=\"", Sha, "\""])],
-    [lists:flatten(["LOCAL_PORT=\"", misc_utils:to_list(Port), "\""])],
-    [lists:flatten(["LOCAL_HOST=\"", Host, "\""])],
-    [lists:flatten(["STARTED_AT=\"", misc_utils:to_list(StartedAt), "\""])],
-    [lists:flatten(["APP_NAME=\"", App#app.name, "\""])],
-    % [lists:flatten(["HOME=\"\""])]
-    ["RACK_ENV=production"],
-    ["PATH=$PATH:/usr/bin:/bin:/usr/local/bin"]
-  ],
-  
-  StdOut = lists:flatten(["/var/log/beehive/", App#app.name, ".log"]),
-  
-  DefaultProps = [{env_vars, Env}, {image, ImagePath}, {stdout, StdOut}, {stderr, StdOut}, {files_count, "103"}],
-  
-  StartProplist = ?APP_TEMPLATE_SHELL_SCRIPT_PARSED(Template, Vars, DefaultProps),
+  % StartProplist = ?APP_TEMPLATE_SHELL_SCRIPT_PARSED(Template, Vars, DefaultProps),
   % AppRootPath = proplists:get_value(path, Proplist1),
   
   Bee  = #bee{
     id                      = Id,
     app_name                = App#app.name,
-    host                    = Host,
+    host                    = HostIp,
     host_node               = node(self()),
     storage_node            = StorageNode,
     % path                    = AppRootPath,
@@ -275,29 +299,30 @@ initialize_application(#app{template = Template} = App, PropLists, AppLauncher, 
     start_time              = StartedAt
   },
   
-  io:format("------ App handler using babysitter spawn_new: ~p~n", [StartProplist]),
-  case babysitter:spawn_new(DefaultProps, self()) of
-    {ok, ProcessPid, SysPid} ->
-      % Store the app in the local ets table
-      NewBee = Bee#bee{pid = ProcessPid, os_pid = SysPid},
+  io:format("------ App handler using babysitter spawn_new: ~p~n", [CmdOpts]),
+  case babysitter:run(App#app.template, start, CmdOpts) of
+    {ok, Pid, OsPid} ->
+      NewBee = Bee#bee{pid = Pid, os_pid = OsPid},
       ets:insert(?TAB_ID_TO_BEE, {Id, NewBee}),
       ets:insert(?TAB_NAME_TO_BEE, {App#app.name, NewBee}),
       
       AppLauncher ! {started_bee, NewBee},
       NewBee;
-    Code ->
-      AppLauncher ! {error, Code}
+    Else ->
+      AppLauncher ! {error, Else}
   end.
 
 % Find and transfer the bee
 find_and_transfer_bee(App, Sha) ->
-  Nodes = lists:map(fun(N) -> node(N) end, node_manager:get_storage()),
-  Path = next_free_honeycomb(App),
-  LocalPath = filename:join([filename:absname(""), lists:append([Path, "/", "app.img"])]),
-  ?LOG(info, "find_bee_on_storage_nodes: ~p:~p on nodes: ~p at Path: ~p and LocalPath: ~p", [App#app.name, Sha, Nodes, Path, LocalPath]),
+  Nodes = lists:map(fun(N) -> node(N) end, node_manager:get_servers(storage)),
+  Path = apps:build_on_disk_app_name(App),
+  
+  ScratchDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("storage"), storage),
+  
+  LocalPath = filename:join([filename:absname(ScratchDisk), lists:append([Path, "/", App#app.name, ".bee"])]),
   case find_bee_on_storage_nodes(App, Sha, Nodes) of
     {ok, Node, RemotePath} ->
-      ?LOG(info, "find_bee_on_storage_nodes found on ~p at ~p", [Node, RemotePath]),
+      ?LOG(info, "find_bee_on_storage_nodes found on ~p at ~p to ~p", [Node, LocalPath, RemotePath]),
       slugger:get(Node, RemotePath, LocalPath),
       {ok, Node, LocalPath};
     E -> 
@@ -308,15 +333,12 @@ find_and_transfer_bee(App, Sha) ->
 % Look on the node and see if it has the 
 find_bee_on_storage_nodes(App, _Sha, []) -> 
   % ?NOTIFY({app, app_not_squashed, Name}),
-  ?LOG(info, "App not found: ~p", [App#app.name]),
   ?NOTIFY({app, updated, App}),
   {error, not_found};
 find_bee_on_storage_nodes(App, Sha, [Node|Rest]) ->
   case rpc:call(Node, ?STORAGE_SRV, has_squashed_repos, [App, Sha]) of
     false -> find_bee_on_storage_nodes(App, Sha, Rest);
-    Path -> 
-      ?LOG(info, "Found bee (~p) on node: ~p at ~p", [App#app.name, Node, Path]),
-      {ok, Node, Path}
+    Path -> {ok, Node, Path}
   end.
 
 % kill the instance of the application  
@@ -334,19 +356,6 @@ internal_stop_instance(#bee{id = Id, pid = PidPort, port = Port, host = Host} = 
     _ -> true
   end,
   From ! {bee_terminated, Bee}.
-
-% Get a new honeycomb location for the new bee
-next_free_honeycomb(App) ->
-  BaseDir = config:search_for_application_value(squashed_storage, ?BH_RELATIVE_DIR("apps"), storage),
-  erlang:display(BaseDir),
-  UniqueName = apps:build_on_disk_app_name(App),
-  % {Proplists, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("next-free-honeycomb", [
-  %   {"[[APP_NAME]]", App#app.name},
-  %   {"[[SLOT_DIR]]", bh_md5:hex(UniqueName)},
-  %   {"[[DESTINATION]]", BaseDir}
-  % ]),
-  {ok, _Pid} = babysitter:run(App#app.template, mount, app_utils:build_app_env(App, [{rootdir, BaseDir}, {appdir, UniqueName}])).
-  % proplists:get_value(dir, Proplists).
   
 handle_pid_exit(_Pid, _Reason, State) ->
   State.

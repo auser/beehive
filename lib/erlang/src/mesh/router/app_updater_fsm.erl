@@ -128,10 +128,10 @@ starting({bee_built, Info}, #state{bee = #bee{app_name = AppName} = Bee} = State
   BeeSize = proplists:get_value(bee_size, Info),
   Sha = proplists:get_value(sha, Info),
   
-  Node = node_manager:get_next_available(node),
+  Pid = node_manager:get_next_available(node),
+  Node = node(Pid),
   
   App = apps:find_by_name(AppName),
-  io:format("app_launcher_fsm for node: ~p~n", [Node]),
   {ok, P} = app_launcher_fsm:start_link(App, Node, Sha),
   app_launcher_fsm:launch(P, self()),
   
