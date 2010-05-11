@@ -7,10 +7,6 @@ version="0.1"
 
 progname=$APP
 
-# if [ ! -f ebin/beehive-*.boot ]; then
-#   make && make boot
-# fi
-
 print_usage() {
 cat <<EOF
 
@@ -23,7 +19,8 @@ server with the '-s' flag.
 OPTIONS
 	-c, --config_file                   Config file
 	    --user_defined_event_handler    Module name of the callback module
-	-d                                  Daemonize the process
+	-d, --root_dir                      Root directory (can also be set with $BEEHIVE_HOME)
+	-D                                  Daemonize the process
 	-e, --erlang_opts                   Additional erlang options
 	-g, --bee_strategy                  Strategy to choose a bee. (default: random)
 	-i, --initial_bees                  Initial bees to start the router_srv
@@ -44,18 +41,8 @@ OPTIONS
 EOF
 }
 
-print_version() {
-cat <<EOF
-$progname $version
-
-Copyright (C) 2009 Ari Lerner
-EOF
-}
-
 # Defaults
 HOSTNAME=`hostname -f`
-MNESIA_DIR="$BEEHIVE_PREFIX/var/lib/beehive/db"
-LOG_PATH="$BEEHIVE_PREFIX/var/log/beehive"
 DAEMONIZE_ARGS=""
 
 BEEHIVE_OPTS="-beehive"
@@ -103,7 +90,8 @@ while [ $# -gt 0 ]; do
 			MNESIA_DIR=$2
 			shift 2;;
 		-l|--log_path)
-			LOG_PATH=$2
+			LOG_PATH="$2"
+			BEEHIVE_OPTS="$BEEHIVE_OPTS log_path \"$LOG_PATH\" "
 			shift 2;;
 		-r|--routing_parameter)
 			ROUTER_OPTS="$ROUTER_OPTS routing_parameter '$2'"
@@ -141,7 +129,10 @@ while [ $# -gt 0 ]; do
     -g|--bee_strategy)
 			ROUTER_OPTS="$ROUTER_OPTS bee_strategy '$2'"
       shift 2;;
-		-d|--daemonize)
+    -d|--root_dir)
+      export BEEHIVE_PREFIX=$2
+      shift 2;;
+		-D|--daemonize)
 			DAEMONIZE_ARGS="-detached -heart"
 			RELOADER_OPTS=""
 			shift;;
@@ -165,6 +156,9 @@ while [ $# -gt 0 ]; do
 			;;
 	esac
 done
+
+MNESIA_DIR="$BEEHIVE_PREFIX/db"
+LOG_PATH="$BEEHIVE_PREFIX/log/beehive"
 
 # Sanity checks
 if [ -z $NAME ]; then
@@ -250,7 +244,6 @@ esac
 
 BEEHIVE_OPTS="$BEEHIVE_OPTS node_type $TYPE "
 BEEHIVE_OPTS="$BEEHIVE_OPTS log_level $VERBOSE "
-BEEHIVE_OPTS="$BEEHIVE_OPTS log_path '$LOG_PATH' "
 
 if [ $VERBOSE -gt 0 ]; then
 cat <<EOF
@@ -260,6 +253,7 @@ cat <<EOF
     Name: 		       '$NAME'
     Beehive opts:    $BEEHIVE_OPTS
     App opts:        $APP_OPTS
+    Log directory:   $LOG_PATH
 EOF
 fi
 

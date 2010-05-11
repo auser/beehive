@@ -262,9 +262,11 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
   
   ScratchDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("tmp"), storage),
   RunningDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("run"), storage),
+  LogDisk     = config:search_for_application_value(log_path,     ?BH_RELATIVE_DIR("application_logs"), beehive),
   
   WorkingDir = lists:flatten([ScratchDisk, "/", App#app.name]),
   RunningDir = lists:flatten([RunningDisk, "/", App#app.name]),
+  LogDir     = lists:flatten([LogDisk, "/", App#app.name]),
   
   HostIp = bh_host:myip(),
   Id = {App#app.name, HostIp, Port},
@@ -274,12 +276,13 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
     {bee_image, ImagePath},
     {host_ip, HostIp},
     {port, misc_utils:to_list(Port)},
+    {log_directory, misc_utils:to_list(LogDir)},
     {start_time, misc_utils:to_list(StartedAt)},
     {working_directory, WorkingDir},
     {run_dir, RunningDir}
   ],
   EnvOpts = apps:build_app_env(App, OtherOpts),
-  lists:map(fun(Dir) -> file:make_dir(Dir) end, [ScratchDisk, WorkingDir, RunningDisk, RunningDir]),
+  lists:map(fun(Dir) -> file:make_dir(Dir) end, [ScratchDisk, WorkingDir, RunningDisk, RunningDir, LogDisk, LogDir]),
   CmdOpts = lists:flatten([{cd, RunningDir}, EnvOpts]),
   
   % StartProplist = ?APP_TEMPLATE_SHELL_SCRIPT_PARSED(Template, Vars, DefaultProps),
@@ -355,15 +358,18 @@ internal_stop_instance(#bee{
     App ->
       ScratchDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("tmp"), storage),
       RunningDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("run"), storage),
+      LogDisk     = config:search_for_application_value(log_path, ?BH_RELATIVE_DIR("log"), beehive),
   
       WorkingDir = lists:flatten([ScratchDisk, "/", AppName]),
       RunningDir = lists:flatten([RunningDisk, "/", AppName]),
+      LogDir     = lists:flatten([LogDisk, "/", AppName]),
   
       OtherOpts = [
         {host_ip, Host},
         {sha, Sha},
         {port, misc_utils:to_list(Port)},
         {start_time, misc_utils:to_list(StartedAt)},
+        {log_directory, LogDir},
         {working_directory, WorkingDir},
         {run_dir, RunningDir}
       ],

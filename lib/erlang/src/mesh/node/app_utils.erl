@@ -2,7 +2,7 @@
 %%% File    : app_utils.erl
 %%% Author  : Ari Lerner
 %%% Description : 
-%%%
+%%%   This should be defunct soon?
 %%% Created :  Fri Jan  8 14:57:14 PST 2010
 %%%-------------------------------------------------------------------
 
