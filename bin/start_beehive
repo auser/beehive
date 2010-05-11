@@ -21,24 +21,24 @@ to start with the '-t' flag. If the server is going to join an existing beehive,
 server with the '-s' flag.
 
 OPTIONS
-	-m                                  Mnesia directory (defaults to ./db)
 	-c, --config_file                   Config file
-	-n                                  Name of the erlang process (useful for multiple nodes on the same instance)
-	-r, --routing_parameter             Route on the routing parameter (defaults to 'Host')
-	-e, --erlang_opts                   Additional erlang options
-	-c, --user_defined_event_handler    Module name of the callback module
-	-q, --bee_picker                    Name of the method that contains the bee chooser
-	-s, --seed                          Pass in the seed node
-	-l, --log_path                      Path of the logs
-	-p, --client_port                   Port to run the router
-	-i, --initial_bees                  Initial bees to start the router_srv
-	-t, --type                          Type of node to start (default: router)
-	-g, --bee_strategy                  Strategy to choose a bee. (default: random)
-	-z, --git_repos_path                Git repos path
+	    --user_defined_event_handler    Module name of the callback module
 	-d                                  Daemonize the process
+	-e, --erlang_opts                   Additional erlang options
+	-g, --bee_strategy                  Strategy to choose a bee. (default: random)
+	-i, --initial_bees                  Initial bees to start the router_srv
+	-l, --log_path                      Path of the logs
+	-m                                  Mnesia directory (defaults to ./db)
+	-n                                  Name of the erlang process (useful for multiple nodes on the same instance)
+	-p, --client_port                   Port to run the router
+	-q, --bee_picker                    Name of the method that contains the bee chooser
+	-r, --routing_parameter             Route on the routing parameter (defaults to 'Host')
+	-s, --seed                          Pass in the seed node
+	-t, --type                          Type of node to start (default: router)
 	-v, --verbose                       Verbose
 	-vv                                 Very verbose
 	-vvv                                Debug level logging
+	-z, --git_repos_path                Git repos path
 	-h, --help                          Show this screen
 	
 EOF
