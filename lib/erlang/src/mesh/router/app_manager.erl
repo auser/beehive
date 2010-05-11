@@ -22,6 +22,7 @@
   add_application/1,
   spawn_update_bee_status/3,
   request_to_start_new_bee/1,
+  request_to_terminate_bee/1,
   garbage_collection/0
 ]).
 
@@ -56,6 +57,9 @@ add_application(ConfigProplist) ->
 
 request_to_start_new_bee(Name) ->
   gen_server:cast(?SERVER, {request_to_start_new_bee, Name}).
+
+request_to_terminate_bee(Bee) ->
+  gen_server:cast(?SERVER, {request_to_terminate_bee, Bee}).
   
 garbage_collection() ->
   gen_server:cast(?SERVER, {garbage_collection}).
@@ -141,6 +145,10 @@ handle_cast({request_to_start_new_bee, Name}, State) ->
     false -> start_new_instance_by_name(Name);
     true -> ok
   end,
+  {noreply, State};
+
+handle_cast({request_to_terminate_bee, Bee}, State) ->
+  app_handler:stop_instance(Bee),
   {noreply, State};
 
 handle_cast({garbage_collection}, State) ->
@@ -441,7 +449,7 @@ cleanup_bee(#bee{status = terminated} = B) ->
   ?QSTORE:delete_queue(?WAIT_DB, B#bee.app_name),
   bees:delete(B);
 cleanup_bee(B) ->
-  (catch node_manager:request_to_terminate_bee(B)),
+  (catch app_manager:request_to_terminate_bee(B)),
   ?QSTORE:delete_queue(?WAIT_DB, B#bee.app_name),
   bees:delete(B).
 

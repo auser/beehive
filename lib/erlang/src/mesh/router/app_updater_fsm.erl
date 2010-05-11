@@ -100,7 +100,7 @@ pulling({go, From}, #state{bee = #bee{app_name = AppName} = Bee} = State) ->
       case apps:find_by_name(AppName) of
         App when is_record(App, app) ->
           % rpc:call(Node, ?STORAGE_SRV, pull_repos, [App, self()]);
-          rpc:call(Node, ?STORAGE_SRV, build_bee, [App, self()]),
+          rpc:call(Node, ?STORAGE_SRV, fetch_or_build_bee, [App, self()]),
           {next_state, starting, State#state{bee = Bee#bee{storage_node = Node}, from = From}};
         _ ->
           io:format("Error?~n"),

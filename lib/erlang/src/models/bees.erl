@@ -20,8 +20,10 @@
 
 -include ("beehive.hrl").
 -include_lib("stdlib/include/qlc.hrl").
+-include_lib("kernel/include/file.hrl").
 
 -export ([
+  meta_data/1,
   find_by_name/1,
   find_all_by_name/1,
   find_all_by_host/1,
@@ -35,6 +37,19 @@
   save/1,transactional_save/1,
   is_the_same_as/2
 ]).
+
+%%-------------------------------------------------------------------
+%% @spec (File::string()) ->    Proplist
+%% @doc Take a bee location and find out as much meta-data as it can
+%%      
+%% @end
+%%-------------------------------------------------------------------
+meta_data(FileLocation) ->
+  BeeSize = case file:read_file_info(FileLocation) of
+    {ok, FileInfo} -> FileInfo#file_info.size;
+    _E -> 0.0
+  end,
+  [{bee_size, BeeSize}].
 
 find_by_name(Hostname) ->
   case find_all_by_name(Hostname) of

@@ -64,7 +64,7 @@ handle_event({bee, update_status, Bee, Status}, State) ->
 
 % Handle terminate bee
 handle_event({bee, terminate_please, Bee}, State) ->
-  node_manager:request_to_terminate_bee(Bee),
+  app_manager:request_to_terminate_bee(Bee),
   {ok, State};
 
 % Caught when a bee is marked as down
@@ -89,6 +89,7 @@ handle_event({bee, bee_terminated, Bee}, State) when is_record(Bee, bee) ->
 % Catch a cannot connect error
 handle_event({bee, cannot_connect, Id}, State) ->
   % bees:transactional_save(fun() ->
+  erlang:display({bee, cannot_connect, Id}),
   ?LOG(debug, "{bee, cannot_connect, ~p}", [Id]),
   spawn(fun() ->
     RealBee = bees:find_by_id(Id),
@@ -147,7 +148,8 @@ handle_info(_Info, State) ->
 %% this function is called. It should be the opposite of Module:init/1 and
 %% do any necessary cleaning up.
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(Reason, _State) ->
+  erlang:display({?MODULE, terminate, Reason}),
   ok.
 
 %%--------------------------------------------------------------------

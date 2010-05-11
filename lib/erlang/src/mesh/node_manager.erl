@@ -111,7 +111,6 @@ is_a(Type) ->
   gen_cluster:call(leader_pid(), {is_a, Type}).
 
 notify(Msg) ->
-  erlang:display({notify, Msg}),
   rpc:call(node(leader_pid()), event_manager, notify, [Msg]),    
   ok.
 
@@ -198,7 +197,6 @@ handle_call({dump, Pid}, _From, State) ->
   Node = #node{ name = Name, host = Host },
   {reply, Node, State};
 handle_call(_Request, _From, State) ->
-  % erlang:display({call, Request}),
   Reply = ok,
   {reply, Reply, State}.
 

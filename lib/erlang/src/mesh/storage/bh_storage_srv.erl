@@ -18,7 +18,7 @@
   start_link/0,
   can_pull_new_app/0,
   pull_repos/2,
-  build_bee/2,
+  fetch_or_build_bee/2,
   locate_git_repo/1,
   lookup_squashed_repos/2,
   has_squashed_repos/2,
@@ -52,8 +52,8 @@ seed_nodes(_State) -> global:whereis_name(node_manager).
 pull_repos(AppName, Caller) ->
   gen_cluster:cast(?SERVER, {pull_repos, AppName, Caller}).
 
-build_bee(AppName, Caller) ->
-  gen_cluster:cast(?SERVER, {build_bee, AppName, Caller}).
+fetch_or_build_bee(AppName, Caller) ->
+  gen_cluster:cast(?SERVER, {fetch_or_build_bee, AppName, Caller}).
 
 locate_git_repo(Name) ->
   gen_cluster:call(?SERVER, {locate_git_repo, Name}).
@@ -139,41 +139,16 @@ handle_cast({pull_repos, App, Caller}, State) ->
       {noreply, State}
   end;
 
-handle_cast({build_bee, App, Caller}, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} = State) ->
-  case handle_repos_lookup(App) of
-    {ok, ReposUrl} ->
-      WorkingDir = lists:flatten([ScratchDisk, "/", App#app.name]),
-      SquashedDir = lists:flatten([SquashedDisk, "/", App#app.name]),
-      lists:map(fun(Dir) -> file:make_dir(Dir) end, [ScratchDisk, WorkingDir, SquashedDisk, SquashedDir]),
-      
-      FinalLocation = lists:flatten([SquashedDir, "/", App#app.name, ".bee"]),
-  
-      OtherOpts = [
-        {working_directory, WorkingDir},
-        {squashed_directory, SquashedDir},
-        {squashed_file, FinalLocation},
-        {repos, ReposUrl}
-      ],
-      CmdOpts = apps:build_app_env(App, OtherOpts),
-      
-      case babysitter:run(App#app.template, bundle, CmdOpts) of
-        {ok, OsPid} ->
-          ets:insert(?TAB_NAME_TO_PATH, {App, FinalLocation}),
-          BeeSize = case file:read_file_info(FinalLocation) of
-            {ok, FileInfo} -> FileInfo#file_info.size;
-            _E -> 0.0
-          end,
-          Resp = [{bee_size, BeeSize}, {os_pid, OsPid}],
-          Caller ! {bee_built, Resp};
-        Else ->
-          Err = {error, {babysitter, Else}},
-          erlang:display(Err),
-          Caller ! Err
-      end;
-    {error, not_found} ->
-      erlang:display({error, not_found, App}),
-      Caller ! {error, not_found}
+handle_cast({fetch_or_build_bee, App, Caller}, State) ->
+  Resp = case fetch_bee(App, State) of
+    {error, _} -> build_bee(App, State);
+    T -> T
   end,
+  Caller ! Resp,
+  {noreply, State};
+
+handle_cast({build_bee, App, Caller}, State) ->
+  Caller ! build_bee(App, State),
   {noreply, State};
 
 handle_cast(stop, State) ->
@@ -234,6 +209,44 @@ handle_leave(_LeavingPid, _Pidlist, _Info, State) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
+fetch_bee(App, #state{squashed_disk = SquashedDisk} = _State) ->
+  SquashedDir = lists:flatten([SquashedDisk, "/", App#app.name]),
+  FinalLocation = lists:flatten([SquashedDir, "/", App#app.name, ".bee"]),
+  case filelib:is_file(FinalLocation) of
+    true -> 
+      Resp = bees:meta_data(FinalLocation),
+      {bee_built, Resp};
+    false -> {error, not_found}
+  end.
+  
+build_bee(App, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} = _State) ->
+  case handle_repos_lookup(App) of
+    {ok, ReposUrl} ->
+      WorkingDir = lists:flatten([ScratchDisk, "/", App#app.name]),
+      SquashedDir = lists:flatten([SquashedDisk, "/", App#app.name]),
+      FinalLocation = lists:flatten([SquashedDir, "/", App#app.name, ".bee"]),
+      lists:map(fun(Dir) -> file:make_dir(Dir) end, [ScratchDisk, WorkingDir, SquashedDisk, SquashedDir]),
+  
+      OtherOpts = [
+        {working_directory, WorkingDir},
+        {squashed_directory, SquashedDir},
+        {squashed_file, FinalLocation},
+        {repos, ReposUrl}
+      ],
+      CmdOpts = apps:build_app_env(App, OtherOpts),
+      
+      case babysitter:run(App#app.template, bundle, CmdOpts) of
+        {ok, OsPid} ->
+          ets:insert(?TAB_NAME_TO_PATH, {App, FinalLocation}),
+          Resp1 = bees:meta_data(FinalLocation),
+          Resp = lists:flatten([{os_pid, OsPid}|Resp1]),
+          {bee_built, Resp};
+        Else ->
+          {error, {babysitter, Else}}
+      end;
+    {error, not_found} -> {error, not_found}
+  end.
+  
 handle_repos_lookup(AppName) ->
   case config:search_for_application_value(git_store, offsite, storage) of
     offsite -> 
