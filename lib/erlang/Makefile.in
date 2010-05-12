@@ -55,9 +55,11 @@ debug: $(TEST_EBIN_DIR)
 	@$(ECOMPILE) -eval 'case make:all([{d, debug}]) of up_to_date -> halt(0); error -> halt(1) end.'
 
 test: compile
+	@(mkdir -p /tmp/beehive_test_db)
 	$(ECOMPILE)	-noshell \
 					-pa $(EBIN_DIRS) \
 					-pa $(TEST_EBIN_DIR) \
+					-mnesia dir '"/tmp/beehive_test_db"' \
 					-s test_suite test \
 					-s init stop
 
