@@ -23,7 +23,7 @@
 -include_lib("kernel/include/file.hrl").
 
 -export ([
-  meta_data/1,
+  meta_data/2,
   find_by_name/1,
   find_all_by_name/1,
   find_all_by_host/1,
@@ -44,12 +44,16 @@
 %%      
 %% @end
 %%-------------------------------------------------------------------
-meta_data(FileLocation) ->
+meta_data(FileLocation, MetaFile) ->
   BeeSize = case file:read_file_info(FileLocation) of
     {ok, FileInfo} -> FileInfo#file_info.size;
     _E -> 0.0
   end,
-  [{bee_size, BeeSize}].
+  OtherProps = case filelib:is_file(MetaFile) of
+    true -> {ok, MetaProps} = file:consult(MetaFile), MetaProps;
+    false -> []
+  end,
+  lists:flatten([{bee_size, BeeSize}, OtherProps]).
 
 find_by_name(Hostname) ->
   case find_all_by_name(Hostname) of
