@@ -9,9 +9,8 @@ TOKEN=`curl -i -XPOST -d"{\"email\":\"root@getbeehive.com\", \"password\": \"tes
 curl -i -XPOST -d"{\"email\":\"arilerner@mac.com\", \"password\":\"myuniquepassword\", \"level\":\"1\", \"token\":$TOKEN}" $HOST/users/new
 
 # Let's add an application
-curl -i $HOST/apps
-curl -i -XPOST -d"{\"url\":\"git://github.com/auser/getbeehive.com.git\", \"token\":$TOKEN}" $HOST/apps
 curl -i -XPOST -d"{\"name\":\"beehive\", \"url\":\"git://github.com/auser/getbeehive.com.git\", \"token\":$TOKEN}" $HOST/apps
+curl -i -XPOST -d"{\"url\":\"git://github.com/auser/getbeehive.com.git\", \"token\":$TOKEN}" $HOST/apps
 curl -i $HOST/apps
 
 # Delete the app we added

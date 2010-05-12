@@ -21,7 +21,7 @@
   terminate_app_instances/1,
   add_application/1,
   spawn_update_bee_status/3,
-  request_to_start_new_bee/1,
+  request_to_start_new_bee_by_name/1,
   request_to_terminate_bee/1,
   garbage_collection/0
 ]).
@@ -55,8 +55,8 @@ terminate_app_instances(Appname) ->
 add_application(ConfigProplist) ->
   gen_server:call(?SERVER, {add_application_by_configuration, ConfigProplist}).
 
-request_to_start_new_bee(Name) ->
-  gen_server:cast(?SERVER, {request_to_start_new_bee, Name}).
+request_to_start_new_bee_by_name(Name) ->
+  gen_server:cast(?SERVER, {request_to_start_new_bee_by_name, Name}).
 
 request_to_terminate_bee(Bee) ->
   gen_server:cast(?SERVER, {request_to_terminate_bee, Bee}).
@@ -137,7 +137,7 @@ handle_call(_Request, _From, State) ->
 %   router_srv:store(instances, AppName, []),
 %   {noreply, State};
 
-handle_cast({request_to_start_new_bee, Name}, State) ->
+handle_cast({request_to_start_new_bee_by_name, Name}, State) ->
   Bees = bees:find_all_by_name(Name),
   % Don't start a new bee if there is a pending one
   PendingBees = lists:filter(fun(B) -> B#bee.status =:= pending end, Bees),
@@ -462,10 +462,11 @@ start_new_instance_by_name(Name) ->
     false -> false;
     Host ->
       App = apps:find_by_name(Name),
+      Node = node(Host),
       case App#app.type of
         static -> ok;
         _T ->
-          spawn_to_start_new_instance(App, Host)
+          spawn_to_start_new_instance(App, Node)
       end
   end.
 % Start with the app_launcher_fsm

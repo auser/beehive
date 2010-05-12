@@ -345,14 +345,12 @@ find_bee_on_storage_nodes(App, Sha, [Node|Rest]) ->
 
 % kill the instance of the application  
 internal_stop_instance(#bee{
-                            id = Id, 
-                            port = Port, 
-                            host = Host, 
-                            app_name = AppName,
-                            start_time = StartedAt
-                        } = _CalledBee, _State) ->  
-  #bee{commit_hash = Sha} = Bee = bees:find_by_id(Id),
-  
+                            port        = Port, 
+                            host        = Host, 
+                            app_name    = AppName,
+                            commit_hash = Sha,
+                            start_time  = StartedAt
+                        } = Bee, _State) ->  
   case apps:find_by_name(AppName) of 
     [] -> {error, not_associated_with_an_app};
     App ->

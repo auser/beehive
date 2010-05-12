@@ -72,11 +72,11 @@ handle_event({app, app_not_squashed, App}, State) ->
 
 % TODO: Refactor
 handle_event({app, request_to_start_new_bee, Hostname}, State) ->
-  app_manager:request_to_start_new_bee(Hostname),
+  app_manager:request_to_start_new_bee_by_name(Hostname),
   {ok, State};
   
 handle_event({app, request_to_start_new_bee, App, Host, Sha}, State) ->
-  ?LOG(info, "request_to_start_new_bee: ~p~n", [App]),
+  ?LOG(info, "request_to_start_new_bee: ~p ~p ~p~n", [App, Host, Sha]),
   handle_launch_app(App, Host, Sha),
   {ok, State};
 
