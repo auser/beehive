@@ -21,7 +21,7 @@ docs:
 	
 clean:
 	@(cd lib/erlang;$(MAKE) clean)
-	@(rm *.log)
+	@(rm -rf *.log)
 
 deep_clean: clean
 	@(echo "Cleaning babysitter")

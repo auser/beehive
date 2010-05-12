@@ -27,8 +27,11 @@
 %% Description: Starts the supervisor
 %%--------------------------------------------------------------------
 start_link(Args) ->
+  % Setup beehive
   NodeType = config:search_for_application_value(node_type, router, beehive),
   sanity_checks:check(NodeType),
+  % Seed the random number generator
+  random:seed(now()),
   
   case supervisor:start_link({local, ?SERVER}, ?MODULE, Args) of
     {ok, Pid} ->
