@@ -17,9 +17,7 @@
 -export([
   start_link/0,
   can_pull_new_app/0,
-  pull_repos/2,
   fetch_or_build_bee/2,
-  locate_git_repo/1,
   lookup_squashed_repos/2,
   has_squashed_repos/2,
   seed_nodes/1
@@ -49,14 +47,8 @@ seed_nodes(_State) -> global:whereis_name(node_manager).
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-pull_repos(AppName, Caller) ->
-  gen_cluster:cast(?SERVER, {pull_repos, AppName, Caller}).
-
 fetch_or_build_bee(AppName, Caller) ->
   gen_cluster:cast(?SERVER, {fetch_or_build_bee, AppName, Caller}).
-
-locate_git_repo(Name) ->
-  gen_cluster:call(?SERVER, {locate_git_repo, Name}).
 
 lookup_squashed_repos(App, Sha) ->
   handle_lookup_squashed_repos(App, Sha).
@@ -104,9 +96,6 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({can_pull_new_app}, _From, State) ->
   {reply, true, State};
-handle_call({locate_git_repo, App}, _From, State) ->
-  Reply = handle_repos_lookup(App),
-  {reply, Reply, State};
 handle_call(_Request, _From, State) ->
   Reply = ok,
   {reply, Reply, State}.
@@ -117,28 +106,6 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast({pull_repos, App, Caller}, State) ->
-  case handle_repos_lookup(App) of
-    {ok, _ReposUrl} -> 
-      % TempName = lists:append([handle_find_application_location(App, State), "/home/app"]),
-      % {Proplists, _Status} = ?TEMPLATE_SHELL_SCRIPT_PARSED("pull-git-repos", [
-      %   {"[[GIT_REPOS]]", ReposUrl},
-      %   {"[[DESTINATION]]", TempName}
-      % ]),
-      % io:format("Proplists: ~p~n", [Proplists]),
-      % Reply = case proplists:is_defined(sha, Proplists) of
-      %   true -> {pulled, Proplists};
-      %   false -> {error, "Could not pull git repos"}
-      % end,
-      Reply = {pulled, []},
-      Caller ! Reply,
-      {noreply, State};
-    _Else ->
-      Reply = {error, "Not git url specified"},
-      Caller ! Reply,
-      {noreply, State}
-  end;
-
 handle_cast({fetch_or_build_bee, App, Caller}, State) ->
   Resp = case fetch_bee(App, State) of
     {error, _} -> build_bee(App, State);
@@ -218,18 +185,27 @@ fetch_bee(App, #state{squashed_disk = SquashedDisk} = _State) ->
       {bee_built, Resp};
     false -> {error, not_found}
   end.
-  
+
+%%-------------------------------------------------------------------
+%% @spec (App::app(), State) ->    {ok, Value}
+%% @doc This will call the bundle task on the application template
+%%  and bundle the application into a known file: NAME.bee
+%%      
+%% @end
+%%-------------------------------------------------------------------
 build_bee(App, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} = _State) ->
   case handle_repos_lookup(App) of
     {ok, ReposUrl} ->
       WorkingDir = lists:flatten([ScratchDisk, "/", App#app.name]),
       SquashedDir = lists:flatten([SquashedDisk, "/", App#app.name]),
       FinalLocation = lists:flatten([SquashedDir, "/", App#app.name, ".bee"]),
+      EnvFileLocation = lists:flatten([SquashedDir, "/.env"]),
       lists:map(fun(Dir) -> file:make_dir(Dir) end, [ScratchDisk, WorkingDir, SquashedDisk, SquashedDir]),
   
       OtherOpts = [
         {working_directory, WorkingDir},
         {squashed_directory, SquashedDir},
+        {env_file, EnvFileLocation},
         {squashed_file, FinalLocation},
         {repos, ReposUrl}
       ],
@@ -274,7 +250,6 @@ handle_lookup_squashed_repos(Name, Sha) ->
     _ -> 
       SquashedDir = config:search_for_application_value(squashed_storage, ?BH_RELATIVE_DIR("squashed"), storage),
       {ok, Folders} = file:list_dir(SquashedDir),
-      erlang:display({folders, Name, Folders}),
       case lists:member(Name, Folders) of
         true ->
           Dir = filename:join([SquashedDir, Name]),

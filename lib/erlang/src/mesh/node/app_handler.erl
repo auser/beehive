@@ -332,7 +332,7 @@ find_and_transfer_bee(App, Sha) ->
       E
   end.
 
-% Look on the node and see if it has the 
+% Look on the node and see if it has the bee
 find_bee_on_storage_nodes(App, _Sha, []) -> 
   % ?NOTIFY({app, app_not_squashed, Name}),
   ?NOTIFY({app, updated, App}),
