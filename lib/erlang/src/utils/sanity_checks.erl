@@ -26,8 +26,10 @@ check_db_directory() ->
         true -> ok;
         false -> 
           % If the directory doesn't exist yet, let's create it
-          filelib:ensure_dir(Dir)
-          % erlang:throw(error, {db_directory, no_exists, Dir})
+          case filelib:ensure_dir(Dir) of
+            true -> ok;
+            false -> erlang:throw(error, {db_directory, no_exists, Dir})
+          end
       end
       % case writeable(Dir) of
       %   true -> ok;
