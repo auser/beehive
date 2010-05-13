@@ -17,7 +17,8 @@
 -export([
   start_link/0,
   can_pull_new_app/0,
-  fetch_or_build_bee/2,
+  fetch_or_build_bee/1,
+  rebuild_bee/1, rebuild_bee/2,
   has_squashed_repos/2,
   seed_nodes/1
 ]).
@@ -46,8 +47,11 @@ seed_nodes(_State) -> global:whereis_name(node_manager).
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-fetch_or_build_bee(App, Caller) ->
-  gen_cluster:cast(?SERVER, {fetch_or_build_bee, App, Caller}).
+rebuild_bee(App) -> gen_cluster:call(?SERVER, {build_bee, App}).
+rebuild_bee(App, Caller) -> gen_cluster:cast(?SERVER, {build_bee, App, Caller}).
+  
+fetch_or_build_bee(App) ->
+  gen_cluster:call(?SERVER, {fetch_or_build_bee, App}).
 
 has_squashed_repos(App, Sha) ->
   gen_cluster:call(?SERVER, {handle_lookup_squashed_repos, App, Sha}).
@@ -86,6 +90,15 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
+handle_call({fetch_or_build_bee, App}, _From, State) ->
+  Resp = case fetch_bee(App, State) of
+    {error, _} -> build_bee(App, State);
+    T -> T
+  end,
+  {reply, Resp, State};
+handle_call({build_bee, App}, _From, State) ->
+  Resp = build_bee(App, State),
+  {reply, Resp, State};
 handle_call({handle_lookup_squashed_repos, App, Sha}, _From, State) ->
   {reply, handle_lookup_squashed_repos(App, Sha, State), State};
 handle_call({can_pull_new_app}, _From, State) ->
@@ -100,14 +113,6 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast({fetch_or_build_bee, App, Caller}, State) ->
-  Resp = case fetch_bee(App, State) of
-    {error, _} -> build_bee(App, State);
-    T -> T
-  end,
-  Caller ! Resp,
-  {noreply, State};
-
 handle_cast({build_bee, App, Caller}, State) ->
   Caller ! build_bee(App, State),
   {noreply, State};

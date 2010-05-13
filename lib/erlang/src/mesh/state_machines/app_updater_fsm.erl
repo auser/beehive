@@ -98,7 +98,7 @@ pulling({go, From}, #state{bee = #bee{app_name = AppName} = Bee, app = App} = St
     false -> 
       Pid = node_manager:get_next_available(storage),
       Node = node(Pid),
-      rpc:call(Node, ?STORAGE_SRV, fetch_or_build_bee, [App, self()]),
+      rpc:call(Node, ?STORAGE_SRV, fetch_or_build_bee, [App]),
       {next_state, starting, State#state{bee = Bee#bee{storage_node = Node}, from = From}}
   end;
   
