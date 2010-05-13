@@ -10,8 +10,12 @@ curl -i -XPOST -d"{\"email\":\"arilerner@mac.com\", \"password\":\"myuniquepassw
 
 # Let's add an application
 curl -i -XPOST -d"{\"name\":\"beehive\", \"url\":\"git://github.com/auser/getbeehive.com.git\", \"token\":$TOKEN}" $HOST/apps
-curl -i -XPOST -d"{\"url\":\"git://github.com/auser/getbeehive.com.git\", \"token\":$TOKEN}" $HOST/apps
+
+# Check on the application
 curl -i $HOST/apps
+
+# Update the app
+curl -i -XPOST -d"{\"name\":\"beehive\", \"token\":$TOKEN}" $HOST/apps/beehive/deploy
 
 # Delete the app we added
 curl -i -XDELETE -d"{\"token\":\"$TOKEN\"}" $HOST/apps/beehive

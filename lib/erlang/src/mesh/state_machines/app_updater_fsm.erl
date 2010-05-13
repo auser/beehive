@@ -37,6 +37,7 @@
 -define (STORAGE_SRV, bh_storage_srv).
 
 -record (state, {
+  app,
   bee,
   from
 }).
@@ -72,10 +73,10 @@ start_link(App) ->
 %% initialize.
 %%--------------------------------------------------------------------
 init([App]) when is_record(App, app) ->
-  init([App#app.name]);
+  {ok, pulling, #state{bee = #bee{app_name = App#app.name}, app = App}}.
 
-init([AppName])  ->
-  {ok, pulling, #state{bee = #bee{app_name = AppName}}}.
+% init([AppName])  ->
+  % {ok, pulling, #state{bee = #bee{app_name = AppName}}}.
 
 %%--------------------------------------------------------------------
 %% Function:
@@ -89,7 +90,7 @@ init([AppName])  ->
 %% the current state name BeeName is called to handle the event. It is also
 %% called if a timeout occurs.
 %%--------------------------------------------------------------------
-pulling({go, From}, #state{bee = #bee{app_name = AppName} = Bee} = State) ->
+pulling({go, From}, #state{bee = #bee{app_name = AppName} = Bee, app = App} = State) ->
   PendingBees = lists:filter(fun(B) -> B#bee.status =:= pending end, bees:find_all_by_name(AppName)),
   case length(PendingBees) > 0 of
     true -> 
@@ -97,15 +98,8 @@ pulling({go, From}, #state{bee = #bee{app_name = AppName} = Bee} = State) ->
     false -> 
       Pid = node_manager:get_next_available(storage),
       Node = node(Pid),
-      case apps:find_by_name(AppName) of
-        App when is_record(App, app) ->
-          % rpc:call(Node, ?STORAGE_SRV, pull_repos, [App, self()]);
-          rpc:call(Node, ?STORAGE_SRV, fetch_or_build_bee, [App, self()]),
-          {next_state, starting, State#state{bee = Bee#bee{storage_node = Node}, from = From}};
-        _ ->
-          io:format("Error?~n"),
-          {stop, no_app, State#state{from = From}}
-      end
+      rpc:call(Node, ?STORAGE_SRV, fetch_or_build_bee, [App, self()]),
+      {next_state, starting, State#state{bee = Bee#bee{storage_node = Node}, from = From}}
   end;
   
 pulling(Event, State) ->
@@ -123,15 +117,16 @@ squashing(Event, State) ->
   io:format("Received: ~p~n", [Event]),
   {next_state, squashing, State}.
 
-starting({bee_built, Info}, #state{bee = #bee{app_name = AppName} = Bee} = State) ->
+starting({bee_built, Info}, #state{bee = Bee, app = App} = State) ->
+  erlang:display({?MODULE, bee_built, Info}),
   % Strip off the last newline... stupid bash
   BeeSize = proplists:get_value(bee_size, Info),
   Sha = proplists:get_value(sha, Info),
   
   Pid = node_manager:get_next_available(node),
   Node = node(Pid),
+  % NewApp = App#app{sha = Sha},
   
-  App = apps:find_by_name(AppName),
   {ok, P} = app_launcher_fsm:start_link(App, Node, Sha),
   app_launcher_fsm:launch(P, self()),
   

@@ -77,7 +77,7 @@ post([Name, "deploy"], _Data) ->
   end,
   {struct, ?BINIFY([Response])};
     
-post(_Path, _Data) -> "unhandled".
+post(_Path, _Data) -> <<"unhandled">>.
 
 put([Name], Data) ->
   case auth_utils:get_authorized_user(Data) of
