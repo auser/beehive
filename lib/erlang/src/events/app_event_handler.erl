@@ -57,7 +57,8 @@ init([]) ->
 %% each installed event handler to handle the event.
 %%--------------------------------------------------------------------
 handle_event({app, updated, App}, State) ->
-  handle_updating_app(App),
+  % We want the app to rebuild, so we'll remove the sha and force it to rebuild
+  handle_updating_app(App#app{sha = undefined}),
   {ok, State};
 
 handle_event({app, restart, App}, State) ->
@@ -188,9 +189,11 @@ handle_updating_app(App) ->
       ?LOG(info, "Cannot update app as there is already one in progress (timeout: ~p)", [date_util:now_to_seconds() - Time]),
       ok;
     _ ->
+      erlang:display({app_updater_fsm, start_link, App}),
       {ok, P} = app_updater_fsm:start_link(App),
       Now = date_util:now_to_seconds(),
       app_updater_fsm:go(P, self()), 
+      
       ets:insert(?UPDATERS_APP_TO_PID, {App, P, Now}),
       ets:insert(?UPDATERS_PID_TO_APP, {P, App, Now})
   end.

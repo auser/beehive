@@ -16,6 +16,7 @@
   start_link/0,
   stop/0,
   start_new_instance/4,
+  update_instance/3,
   stop_instance/1, stop_app/2,
   can_deploy_new_app/0,
   has_app_named/1,
@@ -59,6 +60,9 @@ can_deploy_new_app() ->
   
 start_new_instance(App, Sha, AppLauncher, From) ->
   gen_cluster:call(?SERVER, {start_new_instance, App, Sha, AppLauncher, From}).
+
+update_instance(App, AppLauncher, From) ->
+  gen_cluster:call(?SERVER, {update_instance, App, AppLauncher, From}).
 
 stop_instance(Bee) when is_record(Bee, bee) -> gen_cluster:call(?SERVER, {stop_instance, Bee});
 stop_instance(Else) ->
@@ -108,6 +112,11 @@ handle_call({start_new_instance, App, Sha, AppLauncher, From}, _From, State) ->
   % Then start it :)
   ?LOG(debug, "internal_start_new_instance: ~p, ~p, ~p, ~p, ~p~n", [App, Sha, Port, AppLauncher, From]),
   internal_start_new_instance(App, Sha, Port, AppLauncher, From),
+  {reply, ok, State};
+
+handle_call({update_instance, App, AppLauncher, From}, _From, State) ->
+  ?LOG(debug, "update_instance: ~p, ~p, ~p~n", [App, AppLauncher, From]),
+  internal_update_instance(App, AppLauncher, From),
   {reply, ok, State};
 
 handle_call({stop_instance, Bee}, _From, State) ->
@@ -227,13 +236,17 @@ internal_start_new_instance(App, Sha, Port, AppLauncher, From) ->
       E
   end.
 
+internal_update_instance(_App, _AppLauncher, _From) ->
+  ok.
+
+% Run the mount action on the app
 mount_application(App, PropLists) ->
   ScratchDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("tmp"), storage),
   RunDir = config:search_for_application_value(squashed_storage, ?BH_RELATIVE_DIR("run"), storage),
   UniqueName = apps:build_on_disk_app_name(App),
 
-  WorkingDir = lists:flatten([ScratchDisk, "/", App#app.name]),
-  MountedDir = lists:flatten([RunDir, "/", UniqueName]),
+  WorkingDir = filename:join([ScratchDisk, App#app.name]),
+  MountedDir = filename:join([RunDir, UniqueName]),
   BeeImage = proplists:get_value(bee_image, PropLists),
   Port = misc_utils:to_list(proplists:get_value(port, PropLists)),
   
@@ -264,9 +277,9 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
   RunningDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("run"), storage),
   LogDisk     = config:search_for_application_value(log_path,     ?BH_RELATIVE_DIR("application_logs"), beehive),
   
-  WorkingDir = lists:flatten([ScratchDisk, "/", App#app.name]),
-  RunningDir = lists:flatten([RunningDisk, "/", App#app.name]),
-  LogDir     = lists:flatten([LogDisk, "/", App#app.name]),
+  WorkingDir = filename:join([ScratchDisk, App#app.name]),
+  RunningDir = filename:join([RunningDisk, App#app.name]),
+  LogDir     = filename:join([LogDisk, App#app.name]),
   
   HostIp = bh_host:myip(),
   Id = {App#app.name, HostIp, Port},
@@ -317,11 +330,9 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
 % Find and transfer the bee
 find_and_transfer_bee(App, Sha) ->
   Nodes = lists:map(fun(N) -> node(N) end, node_manager:get_servers(storage)),
-  Path = apps:build_on_disk_app_name(App),
-  
   ScratchDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("storage"), storage),
   
-  LocalPath = filename:join([filename:absname(ScratchDisk), lists:append([Path, "/", App#app.name, ".bee"])]),
+  LocalPath = filename:join([filename:absname(ScratchDisk), lists:append([App#app.name, ".bee"])]),
   case find_bee_on_storage_nodes(App, Sha, Nodes) of
     {ok, Node, RemotePath} ->
       ?LOG(info, "find_bee_on_storage_nodes found on ~p at ~p to ~p", [Node, LocalPath, RemotePath]),
@@ -358,9 +369,9 @@ internal_stop_instance(#bee{
       RunningDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("run"), storage),
       LogDisk     = config:search_for_application_value(log_path, ?BH_RELATIVE_DIR("log"), beehive),
   
-      WorkingDir = lists:flatten([ScratchDisk, "/", AppName]),
-      RunningDir = lists:flatten([RunningDisk, "/", AppName]),
-      LogDir     = lists:flatten([LogDisk, "/", AppName]),
+      WorkingDir = filename:join([ScratchDisk, AppName]),
+      RunningDir = filename:join([RunningDisk, AppName]),
+      LogDir     = filename:join([LogDisk, AppName]),
   
       OtherOpts = [
         {host_ip, Host},

@@ -18,7 +18,6 @@
   start_link/0,
   can_pull_new_app/0,
   fetch_or_build_bee/2,
-  lookup_squashed_repos/2,
   has_squashed_repos/2,
   seed_nodes/1
 ]).
@@ -47,11 +46,8 @@ seed_nodes(_State) -> global:whereis_name(node_manager).
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-fetch_or_build_bee(AppName, Caller) ->
-  gen_cluster:cast(?SERVER, {fetch_or_build_bee, AppName, Caller}).
-
-lookup_squashed_repos(App, Sha) ->
-  gen_cluster:call(?SERVER, {handle_lookup_squashed_repos, App, Sha}).
+fetch_or_build_bee(App, Caller) ->
+  gen_cluster:cast(?SERVER, {fetch_or_build_bee, App, Caller}).
 
 has_squashed_repos(App, Sha) ->
   gen_cluster:call(?SERVER, {handle_lookup_squashed_repos, App, Sha}).
@@ -179,9 +175,11 @@ fetch_bee(App, #state{squashed_disk = SquashedDisk} = _State) ->
   BeeLocation = lists:flatten([SquashedDir, "/", App#app.name, ".bee"]),
   EnvLocation = lists:flatten([SquashedDir, "/", App#app.name, ".env"]),
   
+  erlang:display({fetch_bee, App}),
   case filelib:is_file(BeeLocation) of
     true -> 
       Resp = bees:meta_data(BeeLocation, EnvLocation),
+      erlang:display({?MODULE, bee_built, Resp}),
       {bee_built, Resp};
     false -> {error, not_found}
   end.
@@ -215,6 +213,7 @@ build_bee(App, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} 
         {ok, OsPid} ->
           Resp1 = bees:meta_data(FinalLocation, EnvFileLocation),
           Resp = lists:flatten([{os_pid, OsPid}|Resp1]),
+          erlang:display({build_bee, bee_built, Resp}),
           {bee_built, Resp};
         Else ->
           {error, {babysitter, Else}}
@@ -242,6 +241,7 @@ handle_offsite_repos_lookup(AppName) ->
   end.
 
 handle_lookup_squashed_repos(#app{sha = CurrentAppSha } = App, Sha, State) ->
+  erlang:display({handle_lookup_squashed_repos, CurrentAppSha, Sha}),
   SquashedDir = config:search_for_application_value(squashed_storage, ?BH_RELATIVE_DIR("squashed"), storage),
   case handle_find_application_location(App, SquashedDir) of
     false -> false;
@@ -249,17 +249,18 @@ handle_lookup_squashed_repos(#app{sha = CurrentAppSha } = App, Sha, State) ->
       case CurrentAppSha =:= Sha of
         true -> FullFilePath;
         false -> 
+          file:delete(FullFilePath),
           build_bee(App, State),
           FullFilePath
       end
   end.
-  
+
 handle_find_application_location(#app{name = Name} = _App, SquashedDir) ->
   {ok, Folders} = file:list_dir(SquashedDir),
   case lists:member(Name, Folders) of
     true ->
       Dir = filename:join([SquashedDir, Name]),
-      FullFilePath = lists:flatten([Dir, "/", Name, ".bee"]),
+      FullFilePath = filename:join([Dir, lists:flatten([Name, ".bee"])]),
       case filelib:is_file(FullFilePath) of
         true -> FullFilePath;
         false -> false
