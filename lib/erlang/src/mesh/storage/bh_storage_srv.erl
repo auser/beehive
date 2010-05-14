@@ -180,11 +180,10 @@ fetch_bee(App, #state{squashed_disk = SquashedDisk} = _State) ->
   BeeLocation = lists:flatten([SquashedDir, "/", App#app.name, ".bee"]),
   EnvLocation = lists:flatten([SquashedDir, "/", App#app.name, ".env"]),
   
-  erlang:display({fetch_bee, App}),
   case filelib:is_file(BeeLocation) of
     true -> 
       Resp = bees:meta_data(BeeLocation, EnvLocation),
-      erlang:display({?MODULE, bee_built, Resp}),
+      ?NOTIFY({bee, bee_built, Resp}),
       {bee_built, Resp};
     false -> {error, not_found}
   end.
@@ -196,7 +195,7 @@ fetch_bee(App, #state{squashed_disk = SquashedDisk} = _State) ->
 %%      
 %% @end
 %%-------------------------------------------------------------------
-build_bee(App, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} = _State) ->
+build_bee(App, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} = State) ->
   case handle_repos_lookup(App) of
     {ok, ReposUrl} ->
       WorkingDir = lists:flatten([ScratchDisk, "/", App#app.name]),
@@ -215,10 +214,11 @@ build_bee(App, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} 
       CmdOpts = apps:build_app_env(App, OtherOpts),
       
       case babysitter:run(App#app.template, bundle, CmdOpts) of
-        {ok, OsPid} ->
-          Resp1 = bees:meta_data(FinalLocation, EnvFileLocation),
-          Resp = lists:flatten([{os_pid, OsPid}|Resp1]),
-          {bee_built, Resp};
+        {ok, _OsPid} ->
+          case fetch_bee(App, State) of
+            {bee_built, _Resp} = T -> T;
+            E -> E
+          end;
         Else ->
           {error, {babysitter, Else}}
       end;

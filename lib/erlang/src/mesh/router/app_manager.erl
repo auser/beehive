@@ -539,32 +539,45 @@ start_new_instance_by_name(Name) ->
 
 start_new_instance_by_app(App) ->
   case ets:lookup(?LAUNCHERS_APP_TO_PID, App) of
-    [{_App, _Pid, Time}] -> 
-      ?LOG(info, "Cannot launch app as there is already one in progress (timeout: ~p)", [date_util:now_to_seconds() - Time]),
+    [{_App, Pid, Time}] -> 
+      ?LOG(info, "Cannot launch app as there is already one in progress (timeout: ~p > ~p)", [date_util:now_to_seconds() - Time, ?ACTION_TIMEOUT]),
+      case date_util:now_to_seconds() - Time > ?ACTION_TIMEOUT of
+        true ->
+          ets:delete(?LAUNCHERS_APP_TO_PID, App),
+          ets:delete(?LAUNCHERS_PID_TO_APP, Pid);
+        false -> ok
+      end,
       already_starting_instance;
-    _ -> 
-      app_launcher_fsm_go(?LAUNCHERS_APP_TO_PID, launch, App)
+    _ ->
+      app_launcher_fsm_go(?LAUNCHERS_APP_TO_PID, ?LAUNCHERS_PID_TO_APP, launch, App)
   end.
   
 update_instance_by_app(App) ->
-  erlang:display({request_to_update_app, ets:lookup(?UPDATERS_APP_TO_PID, App)}),
   case ets:lookup(?UPDATERS_APP_TO_PID, App) of
-    [{_App, _Pid, Time}] -> 
+    [{_App, Pid, Time}] -> 
       ?LOG(info, "Cannot launch app as there is already one in progress (timeout: ~p)", [date_util:now_to_seconds() - Time]),
-      already_updating_app;
+      case date_util:now_to_seconds() - Time > ?ACTION_TIMEOUT of
+        true ->
+          ets:delete(?UPDATERS_PID_TO_APP, Pid),
+          ets:delete(?UPDATERS_APP_TO_PID, App);
+        false -> ok
+      end,
+      already_updating_instance;
     _ ->
-      app_launcher_fsm_go(?UPDATERS_APP_TO_PID, update, App)
+      app_launcher_fsm_go(?UPDATERS_APP_TO_PID, ?UPDATERS_PID_TO_APP, update, App)
   end.
 
 % PRIVATE
-app_launcher_fsm_go(Table, Method, App) ->
+app_launcher_fsm_go(Table1, Table2, Method, App) ->
   case App#app.type of
     static -> ok;
     _T -> 
       Now = date_util:now_to_seconds(),
       {ok, P} = app_launcher_fsm:start_link(App, self()),
       apply(app_launcher_fsm, Method, [P]),
-      ets:insert(Table, {App, P, Now})
+      ets:insert(Table1, {App, P, Now}), 
+      ets:insert(Table2, {P, App, Now}), 
+      P
   end.
 
 % Kill off all other bees

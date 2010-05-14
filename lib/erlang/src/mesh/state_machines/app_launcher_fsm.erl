@@ -91,11 +91,11 @@ preparing({update}, #state{app = App} = State) ->
   rpc:cast(Node, bh_storage_srv, rebuild_bee, [App, Self]),
   {next_state, updating, State};
 
-preparing({launch}, #state{host = Host} = State) ->
+preparing({launch}, #state{host = Host, app = App} = State) ->
   case Host of
     false -> {stop, no_node_found, State};
     _ ->
-      NewState = start_instance(State),
+      NewState = start_instance(State#state{latest_sha = App#app.sha}),
       {next_state, launching, NewState}
   end;
 
