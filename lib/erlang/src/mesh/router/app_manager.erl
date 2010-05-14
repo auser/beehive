@@ -435,21 +435,11 @@ ping_bees() ->
   
 % MAINTAIN THE ETS TABLES
 flush_old_processes() ->
-  lists:map(fun({Pid, App, Time}) ->
-    case date_util:now_to_seconds() - Time > ?ACTION_TIMEOUT of
-      false -> ok;
-      true ->
-        ets:delete(?UPDATERS_PID_TO_APP, Pid),
-        ets:delete(?UPDATERS_APP_TO_PID, App)
-    end
+  lists:map(fun(Tuple) ->
+    try_to_clean_up_ets_tables(?UPDATERS_APP_TO_PID, ?UPDATERS_PID_TO_APP, Tuple)
   end, ets:tab2list(?UPDATERS_PID_TO_APP)),
-  lists:map(fun({Pid, App, Time}) ->
-    case date_util:now_to_seconds() - Time > ?ACTION_TIMEOUT of
-      false -> ok;
-      true ->
-        ets:delete(?LAUNCHERS_PID_TO_APP, Pid),
-        ets:delete(?LAUNCHERS_APP_TO_PID, App)
-    end
+  lists:map(fun(Tuple) ->
+    try_to_clean_up_ets_tables(?LAUNCHERS_APP_TO_PID, ?LAUNCHERS_PID_TO_APP, Tuple)
   end, ets:tab2list(?LAUNCHERS_PID_TO_APP)),
   ok.
 
@@ -539,14 +529,8 @@ start_new_instance_by_name(Name) ->
 
 start_new_instance_by_app(App) ->
   case ets:lookup(?LAUNCHERS_APP_TO_PID, App) of
-    [{_App, Pid, Time}] -> 
-      ?LOG(info, "Cannot launch app as there is already one in progress (timeout: ~p > ~p)", [date_util:now_to_seconds() - Time, ?ACTION_TIMEOUT]),
-      case date_util:now_to_seconds() - Time > ?ACTION_TIMEOUT of
-        true ->
-          ets:delete(?LAUNCHERS_APP_TO_PID, App),
-          ets:delete(?LAUNCHERS_PID_TO_APP, Pid);
-        false -> ok
-      end,
+    [Tuple] -> 
+      try_to_clean_up_ets_tables(?LAUNCHERS_APP_TO_PID, ?LAUNCHERS_PID_TO_APP, Tuple),
       already_starting_instance;
     _ ->
       app_launcher_fsm_go(?LAUNCHERS_APP_TO_PID, ?LAUNCHERS_PID_TO_APP, launch, App)
@@ -554,30 +538,32 @@ start_new_instance_by_app(App) ->
   
 update_instance_by_app(App) ->
   case ets:lookup(?UPDATERS_APP_TO_PID, App) of
-    [{_App, Pid, Time}] -> 
-      ?LOG(info, "Cannot launch app as there is already one in progress (timeout: ~p)", [date_util:now_to_seconds() - Time]),
-      case date_util:now_to_seconds() - Time > ?ACTION_TIMEOUT of
-        true ->
-          ets:delete(?UPDATERS_PID_TO_APP, Pid),
-          ets:delete(?UPDATERS_APP_TO_PID, App);
-        false -> ok
-      end,
+    [Tuple] -> 
+      try_to_clean_up_ets_tables(?UPDATERS_PID_TO_APP, ?UPDATERS_APP_TO_PID, Tuple),
       already_updating_instance;
     _ ->
       app_launcher_fsm_go(?UPDATERS_APP_TO_PID, ?UPDATERS_PID_TO_APP, update, App)
   end.
 
 % PRIVATE
-app_launcher_fsm_go(Table1, Table2, Method, App) ->
+app_launcher_fsm_go(AppToPidTable, PidToAppTable, Method, App) ->
   case App#app.type of
     static -> ok;
     _T -> 
       Now = date_util:now_to_seconds(),
       {ok, P} = app_launcher_fsm:start_link(App, self()),
       apply(app_launcher_fsm, Method, [P]),
-      ets:insert(Table1, {App, P, Now}), 
-      ets:insert(Table2, {P, App, Now}), 
+      ets:insert(AppToPidTable, {App, P, Now}), 
+      ets:insert(PidToAppTable, {P, App, Now}), 
       P
+  end.
+
+try_to_clean_up_ets_tables(AppToPidTable, PidToAppTable, {App, Pid, Time}) ->
+  case date_util:now_to_seconds() - Time > ?ACTION_TIMEOUT of
+    true ->
+      ets:delete(PidToAppTable, Pid),
+      ets:delete(AppToPidTable, App);
+    false -> ok
   end.
 
 % Kill off all other bees
