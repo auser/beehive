@@ -110,6 +110,9 @@ request(Socket, Body) ->
         {error, closed} ->
             gen_tcp:close(Socket),
             exit(normal);
+        {error, timeout} ->
+            gen_tcp:close(Socket),
+            exit(normal);            
         _Other ->
             handle_invalid_request(Socket)
     end.

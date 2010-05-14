@@ -44,10 +44,15 @@ start_link(Args) ->
 %%--------------------------------------------------------------------
 init(Args) ->
   StorageSrv = {the_storage_server, {bh_storage_srv, start_link, []}, permanent, 2000, worker, dynamic},
-  % _BabySitter  = {the_babysitter,{babysitter, start_link,[Args]}, permanent, 2000, worker, dynamic},
+  BabySitter  = {the_babysitter,{babysitter, start_link,[Args]}, permanent, 2000, worker, dynamic},
   _GitServer  = {the_git_server,{bh_git_srv, start_link,[]}, permanent, 2000, worker, dynamic},
   
-  {ok,{{one_for_one,5,10}, [StorageSrv]}}.
+  AppsToStart = case whereis(babysitter) of
+    undefined -> [StorageSrv, BabySitter];
+    _ -> [StorageSrv]
+  end,
+  
+  {ok,{{one_for_one,5,10}, AppsToStart}}.
 
 %%====================================================================
 %% Internal functions
