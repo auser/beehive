@@ -70,13 +70,17 @@ char *test_pm_add_env() {
 char *test_starting_a_process()
 {
   process_t *test_process = NULL;
+  pid_t pid;
   pm_new_process(&test_process);
   
   mu_assert(!pm_malloc_and_set_attribute(&test_process->command, "/bin/sleep 8"), "copy command failed");
-  pid_t pid = pm_run_and_spawn_process(test_process);
+  pid = pm_run_and_spawn_process(test_process);
   mu_assert(kill(pid, 0) == 0, "process did not start");
   
   kill(pid, SIGKILL); // Kill it entirely
+  
+  mu_assert(!pm_malloc_and_set_attribute(&test_process->command, ""), "copy command failed");
+  pid = pm_run_and_spawn_process(test_process);
   
   pm_free_process(test_process); return 0;
 }

@@ -81,6 +81,8 @@ enum BabysitterActionT ei_decode_command_call_into_process(char *buf, process_t 
           case CD:
           case DO_BEFORE:
           case DO_AFTER:
+          case STDOUT:
+          case STDERR:
           case ENV: {
             int size;
             ei_get_type(buf, &index, &type, &size); 
@@ -100,6 +102,10 @@ enum BabysitterActionT ei_decode_command_call_into_process(char *buf, process_t 
               pm_malloc_and_set_attribute(&process->before, value);
             else if (opt == DO_AFTER)
               pm_malloc_and_set_attribute(&process->after, value);
+            else if (opt == STDOUT)
+              pm_malloc_and_set_attribute(&process->stdout, value);
+            else if (opt == STDERR)
+              pm_malloc_and_set_attribute(&process->stderr, value);
 
             free(value);
           }
@@ -108,11 +114,6 @@ enum BabysitterActionT ei_decode_command_call_into_process(char *buf, process_t 
             long lval;
             ei_decode_long(buf, &index, &lval);
             process->nice = lval;
-          }
-          break;
-          case STDOUT:
-          case STDERR: {
-            // Put this somewhere
           }
           break;
           default:

@@ -30,6 +30,8 @@ typedef struct _process_t_ {
   char*   before;
   char*   after;
   char*   cd;
+  char*   stdout;
+  char*   stderr;
   int     nice;
   pid_t   pid;            // Used only when kill is the action
   int     transId;        // Communication id

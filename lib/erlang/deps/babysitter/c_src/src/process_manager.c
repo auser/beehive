@@ -248,7 +248,13 @@ pid_t pm_execute(int should_wait, const char* command, const char *cd, int nice,
   char **command_argv = {0};
   int command_argc = 0;
   int running_script = 0;
-    
+  
+  char* chomped_string = str_chomp(command);
+  char* safe_chomped_string = str_safe_quote(chomped_string);
+  
+  // If there is nothing here, don't run anything :)
+  if (!strncmp(safe_chomped_string, "", strlen(safe_chomped_string))) return 1;
+  
   // Now actually RUN it!
   pid_t pid;
   if (should_wait)
@@ -256,8 +262,6 @@ pid_t pm_execute(int should_wait, const char* command, const char *cd, int nice,
   else
     pid = fork();
   
-  char* chomped_string = str_chomp(command);
-  char* safe_chomped_string = str_safe_quote(chomped_string);
   if (expand_command((const char*)safe_chomped_string, &command_argc, &command_argv, &running_script)) ;
   command_argv[command_argc] = 0;
   
