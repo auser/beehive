@@ -151,33 +151,8 @@ handle_call(_Request, _From, State) ->
 % request_to_start_new_bee_by_app(App) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_app, App}).
 
 handle_cast({request_to_update_app, App}, State) ->
-  erlang:display({request_to_update_app, ets:lookup(?UPDATERS_APP_TO_PID, App)}),
-  case ets:lookup(?UPDATERS_APP_TO_PID, App) of
-    [{_App, _Pid, Time}] -> 
-      ?LOG(info, "Cannot launch app as there is already one in progress (timeout: ~p)", [date_util:now_to_seconds() - Time]),
-      already_updating_app;
-    _ ->
-      Now = date_util:now_to_seconds(),
-      Pid = node_manager:get_next_available(storage),
-      Node = node(Pid),
-      ets:insert(?UPDATERS_APP_TO_PID, {App, Pid, Now}),
-      ets:insert(?UPDATERS_PID_TO_APP, {Pid, App, Now}),
-      Self = self(),
-      case rpc:call(Node, bh_storage_srv, fetch_or_build_bee, [App, Self]) of
-        {bee_built, _Proplists} -> 
-          % NewApp = apps:update_proplist_for_app(App, Proplists),
-          case start_new_instance_by_app(App) of
-            true -> 
-              ets:delete(?UPDATERS_PID_TO_APP, Pid),
-              ets:delete(?UPDATERS_APP_TO_PID, App),
-              ok;
-            Else ->
-              erlang:display({start_new_instance_by_app, in, request_to_start_new_bee_by_app, Else})
-          end;
-        Else ->
-          Else
-      end
-  end,
+  erlang:display({request_to_update_app, App}),
+  update_instance_by_app(App),
   {noreply, State};
   
 handle_cast({request_to_start_new_bee_by_app, App}, State) ->
@@ -566,30 +541,30 @@ start_new_instance_by_app(App) ->
   case ets:lookup(?LAUNCHERS_APP_TO_PID, App) of
     [{_App, _Pid, Time}] -> 
       ?LOG(info, "Cannot launch app as there is already one in progress (timeout: ~p)", [date_util:now_to_seconds() - Time]),
-      ok;
+      already_starting_instance;
     _ -> 
-    case node_manager:get_next_available(node) of
-      false -> false;
-      Host ->
-        Node = node(Host),
-        case App#app.type of
-          static -> ok;
-          _T -> spawn_to_start_new_instance(App, Node)
-        end
-      end
+      app_launcher_fsm_go(?LAUNCHERS_APP_TO_PID, launch, App)
   end.
   
-% Start with the app_launcher_fsm
-spawn_to_start_new_instance(App, Host) when is_record(App, app) ->
-  case App#app.sha of
-    undefined ->
-      ?NOTIFY({app, app_not_squashed, App});
-    Sha ->
-      {ok, P} = app_launcher_fsm:start_link(App, Host, Sha),
+update_instance_by_app(App) ->
+  erlang:display({request_to_update_app, ets:lookup(?UPDATERS_APP_TO_PID, App)}),
+  case ets:lookup(?UPDATERS_APP_TO_PID, App) of
+    [{_App, _Pid, Time}] -> 
+      ?LOG(info, "Cannot launch app as there is already one in progress (timeout: ~p)", [date_util:now_to_seconds() - Time]),
+      already_updating_app;
+    _ ->
+      app_launcher_fsm_go(?UPDATERS_APP_TO_PID, update, App)
+  end.
+
+% PRIVATE
+app_launcher_fsm_go(Table, Method, App) ->
+  case App#app.type of
+    static -> ok;
+    _T -> 
       Now = date_util:now_to_seconds(),
-      app_launcher_fsm:launch(P, self()),
-      ets:insert(?LAUNCHERS_APP_TO_PID, {App, P, Now}),
-      ets:insert(?LAUNCHERS_PID_TO_APP, {P, App, Now})
+      {ok, P} = app_launcher_fsm:start_link(App, self()),
+      apply(app_launcher_fsm, Method, [P]),
+      ets:insert(Table, {App, P, Now})
   end.
 
 % Kill off all other bees

@@ -12,11 +12,17 @@
 -behaviour(gen_fsm).
 
 %% API
--export([start_link/3]).
+-export([start_link/2]).
 
+% methods
+-export ([
+  launch/1,
+  update/1
+]).
 % states
 -export ([
-  launch/2,
+  preparing/2,
+  updating/2,
   launching/2,
   pending/2
 ]).
@@ -39,8 +45,8 @@
 %%====================================================================
 %% API
 %%====================================================================
-launch(Pid, From) ->
-  gen_fsm:send_event(Pid, {launch, From}).
+update(Pid) -> gen_fsm:send_event(Pid, {update}).
+launch(Pid) -> gen_fsm:send_event(Pid, {launch}).
   
 %%--------------------------------------------------------------------
 %% Function: start_link() -> ok,Pid} | ignore | {error,Error}
@@ -48,8 +54,8 @@ launch(Pid, From) ->
 %% initialize. To ensure a synchronized start-up procedure, this function
 %% does not return until Module:init/1 has returned.
 %%--------------------------------------------------------------------
-start_link(App, Host, Sha) ->
-  gen_fsm:start_link(?MODULE, [App, Host, Sha], []).
+start_link(App, From) ->
+  gen_fsm:start_link(?MODULE, [App, From], []).
 
 %%====================================================================
 %% gen_fsm callbacks
@@ -63,8 +69,8 @@ start_link(App, Host, Sha) ->
 %% gen_fsm:start_link/3,4, this function is called by the new process to
 %% initialize.
 %%--------------------------------------------------------------------
-init([App, Host, Sha]) ->
-  {ok, launching, #state{app = App, host = Host, latest_sha = Sha}}.
+init([App, From]) ->
+  {ok, preparing, #state{app = App, from = From, bee = #bee{}}}.
 
 %%--------------------------------------------------------------------
 %% Function:
@@ -78,15 +84,39 @@ init([App, Host, Sha]) ->
 %% the current state name StateName is called to handle the event. It is also
 %% called if a timeout occurs.
 %%--------------------------------------------------------------------
-launching({launch, From}, #state{app = App, host = Host, latest_sha = Sha} = State) ->
+preparing({update}, #state{app = App} = State) ->
+  Pid = node_manager:get_next_available(storage),
+  Node = node(Pid),
   Self = self(),
-  io:format("Calling ~p, app_handler:start_new_instance(~p, ~p, ~p)~n", [Host, App, Sha, App#app.sha]),
+  rpc:cast(Node, bh_storage_srv, rebuild_bee, [App, Self]),
+  {next_state, updating, State};
+
+preparing({launch}, #state{host = Host} = State) ->
   case Host of
     false -> {stop, no_node_found, State};
     _ ->
-      rpc:cast(Host, app_handler, start_new_instance, [App, Sha, Self, From]),
-      {next_state, launching, State#state{from = From}}
+      NewState = start_instance(State),
+      {next_state, launching, NewState}
   end;
+
+preparing(Other, State) ->
+  {stop, {received_unknown_message, {preparing, Other}}, State}.
+
+updating({bee_built, Info}, #state{bee = Bee, app = App} = State) ->
+  erlang:display({?MODULE, bee_built, Info}),
+  % Strip off the last newline... stupid bash
+  BeeSize = proplists:get_value(bee_size, Info),
+  Sha = proplists:get_value(sha, Info),
+
+  NewApp = App#app{sha = Sha},
+  NewBee = Bee#bee{bee_size = BeeSize, commit_hash = Sha},
+  % Grr
+  NewState0 = State#state{bee = NewBee, app = NewApp, latest_sha = Sha},
+  NewState = start_instance(NewState0),
+  {next_state, launching, NewState};
+
+updating(Msg, State) ->
+  {stop, {received_unknown_message, {updating, Msg}}, State}.
 
 launching({started_bee, Be}, State) ->
   bees:create(Be),
@@ -211,3 +241,8 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
+start_instance(#state{from = From, app = App, bee = Bee, latest_sha = Sha} = State) ->
+  Pid = node_manager:get_next_available(node),
+  Node = node(Pid),
+  rpc:cast(Node, app_handler, start_new_instance, [App, Sha, self(), From]),
+  State#state{bee = Bee#bee{host_node = Node}}.

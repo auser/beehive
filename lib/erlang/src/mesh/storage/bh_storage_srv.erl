@@ -218,7 +218,6 @@ build_bee(App, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} 
         {ok, OsPid} ->
           Resp1 = bees:meta_data(FinalLocation, EnvFileLocation),
           Resp = lists:flatten([{os_pid, OsPid}|Resp1]),
-          erlang:display({build_bee, bee_built, Resp}),
           {bee_built, Resp};
         Else ->
           {error, {babysitter, Else}}
