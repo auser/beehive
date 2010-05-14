@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% File    : app_launcher_fsm.erl
+%%% File    : app_killer_fsm.erl
 %%% Author  : Ari Lerner
 %%% Description : 
 %%%
 %%% Created :  Wed Nov 18 17:30:15 PST 2009
 %%%-------------------------------------------------------------------
 
--module (app_launcher_fsm).
+-module (app_killer_fsm).
 -include ("beehive.hrl").
 -include ("common.hrl").
 -behaviour(gen_fsm).
@@ -16,15 +16,14 @@
 
 % methods
 -export ([
-  launch/1,
-  update/1
+  kill/1
 ]).
 % states
 -export ([
   preparing/2,
-  updating/2,
-  launching/2,
-  pending/2
+  killing/2,
+  unmounting/2,
+  cleaning_up/2
 ]).
 
 %% gen_fsm callbacks
@@ -34,10 +33,7 @@
 -define(SERVER, ?MODULE).
 
 -record (state, {
-  app,
-  latest_sha,
-  host,
-  port,
+  node,
   bee,
   from
 }).
@@ -45,8 +41,7 @@
 %%====================================================================
 %% API
 %%====================================================================
-update(Pid) -> gen_fsm:send_event(Pid, {update}).
-launch(Pid) -> gen_fsm:send_event(Pid, {launch}).
+kill(Pid) -> gen_fsm:send_event(Pid, {kill}).
   
 %%--------------------------------------------------------------------
 %% Function: start_link() -> ok,Pid} | ignore | {error,Error}
@@ -54,8 +49,8 @@ launch(Pid) -> gen_fsm:send_event(Pid, {launch}).
 %% initialize. To ensure a synchronized start-up procedure, this function
 %% does not return until Module:init/1 has returned.
 %%--------------------------------------------------------------------
-start_link(App, From) ->
-  gen_fsm:start_link(?MODULE, [App, From], []).
+start_link(Bee, From) ->
+  gen_fsm:start_link(?MODULE, [Bee, From], []).
 
 %%====================================================================
 %% gen_fsm callbacks
@@ -69,8 +64,8 @@ start_link(App, From) ->
 %% gen_fsm:start_link/3,4, this function is called by the new process to
 %% initialize.
 %%--------------------------------------------------------------------
-init([App, From]) ->
-  {ok, preparing, #state{app = App, from = From, bee = #bee{}}}.
+init([Bee, From]) ->
+  {ok, preparing, #state{from = From, bee = Bee}}.
 
 %%--------------------------------------------------------------------
 %% Function:
@@ -84,68 +79,38 @@ init([App, From]) ->
 %% the current state name StateName is called to handle the event. It is also
 %% called if a timeout occurs.
 %%--------------------------------------------------------------------
-preparing({update}, #state{app = App} = State) ->
-  Pid = node_manager:get_next_available(storage),
-  Node = node(Pid),
-  Self = self(),
-  rpc:cast(Node, bh_storage_srv, rebuild_bee, [App, Self]),
-  {next_state, updating, State};
-
-preparing({launch}, #state{host = Host, app = App} = State) ->
-  case Host of
-    false -> {stop, no_node_found, State};
-    _ ->
-      NewState = start_instance(State#state{latest_sha = App#app.sha}),
-      {next_state, launching, NewState}
-  end;
+preparing({kill}, #state{bee = #bee{host_node = Node} = Bee} = State) ->
+  true = rpc:cast(Node, app_handler, stop_instance, [Bee, self()]),
+  {next_state, killing, State};
 
 preparing(Other, State) ->
   {stop, {received_unknown_message, {preparing, Other}}, State}.
 
-updating({bee_built, Info}, #state{bee = Bee, app = App} = State) ->
-  % Strip off the last newline... stupid bash
-  BeeSize = proplists:get_value(bee_size, Info),
-  Sha = proplists:get_value(sha, Info),
+killing({bee_terminated, Bee}, #state{bee = #bee{host_node = Node} = Bee} = State) ->
+  true = rpc:cast(Node, app_handler, unmount_instance, [Bee, self()]),
+  {next_state, unmounting, State};
 
-  NewApp = App#app{sha = Sha},
-  NewBee = Bee#bee{bee_size = BeeSize, commit_hash = Sha},
-  % Grr
-  NewState0 = State#state{bee = NewBee, app = NewApp, latest_sha = Sha},
-  NewState = start_instance(NewState0),
-  {next_state, launching, NewState};
+killing(Msg, State) ->
+  {stop, {received_unknown_message, {unmounting, Msg}}, State}.
 
-updating(Msg, State) ->
-  {stop, {received_unknown_message, {updating, Msg}}, State}.
-
-launching({started_bee, Be}, State) ->
-  bees:create(Be),
+unmounting({bee_unmounted, #bee{host_node = Node} = Bee}, State) ->
   Self = self(),
-  ?LOG(info, "spawn_update_bee_status: ~p for ~p, ~p", [Be, Self, 20]),
-  app_manager:spawn_update_bee_status(Be, Self, 20),
-  {next_state, pending, State#state{bee = Be}};
+  ?LOG(info, "spawn_update_bee_status: ~p for ~p, ~p", [Bee, Self, 1]),
+  app_manager:spawn_update_bee_status(Bee, Self, 1),
+  true = rpc:cast(Node, app_handler, cleanup_instance, [Bee, self()]),
+  {next_state, cleaning_up, State#state{bee = Bee}};
 
-launching({error, Code}, State) ->
-  CodeAtom = case Code of
-    1 -> could_not_add_user;
-    2 -> could_not_start_app;
-    3 -> count_not_mount_app;
-    4 -> could_not_unmount_old_processes
-  end,
-  {stop, {error, CodeAtom}, State};
+unmounting({error, Msg}, State) ->
+  {stop, {error, Msg}, State}.
 
-launching(Event, State) ->
-  ?LOG(info, "Uncaught event: ~p while in state: ~p ~n", [Event, launching]),
-  {next_state, launching, State}.
-
-pending({updated_bee_status, BackendStatus}, #state{app = App, bee = Bee, from = From, latest_sha = Sha} = State) ->
-  ?LOG(info, "Application started ~p: ~p", [BackendStatus, App#app.name]),
+cleaning_up({bee_cleaned_up, Bee}, #state{from = From} = State) ->
   % App started normally
-  From ! {bee_started_normally, Bee#bee{status = BackendStatus}, App#app{sha = Sha}},
+  From ! {bee_terminated, Bee#bee{status = down}},
   {stop, normal, State};
   
-pending(Event, State) ->
-  ?LOG(info, "Got uncaught event in pending state: ~p", [Event]),
-  {next_state, pending, State}.
+cleaning_up(Event, State) ->
+  ?LOG(info, "Got uncaught event in cleaning_up state: ~p", [Event]),
+  {next_state, cleaning_up, State}.
   
 state_name(Event, State) ->
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, state_name]),
@@ -240,8 +205,3 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-start_instance(#state{from = From, app = App, bee = Bee, latest_sha = Sha} = State) ->
-  Pid = node_manager:get_next_available(node),
-  Node = node(Pid),
-  rpc:cast(Node, app_handler, start_new_instance, [App, Sha, self(), From]),
-  State#state{bee = Bee#bee{host_node = Node}}.

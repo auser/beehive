@@ -17,7 +17,8 @@
   stop/0,
   start_new_instance/4,
   update_instance/3,
-  stop_instance/1, stop_app/2,
+  stop_instance/2, cleanup_instance/2, unmount_instance/2,
+  stop_app/2,
   can_deploy_new_app/0,
   has_app_named/1,
   seed_nodes/1
@@ -64,9 +65,12 @@ start_new_instance(App, Sha, AppLauncher, From) ->
 update_instance(App, AppLauncher, From) ->
   gen_cluster:call(?SERVER, {update_instance, App, AppLauncher, From}).
 
-stop_instance(Bee) when is_record(Bee, bee) -> gen_cluster:call(?SERVER, {stop_instance, Bee});
-stop_instance(Else) ->
-  erlang:display({error, Else}).
+stop_instance(Bee, From) when is_record(Bee, bee) -> gen_cluster:cast(?SERVER, {stop_instance, Bee, From});
+stop_instance(Else, _) -> {error, Else}.
+unmount_instance(Bee, From) when is_record(Bee, bee) -> gen_cluster:cast(?SERVER, {unmount_instance, Bee, From});
+unmount_instance(Else, _) -> {error, Else}.
+cleanup_instance(Bee, From) when is_record(Bee, bee) -> gen_cluster:cast(?SERVER, {cleanup_instance, Bee, From});
+cleanup_instance(Else, _) -> {error, Else}.
 
 has_app_named(Name) ->
   gen_cluster:call(?SERVER, {has_app_named, Name}).
@@ -119,9 +123,6 @@ handle_call({update_instance, App, AppLauncher, From}, _From, State) ->
   internal_update_instance(App, AppLauncher, From),
   {reply, ok, State};
 
-handle_call({stop_instance, Bee}, _From, State) ->
-  {reply, internal_stop_instance(Bee, State), State};
-
 handle_call({has_app_named, Name}, _From, State) ->
   Reply = case ets:lookup(?TAB_NAME_TO_BEE, Name) of
       [{Name, _Bee}] -> true;
@@ -145,6 +146,15 @@ handle_call(_Request, _From, State) ->
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
 % Good spot for optimization
+handle_cast({stop_instance, Bee, From}, State) ->
+  spawn(fun() -> From ! internal_stop_instance(Bee, State) end),
+  {noreply, State};
+handle_cast({unmount_instance, Bee, From}, State) ->
+  spawn(fun() -> From ! internal_unmount_instance(Bee, State) end),
+  {noreply, State};
+handle_cast({cleanup_instance, Bee, From}, State) ->
+  spawn(fun() -> From ! internal_cleanup_instance(Bee, State) end),
+  {noreply, State};
 handle_cast({stop_app, App, _From}, State) ->
   AppBees = lists:flatten(ets:match(?TAB_NAME_TO_BEE, {App#app.name, '$1'})),
   
@@ -272,34 +282,10 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
   Port = proplists:get_value(port, PropLists),
   ImagePath = proplists:get_value(bee_image, PropLists),
   StorageNode = proplists:get_value(storage_node, PropLists),
-  
-  ScratchDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("tmp"), storage),
-  RunningDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("run"), storage),
-  LogDisk     = config:search_for_application_value(log_path,     ?BH_RELATIVE_DIR("application_logs"), beehive),
-  
-  WorkingDir = filename:join([ScratchDisk, App#app.name]),
-  RunningDir = filename:join([RunningDisk, App#app.name]),
-  LogDir     = filename:join([LogDisk, App#app.name]),
-  
+    
   HostIp = bh_host:myip(),
   Id = {App#app.name, HostIp, Port},
   StartedAt = date_util:now_to_seconds(),
-  
-  OtherOpts = [
-    {bee_image, ImagePath},
-    {host_ip, HostIp},
-    {port, misc_utils:to_list(Port)},
-    {log_directory, misc_utils:to_list(LogDir)},
-    {start_time, misc_utils:to_list(StartedAt)},
-    {working_directory, WorkingDir},
-    {run_dir, RunningDir}
-  ],
-  EnvOpts = apps:build_app_env(App, OtherOpts),
-  lists:map(fun(Dir) -> file:make_dir(Dir) end, [ScratchDisk, WorkingDir, RunningDisk, RunningDir, LogDisk, LogDir]),
-  CmdOpts = lists:flatten([{cd, RunningDir}, EnvOpts]),
-  
-  % StartProplist = ?APP_TEMPLATE_SHELL_SCRIPT_PARSED(Template, Vars, DefaultProps),
-  % AppRootPath = proplists:get_value(path, Proplist1),
   
   Bee  = #bee{
     id                      = Id,
@@ -314,13 +300,17 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
     start_time              = StartedAt
   },
   
+  {ok, _App, CmdOpts1} = bees:build_app_env(Bee),
+  CmdOpts = lists:flatten([
+    {bee_image, ImagePath}, 
+    CmdOpts1]),
+      
   io:format("------ App handler using babysitter spawn_new: ~p~n", [CmdOpts]),
   case babysitter:run(App#app.template, start, CmdOpts) of
     {ok, Pid, OsPid} ->
       NewBee = Bee#bee{pid = Pid, os_pid = OsPid},
       ets:insert(?TAB_ID_TO_BEE, {Id, NewBee}),
       ets:insert(?TAB_NAME_TO_BEE, {App#app.name, NewBee}),
-      
       AppLauncher ! {started_bee, NewBee},
       NewBee;
     Else ->
@@ -355,50 +345,44 @@ find_bee_on_storage_nodes(App, Sha, [Node|Rest]) ->
   end.
 
 % kill the instance of the application  
-internal_stop_instance(#bee{
-                            port        = Port, 
-                            host        = Host, 
-                            app_name    = AppName,
-                            commit_hash = Sha,
-                            start_time  = StartedAt
-                        } = Bee, _State) ->  
-  case apps:find_by_name(AppName) of 
-    [] -> {error, not_associated_with_an_app};
-    App ->
-      ScratchDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("tmp"), storage),
-      RunningDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("run"), storage),
-      LogDisk     = config:search_for_application_value(log_path, ?BH_RELATIVE_DIR("log"), beehive),
-  
-      WorkingDir = filename:join([ScratchDisk, AppName]),
-      RunningDir = filename:join([RunningDisk, AppName]),
-      LogDir     = filename:join([LogDisk, AppName]),
-  
-      OtherOpts = [
-        {host_ip, Host},
-        {sha, Sha},
-        {port, misc_utils:to_list(Port)},
-        {start_time, misc_utils:to_list(StartedAt)},
-        {log_directory, LogDir},
-        {working_directory, WorkingDir},
-        {run_dir, RunningDir}
-      ],
-      EnvOpts = apps:build_app_env(App, OtherOpts),
-      lists:map(fun(Dir) -> file:make_dir(Dir) end, [ScratchDisk, WorkingDir, RunningDisk, RunningDir]),
-      CmdOpts = lists:flatten([{cd, RunningDir}, EnvOpts]),
-  
-      io:format("------ App handler using babysitter spawn_new: ~p~n", [CmdOpts]),
+internal_stop_instance(Bee, _State) ->  
+  case bees:build_app_env(Bee) of
+    {error, _} = T -> T;
+    {ok, App, CmdOpts} ->
       case babysitter:run(App#app.template, stop, CmdOpts) of
-        {ok, _Pid, _OsPid} ->
-          case ets:lookup(?TAB_ID_TO_BEE, {App#app.name, Host, Port}) of
+        {ok, _OsPid} ->
+          case ets:lookup(?TAB_ID_TO_BEE, Bee#bee.id) of
             [{Key, _B}] ->
-              ets:delete(?TAB_NAME_TO_BEE, App#app.name),
-              ets:delete(?TAB_ID_TO_BEE, Key);
+              catch ets:delete(?TAB_NAME_TO_BEE, App#app.name),
+              catch ets:delete(?TAB_ID_TO_BEE, Key);
             _ -> true
           end,      
           {bee_terminated, Bee};
         Else -> {error, Else}
       end
   end.
+
+internal_unmount_instance(Bee, _State) ->
+  case bees:build_app_env(Bee) of
+    {error, _} = T -> 
+      T;
+    {ok, App, CmdOpts} ->
+      case babysitter:run(App#app.template, unmount, CmdOpts) of
+        {ok, _OsPid} -> {bee_unmounted, Bee};
+        Else -> {error, Else}
+      end
+  end.
+
+internal_cleanup_instance(Bee, _State) ->
+  case bees:build_app_env(Bee) of
+    {error, _} = T -> T;
+    {ok, App, CmdOpts} ->
+      case babysitter:run(App#app.template, cleanup, CmdOpts) of
+        {ok, _OsPid} -> {bee_cleaned_up, Bee};
+        Else -> {error, Else}
+      end
+  end.
   
+
 handle_pid_exit(_Pid, _Reason, State) ->
   State.

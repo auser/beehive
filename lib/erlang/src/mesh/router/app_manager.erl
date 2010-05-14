@@ -151,7 +151,6 @@ handle_call(_Request, _From, State) ->
 % request_to_start_new_bee_by_app(App) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_app, App}).
 
 handle_cast({request_to_update_app, App}, State) ->
-  erlang:display({request_to_update_app, App}),
   update_instance_by_app(App),
   {noreply, State};
   
@@ -167,7 +166,11 @@ handle_cast({request_to_start_new_bee_by_name, Name}, State) ->
   {noreply, State};
 
 handle_cast({request_to_terminate_bee, Bee}, State) ->
-  app_handler:stop_instance(Bee),
+  % rpc:cast(Node, app_handler, stop_instance, [Bee]),
+  % app_killer_fsm
+  {ok, P} = app_killer_fsm:start_link(Bee, self()),
+  erlang:link(P),
+  app_killer_fsm:kill(P),  
   {noreply, State};
 
 handle_cast({garbage_collection}, State) ->
