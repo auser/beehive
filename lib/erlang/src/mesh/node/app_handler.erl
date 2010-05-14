@@ -232,7 +232,7 @@ internal_start_new_instance(App, Sha, Port, AppLauncher, From) ->
         Error -> Error
       end;
     E -> 
-      io:format("Error: ~p~n", [E]),
+      io:format("[~p] Error: ~p~n", [?MODULE, E]),
       E
   end.
 
