@@ -211,7 +211,8 @@ build_bee(App, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} 
         {squashed_file, FinalLocation},
         {repos, ReposUrl}
       ],
-      CmdOpts = apps:build_app_env(App, OtherOpts),
+      EnvOpts = apps:build_app_env(App, OtherOpts),
+      CmdOpts = lists:flatten([{cd, SquashedDir}|EnvOpts]),
       
       case babysitter:run(App#app.template, bundle, CmdOpts) of
         {ok, _OsPid} ->

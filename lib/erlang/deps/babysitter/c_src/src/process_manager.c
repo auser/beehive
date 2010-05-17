@@ -81,6 +81,8 @@ int pm_free_process(process_t *p)
   if (p->before) free(p->before);
   if (p->after) free(p->after);
   if (p->cd) free(p->cd);
+  if (p->stdout) free(p->stdout);
+  if (p->stderr) free(p->stderr);
   
   int i = 0;
   for (i = 0; i < p->env_c; i++) free(p->env[i]);
@@ -249,11 +251,8 @@ pid_t pm_execute(int should_wait, const char* command, const char *cd, int nice,
   int command_argc = 0;
   int running_script = 0;
   
-  char* chomped_string = str_chomp(command);
-  char* safe_chomped_string = str_safe_quote(chomped_string);
-  
   // If there is nothing here, don't run anything :)
-  if (!strncmp(safe_chomped_string, "", strlen(safe_chomped_string))) return 1;
+  if (strlen(command) == 0) return -1;
   
   // Now actually RUN it!
   pid_t pid;
@@ -262,6 +261,8 @@ pid_t pm_execute(int should_wait, const char* command, const char *cd, int nice,
   else
     pid = fork();
   
+  char* chomped_string = str_chomp(command);
+  char* safe_chomped_string = str_safe_quote(chomped_string);
   if (expand_command((const char*)safe_chomped_string, &command_argc, &command_argv, &running_script)) ;
   command_argv[command_argc] = 0;
   
@@ -302,6 +303,7 @@ pid_t pm_execute(int should_wait, const char* command, const char *cd, int nice,
 
 int wait_for_pid(pid_t pid)
 {
+  if (pid < 0) return pid;
   if (kill(pid, 0) == 0) {
     int childExitStatus;
     waitpid(pid, &childExitStatus, 0);

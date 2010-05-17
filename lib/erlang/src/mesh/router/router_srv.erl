@@ -168,7 +168,7 @@ handle_call({Pid, get_bee, Hostname}, From, State) ->
       end,
       case choose_bee({Hostname, AppMod, MetaParam}, From, Pid) of
     	  ?MUST_WAIT_MSG -> 
-    	    timer:apply_after(3000, ?MODULE, maybe_handle_next_waiting_client, [Hostname]),
+    	    timer:apply_after(1000, ?MODULE, maybe_handle_next_waiting_client, [Hostname]),
     	    {noreply, State};
     	  {ok, Backend} -> 
     	    {reply, {ok, Backend}, State};
@@ -352,6 +352,7 @@ maybe_handle_next_waiting_client(Name, State) ->
     empty -> ok;
     % If the request was made at conn_timeout seconds ago
     {value, {_Hostname, From, _Pid, InsertTime}} when InsertTime > TOTime ->
+      ?LOG(info, "Still not a timeout: ~p > ~p", [InsertTime, TOTime]),
       gen_cluster:reply(From, ?BACKEND_TIMEOUT_MSG),
       maybe_handle_next_waiting_client(Name, State);
     {value, {{Hostname, _AppMod, _RoutingParam} = Tuple, From, Pid, _InsertTime}} ->

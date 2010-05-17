@@ -108,25 +108,25 @@ int terminate_all()
 int decode_and_run_erlang(unsigned char *buf, int len)
 {
   process_t *process;
+  pid_t pid;
+  int err = 0;
   enum BabysitterActionT action = ei_decode_command_call_into_process((char *)buf, &process);
   
   switch (action) {
-    case BS_RUN: {
-      pid_t pid;
-      if ((pid = pm_run_and_spawn_process(process)) < 0) return -1;
+    case BS_RUN:
+      if ((pid = pm_run_and_spawn_process(process)) < 0) ei_error(write_handle, process->transId, "Error: %d", (int)pid);
       ei_pid_ok(write_handle, process->transId, pid);
-    }
     break;
     case BS_STATUS:
       ei_pid_status(write_handle, process->transId, process->pid, pm_check_pid_status(process->pid));
     break;
     case BS_KILL:
-      if (pm_kill_process(process)) return -1;
+      if ((err = pm_kill_process(process))) ei_error(write_handle, process->transId, "Error: %d", (int)err);
       ei_pid_status_term(write_handle, process->transId, process->pid, kill(process->pid, 0));
     break;
     case BS_EXEC: {
       pid_t pid;
-      if ((pid = pm_run_process(process)) < 0) return -1;
+      if ((pid = pm_run_process(process)) < 0) ei_error(write_handle, process->transId, "Error: %d", (int)pid);
       ei_pid_ok(write_handle, process->transId, pid);
     }
     break;

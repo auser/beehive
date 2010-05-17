@@ -165,12 +165,15 @@ handle_cast({request_to_start_new_bee_by_name, Name}, State) ->
   end,
   {noreply, State};
 
-handle_cast({request_to_terminate_bee, Bee}, State) ->
+handle_cast({request_to_terminate_bee, #bee{status = Status} = Bee}, State) when Status =:= ready ->
   % rpc:cast(Node, app_handler, stop_instance, [Bee]),
   % app_killer_fsm
   {ok, P} = app_killer_fsm:start_link(Bee, self()),
   erlang:link(P),
   app_killer_fsm:kill(P),  
+  {noreply, State};
+
+handle_cast({request_to_terminate_bee, _Bee}, State) ->
   {noreply, State};
 
 handle_cast({garbage_collection}, State) ->
@@ -289,8 +292,7 @@ spawn_update_bee_status(Bee, From, Nums) ->
   spawn(fun() ->
     BeeStatus = try_to_connect_to_new_instance(Bee, Nums),
     RealBee = bees:find_by_id(Bee#bee.id),
-    Saved = bees:save(RealBee#bee{status = BeeStatus}),
-    ?LOG(info, "spawn_update_bee_status: ~p result: ~p", [BeeStatus, Saved]),
+    bees:save(RealBee#bee{status = BeeStatus}),
     From ! {updated_bee_status, BeeStatus}
   end).
 
