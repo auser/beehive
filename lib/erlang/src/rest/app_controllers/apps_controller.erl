@@ -63,8 +63,8 @@ post([], Data) ->
 
   % Not sure about this... yet as far as authentication goes
 post([Name, "restart"], _Data) ->
-  Response = case ?NOTIFY({app, restart, Name}) of
-    ok -> {"app", <<"restarting">>};
+  Response = case apps:restart_by_name(Name) of
+    {ok, _} -> {"app", <<"restarting">>};
     _E -> {"app", <<"error">>}
   end,
   {struct, ?BINIFY([Response])};
@@ -77,6 +77,13 @@ post([Name, "deploy"], _Data) ->
   end,
   {struct, ?BINIFY([Response])};
     
+post([Name, "expand"], _Data) ->
+  Response = case apps:expand_by_name(Name) of
+    {ok, _} -> {"app", <<"Expanding...">>};
+    _ -> {"app", <<"error">>}
+  end,
+  {struct, ?BINIFY([Response])};
+
 post(_Path, _Data) -> <<"unhandled">>.
 
 put([Name], Data) ->

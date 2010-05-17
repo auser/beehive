@@ -12,10 +12,11 @@
 -behaviour(gen_fsm).
 
 %% API
--export([start_link/2]).
+-export([start_link/1]).
 
 % methods
 -export ([
+  start_new/1,
   launch/1,
   update/1
 ]).
@@ -39,12 +40,14 @@
   host,
   port,
   bee,
+  updating = false,
   from
 }).
 
 %%====================================================================
 %% API
 %%====================================================================
+start_new(Pid) -> gen_fsm:send_event(Pid, {start_new}).
 update(Pid) -> gen_fsm:send_event(Pid, {update}).
 launch(Pid) -> gen_fsm:send_event(Pid, {launch}).
   
@@ -54,8 +57,8 @@ launch(Pid) -> gen_fsm:send_event(Pid, {launch}).
 %% initialize. To ensure a synchronized start-up procedure, this function
 %% does not return until Module:init/1 has returned.
 %%--------------------------------------------------------------------
-start_link(App, From) ->
-  gen_fsm:start_link(?MODULE, [App, From], []).
+start_link(Opts) ->
+  gen_fsm:start_link(?MODULE, [Opts], []).
 
 %%====================================================================
 %% gen_fsm callbacks
@@ -69,8 +72,11 @@ start_link(App, From) ->
 %% gen_fsm:start_link/3,4, this function is called by the new process to
 %% initialize.
 %%--------------------------------------------------------------------
-init([App, From]) ->
-  {ok, preparing, #state{app = App, from = From, bee = #bee{}}}.
+init([Proplist]) ->
+  App = proplists:get_value(app, Proplist),
+  From = proplists:get_value(caller, Proplist),
+  Updating = proplists:get_value(updating, Proplist),
+  {ok, preparing, #state{app = App, from = From, updating = Updating, bee = #bee{}}}.
 
 %%--------------------------------------------------------------------
 %% Function:
@@ -99,13 +105,17 @@ preparing({launch}, #state{host = Host, app = App} = State) ->
       {next_state, launching, NewState}
   end;
 
+preparing({start_new}, State) ->
+  self() ! {bee_built, []},
+  {next_state, updating, State};
+
 preparing(Other, State) ->
   {stop, {received_unknown_message, {preparing, Other}}, State}.
 
 updating({bee_built, Info}, #state{bee = Bee, app = App} = State) ->
   % Strip off the last newline... stupid bash
-  BeeSize = proplists:get_value(bee_size, Info),
-  Sha = proplists:get_value(sha, Info),
+  BeeSize = proplists:get_value(bee_size, Info, Bee#bee.bee_size),
+  Sha = proplists:get_value(sha, Info, Bee#bee.commit_hash),
 
   NewApp = App#app{sha = Sha},
   NewBee = Bee#bee{bee_size = BeeSize, commit_hash = Sha},
@@ -137,10 +147,13 @@ launching(Event, State) ->
   ?LOG(info, "Uncaught event: ~p while in state: ~p ~n", [Event, launching]),
   {next_state, launching, State}.
 
-pending({updated_bee_status, BackendStatus}, #state{app = App, bee = Bee, from = From, latest_sha = Sha} = State) ->
+pending({updated_bee_status, BackendStatus}, #state{app = App, bee = Bee, from = From, latest_sha = Sha, updating = Updating} = State) ->
   ?LOG(info, "Application started ~p: ~p", [BackendStatus, App#app.name]),
   % App started normally
-  From ! {bee_started_normally, Bee#bee{status = BackendStatus}, App#app{sha = Sha}},
+  case Updating of
+    true -> From ! {bee_updated_normally, Bee#bee{status = BackendStatus}, App#app{sha = Sha}};
+    false -> From ! {bee_started_normally, Bee#bee{status = BackendStatus}, App#app{sha = Sha}}
+  end,
   {stop, normal, State};
   
 pending(Event, State) ->

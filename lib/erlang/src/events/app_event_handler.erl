@@ -41,17 +41,20 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_event({app, updated, App}, State) ->
   % We want the app to rebuild, so we'll remove the sha and force it to rebuild
-  app_manager:request_to_update_app(App),
+  handle_update_app(App),
   {ok, State};
 
 handle_event({app, restart, App}, State) ->
   handle_restart_app(App),
   {ok, State};
-  
+
+handle_event({app, expand, App}, State) ->
+  handle_expand_app(App),
+  {ok, State};
+
 % Fired when the squashed app has not been found
 handle_event({app, app_not_squashed, App}, State) ->
-  ?LOG(info, "app_not_squashed yet: ~p", [App#app.name]),
-  app_manager:request_to_update_app(App),
+  handle_update_app(App),
   {ok, State};
 
 handle_event({app, request_to_start_new_bee, App}, State) when is_record(App, app) ->
@@ -115,3 +118,5 @@ code_change(_OldVsn, State, _Extra) ->
 % INTERNAL METHODS
 handle_restart_app(App) when is_record(App, app) -> app_manager:request_to_terminate_all_bees(App#app.name);
 handle_restart_app(Name) -> app_manager:request_to_terminate_all_bees(Name).
+handle_expand_app(App) -> app_manager:request_to_expand_app(App).
+handle_update_app(App) -> app_manager:request_to_update_app(App).

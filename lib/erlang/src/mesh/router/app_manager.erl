@@ -25,6 +25,7 @@
   request_to_start_new_bee_by_name/1,
   request_to_start_new_bee_by_app/1,
   request_to_update_app/1,
+  request_to_expand_app/1,
   request_to_terminate_bee/1,
   garbage_collection/0
 ]).
@@ -59,6 +60,7 @@ terminate_app_instances(Appname) -> gen_server:cast(?SERVER, {terminate_app_inst
 add_application(ConfigProplist) -> gen_server:call(?SERVER, {add_application_by_configuration, ConfigProplist}).
 
 request_to_update_app(App) -> gen_server:cast(?SERVER, {request_to_update_app, App}).
+request_to_expand_app(App) -> gen_server:cast(?SERVER, {request_to_expand_app, App}).
 request_to_start_new_bee_by_app(App) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_app, App}).
 request_to_start_new_bee_by_name(Name) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_name, Name}).
 request_to_terminate_bee(Bee) -> gen_server:cast(?SERVER, {request_to_terminate_bee, Bee}).
@@ -153,6 +155,10 @@ handle_call(_Request, _From, State) ->
 handle_cast({request_to_update_app, App}, State) ->
   update_instance_by_app(App),
   {noreply, State};
+
+handle_cast({request_to_expand_app, App}, State) ->
+  expand_instance_by_app(App),
+  {noreply, State};
   
 handle_cast({request_to_start_new_bee_by_app, App}, State) ->
   start_new_instance_by_app(App),
@@ -246,7 +252,7 @@ handle_info({'EXIT', Pid, _Reason}, State) ->
   end,
   {ok, State};
   
-handle_info({bee_started_normally, #bee{commit_hash = Sha} = Bee, #app{name = AppName} = App}, State) ->
+handle_info({bee_updated_normally, #bee{commit_hash = Sha} = Bee, #app{name = AppName} = App}, State) ->
   % StartedBee#bee{commit_hash = Sha}, App#app{sha = Sha}
   ?LOG(debug, "app_event_handler got bee_started_normally: ~p, ~p", [Bee, App]),
   apps:transactional_save(fun() ->
@@ -260,6 +266,8 @@ handle_info({bee_started_normally, #bee{commit_hash = Sha} = Bee, #app{name = Ap
   ok = kill_other_bees(Bee),
   {noreply, State};
 
+handle_info({bee_started_normally, _Bee, _App}, State) ->
+  {noreply, State};
 
 handle_info(Info, State) ->
   ?LOG(info, "app_manager got: ~p", [Info]),
@@ -538,25 +546,28 @@ start_new_instance_by_app(App) ->
       try_to_clean_up_ets_tables(?LAUNCHERS_APP_TO_PID, ?LAUNCHERS_PID_TO_APP, Tuple),
       already_starting_instance;
     _ ->
-      app_launcher_fsm_go(?LAUNCHERS_APP_TO_PID, ?LAUNCHERS_PID_TO_APP, launch, App)
+      app_launcher_fsm_go(?LAUNCHERS_APP_TO_PID, ?LAUNCHERS_PID_TO_APP, launch, App, false)
   end.
   
 update_instance_by_app(App) ->
   case ets:lookup(?UPDATERS_APP_TO_PID, App) of
     [Tuple] -> 
-      try_to_clean_up_ets_tables(?UPDATERS_PID_TO_APP, ?UPDATERS_APP_TO_PID, Tuple),
+      try_to_clean_up_ets_tables(?UPDATERS_APP_TO_PID, ?UPDATERS_PID_TO_APP, Tuple),
       already_updating_instance;
     _ ->
-      app_launcher_fsm_go(?UPDATERS_APP_TO_PID, ?UPDATERS_PID_TO_APP, update, App)
+      app_launcher_fsm_go(?UPDATERS_APP_TO_PID, ?UPDATERS_PID_TO_APP, update, App, true)
   end.
 
+expand_instance_by_app(App) -> start_new_instance_by_app(App).
+
 % PRIVATE
-app_launcher_fsm_go(AppToPidTable, PidToAppTable, Method, App) ->
+app_launcher_fsm_go(AppToPidTable, PidToAppTable, Method, App, Updating) ->
   case App#app.type of
     static -> ok;
     _T -> 
       Now = date_util:now_to_seconds(),
-      {ok, P} = app_launcher_fsm:start_link(App, self()),
+      StartOpts = [{app, App}, {caller, self()}, {updating, Updating}],
+      {ok, P} = app_launcher_fsm:start_link(StartOpts),
       apply(app_launcher_fsm, Method, [P]),
       ets:insert(AppToPidTable, {App, P, Now}), 
       ets:insert(PidToAppTable, {P, App, Now}), 

@@ -19,6 +19,8 @@
   create/1,
   update/2, 
   update_by_name/1,
+  restart_by_name/1,
+  expand_by_name/1,
   delete/1, new/1, 
   save/1,
   transactional_save/1,
@@ -73,6 +75,23 @@ update_by_name(Name) ->
     App -> 
       NewApp = App#app{updated_at = date_util:now_to_seconds()},
       ?NOTIFY({app, updated, NewApp}),
+      {ok, create(NewApp)}
+  end.
+
+expand_by_name(Name) ->
+  case find_by_name(Name) of
+    [] -> {error, "Cannot find app"};
+    App ->
+      ?NOTIFY({app, expand, App}),
+      {ok, App}
+  end.
+
+restart_by_name(Name) ->
+  case find_by_name(Name) of
+    [] -> {error, "Cannot find app"};
+    App ->
+      NewApp = App#app{updated_at = date_util:now_to_seconds()},
+      ?NOTIFY({app, restart, NewApp}),
       {ok, create(NewApp)}
   end.
 
