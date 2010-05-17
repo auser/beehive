@@ -417,27 +417,6 @@ clean_up_on_long_running_instance(#bee{start_time = StartTime} = Bee, _App, Prop
     true -> Proplist
   end.
 
-% TODO: reimplement?
-% load_static_configs() ->
-  % {ok, Files} = file:list_dir(?CONFIGS_DIR),
-  % lists:map(fun(Filename) ->
-  %   case filename:extension(Filename) of
-  %     ".yaml" -> load_app_config_from_yaml_file(filename:join(?CONFIGS_DIR, Filename), ".yaml");
-  %     _ ->
-  %       ok
-  %   end
-  % end, Files).
-
-% load_app_config_from_yaml_file(Filepath, Ext) ->
-%   O1 = yaml:parse_file(Filepath),
-%   O = misc_utils:atomize(O1, []),
-%   Name = case proplists:is_defined(name, O) of
-%     true  -> proplists:get_value(name, O);
-%     false -> filename:basename(Filepath, Ext)
-%   end,
-%   update_app_configuration(O, #app{name = Name}, #state{}),
-%   ok.
-
 % MAINTENANCE
 ping_bees() ->
   ReadyBees = lists:filter(fun(B) -> B#bee.status =:= ready end, bees:all()),
