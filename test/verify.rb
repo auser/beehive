@@ -9,7 +9,7 @@ class VerifyCloud < Test::Unit::TestCase
   attr_reader :host, :token
   
   def setup
-    @host="getbeehive.com"
+    @host="localhost:8080"
     @token = get_token("root@getbeehive.com", 'test')
   end
   

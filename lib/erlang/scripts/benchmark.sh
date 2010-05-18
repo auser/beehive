@@ -35,7 +35,7 @@ print_version() {
 cat <<EOF
 $progname $version
 
-Copyright (C) 2009 Ari Lerner
+Copyright (C) 2010 Ari Lerner
 EOF
 }
 

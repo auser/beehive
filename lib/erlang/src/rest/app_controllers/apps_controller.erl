@@ -118,6 +118,8 @@ compile_app_details(App) ->
       {"routing_param", App#app.routing_param}, 
       {"owners", lists:map(fun(Owner) -> Owner#user.email end, user_apps:get_owners(App))}, 
       {"updated_at", App#app.updated_at},
+      {"type", misc_utils:to_list(App#app.type)},
+      {"template", misc_utils:to_list(App#app.template)},
       {"bee_picker", App#app.bee_picker}
     ], []).
 
