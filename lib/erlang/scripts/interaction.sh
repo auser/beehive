@@ -17,5 +17,8 @@ curl -i $HOST/apps
 # Update the app
 curl -i -XPOST -d"{\"name\":\"beehive\", \"token\":$TOKEN}" $HOST/apps/beehive/deploy
 
+# Expand the app
+curl -i -XPOST -d"{\"name\":\"beehive\", \"token\":$TOKEN}" $HOST/apps/beehive/expand
+
 # Delete the app we added
 curl -i -XDELETE -d"{\"token\":\"$TOKEN\"}" $HOST/apps/beehive
