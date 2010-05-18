@@ -3,7 +3,7 @@
   {description, "Beehive app"},
   {vsn, "0.1"},
   {id, "beehive_srv"},
-  {modules,      []},
+  {modules,      [beehive_app,beehive_sup]},
   {registered,   []},
   {applications, [kernel, stdlib]},
   {mod, {beehive, []}},

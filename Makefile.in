@@ -13,6 +13,17 @@ all:
 	@(echo @PACKAGE_VERSION@ > VERSION)	
 	@(cd lib/erlang;$(MAKE) boot)
 
+release:
+	@(rm -rf rel/beehive rel/reltool.config)
+	@(ln rel/beehive.config rel/reltool.config)
+	@echo Generating erlang release
+	@(make rel_erlang)
+
+rel_erlang:
+	@(cd rel; ./rebar generate)
+	@(cd rel; $(MAKE))
+	@rm -rf rel/reltool.config
+
 erl:
 	@(cd lib/erlang;$(MAKE); $(MAKE) boot)
 
