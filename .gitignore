@@ -24,3 +24,4 @@ lib/erlang/Makefile
 VERSION
 configure
 Makefile
+deps
