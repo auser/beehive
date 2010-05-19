@@ -25,3 +25,4 @@ VERSION
 configure
 Makefile
 deps
+rel/beehive
