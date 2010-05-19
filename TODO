@@ -1,27 +1,19 @@
 TODO:
-* Investigate other databases as the distributed DB is not as "crucial" as speed of access (such as couchdb)
+* Investigate other databases as the distributed DB is not as "crucial" as speed of access (such as couchdb/riak)
 * Clean up generally
 * Add more finely grained ACL
 * Update master mnesia node from seed node and distribute
 * Take a nice long look at the permissions of the chroot environment on the node layer
-* Add sample starting environments
-* Throw error message when db cannot be created
 * Add stats dumping to file
 * Remove needless db queries in proxy process
 * Throw error for creating duplicate users/apps/bees
 * Add job-queue to handle tasks -> queue-driven
-* Investigate BERT-RPC
 * Force not updating apps after they terminate
 * Ensure apps update only on call, not otherwise
-* Add automated test scripts to watch processes
 * Add more eunit tests
-* Add router_srv to all node types
-* Fix race condition with restart/deploy for when a restart is issued when there is a startup going on. Add padding/queue?
 * Fix bee_timeout when app is starting
 * Oauth? Http/basic
 * Authentication for REST
 * Vacation
-* Add babysitter in
-* App environment setup (allow for modular app environments?)
 * Bug - /apps deploy with min/max instances
-* Bug - Find when device is busy unmounting...
+* Separate application code into clean segments
