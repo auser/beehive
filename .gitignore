@@ -5,12 +5,8 @@ pkg/*
 pkg
 erl_crash.dump
 logs
-test/include
-web/
 *.sw?
 .DS_Store
-coverage
-rdoc
 pkg
 VERSION
 deps
