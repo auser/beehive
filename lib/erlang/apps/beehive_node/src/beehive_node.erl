@@ -14,15 +14,7 @@
 -export([start/2, stop/1]).
 
 start(_Type, Args) -> 
-  lists:map(fun(App) ->
-    io:format("---> starting ~p~n", [App]),
-    App:start()
-  end, [crypto]),
   beehive_node_sup:start_link(Args).
 
-stop(State) -> 
-  io:format("Stopping beehive bee server...~n"),
-  lists:map(fun(App) ->
-    io:format("---> stopping ~p~n", [App]),
-    App:stop(State)
-  end, [crypto]).
+stop(_State) -> 
+  ok.

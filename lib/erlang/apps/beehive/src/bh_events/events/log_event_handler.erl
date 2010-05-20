@@ -125,7 +125,7 @@ ensure_logfile_exists(FullFilepath) ->
 
 write(Level, _File, _Line, Message, #state{log_handle = Handle, log_level = LogLevel} = State) ->
   Msg = io_lib:format("[~s] [~p] ~s\r\n", [httpd_util:rfc1123_date(), Level, Message]),
-  write_to_file(LogLevel, Handle, Msg),
+  write_to_sasl(LogLevel, Handle, Msg),
   case LogLevel of
     0 -> ok;
     _ -> write_to_console(Msg)
@@ -133,7 +133,7 @@ write(Level, _File, _Line, Message, #state{log_handle = Handle, log_level = LogL
   State.
 
 write_to_console(Msg) -> io:format("~s", [Msg]).
-write_to_file(Level, Fd, Msg) ->
+write_to_sasl(Level, Fd, Msg) ->
   case Level of
     ?QUIET -> ok;
     _ -> io:format(Fd, "~s", [Msg])

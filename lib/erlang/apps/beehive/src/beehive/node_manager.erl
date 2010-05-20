@@ -4,6 +4,7 @@
 %% @doc The basic node_manager to manage the different nodes in beehive
 -module (node_manager).
 -include ("beehive.hrl").
+-include ("common.hrl").
 
 -behaviour(gen_cluster).
 -define (DEBUG, false).
@@ -277,8 +278,10 @@ get_server_load([H|Rest], Acc) ->
   get_server_load(Rest, [{H, Stat}|Acc]).
 
 read_babysitter_config() ->
-  DefaultConfigDir = filename:join([misc_utils:base_dir(), "etc", "app_templates"]),
-  ConfigDir       = misc_utils:to_list(config:search_for_application_value(app_config_dir, DefaultConfigDir, beehive)),
+  DefaultConfigDir = filename:join([?BH_ROOT, "etc", "app_templates"]),
+  ConfigDir       = misc_utils:to_list(
+                      config:search_for_application_value(app_config_dir, DefaultConfigDir, beehive)
+                    ),
   try
     babysitter_config:read(ConfigDir)
   catch _X:Reason ->

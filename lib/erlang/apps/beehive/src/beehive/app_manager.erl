@@ -429,10 +429,10 @@ ping_bees() ->
 flush_old_processes() ->
   lists:map(fun(Tuple) ->
     try_to_clean_up_ets_tables(?UPDATERS_APP_TO_PID, ?UPDATERS_PID_TO_APP, Tuple)
-  end, ets:tab2list(?UPDATERS_PID_TO_APP)),
+  end, ets:tab2list(?UPDATERS_APP_TO_PID)),
   lists:map(fun(Tuple) ->
     try_to_clean_up_ets_tables(?LAUNCHERS_APP_TO_PID, ?LAUNCHERS_PID_TO_APP, Tuple)
-  end, ets:tab2list(?LAUNCHERS_PID_TO_APP)),
+  end, ets:tab2list(?LAUNCHERS_APP_TO_PID)),
   ok.
 
 % GARBAGE COLLECTION
@@ -554,10 +554,11 @@ app_launcher_fsm_go(AppToPidTable, PidToAppTable, Method, App, Updating) ->
   end.
 
 try_to_clean_up_ets_tables(AppToPidTable, PidToAppTable, {App, Pid, Time}) ->
+  erlang:display({try_to_clean_up_ets_tables, App#app.name, date_util:now_to_seconds() - Time, ?ACTION_TIMEOUT}),
   case date_util:now_to_seconds() - Time > ?ACTION_TIMEOUT of
     true ->
-      ets:delete(PidToAppTable, Pid),
-      ets:delete(AppToPidTable, App);
+      true = ets:delete(PidToAppTable, Pid),
+      true = ets:delete(AppToPidTable, App);
     false -> ok
   end.
 

@@ -247,8 +247,8 @@ handle_offsite_repos_lookup(AppName) ->
   end.
 
 handle_lookup_squashed_repos(#app{sha = CurrentAppSha } = App, Sha, State) ->
-  erlang:display({handle_lookup_squashed_repos, CurrentAppSha, Sha, ?BH_RELATIVE_DIR("squashed")}),
   SquashedDir = config:search_for_application_value(squashed_storage, ?BH_RELATIVE_DIR("squashed"), storage),
+  erlang:display({handle_lookup_squashed_repos, SquashedDir}),
   case handle_find_application_location(App, SquashedDir) of
     false -> false;
     FullFilePath ->

@@ -194,12 +194,6 @@ nodename(Node) -> lists:takewhile(fun(Chr) -> Chr =/= $@ end, atom_to_list(Node)
 atomize([], Acc) -> Acc;
 atomize([{K,V}|Rest], Acc) -> atomize(Rest, [{misc_utils:to_atom(K), V}|Acc]).
 
-base_dir() ->
-  case code:priv_dir(beehive) of
-    {error, bad_name} -> filename:join([filename:dirname(code:which(?MODULE)), "..", ".."]);
-    Dir -> filename:join([filename:dirname(Dir), "..", ".."])
-  end.
-
 % Reload all the beehive modules
 reload_code() ->
   F = fun(M) -> 

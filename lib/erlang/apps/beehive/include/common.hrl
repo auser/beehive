@@ -19,8 +19,11 @@ end()).
 
 % Root of the modules
 -define (BH_ROOT, fun() ->
-  filename:dirname(filename:dirname(code:which(?MODULE)))
-  end()).
+  case code:priv_dir(beehive) of
+    {error, bad_name} -> filename:join([filename:dirname(code:which(?MODULE)), "..", ".."]);
+    Dir -> filename:join([filename:dirname(Dir), "..", ".."])
+  end
+end()).
 
 % Defined beehive home path
 -define (BEEHIVE_HOME_DIR, fun() ->
