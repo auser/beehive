@@ -110,11 +110,13 @@ maybe_handle_next_waiting_client(Name) ->
 %%          ignore               |
 %%          {stop, Reason}
 %%----------------------------------------------------------------------
-init(Args) ->
-  process_flag(trap_exit, true),
-  LocalPort = proplists:get_value(local_port, Args, 8080),
-  ConnTimeout = proplists:get_value(connection_timeout, Args, 30),
-  ActTimeout = proplists:get_value(activity_timeout, Args, 10),
+init(_Args) ->
+  process_flag(trap_exit, true),  
+  LocalPort   = config:search_for_application_value(client_port, 8080,     router),
+  ConnTimeout = config:search_for_application_value(connection_timeout, 120*1000, router),
+  ActTimeout  = config:search_for_application_value(activity_timeout, 120*1000, router),
+  
+  erlang:display([{connection_timeout, ConnTimeout}, {activity_timeout, ActTimeout}]),
   
   Pid     = whereis(tcp_socket_server),
   
@@ -352,8 +354,8 @@ maybe_handle_next_waiting_client(Name, State) ->
   case ?QSTORE:pop(?WAIT_DB, Name) of
     empty -> ok;
     % If the request was made at conn_timeout seconds ago
-    {value, {_Hostname, From, _Pid, InsertTime}} when InsertTime > TOTime ->
-      ?LOG(info, "Still not a timeout: ~p > ~p", [InsertTime, TOTime]),
+    {value, {_Hostname, From, _Pid, InsertTime}} when InsertTime < TOTime ->
+      ?LOG(info, "Still not a timeout: ~p", [InsertTime - TOTime]),
       gen_cluster:reply(From, ?BACKEND_TIMEOUT_MSG),
       maybe_handle_next_waiting_client(Name, State);
     {value, {{Hostname, _AppMod, _RoutingParam} = Tuple, From, Pid, _InsertTime}} ->
@@ -362,8 +364,9 @@ maybe_handle_next_waiting_client(Name, State) ->
         % Clearly we are not ready for another bee connection request. :(
         % choose_bee puts the request in the pending queue, so we don't have
         % to take care of that here
-        {reply, {ok, Bee}, _State} -> gen_cluster:reply(From, {ok, Bee});
-        {noreply, _} -> ok
+        {reply, {ok, Bee}, _NewState} -> gen_cluster:reply(From, {ok, Bee});
+        {reply, {error, Reason}, _NewState} -> gen_cluster:reply(From, {error, Reason});
+        {noreply, _NewState} ->  ok
       end
   end.
   

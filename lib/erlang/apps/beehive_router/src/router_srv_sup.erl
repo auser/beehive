@@ -42,9 +42,9 @@ start_link() -> supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 %% to find out about restart strategy, maximum restart frequency and child
 %% specifications.
 %%--------------------------------------------------------------------
-init(Args) ->
+init([]) ->
   % gen_cluster:start_link({local, Name}, Mod, RealArgs, Opts);
-  AppSrv  = {the_router_srv,{gen_cluster, start_link, [{local, router_srv}, router_srv, Args, []]}, permanent,2000,worker,dynamic},
+  AppSrv  = {router_srv,{gen_cluster, start_link, [{local, router_srv}, router_srv, [], []]}, permanent,2000,worker,dynamic},
   RestServer  = ?CHILD(rest_server_sup, worker),
   
   ShouldRunRestServer = config:search_for_application_value(run_rest_server, true, beehive),
