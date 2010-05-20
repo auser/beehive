@@ -3,7 +3,20 @@ Beehive
 
 ## What is Beehive?
 
-Beehive is an application-level, service as a service framework. It makes it easy to deploy an application into a multi-tenant environment, such as the clouds.
+  * Distributed router
+  * Application deployment tool
+  * Written in erlang, c and ruby
+  * Scalable
+  * Application load-balancer
+  * Template-able
+  * Configurable
+  * And much more
+
+## Quickstart ##
+
+    make rel
+    chmod u+x ./rel/beehive/bin/beehive
+    ./rel/beehive/bin/beehive console
 
 How it works
 ===
