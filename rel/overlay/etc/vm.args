@@ -1,6 +1,6 @@
 
 ## Name of the node
--name beehive@127.0.0.1
+-sname beehive
 
 ## Cookie for distributed erlang
 -setcookie beehive
