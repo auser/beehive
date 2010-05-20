@@ -554,7 +554,6 @@ app_launcher_fsm_go(AppToPidTable, PidToAppTable, Method, App, Updating) ->
   end.
 
 try_to_clean_up_ets_tables(AppToPidTable, PidToAppTable, {App, Pid, Time}) ->
-  erlang:display({try_to_clean_up_ets_tables, App#app.name, date_util:now_to_seconds() - Time, ?ACTION_TIMEOUT}),
   case date_util:now_to_seconds() - Time > ?ACTION_TIMEOUT of
     true ->
       true = ets:delete(PidToAppTable, Pid),

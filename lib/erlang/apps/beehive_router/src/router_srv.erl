@@ -164,19 +164,7 @@ handle_call({Pid, get_bee, Hostname}, From, State) ->
         App ->
           pick_mod_and_meta_from_app(App)
       end,
-      case choose_bee({Hostname, AppMod, MetaParam}, From, Pid) of
-    	  ?MUST_WAIT_MSG -> 
-    	    timer:apply_after(1000, ?MODULE, maybe_handle_next_waiting_client, [Hostname]),
-    	    {noreply, State};
-    	  {ok, Backend} -> 
-    	    {reply, {ok, Backend}, State};
-    	  {error, Reason} -> 
-    	    ?LOG(error, "handle_call (~p:~p) failed because: ~p, ~p", [?MODULE, ?LINE, Reason, Hostname]),
-    	    {reply, {error, Reason}, State};
-    	  Else ->
-    	    ?LOG(error, "Got weird response in get_bees: ~p", [Else]),
-    	    {noreply, State}
-      end
+      try_to_choose_bee_or_wait({Hostname, AppMod, MetaParam}, From, Pid, State)
   end;
 handle_call({get_proxy_state}, _From, State) ->
   Reply = State,
@@ -272,6 +260,21 @@ handle_leave(_LeavingPid, _Pidlist, _Info, State) ->
 %%%----------------------------------------------------------------------
 %%% Internal functions
 %%%----------------------------------------------------------------------
+try_to_choose_bee_or_wait({Hostname, AppMod, MetaParam}, From, Pid, State) ->
+  case choose_bee({Hostname, AppMod, MetaParam}, From, Pid) of
+	  ?MUST_WAIT_MSG -> 
+	    timer:apply_after(1000, ?MODULE, maybe_handle_next_waiting_client, [Hostname]),
+	    {noreply, State};
+	  {ok, Backend} -> 
+	    {reply, {ok, Backend}, State};
+	  {error, Reason} -> 
+	    ?LOG(error, "handle_call (~p:~p) failed because: ~p, ~p", [?MODULE, ?LINE, Reason, Hostname]),
+	    {reply, {error, Reason}, State};
+	  Else ->
+	    ?LOG(error, "Got weird response in get_bees: ~p", [Else]),
+	    {noreply, State}
+  end.
+  
 choose_bee({Name, _, _} = Tuple, From, FromPid) ->
   case choose_bee(Tuple) of
 	  {ok, Backend} -> {ok, Backend};
@@ -355,12 +358,12 @@ maybe_handle_next_waiting_client(Name, State) ->
       maybe_handle_next_waiting_client(Name, State);
     {value, {{Hostname, _AppMod, _RoutingParam} = Tuple, From, Pid, _InsertTime}} ->
       ?LOG(info, "Handling Q: ~p (~p)", [Hostname, Tuple]),
-      case choose_bee(Tuple, From, Pid) of
+      case try_to_choose_bee_or_wait(Tuple, From, Pid, State) of
         % Clearly we are not ready for another bee connection request. :(
         % choose_bee puts the request in the pending queue, so we don't have
         % to take care of that here
-        ?MUST_WAIT_MSG -> ok;
-        {ok, B} -> gen_cluster:reply(From, {ok, B})
+        {reply, {ok, Bee}, _State} -> gen_cluster:reply(From, {ok, Bee});
+        {noreply, _} -> ok
       end
   end.
   
