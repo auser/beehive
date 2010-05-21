@@ -11,3 +11,4 @@ pkg
 VERSION
 deps
 rel/beehive
+node.log

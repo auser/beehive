@@ -21,7 +21,7 @@ end()).
 -define (BH_ROOT, fun() ->
   case code:priv_dir(beehive) of
     {error, bad_name} -> filename:join([filename:dirname(code:which(?MODULE)), "..", ".."]);
-    Dir -> filename:join([filename:dirname(Dir), "..", ".."])
+    Dir -> filename:join([filename:dirname(Dir), "..", "..", "..", ".."])
   end
 end()).
 

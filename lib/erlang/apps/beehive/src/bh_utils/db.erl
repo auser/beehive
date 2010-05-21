@@ -47,8 +47,10 @@ start(Nodes) ->
   ok.
 
 dir() -> 
-  {ok, Dir} = application:get_env(mnesia, dir),
-  Dir.
+  case application:get_env(mnesia, dir) of
+    {ok, Dir} -> Dir;
+    _Else -> config:search_for_application_value(database_dir, "/var/beehive/db", beehive)
+  end.
   % mnesia:system_info(directory).
 
 ensure_running() ->
