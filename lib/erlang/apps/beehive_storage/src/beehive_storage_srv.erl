@@ -74,16 +74,13 @@ start_link() ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
-  erlang:display({?MODULE, init}),
-  Opts = [named_table, set],
-  
   ScratchDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("tmp"), storage),
   SquashedDir = config:search_for_application_value(squashed_storage, ?BH_RELATIVE_DIR("squashed"), storage),
   
   lists:map(fun(Dir) ->
-    case filelib:is_dir(SquashedDir) of
+    case filelib:is_dir(Dir) of
       true -> ok;
-      false -> filelib:ensure_dir(SquashedDir)
+      false -> filelib:ensure_dir(Dir)
     end
   end, [ScratchDisk, SquashedDir]),
   
