@@ -7,6 +7,7 @@
 %%%-------------------------------------------------------------------
 
 -module (sanity_checks).
+-include ("common.hrl").
 
 -export ([check/1]).
 
