@@ -179,7 +179,7 @@ build_app_env(App, Other) ->
     build_env({name, App#app.name}),
     build_env({repos, App#app.url}),
     build_env({sha, App#app.sha}),
-    build_env({path, "$PATH:/usr/bin:/usr/local/bin:/bin"}),
+    build_env({path, "$BEEHIVE_PATH:/usr/bin:/usr/local/bin:/bin"}),
     OtherEnvs
   ]).
 
