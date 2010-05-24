@@ -77,9 +77,19 @@ init([]) ->
   erlang:display({?MODULE, init}),
   Opts = [named_table, set],
   
+  ScratchDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("tmp"), storage),
+  SquashedDir = config:search_for_application_value(squashed_storage, ?BH_RELATIVE_DIR("squashed"), storage),
+  
+  lists:map(fun(Dir) ->
+    case filelib:is_dir(SquashedDir) of
+      true -> ok;
+      false -> filelib:ensure_dir(SquashedDir)
+    end
+  end, [ScratchDisk, SquashedDir]),
+  
   {ok, #state{
-    scratch_disk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("tmp"), storage),
-    squashed_disk = config:search_for_application_value(squashed_storage, ?BH_RELATIVE_DIR("squashed"), storage)
+    scratch_disk = ScratchDisk,
+    squashed_disk = SquashedDir
   }}.
 
 %%--------------------------------------------------------------------
@@ -246,9 +256,7 @@ handle_offsite_repos_lookup(AppName) ->
     _ -> false
   end.
 
-handle_lookup_squashed_repos(#app{sha = CurrentAppSha } = App, Sha, State) ->
-  SquashedDir = config:search_for_application_value(squashed_storage, ?BH_RELATIVE_DIR("squashed"), storage),
-  erlang:display({handle_lookup_squashed_repos, SquashedDir}),
+handle_lookup_squashed_repos(#app{sha = CurrentAppSha } = App, Sha, #state{squashed_disk = SquashedDir} = State) ->
   case handle_find_application_location(App, SquashedDir) of
     false -> false;
     FullFilePath ->
