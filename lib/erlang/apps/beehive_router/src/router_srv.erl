@@ -144,7 +144,7 @@ handle_call({Pid, get_bee, Hostname}, From, State) ->
   % and router_srv. 
   case Hostname of
     base ->
-      Port = config:search_for_application_value(beehive_app_port, 4999, router), 
+      Port = config:search_for_application_value(app_port, 4999, router), 
       Host = {127,0,0,1},
       Id = {Hostname, Host, Port},
       
