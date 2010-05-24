@@ -29,8 +29,7 @@ check_db_directory() ->
           case filelib:ensure_dir(Dir) of
             ok -> ok;
             _ -> 
-              RootDir = config:search_for_application_value(root_dir, "/var/beehive", beehive),
-              MnesiaDir = filename:join(RootDir, "db"),
+              MnesiaDir = filename:join(?BEEHIVE_HOME, "db"),
               application:set_env(mnesia, dir, MnesiaDir)
             % erlang:throw({error, {db_directory, no_exists, Dir}})
           end

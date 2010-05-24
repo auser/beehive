@@ -26,15 +26,15 @@ end()).
 end()).
 
 % Defined beehive home path
--define (BEEHIVE_HOME_DIR, fun() ->
+-define (BEEHIVE_HOME, fun() ->
   case os:getenv("BEEHIVE_HOME") of
     false -> "/var/lib/beehive";
     E -> E
   end
 end()).
+-define (BEEHIVE_DIR (List), filename:join([?BEEHIVE_HOME, lists:flatten(List)])).
 
 -define (USER_OR_BH (List), bh_file_utils:relative_or_abs_path(List)).
--define (BH_RELATIVE_DIR (List), filename:join([?BEEHIVE_HOME_DIR, List])).
 
 % Figure this out... Hm
 -define (SHELL_SCRIPTS_DIR, ?USER_OR_BH("shell_templates")).

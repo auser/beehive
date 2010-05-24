@@ -44,7 +44,7 @@
 %% this function is called to initialize the event handler.
 %%--------------------------------------------------------------------
 init([]) ->
-  LogPath  = misc_utils:to_list(config:search_for_application_value(log_path, "./logs", beehive)),
+  LogPath  = misc_utils:to_list(config:search_for_application_value(log_path, ?BEEHIVE_DIR("logs"), beehive)),
   LogLevel = misc_utils:to_list(config:search_for_application_value(log_level, ?VERBOSE, beehive)),
   % Get the full path for the file
   LogName1 = misc_utils:to_list(config:search_for_application_value(node_type, node, beehive)),

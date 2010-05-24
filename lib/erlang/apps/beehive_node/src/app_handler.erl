@@ -251,8 +251,8 @@ internal_update_instance(_App, _AppLauncher, _From) ->
 
 % Run the mount action on the app
 mount_application(App, PropLists) ->
-  ScratchDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("tmp"), storage),
-  RunDir = config:search_for_application_value(squashed_storage, ?BH_RELATIVE_DIR("run"), storage),
+  ScratchDisk = config:search_for_application_value(scratch_disk, ?BEEHIVE_DIR("tmp"), storage),
+  RunDir = config:search_for_application_value(squashed_storage, ?BEEHIVE_DIR("run"), storage),
   UniqueName = apps:build_on_disk_app_name(App),
 
   WorkingDir = filename:join([ScratchDisk, App#app.name]),
@@ -320,7 +320,7 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
 % Find and transfer the bee
 find_and_transfer_bee(App, Sha) ->
   Nodes = lists:map(fun(N) -> node(N) end, node_manager:get_servers(storage)),
-  ScratchDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("storage"), storage),
+  ScratchDisk = config:search_for_application_value(scratch_disk, ?BEEHIVE_DIR("storage"), storage),
   
   LocalPath = filename:join([filename:absname(ScratchDisk), lists:append([App#app.name, ".bee"])]),
   case find_bee_on_storage_nodes(App, Sha, Nodes) of

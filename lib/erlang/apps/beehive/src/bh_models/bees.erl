@@ -133,9 +133,9 @@ build_app_env(#bee{ port        = Port,
   case apps:find_by_name(AppName) of 
     [] -> {error, not_associated_with_an_app};
     App ->
-      ScratchDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("tmp"), storage),
-      RunningDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("run"), storage),
-      LogDisk     = config:search_for_application_value(log_path, ?BH_RELATIVE_DIR("application_logs"), beehive),
+      ScratchDisk = config:search_for_application_value(scratch_disk, ?BEEHIVE_DIR("tmp"), storage),
+      RunningDisk = config:search_for_application_value(scratch_disk, ?BEEHIVE_DIR("run"), storage),
+      LogDisk     = config:search_for_application_value(log_path, ?BEEHIVE_DIR("application_logs"), beehive),
 
       WorkingDir = filename:join([ScratchDisk, AppName]),
       RunningDir = filename:join([RunningDisk, AppName]),

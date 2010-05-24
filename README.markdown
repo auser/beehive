@@ -18,9 +18,9 @@ Beehive
     chmod u+x ./rel/beehive/bin/beehive
     ./rel/beehive/bin/beehive console
 
-This will start beehive on your local machine with the root /var/beehive. If you want to use a different directory, (such as /tmp/beehive) run:
+This will start beehive on your local machine with the root /var/lib/beehive. If you want to use a different directory, (such as /tmp/beehive) run:
 
-    export BEEHIVE_ROOT_DIR=/tmp/beehive
+    export BEEHIVE_HOME=/tmp/beehive
 
 How it works
 ===

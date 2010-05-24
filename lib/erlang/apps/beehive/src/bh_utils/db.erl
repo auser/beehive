@@ -47,7 +47,7 @@ start(Nodes) ->
   ok.
 
 dir() -> 
-  DefaultDatabaseDir = config:search_for_application_value(database_dir, "/var/beehive/db", beehive),
+  DefaultDatabaseDir = config:search_for_application_value(database_dir, "/var/lib/beehive/db", beehive),
   case application:get_env(mnesia, dir) of
     {ok, Dir} -> Dir;
     _Else -> 

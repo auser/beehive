@@ -20,6 +20,3 @@
 -env ERL_FULLSWEEP_AFTER 10
 
 -seed $BEEHIVE_SEED_NODE
-
--beehive beehive_prefix "'/var/beehive'"
--mnesia dir "'/var/beehive/db'"

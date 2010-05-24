@@ -10,11 +10,14 @@
 -include ("common.hrl").
 -compile (export_all).
 
+root_dir(Path) -> 
+  filename:join([?BEEHIVE_HOME, Path]).
+
 relative_or_abs_path(List) ->
   case abs_or_relative_filepath(List) of
     true -> List;
     _ ->
-      case filelib:is_file(F = filename:join([?BEEHIVE_HOME_DIR, List])) of
+      case filelib:is_file(F = filename:join([?BEEHIVE_HOME, List])) of
         true  -> F;
         false -> 
           lists:flatten([?BH_ROOT, "/", List])

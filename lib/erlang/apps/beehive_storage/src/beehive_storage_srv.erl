@@ -74,8 +74,8 @@ start_link() ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
-  ScratchDisk = config:search_for_application_value(scratch_disk, ?BH_RELATIVE_DIR("tmp"), storage),
-  SquashedDir = config:search_for_application_value(squashed_storage, ?BH_RELATIVE_DIR("squashed"), storage),
+  ScratchDisk = config:search_for_application_value(scratch_disk, ?BEEHIVE_DIR("tmp"), storage),
+  SquashedDir = config:search_for_application_value(squashed_storage, ?BEEHIVE_DIR("squashed"), storage),
   
   lists:map(fun(Dir) ->
     case filelib:is_dir(Dir) of
