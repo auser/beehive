@@ -192,8 +192,9 @@ fetch_bee(App, #state{squashed_disk = SquashedDisk} = _State) ->
     true -> 
       Resp = bees:meta_data(BeeLocation, EnvLocation),
       ?NOTIFY({bee, bee_built, Resp}),
+      erlang:display({bee_built, Resp}),
       {bee_built, Resp};
-    false -> {error, not_found}
+    false -> {error, bee_not_found_after_creation}
   end.
 
 %%-------------------------------------------------------------------
@@ -222,6 +223,7 @@ build_bee(App, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} 
       EnvOpts = apps:build_app_env(App, OtherOpts),
       CmdOpts = lists:flatten([{cd, SquashedDir}|EnvOpts]),
       
+      erlang:display({babysitter_run, App#app.template, bundle, CmdOpts}),
       case babysitter:run(App#app.template, bundle, CmdOpts) of
         {ok, _OsPid} ->
           case fetch_bee(App, State) of
@@ -229,9 +231,10 @@ build_bee(App, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} 
             E -> E
           end;
         Else ->
+          erlang:display({got_something_else,babysitter_run, Else}),
           {error, {babysitter, Else}}
       end;
-    {error, not_found} -> {error, not_found}
+    {error, _} = T -> T
   end.
   
 handle_repos_lookup(AppName) ->
@@ -240,7 +243,7 @@ handle_repos_lookup(AppName) ->
       {ok, handle_offsite_repos_lookup(AppName)};
     _ -> 
       io:format("Looking in local repos not yet supported~n"),
-      {error, not_found}
+      {error, repos_not_found}
   end.
 
 handle_offsite_repos_lookup([]) -> false;

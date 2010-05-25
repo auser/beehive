@@ -45,9 +45,16 @@ start_link(Args) ->
 %% specifications.
 %%--------------------------------------------------------------------
 init(_Args) ->  
+  Babysitter = ?CHILD(babysitter, worker),
+  
+  ShouldRunBabysitter = case whereis(babysitter) of
+    undefined -> true;
+    _ -> false
+  end,
   Children = lists:flatten([
     ?CHILD(beehive_storage_srv, worker),
-    ?CHILD(beehive_git_srv, worker)
+    ?CHILD(beehive_git_srv, worker),
+    ?IF(ShouldRunBabysitter, Babysitter, [])
   ]),
   
   {ok,{{one_for_one,5,10}, Children}}.

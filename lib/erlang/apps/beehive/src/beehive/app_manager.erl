@@ -103,6 +103,7 @@ init([]) ->
   % timer:send_interval(timer:minutes(2), {maintain_bee_counts}),
   timer:send_interval(timer:minutes(2), {clean_up_apps}),
   
+  erlang:display({?MODULE,init}),
   {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -236,6 +237,10 @@ handle_info({clean_up_apps}, State) ->
 handle_info({'EXIT',_Pid,normal}, State) ->
   {noreply, State};
 
+handle_info({'EXIT',_Pid, {received_unknown_message, {_FsmState, {error, {babysitter, Msg}}}}}, State) ->
+  ?LOG(info, "Got received_unknown_message: ~p", [Msg]),
+  {noreply, State};
+
 handle_info({'EXIT', Pid, _Reason}, State) ->
   io:format("Pid exited: ~p~n", [Pid]),
   case ets:lookup(?UPDATERS_PID_TO_APP, Pid) of
@@ -250,7 +255,7 @@ handle_info({'EXIT', Pid, _Reason}, State) ->
         _ -> true
       end
   end,
-  {ok, State};
+  {noreply, State};
   
 handle_info({bee_updated_normally, #bee{commit_hash = Sha} = Bee, #app{name = AppName} = App}, State) ->
   % StartedBee#bee{commit_hash = Sha}, App#app{sha = Sha}
@@ -267,6 +272,10 @@ handle_info({bee_updated_normally, #bee{commit_hash = Sha} = Bee, #app{name = Ap
   {noreply, State};
 
 handle_info({bee_started_normally, _Bee, _App}, State) ->
+  {noreply, State};
+
+handle_info({error, State, {error, {babysitter, Msg}}}, State) ->
+  ?LOG(info, "app_manager caught babysitter error: ~p", [Msg]),
   {noreply, State};
 
 handle_info(Info, State) ->
@@ -544,6 +553,7 @@ app_launcher_fsm_go(AppToPidTable, PidToAppTable, Method, App, Updating) ->
   case App#app.type of
     static -> ok;
     _T -> 
+      process_flag(trap_exit, true),
       Now = date_util:now_to_seconds(),
       StartOpts = [{app, App}, {caller, self()}, {updating, Updating}],
       {ok, P} = app_launcher_fsm:start_link(StartOpts),

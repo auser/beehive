@@ -337,7 +337,7 @@ find_and_transfer_bee(App, Sha) ->
 find_bee_on_storage_nodes(App, _Sha, []) -> 
   % ?NOTIFY({app, app_not_squashed, Name}),
   ?NOTIFY({app, updated, App}),
-  {error, not_found};
+  {error, bee_not_found_on_storage_nodes};
 find_bee_on_storage_nodes(App, Sha, [Node|Rest]) ->
   case rpc:call(Node, ?STORAGE_SRV, has_squashed_repos, [App, Sha]) of
     false -> find_bee_on_storage_nodes(App, Sha, Rest);

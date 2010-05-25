@@ -43,12 +43,18 @@ start_link(Args) ->
 %% to find out about restart strategy, maximum restart frequency and child
 %% specifications.
 %%--------------------------------------------------------------------
-init(Args) ->
+init(_Args) ->
+  Babysitter = ?CHILD(babysitter, worker),
+  
+  ShouldRunBabysitter = case whereis(babysitter) of
+    undefined -> true;
+    _ -> false
+  end,
   Children = lists:flatten([
     ?CHILD(app_handler, worker),
-    ?CHILD(babysitter, worker)
+    ?IF(ShouldRunBabysitter, Babysitter, [])
   ]),
-  
+    
   {ok,{{one_for_one,5,10}, Children}}.
 
 

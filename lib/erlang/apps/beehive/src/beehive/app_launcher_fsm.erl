@@ -110,7 +110,7 @@ preparing({start_new}, State) ->
   {next_state, updating, State};
 
 preparing(Other, State) ->
-  {stop, {received_unknown_message, {preparing, Other}}, State}.
+  stop_error({preparing, Other}, State).
 
 updating({bee_built, Info}, #state{bee = Bee, app = App} = State) ->
   % Strip off the last newline... stupid bash
@@ -124,9 +124,9 @@ updating({bee_built, Info}, #state{bee = Bee, app = App} = State) ->
   NewState = start_instance(NewState0),
   {next_state, launching, NewState};
 
-updating(Msg, #state{from = From} = State) ->
-  From ! {error, updating, Msg},
-  {stop, {received_unknown_message, {updating, Msg}}, State}.
+updating(Msg, State) ->
+  erlang:display({updating, error, Msg}),
+  stop_error({updating, Msg}, State).
 
 launching({started_bee, Be}, State) ->
   bees:create(Be),
@@ -135,14 +135,8 @@ launching({started_bee, Be}, State) ->
   app_manager:spawn_update_bee_status(Be, Self, 20),
   {next_state, pending, State#state{bee = Be}};
 
-launching({error, Code}, State) ->
-  CodeAtom = case Code of
-    1 -> could_not_add_user;
-    2 -> could_not_start_app;
-    3 -> count_not_mount_app;
-    4 -> could_not_unmount_old_processes
-  end,
-  {stop, {error, CodeAtom}, State};
+launching({error, _} = T, State) ->
+  stop_error(T, State);
 
 launching(Event, State) ->
   ?LOG(info, "Uncaught event: ~p while in state: ~p ~n", [Event, launching]),
@@ -259,3 +253,8 @@ start_instance(#state{from = From, app = App, bee = Bee, latest_sha = Sha} = Sta
   Node = node(Pid),
   rpc:cast(Node, app_handler, start_new_instance, [App, Sha, self(), From]),
   State#state{bee = Bee#bee{host_node = Node}}.
+
+stop_error(Msg, #state{from = From} = State) ->
+  Tuple = {error, Msg},
+  From ! Tuple,
+  {stop, Tuple, State}.
