@@ -124,7 +124,8 @@ updating({bee_built, Info}, #state{bee = Bee, app = App} = State) ->
   NewState = start_instance(NewState0),
   {next_state, launching, NewState};
 
-updating(Msg, State) ->
+updating(Msg, #state{from = From} = State) ->
+  From ! {error, updating, Msg},
   {stop, {received_unknown_message, {updating, Msg}}, State}.
 
 launching({started_bee, Be}, State) ->

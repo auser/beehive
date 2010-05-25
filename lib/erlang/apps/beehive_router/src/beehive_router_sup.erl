@@ -48,6 +48,7 @@ init(Args) ->
   Children = lists:flatten([
     ?CHILD(router_srv_sup, worker),
     ?CHILD(tcp_socket_server_sup, worker),
+    ?CHILD(babysitter, worker),
     ?CHILD(bh_node_stats_srv, worker)
   ]),
   
