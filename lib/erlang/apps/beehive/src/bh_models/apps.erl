@@ -138,6 +138,7 @@ validate_app_proplists(PropList) ->
         undefined -> {Key, generate_unique_name()};
         E -> {Key, E}
       end;
+      template -> {Key, misc_utils:to_atom(Val)};
       type -> {Key, misc_utils:to_atom(Val)};
       bee_picker -> {Key, misc_utils:to_atom(Val)};
       routing_param -> {Key, misc_utils:to_atom(Val)};

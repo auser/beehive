@@ -11,6 +11,9 @@ curl -i -XPOST -d"{\"email\":\"arilerner@mac.com\", \"password\":\"myuniquepassw
 # Let's add an application
 curl -i -XPOST -d"{\"name\":\"beehive\", \"url\":\"git://github.com/auser/getbeehive.com.git\", \"token\":$TOKEN, \"template\":\"rack\"}" $HOST/apps
 
+# Now another
+curl -i -XPOST -d"{\"name\":\"teambox\", \"url\":\"http://github.com/micho/teambox.git\", \"token\":$TOKEN, \"template\":\"rails\"}" $HOST/apps
+
 # Check on the application
 curl -i $HOST/apps
 
