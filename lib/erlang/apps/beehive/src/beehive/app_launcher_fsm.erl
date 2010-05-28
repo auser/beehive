@@ -125,7 +125,6 @@ updating({bee_built, Info}, #state{bee = Bee, app = App} = State) ->
   {next_state, launching, NewState};
 
 updating(Msg, State) ->
-  erlang:display({updating, error, Msg}),
   stop_error({updating, Msg}, State).
 
 launching({started_bee, Be}, State) ->
