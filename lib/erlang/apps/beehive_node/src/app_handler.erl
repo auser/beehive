@@ -237,7 +237,7 @@ internal_start_new_instance(App, Sha, Port, AppLauncher, From) ->
     {ok, Node, LocalPath} ->
       Proplists = [{sha, Sha}, {port, Port}, {bee_image, LocalPath}, {storage_node, Node}],
       case mount_application(App, Proplists) of
-        {ok, _Other} ->
+        {ok, _OtherPid, _Status} ->
           initialize_application(App, Proplists, AppLauncher, From);
         Error -> Error
       end;

@@ -111,8 +111,6 @@ init(_Args) ->
   ConnTimeout = config:search_for_application_value(connection_timeout, 120*1000, router),
   ActTimeout  = config:search_for_application_value(activity_timeout, 120*1000, router),
   
-  erlang:display([{connection_timeout, ConnTimeout}, {activity_timeout, ActTimeout}]),
-  
   Pid     = whereis(tcp_socket_server),
   
   LocalHost = bh_host:myip(),

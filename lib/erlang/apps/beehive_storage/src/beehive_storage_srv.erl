@@ -225,7 +225,7 @@ build_bee(App, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} 
       
       erlang:display({babysitter_run, App#app.template, bundle, CmdOpts}),
       case babysitter:run(App#app.template, bundle, CmdOpts) of
-        {ok, _OsPid} ->
+        {ok, _OsPid, 0} ->
           case fetch_bee(App, State) of
             {bee_built, _Resp} = T -> T;
             E -> E
@@ -260,6 +260,7 @@ handle_lookup_squashed_repos(#app{sha = CurrentAppSha } = App, Sha, #state{squas
   case handle_find_application_location(App, SquashedDir) of
     false -> false;
     FullFilePath ->
+      erlang:display({handle_find_application_location,FullFilePath}),
       case CurrentAppSha =:= Sha of
         true -> FullFilePath;
         false -> 
