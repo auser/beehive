@@ -1,14 +1,20 @@
 -module (db_mnesia_adapter).
 
+-include ("beehive.hrl").
+-include ("common.hrl").
+-include_lib("stdlib/include/qlc.hrl").
+
 -export ([
-  start/0,
+  start/1,
   read/2,
   write/3,
-  delete/2
+  run/1,
+  delete/2,
+  all/1
 ]).
 
 % API
-initialize() ->
+start(Nodes) ->
   ok = ensure_dir(),
   ok = ensure_running(),
   ok = add_slave(Nodes),
@@ -21,19 +27,25 @@ read(Table, Key) ->
   Value.
 
 write(Table, Key, Proplists) ->
-  apply(mnesia, sync_transaction, [fun() ->
-    ok = mnesia:write(Table, {Table, Key, Proplists}, write)
-  end]).
+  case apply(mnesia, sync_transaction, [fun() -> ok = mnesia:write(Table, {Table, Key, Proplists}, write) end]) of
+    {atomic, ok} -> ok;
+    E -> E
+  end.
 
 delete(Table, Key) ->
-  apply(mnesia, sync_transaction, [fun() ->
-    ok = mnesia:delete(Table, Key)
-  end]).
+  case apply(mnesia, sync_transaction, [fun() -> ok = mnesia:delete({Table, Key}) end]) of
+    {atomic, ok} -> ok;
+    E -> E
+  end.
+
+run(Fun) ->   qlc:eval( Fun() ).
+
+all(Table) -> mnesia:transaction(fun() -> mnesia:all_keys(Table) end).
 
 dir() ->
   DefaultDatabaseDir = config:search_for_application_value(database_dir, ?BEEHIVE_DIR("db"), beehive),
   case application:get_env(mnesia, dir) of
-    {ok, Dir} -> Dir;
+    {ok, Dir} -> Dir; 
     _Else -> 
       application:set_env(mnesia, dir, DefaultDatabaseDir),
       DefaultDatabaseDir
@@ -92,9 +104,6 @@ create_schema() ->
   ensure_running(),
   create_tables().
 
-% Stop the pesky database
-stop() -> ensure_not_running().
-
 % Move the database directory to the backup directory and then try to create it to start fresh-like
 move_db() ->
   mnesia:stop(),
@@ -114,10 +123,10 @@ table_names() ->
 
 table_definitions() ->
   [
-    {app,       [{attributes, record_info(fields, db_record)}, {type, set}, {disc_copies, [node()]}]},
-    {bee,       [{attributes, record_info(fields, db_record)}, {type, set}, {disc_copies, [node()]}]},
-    {user,      [{attributes, record_info(fields, db_record)}, {type, set}, {disc_copies, [node()]}]},
-    {user_app,  [{attributes, record_info(fields, db_record)}, {type, set}, {disc_copies, [node()]}]}
+    {app, [{attributes, record_info(fields, app)}, {type, set}, {disc_copies, [node()]}]},
+    {bee, [{attributes, record_info(fields, bee)}, {type, set}, {disc_copies, [node()]}]},
+    {user, [{attributes, record_info(fields, user)}, {type, set}, {disc_copies, [node()]}]},
+    {user_app, [{attributes, record_info(fields, user_app)}, {type, set}, {disc_copies, [node()]}]}
   ].
 
 % Create the tables

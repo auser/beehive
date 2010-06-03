@@ -21,7 +21,7 @@ end).
   get_servers/1, get_servers/0,
   start_link/0,
   is_a/1,
-  leader_pid/0, leader_pids/1,
+  seed_pid/0, seed_pids/1,
   stop/0,
   dump/1,
   get_next_available/1,
@@ -103,16 +103,16 @@ get_servers(PidType) ->
     E -> E
   end.
 
-dump(Pid) -> gen_server:call(leader_pid(), {dump, Pid}).
+dump(Pid) -> gen_server:call(seed_pid(), {dump, Pid}).
 
-leader_pid() -> hd(leader_pids([])).
-leader_pids(_State) -> [global:whereis_name(?MODULE)].
+seed_pid() -> hd(seed_pids([])).
+seed_pids(_State) -> [global:whereis_name(?MODULE)].
 
 is_a(Type) -> 
-  gen_cluster:call(leader_pid(), {is_a, Type}).
+  gen_cluster:call(seed_pid(), {is_a, Type}).
 
 notify(Msg) ->
-  rpc:call(node(leader_pid()), event_manager, notify, [Msg]),    
+  rpc:call(node(seed_pid()), event_manager, notify, [Msg]),    
   ok.
 
 %%====================================================================

@@ -1,7 +1,7 @@
 PACKAGE_NAME = babysitter
 PACKAGE_VERSION = 0.1
 
-.PHONY: deps compile rel
+.PHONY: deps compile rel test
 
 all: deps compile
 
@@ -21,3 +21,6 @@ rel: all
 
 rel_erlang:
 	@./rebar generate force=1
+
+test: 
+	./rebar eunit

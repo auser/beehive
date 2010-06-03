@@ -328,11 +328,6 @@ try_to_connect_to_new_instance(Bee, Attempts) ->
   
 % Update configuration for an application from a proplist of configuration details
 update_app_configuration(ConfigProplist, App, State) ->
-  DefaultStartCmd = config:search_for_application_value(default_app_command, "thin -p [[PORT]] -u [[USER]] -g [[GROUP]] -e production start", router),
-  DefaultStopCmd = config:search_for_application_value(default_stop_command, "thin stop", router),
-  
-  StartCmd  = update_app_configuration_param(start_command, DefaultStartCmd, ConfigProplist, App),
-  StopCmd   = update_app_configuration_param(stop_command, DefaultStopCmd, ConfigProplist, App),
   % TODO: Define app base...
   Name      = update_app_configuration_param(name, App#app.name, ConfigProplist, App),
   Url       = update_app_configuration_param(url, "", ConfigProplist, App),
@@ -344,7 +339,7 @@ update_app_configuration(ConfigProplist, App, State) ->
   MinInst   = update_app_configuration_param(min_instances, 1, ConfigProplist, App),
     
   NewApp = App#app{
-    start_command = StartCmd, stop_command = StopCmd, url = Url, name = Name, 
+    url = Url, name = Name, 
     updated_at = UpdatedAt,
     timeout = misc_utils:to_integer(Timeout), 
     sticky = Sticky,

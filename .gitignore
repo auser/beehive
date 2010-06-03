@@ -12,3 +12,4 @@ VERSION
 deps
 rel/beehive
 node.log
+.eunit

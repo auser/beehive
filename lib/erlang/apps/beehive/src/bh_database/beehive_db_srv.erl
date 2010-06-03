@@ -11,7 +11,10 @@
   start_link/0, start_link/1, start_link/2,
   read/2,
   write/3,
-  delete/2
+  delete/2,
+  all/1,
+  run/1,
+  status/0
 ]).
 
 %% gen_server callbacks
@@ -32,6 +35,8 @@ status() -> gen_server:call(?SERVER, {status}).
 read(Table, Key) -> gen_server:call(?SERVER, {read, Table, Key}).
 write(Table, Key, Proplist) -> gen_server:call(?SERVER, {write, Table, Key, Proplist}).
 delete(Table, Key) -> gen_server:call(?SERVER, {delete, Table, Key}).
+all(Table) -> gen_server:call(?SERVER, {all, Table}).
+run(Fun) -> gen_server:call(?SERVER, {run, Fun}).
 
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
@@ -39,6 +44,8 @@ delete(Table, Key) -> gen_server:call(?SERVER, {delete, Table, Key}).
 %%--------------------------------------------------------------------
 start_link() -> start_link(mnesia, []).
 start_link(DbAdapter) -> start_link(DbAdapter, []).
+start_link(DbAdapter, Nodes) when is_atom(DbAdapter) -> 
+  gen_server:start_link({local, ?SERVER}, ?MODULE, [erlang:atom_to_list(DbAdapter), Nodes], []);
 start_link(DbAdapter, Nodes) -> gen_server:start_link({local, ?SERVER}, ?MODULE, [DbAdapter, Nodes], []).
 
 %%====================================================================
@@ -53,8 +60,14 @@ start_link(DbAdapter, Nodes) -> gen_server:start_link({local, ?SERVER}, ?MODULE,
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([DbAdapterName, Nodes]) ->
-  DbAdapter = erlang:list_to_atom([lists:flatten(["db_", DbAdapterName, "_adapter"])]),
-  try_to_call(DbAdapter, start, []),
+  DbAdapter = erlang:list_to_atom(lists:flatten(["db_", DbAdapterName, "_adapter"])),
+  
+  case erlang:module_loaded(DbAdapter) of
+    true -> ok;
+    false -> code:load_file(DbAdapter)
+  end,
+
+  ok = try_to_call(DbAdapter, start, [Nodes]),
   {ok, #state{
     adapter = DbAdapter
   }}.
@@ -67,15 +80,18 @@ init([DbAdapterName, Nodes]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call({write, Table, Key, Proplist}, #state{adapter = Adapter} = State) ->
+handle_call({write, Table, Key, Proplist}, _From, #state{adapter = Adapter} = State) ->
   {reply, try_to_call(Adapter, write, [Table, Key, Proplist]), State};
-handle_call({read, Table, Key}, #state{adapter = Adapter} = State) ->
+handle_call({read, Table, Key}, _From, #state{adapter = Adapter} = State) ->
   {reply, try_to_call(Adapter, read, [Table, Key]), State};
-handle_call({delete, Table, Key}, #state{adapter = Adapter} = State) ->
+handle_call({delete, Table, Key}, _From, #state{adapter = Adapter} = State) ->
   {reply, try_to_call(Adapter, delete, [Table, Key]), State};
 handle_call({status}, _From, #state{adapter = Adapter} = State) ->
-  Reply = Adapter:status(),
-  {reply, Reply, State};
+  {reply, try_to_call(Adapter, status, []), State};
+handle_call({all, Table}, _From, #state{adapter = Adapter} = State) ->
+  {reply, try_to_call(Adapter, all, [Table]), State};
+handle_call({run, Fun}, _From, #state{adapter = Adapter} = State) ->
+  {reply, try_to_call(Adapter, run, [Fun]), State};
 handle_call(_Request, _From, State) ->
   Reply = ok,
   {reply, Reply, State}.
@@ -128,4 +144,4 @@ try_to_call(M, F, A) ->
   case erlang:function_exported(M,F,erlang:length(A)) of
     true -> apply(M,F,A);
     false -> not_found
-  end
+  end.
