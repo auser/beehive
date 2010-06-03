@@ -14,8 +14,8 @@ Beehive
 
 ## Quickstart ##
 
-    make rel
-    ./rel/beehive/bin/beehive start
+    make
+    ./start_dev.sh
 
 This will start beehive on your local machine with the root /var/lib/beehive. If you want to use a different directory, (such as /tmp/beehive) run:
 

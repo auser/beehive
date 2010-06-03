@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-cd `dirname $0`
+#cd `dirname $0`
 
 # Compile
 make compile
@@ -17,4 +17,5 @@ erl \
     -eval "application:start(os_mon)" \
     -eval "application:start(crypto)" \
     -eval "application:start(mnesia)" \
+		-s reloader \
     -eval "application:start(beehive)"
