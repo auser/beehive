@@ -12,7 +12,11 @@
 
 -define (LETTERS, "abcdefghijklmnopqrstuvwxyz0123456789").
 
-generate_unique_name(Num) ->
+generate_unique_name(Name, Num) -> 
+  lists:flatten([
+    Name, "-", random_word(?LETTERS, Num, [])
+  ]).
+generate_unique_name(Num) when is_integer(Num) ->
   lists:flatten([
     random_word(?ADJECTIVES),"-",
     random_word(?NOUNS),"-",
@@ -25,71 +29,6 @@ random_word(List, Length, Acc) ->
   
 random_word(List) ->
   lists:nth(random:uniform(erlang:length(List)), List).
-
-% Take a proplist and a name of a shell script, replace the
-% variables set in the proplist, write the "new" shell script
-% out and run it, while waiting for it
-shell_fox(Name, Proplist) ->   
-  Tempfile = case proplists:is_defined(use_temp_file, Proplist) of
-    true -> 
-      NewProplist = proplists:delete(use_temp_file, Proplist),
-      create_templated_tempfile(Name, NewProplist);
-    false ->
-      ?TEMPLATE_SHELL_SCRIPT(Name, Proplist)
-  end,  
-  Self = self(),
-  
-  spawn(fun() -> 
-      Port = open_port({spawn, Tempfile}, [exit_status, {cd, bh_file_utils:relative_path("/tmp")}, use_stdio]),
-      wait_for_port(Port, Tempfile, Self, [])
-    end),
-  receive
-    {ok, Tempfile, E, Status} ->
-      cleanup_tempfile(Tempfile),
-      {E, Status};
-    Else -> 
-      cleanup_tempfile(Tempfile),
-      {error, Else}
-  after timer:seconds(60) ->
-    cleanup_tempfile(Tempfile),
-    {error, timeout}
-  end.
-
-% create a temp file templated with the proplist
-% This creates a unique
-create_templated_tempfile(Name, Proplist) -> create_templated_tempfile(Name, "/tmp", Proplist).
-create_templated_tempfile(Name, Dest, Proplist) ->
-  Templated = ?TEMPLATE_SHELL_SCRIPT(Name, Proplist),
-  Ref = erlang:phash2(make_ref()),
-  Tempfile = filename:join([Dest, lists:append([to_list(Ref), ".sh"])]),
-  
-  % Write to the temp file
-  {ok, Fd} = file:open(Tempfile, [write]),
-  file:write(Fd, Templated),
-  file:close(Fd),
-  % Make it executable
-  os:cmd(io_lib:format("chmod 0700 ~s", [Tempfile])),
-  Tempfile.
-  
-
-  % Wait (up to 60 seconds) for a response from the shell script
-  % for a response. Then send the response to the caller
-  wait_for_port(Port, Tempfile, AppUpdatorPid, Acc) ->
-    receive
-      {Port, {data, Info}} ->
-        wait_for_port(Port, Tempfile, AppUpdatorPid, [Info|Acc]);
-      {Port, {exit_status, Status}} ->
-        ListofStrings = case io_lib:char_list(Acc) of
-          true -> [Acc];
-          false -> lists:reverse(Acc)
-        end,
-        O = chop(ListofStrings),
-        AppUpdatorPid ! {ok, Tempfile, O, Status};
-      E ->
-        E
-    after timer:seconds(60) ->
-      ok
-    end.
 
 % Take a list of strings, separated by newlines and 
 % divy them up such that the first 
