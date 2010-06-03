@@ -28,7 +28,6 @@ start_link() ->
 	start([{docroot, WwwDir}]).
 	
 start(Options) ->
-	erlang:display({starting, beehive_dashboard_srv, get_option(docroot, Options)}),
     {DocRoot, Options1} = get_option(docroot, Options),
     Loop = fun (Req) -> ?MODULE:loop(Req, DocRoot) end,
     mochiweb_http:start([{port, 4998}, {name, ?MODULE}, {loop, Loop} | Options1]).
