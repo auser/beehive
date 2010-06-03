@@ -15,8 +15,8 @@
 start(_Type, Args) -> 
   lists:map(fun(App) ->
     io:format("---> Starting ~p~n", [App]),
-    App:start()
-  end, []),
+    application:start(App)
+  end, [beehive_dashboard]),
   beehive_router_sup:start_link(Args).
 
 stop(_State) -> ok.

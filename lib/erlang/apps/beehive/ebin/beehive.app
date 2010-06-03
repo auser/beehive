@@ -26,6 +26,7 @@
                   % Launchers
                   app_launcher_fsm, app_killer_fsm,
                   % Stores
+                  beehive_db_srv, db_mnesia_adapter,
                   queue_store
                 ]},
   {registered,   []},

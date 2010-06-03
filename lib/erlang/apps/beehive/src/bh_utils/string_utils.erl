@@ -6,19 +6,18 @@
 -export ([template_command_string/2]).
 -import (string, [len/1, str/2, left/2,right/2,concat/2]).
 
-sub(Str,Old,New) ->
-
-   Lstr = len(Str),
-   Lold = len(Old),
-   Pos  = str(Str,Old),
-   if 
-      Pos =:= 0 -> 
-                   Str;
-      true      ->
-           LeftPart = left(Str,Pos-1),
-           RitePart = right(Str,Lstr-Lold-Pos+1),
-           concat(concat(LeftPart,New),RitePart)
-   end.
+sub(Str,Old,New) when is_list(Str) andalso is_list(Old) ->
+  Lstr = len(Str),
+  Lold = len(Old),
+  Pos  = str(Str,Old),
+  if 
+    Pos =:= 0 -> Str;
+    true      ->
+      LeftPart = left(Str,Pos-1),
+      RitePart = right(Str,Lstr-Lold-Pos+1),
+      concat(concat(LeftPart,New),RitePart)
+  end;
+sub(_Str,_Old,New) -> New.
 
 gsub(Str,Old,New) ->
   Acc = sub(Str,Old,New),
@@ -26,8 +25,8 @@ gsub(Str,Old,New) ->
 
 subst(Str,_Old,_New, Str) -> Str;
 subst(Acc, Old, New,_Str) ->
-         Acc1 = sub(Acc,Old,New),
-         subst(Acc1,Old,New,Acc).
+  Acc1 = sub(Acc,Old,New),
+  subst(Acc1,Old,New,Acc).
 
 % turn the command string from the comand string with the values
 % of [[KEY]] replaced by the corresponding proplist element of
