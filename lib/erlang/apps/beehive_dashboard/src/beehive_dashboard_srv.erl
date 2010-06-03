@@ -28,30 +28,31 @@ start_link() ->
 	start([{docroot, WwwDir}]).
 	
 start(Options) ->
-    {DocRoot, Options1} = get_option(docroot, Options),
-    Loop = fun (Req) -> ?MODULE:loop(Req, DocRoot) end,
-    mochiweb_http:start([{port, 4998}, {name, ?MODULE}, {loop, Loop} | Options1]).
+  {DocRoot, Options1} = get_option(docroot, Options),
+  Loop = fun (Req) -> ?MODULE:loop(Req, DocRoot) end,
+  Port = config:search_for_application_value(dashboard_port, beehive, 4998),
+  mochiweb_http:start([{port, Port}, {name, ?MODULE}, {loop, Loop} | Options1]).
 
 stop() ->
-    mochiweb_http:stop(?MODULE).
+  mochiweb_http:stop(?MODULE).
 
 loop(Req, DocRoot) ->
-    "/" ++ Path = Req:get(path),
-    case Req:get(method) of
-        Method when Method =:= 'GET'; Method =:= 'HEAD' ->
-            case Path of
-                _ ->
-                    Req:serve_file(Path, DocRoot)
-            end;
-        'POST' ->
-            case Path of
-                _ ->
-                    Req:not_found()
-            end;
+  "/" ++ Path = Req:get(path),
+  case Req:get(method) of
+    Method when Method =:= 'GET'; Method =:= 'HEAD' ->
+      case Path of
         _ ->
-            Req:respond({501, [], []})
-    end.
+          Req:serve_file(Path, DocRoot)
+        end;
+    'POST' ->
+      case Path of
+        _ ->
+          Req:not_found()
+      end;
+    _ ->
+      Req:respond({501, [], []})
+  end.
 %% Internal API
 
 get_option(Option, Options) ->
-    {proplists:get_value(Option, Options), proplists:delete(Option, Options)}.
+  {proplists:get_value(Option, Options), proplists:delete(Option, Options)}.
