@@ -12,6 +12,14 @@
 -include ("http.hrl").
 -export ([get/2, post/2, put/2, delete/2]).
 
+get([Email], _Data) ->
+	Json = case users:find_by_email(Email) of 
+		[] -> ?BINIFY([{Email, "does_not_exist"}]); 
+		User -> ?BINIFY([{
+			"user", ?BINIFY([{"email", User#user.email}, {"level", User#user.level}])
+		}])
+	end,
+	{struct, Json};
 get(_, _Data) -> 
   All = users:all(),
   {struct, ?BINIFY([{
