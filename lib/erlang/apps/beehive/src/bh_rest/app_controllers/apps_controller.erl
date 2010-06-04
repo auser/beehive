@@ -15,7 +15,7 @@
 
 get([Name], _Data) ->
   case apps:find_by_name(Name) of
-    [] -> {struct, [{"error", ?BINIFY("App not found")}]};
+    [] -> {"error", ?BINIFY("App not found")};
     App ->
       AppDetails = [
         {"url", App#app.url},
@@ -29,20 +29,15 @@ get([Name], _Data) ->
         {"sticky", App#app.sticky},
         {"latest_sha", App#app.sha}
       ],
-      {struct, [{
-        Name, 
-        {struct, ?BINIFY(AppDetails)}
-      }]}
+      {Name, AppDetails}
   end;
 get(_, _Data) -> 
   All = apps:all(),
-  {struct, [{
-    "apps",
-    lists:map(fun(A) ->
+  {"apps", lists:map(fun(A) ->
       Details = compile_app_details(A),
-      {struct, ?BINIFY(Details)}
+      {A#app.name, Details}
     end, All)
-  }]}.
+  }.
 
 post([], Data) ->
   case auth_utils:get_authorized_user(Data) of
@@ -53,7 +48,7 @@ post([], Data) ->
       case apps:create(Data) of
         {ok, App} when is_record(App, app) -> 
           user_apps:create(ReqUser, App),
-          {struct, ?BINIFY([{"app", misc_utils:to_bin(App#app.name)}])};
+          {app, misc_utils:to_bin(App#app.name)};
         {error, app_exists} -> ?JSON_ERROR("App exists already");
         E -> 
           ?LOG(error, "Unknown error adding app: ~p", [E]),
@@ -63,33 +58,30 @@ post([], Data) ->
 
   % Not sure about this... yet as far as authentication goes
 post([Name, "restart"], _Data) ->
-  Response = case apps:restart_by_name(Name) of
+  case apps:restart_by_name(Name) of
     {ok, _} -> {"app", <<"restarting">>};
     _E -> {"app", <<"error">>}
-  end,
-  {struct, ?BINIFY([Response])};
+  end;
 
 % Not sure about this... yet as far as authentication goes
 post([Name, "deploy"], _Data) ->
-  Response = case apps:update_by_name(Name) of
-    {ok, _} -> {"app", <<"updated">>};
-    _ -> {"app", <<"error">>}
-  end,
-  {struct, ?BINIFY([Response])};
+  case apps:update_by_name(Name) of
+    {ok, _} -> {app, <<"updated">>};
+    _ -> {app, <<"error">>}
+  end;
     
 post([Name, "expand"], _Data) ->
-  Response = case apps:expand_by_name(Name) of
+  case apps:expand_by_name(Name) of
     {ok, _} -> {"app", <<"Expanding...">>};
     _ -> {"app", <<"error">>}
-  end,
-  {struct, ?BINIFY([Response])};
+  end;
 
 post(_Path, _Data) -> <<"unhandled">>.
 
 put([Name], Data) ->
   case auth_utils:get_authorized_user(Data) of
     false -> 
-      {struct, [{"error", misc_utils:to_bin("No user defined or invalid token")}]};
+      {"error", misc_utils:to_bin("No user defined or invalid token")};
     _ReqUser ->
       case apps:update(Name, Data) of
         {updated, App} when is_record(App, app) -> ?JSON_MSG("updated", App#app.name);

@@ -37,7 +37,6 @@ find_by_name(Name) ->
   end.
 
 % Find the apps that are named Name
-find_all_by_name([L|_Rest]) -> find_all_by_name(L);
 find_all_by_name(Name) -> 
   db:read({app, Name}).
 
