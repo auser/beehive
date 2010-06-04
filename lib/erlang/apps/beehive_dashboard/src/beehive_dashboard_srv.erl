@@ -147,7 +147,6 @@ start_web_server(#state{docroot = DocRoot, web_port = Port} = _State) ->
   WebConfig = [{port, Port}, {name, ?MODULE}, {loop, Loop}, {ws_loop, WebSocketLoop}],
   misultin:start_link(WebConfig).
   
-
 %% Loops
 % Web requests
 handle_web_req(Req, Docroot) -> handle_web(Req:get(method), Req:resource([lowercase, urldecode]), Req, Docroot).
