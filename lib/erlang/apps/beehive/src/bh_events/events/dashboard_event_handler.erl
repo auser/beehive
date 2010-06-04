@@ -34,9 +34,6 @@ init([]) ->
 %% gen_event:notify/2 or gen_event:sync_notify/2, this function is called for
 %% each installed event handler to handle the event.
 %%--------------------------------------------------------------------
-handle_event({garbage_collection}, State) ->
-  beehive_dashboard_srv:send_message_to_all_websockets({beehive, garbage_collection}),
-  {ok, State};
 handle_event({user, Atom, User}, State) ->
   Msg = [{event, Atom}, {user, [{email, User#user.email}, {token, User#user.token}]}],
   beehive_dashboard_srv:send_message_to_all_websockets(Msg),

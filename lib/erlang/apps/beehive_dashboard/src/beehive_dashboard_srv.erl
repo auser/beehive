@@ -13,8 +13,13 @@
   start_link/0,
   new_client_connected/1,
   client_disconnected/1,
-  send_message_to_all_websockets/1,
-  loop/2, ws_loop/1
+  send_message_to_all_websockets/1
+]).
+
+-export ([
+  handle_web_req/2,
+  handle_web/4,
+  handle_websocket/1
 ]).
 
 %% gen_server callbacks
@@ -24,7 +29,6 @@
 -record(state, {
   docroot,
   web_port        = 4998,
-  websocket_port  = 4997,
   live_websockets = []
 }).
 
@@ -62,17 +66,14 @@ init([]) ->
   Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
   Docroot = filename:join([Dir, "priv", "www"]),
   Port = config:search_for_application_value(dashboard_port, 4998, beehive),
-  WsPort = config:search_for_application_value(websocket_dashboard_port, 4997, beehive),
 	
 	State = #state{
     docroot = Docroot,
     web_port = Port,
-    websocket_port = WsPort,
     live_websockets = []
   },
-    
+  
 	start_web_server(State),
-	start_websocket_server(State),
 	
   {ok, State}.
 
@@ -127,8 +128,7 @@ handle_info(_Info, State) ->
 %% The return value is ignored.
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-  mochiweb_http:stop(get_name("web")),
-  mochiweb_websocket:stop(get_name("websocket")),
+  misultin:stop(),
   ok.
 
 %%--------------------------------------------------------------------
@@ -142,45 +142,37 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 start_web_server(#state{docroot = DocRoot, web_port = Port} = _State) ->
-  Loop = fun (Req) -> ?MODULE:loop(Req, DocRoot) end,
-  WebConfig = [{port, Port}, {name, get_name("web")}, {loop, Loop}],
-  mochiweb_http:start(WebConfig).
+  Loop = fun (Req) -> ?MODULE:handle_web_req(Req, DocRoot) end,
+  WebSocketLoop = fun (WebSocket) -> ?MODULE:handle_websocket(WebSocket) end,
+  WebConfig = [{port, Port}, {name, ?MODULE}, {loop, Loop}, {ws_loop, WebSocketLoop}],
+  misultin:start_link(WebConfig).
   
-start_websocket_server(#state{websocket_port = WsPort} = _State) ->
-  WebSocketLoop = fun (WebSocket) -> ?MODULE:ws_loop(WebSocket) end,
-  WebSocketConfig = [{port,WsPort}, {name, get_name("websocket")}, {loop, WebSocketLoop}],
-  mochiweb_websocket:start(WebSocketConfig).
-  
-get_name(Name) -> erlang:list_to_atom(lists:flatten([erlang:atom_to_list(?MODULE), "_", Name])).
 
 %% Loops
-loop(Req, DocRoot) ->
-  "/" ++ Path = Req:get(path),
-  case Req:get(method) of
-    Method when Method =:= 'GET'; Method =:= 'HEAD' ->
-      case Path of
-        _ ->
-          Req:serve_file(Path, DocRoot)
-        end;
-    'POST' ->
-      case Path of
-        _ ->
-          Req:not_found()
-      end;
-    _ ->
-      Req:respond({501, [], []})
-  end.
+% Web requests
+handle_web_req(Req, Docroot) -> handle_web(Req:get(method), Req:resource([lowercase, urldecode]), Req, Docroot).
 
-ws_loop(WebSocket) ->
-  Data = WebSocket:get_data(),
-  
-  case Data of
-	  %% On initial connect we get this message
-	  "new_websocket" ->
-	    ?MODULE:new_client_connected(WebSocket),
-      WebSocket:send("You are connected!");
-	  %% Other messages go here
-	  Other ->
-	    Msg = "You Said: " ++ Other,
-	    WebSocket:send(Msg)
+handle_web('GET', [], Req, Docroot)   -> Req:file(filename:join([Docroot, "index.html"]));
+handle_web('GET', [Path], Req, Docroot)   -> Req:file(filename:join([Docroot, Path]));
+handle_web('HEAD', [Path], Req, Docroot)  -> Req:file(filename:join([Docroot, Path]));
+handle_web('POST', [_], Req, _Docroot)  -> Req:respond({404, [], []});
+handle_web(_, _, Req, Docroot) ->
+  Req:file(filename:join([Docroot, "not_found.html"])).
+
+
+handle_websocket(Ws) ->
+  receive
+    {browser, "new_websocket"} ->
+      ?MODULE:new_client_connected(Ws),
+      Ws:send("You are connected!"),
+      handle_websocket(Ws);
+    {browser, Data} ->
+      Ws:send(["received '", Data, "'"]),
+      handle_websocket(Ws);
+    Msg ->
+      erlang:display({got_web_socket, Msg}),
+      handle_websocket(Ws)
+  after 5000 ->
+    Ws:send(["pushing!"]),
+    handle_websocket(Ws)
   end.

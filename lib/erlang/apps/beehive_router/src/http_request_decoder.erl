@@ -105,6 +105,7 @@ parse_route_from_request_without_base_domain(HostName) ->
   O = string:tokens(NoPortHostname, "."),
   parse_route_from_request_without_base_domain1(O, []).
 
+parse_route_from_request_without_base_domain1([], Acc)      -> parse_route_from_request_without_base_domain2(Acc);
 parse_route_from_request_without_base_domain1(["com"], Acc) -> parse_route_from_request_without_base_domain2(Acc);
 parse_route_from_request_without_base_domain1(["org"], Acc) -> parse_route_from_request_without_base_domain2(Acc);
 parse_route_from_request_without_base_domain1(["net"], Acc) -> parse_route_from_request_without_base_domain2(Acc);
