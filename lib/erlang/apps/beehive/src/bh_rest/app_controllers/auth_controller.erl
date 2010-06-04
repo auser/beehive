@@ -26,7 +26,7 @@ post([], Data) ->
           Pass = proplists:get_value(password, Data),
           case users:create_new_token_for(Email, Pass) of
             User when is_record(User, user) ->
-              {struct, ?BINIFY([{user, Email}, {token, User#user.token}])};
+              [{user, Email}, {token, User#user.token}];
             _Else ->
               error("There was a problem authenticating")
           end

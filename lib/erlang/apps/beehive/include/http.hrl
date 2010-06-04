@@ -1,6 +1,6 @@
 -define (JSON_ENCODE(V), mochijson2:encode(V)).
 -define (BINIFY (PropList), web_utils:binify(PropList) ).
--define (JSONIFY (V), ?JSON_ENCODE(V)).
+-define (JSONIFY (V), web_utils:to_json(V)).
 
 % Base page
 -define (HOME_HTML, "<html>

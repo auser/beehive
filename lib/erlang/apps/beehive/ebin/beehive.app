@@ -7,7 +7,7 @@
                   beehive, beehive_sup, app_manager,
                   % Events
                   app_event_handler, bee_event_handler, db_event_handler, log_event_handler, node_event_handler,
-                  proxy_event_handler, user_defined_event_handler,
+                  proxy_event_handler, user_defined_event_handler, dashboard_event_handler, user_event_handler,
                   % Models
                   apps, bees, user_apps, users,
                   % Rest interface
@@ -23,6 +23,7 @@
                   date_util, db, string_utils, yaml,
                   event_manager, printer, port_handler, node_manager, 
                   auth_utils,bee_strategies,bh_bee_stats_srv,
+                  web_utils,
                   % Launchers
                   app_launcher_fsm, app_killer_fsm,
                   % Stores

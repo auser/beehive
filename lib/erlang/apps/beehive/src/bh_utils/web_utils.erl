@@ -19,7 +19,33 @@ jsonify(JsonifiableBody) ->
         ]
     })
   ].
-  
+
+to_json(V) -> json_encode(prepare_for_json(V)).
+
+prepare_for_json(Int) when is_integer(Int) -> Int;
+prepare_for_json(Float) when is_float(Float) -> Float;
+prepare_for_json(Atom) when is_atom(Atom) -> Atom;
+prepare_for_json(Array) when is_list(Array) -> 
+  case io_lib:printable_list(Array) of
+    true ->
+      erlang:list_to_binary(Array); % This is a string, not a list
+    false ->
+      list_to_json(Array, []) % This is a list, of some sort
+  end;
+prepare_for_json(Tuple) when is_tuple(Tuple) -> 
+  tuple_to_json(Tuple, erlang:size(Tuple), []);
+prepare_for_json(V) -> V.
+
+list_to_json([], Acc) -> lists:reverse(Acc);
+list_to_json([H|Rest], Acc) -> list_to_json(Rest, [prepare_for_json(H)|Acc]).
+
+tuple_to_json(_Tuple, 0, Acc) ->  {struct, [erlang:list_to_tuple(Acc)]};
+tuple_to_json(Tuple, CurrPos, Acc) ->
+  Ele = prepare_for_json(element(CurrPos, Tuple)),
+  tuple_to_json(Tuple, CurrPos - 1, [Ele|Acc]).
+
+json_encode(Value) -> mochijson2:encode(Value).
+
 % Turn query strings into proplists
 % String = token=hsdhfhdf&big=bear
 query_params_to_proplist(QueryString) ->
@@ -42,6 +68,8 @@ binify(List) ->
   end.
 
 binify1([], Acc) -> lists:reverse(Acc);
+binify1(Tuple, Acc) when is_tuple(Tuple) ->
+  binify1([], [{struct, [binify2(Tuple)]}|Acc]);
 binify1([Hd|Rest], Acc) ->
   binify1(Rest, [binify2(Hd)|Acc]).
   
@@ -64,3 +92,7 @@ binify2({Key, V}) ->
   end;
 binify2(Ele) ->
   misc_utils:to_bin(Ele).
+
+atom_to_binary(Val) ->
+    <<_:4/binary, Bin/binary>> = term_to_binary(Val),
+    Bin.
