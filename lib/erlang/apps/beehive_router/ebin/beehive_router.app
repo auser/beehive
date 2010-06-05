@@ -10,8 +10,7 @@
       http_request_decoder,
       proxy_handler,
       router_srv, router_srv_sup,
-      tcp_socket_server, tcp_socket_server_sup, 
-      web_utils
+      tcp_socket_server, tcp_socket_server_sup
     ]},
   {registered,   []},
   {applications, [kernel, stdlib]},

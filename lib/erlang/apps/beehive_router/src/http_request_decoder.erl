@@ -14,6 +14,10 @@
 -export([
   handle_request/1
 ]).
+%% TEST
+-export ([
+  parse_route_from_request/2
+]).
 
 % Take the connecting socket and handle the request. Get the request up until the end of the headers
 % Take off the 'Host' parameter (or other sepcified parameter) from the header and return the 
@@ -26,9 +30,11 @@ handle_request(ClientSock) ->
     end
   ),
   
-  RoutingParameter = misc_utils:to_atom(config:search_for_application_value(routing_parameter, "Host", router)),
+  RoutingParameter = misc_utils:to_atom(config:search_for_application_value(routing_parameter, "Host", beehive_router)),
   HeaderVal = mochiweb_headers:get_value(RoutingParameter, Req:get(headers)),
-  Subdomain = parse_subdomain(HeaderVal),
+  
+  BaseDomain = config:search_for_application_value(domain, undefined, beehive_router),
+  Subdomain = parse_route_from_request(HeaderVal, BaseDomain),
   ForwardReq = build_request_headers(Req),
   {ok, Subdomain, ForwardReq, Req}.
   
@@ -75,20 +81,39 @@ headers_to_list(Headers) ->
 
 % HTTP
 % We strip off the port, just in case
-parse_subdomain(undefined) -> base;
-parse_subdomain(HostName) ->
+%%-------------------------------------------------------------------
+%% @spec (Hostname, BaseDomain) ->    Domain
+%% @doc Parse the domain from the base domain
+%%  Take off the domain
+%%      
+%% @end
+%%-------------------------------------------------------------------
+parse_route_from_request(undefined, _) -> base;
+parse_route_from_request(HostName, undefined) -> parse_route_from_request_without_base_domain(HostName);
+parse_route_from_request(HostName, BaseDomain) ->
   [NoPortHostname|_] = string:tokens(HostName, ":"),
   O = string:tokens(NoPortHostname, "."),
-  parse_subdomain1(O).
-
-parse_subdomain1([_Something,"com"]) -> base;
-parse_subdomain1([_Something,"org"]) -> base;
-parse_subdomain1([_Something,"net"]) -> base;
-parse_subdomain1([H|_Rest] = List) ->
-  if
-    length(List) == 1 -> base;
-    true -> H
+  T = string:tokens(BaseDomain, "."),
+  
+  case lists:subtract(O, T) of
+    [] -> base; % The requested resource is no different from the basedomain
+    List -> List
   end.
+  
+parse_route_from_request_without_base_domain(HostName) ->
+  [NoPortHostname|_] = string:tokens(HostName, ":"),
+  O = string:tokens(NoPortHostname, "."),
+  parse_route_from_request_without_base_domain1(O, []).
+
+parse_route_from_request_without_base_domain1([], Acc)      -> parse_route_from_request_without_base_domain2(Acc);
+parse_route_from_request_without_base_domain1(["com"], Acc) -> parse_route_from_request_without_base_domain2(Acc);
+parse_route_from_request_without_base_domain1(["org"], Acc) -> parse_route_from_request_without_base_domain2(Acc);
+parse_route_from_request_without_base_domain1(["net"], Acc) -> parse_route_from_request_without_base_domain2(Acc);
+parse_route_from_request_without_base_domain1([H|Rest], Acc) -> 
+  parse_route_from_request_without_base_domain1(Rest, [H|Acc]).
+
+parse_route_from_request_without_base_domain2(List) ->
+  [H|_Rest] = lists:reverse(List), [H].
 
 % FROM MOCHIWEB
 request(Socket, Callback) ->

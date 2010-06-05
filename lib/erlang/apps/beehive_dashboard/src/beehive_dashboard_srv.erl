@@ -1,84 +1,185 @@
-%%%-------------------------------------------------------------------
-%%% File    : rest_server.erl
-%%% Author  : Ari Lerner
-%%% Description : 
-%%%
-%%% Created :  Fri Jun 26 17:14:22 PDT 2009
-%%%-------------------------------------------------------------------
-
+%%% beehive_dashboard_srv.erl
+%% @author David M. Guttman
+%% @copyright 06/03/10 David M. Guttman
+%% @doc Dashboard server
 -module (beehive_dashboard_srv).
--author ("David Guttman <dguttman@gmail.com>").
--include ("beehive.hrl").
--include ("common.hrl").
+-author("David M. Guttman <davidmguttman@gmail.com>").
+
+-behaviour(gen_server).
 -include ("http.hrl").
-%% @author author <author@example.com>
-%% @copyright YYYY author.
 
-%% @doc Web server for chat.
--export ([start_link/0]).
--export([start/1, stop/0, loop/2, ws_loop/1]).
+%% API
+-export([
+  start_link/0,
+  new_client_connected/1,
+  client_disconnected/1,
+  send_message_to_all_websockets/1
+]).
 
+-export ([
+  handle_web_req/2,
+  handle_web/4,
+  handle_websocket/1
+]).
+
+%% gen_server callbacks
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
+
+% {state, undefined, 4998, 4997, []}.
+-record(state, {
+  docroot,
+  web_port        = 4998,
+  live_websockets = []
+}).
+
+-define(SERVER, ?MODULE).
 -define(TIMEOUT, 20000).
 
-%% External API
+%%====================================================================
+%% API
+%%====================================================================
+new_client_connected(WebSocket) -> 
+  erlang:display({called, new_client_connected, WebSocket}),
+  gen_server:cast(?SERVER, {new_client_connected, WebSocket}).
+client_disconnected(WebSocket) -> gen_server:cast(?SERVER, {client_disconnected, WebSocket}).
+send_message_to_all_websockets(Msg) -> gen_server:cast(?SERVER, {send_message_to_all_websockets, Msg}).
 
+%%--------------------------------------------------------------------
+%% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
+%% Description: Starts the server
+%%--------------------------------------------------------------------
 start_link() ->
-	Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
-  WwwDir = filename:join([Dir, "priv", "www"]),
-	start([{docroot, WwwDir}]).
-	
-start(Options) ->
-  {DocRoot, Options1} = get_option(docroot, Options),
-  Loop = fun (Req) -> ?MODULE:loop(Req, DocRoot) end,
+  gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+%%====================================================================
+%% gen_server callbacks
+%%====================================================================
+
+%%--------------------------------------------------------------------
+%% Function: init(Args) -> {ok, State} |
+%%                         {ok, State, Timeout} |
+%%                         ignore               |
+%%                         {stop, Reason}
+%% Description: Initiates the server
+%%--------------------------------------------------------------------
+init([]) ->
+  Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
+  Docroot = filename:join([Dir, "priv", "www"]),
   Port = config:search_for_application_value(dashboard_port, 4998, beehive),
-  WebConfig = [{port, Port}, {name, get_name("web")}, {loop, Loop} | Options1],
-  erlang:display(WebConfig),
-  mochiweb_http:start(WebConfig),
+	
+	State = #state{
+    docroot = Docroot,
+    web_port = Port,
+    live_websockets = []
+  },
   
-  WebSocketLoop = fun (WebSocket) -> ?MODULE:ws_loop(WebSocket) end,
-  WsPort = config:search_for_application_value(websocket_dashboard_port, 4997, beehive),
-  WebSocketConfig = [{port,WsPort}, {name, get_name("websocket")}, {loop, WebSocketLoop}],
-  erlang:display(WebSocketConfig),
-  mochiweb_websocket:start(WebSocketConfig).
+	start_web_server(State),
+	
+  {ok, State}.
 
-stop() ->
-  mochiweb_http:stop(get_name("web")),
-  mochiweb_websocket:stop(get_name("websocket")).
+%%--------------------------------------------------------------------
+%% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
+%%                                      {reply, Reply, State, Timeout} |
+%%                                      {noreply, State} |
+%%                                      {noreply, State, Timeout} |
+%%                                      {stop, Reason, Reply, State} |
+%%                                      {stop, Reason, State}
+%% Description: Handling call messages
+%%--------------------------------------------------------------------
+handle_call(_Request, _From, State) ->
+  Reply = ok,
+  {reply, Reply, State}.
 
-loop(Req, DocRoot) ->
-  "/" ++ Path = Req:get(path),
-  case Req:get(method) of
-    Method when Method =:= 'GET'; Method =:= 'HEAD' ->
-      case Path of
-        _ ->
-          Req:serve_file(Path, DocRoot)
-        end;
-    'POST' ->
-      case Path of
-        _ ->
-          Req:not_found()
-      end;
-    _ ->
-      Req:respond({501, [], []})
+%%--------------------------------------------------------------------
+%% Function: handle_cast(Msg, State) -> {noreply, State} |
+%%                                      {noreply, State, Timeout} |
+%%                                      {stop, Reason, State}
+%% Description: Handling cast messages
+%%--------------------------------------------------------------------
+handle_cast({send_message_to_all_websockets, Msg}, #state{live_websockets = WebSocketArray} = State) ->
+  lists:map(fun(WebSocket) -> 
+    JsonMsg = ?JSONIFY(Msg),
+    WebSocket:send(JsonMsg)
+  end, WebSocketArray),
+  {noreply, State};
+handle_cast({new_client_connected, WebSocket}, #state{live_websockets = WebSocketArray} = State) ->
+  NewWebSocketArray = [WebSocket|WebSocketArray],
+  {noreply, State#state{live_websockets = NewWebSocketArray}};
+handle_cast({client_disconnected, WebSocket}, #state{live_websockets = WebSocketArray} = State) ->
+  NewWebSocketArray = lists:delete(WebSocket, WebSocketArray),
+  {noreply, State#state{live_websockets = NewWebSocketArray}};
+handle_cast(_Msg, State) ->
+  {noreply, State}.
+
+%%--------------------------------------------------------------------
+%% Function: handle_info(Info, State) -> {noreply, State} |
+%%                                       {noreply, State, Timeout} |
+%%                                       {stop, Reason, State}
+%% Description: Handling all non call/cast messages
+%%--------------------------------------------------------------------
+handle_info(_Info, State) ->
+  {noreply, State}.
+
+%%--------------------------------------------------------------------
+%% Function: terminate(Reason, State) -> void()
+%% Description: This function is called by a gen_server when it is about to
+%% terminate. It should be the opposite of Module:init/1 and do any necessary
+%% cleaning up. When it returns, the gen_server terminates with Reason.
+%% The return value is ignored.
+%%--------------------------------------------------------------------
+terminate(_Reason, _State) ->
+  misultin:stop(),
+  ok.
+
+%%--------------------------------------------------------------------
+%% Func: code_change(OldVsn, State, Extra) -> {ok, NewState}
+%% Description: Convert process state when code is changed
+%%--------------------------------------------------------------------
+code_change(_OldVsn, State, _Extra) ->
+  {ok, State}.
+
+%%--------------------------------------------------------------------
+%%% Internal functions
+%%--------------------------------------------------------------------
+start_web_server(#state{docroot = DocRoot, web_port = Port} = _State) ->
+  Loop = fun (Req) -> ?MODULE:handle_web_req(Req, DocRoot) end,
+  WebSocketLoop = fun (WebSocket) -> ?MODULE:handle_websocket(WebSocket) end,
+  WebConfig = [{port, Port}, {name, ?MODULE}, {loop, Loop}, {ws_loop, WebSocketLoop}],
+  misultin:start_link(WebConfig).
+  
+%% Loops
+% Web requests
+handle_web_req(Req, Docroot) -> handle_web(Req:get(method), Req:resource([lowercase, urldecode]), Req, Docroot).
+
+handle_web('GET', [], Req, Docroot)       -> serve_file("index.html", Req, Docroot);
+handle_web('GET', [Path], Req, Docroot)   -> serve_file(Path, Req, Docroot);
+handle_web('HEAD', [Path], Req, Docroot)  -> serve_file(Path, Req, Docroot);
+handle_web('POST', [_], Req, _Docroot)  -> Req:respond({404, [], []});
+handle_web(_, _, Req, Docroot) ->
+  not_found_web(Req, Docroot).
+
+not_found_web(Req, Docroot) -> serve_file("not_found.html", Req, Docroot).
+serve_file(Path, Req, Docroot) -> 
+  FullPath = filename:join([Docroot, Path]),
+  case filelib:is_file(FullPath) of
+    true -> Req:file(FullPath);
+    _ -> not_found_web(Req, Docroot)
   end.
 
-ws_loop(WebSocket) ->
-    %% Get the data sent from the client
-    Data = WebSocket:get_data(),
-    
-    %% Our example...
-    case Data of
-	%% On initial connect we get this message
-	"client-connected" ->
-	    WebSocket:send("You are connected!");
-	%% Other messages go here
-	Other ->
-	    Msg = "You Said: " ++ Other,
-	    WebSocket:send(Msg)
-    end.
-%% Internal API
 
-get_option(Option, Options) ->
-  {proplists:get_value(Option, Options), proplists:delete(Option, Options)}.
-
-get_name(Name) -> erlang:list_to_atom(lists:flatten([erlang:atom_to_list(?MODULE), "_", Name])).
+handle_websocket(Ws) ->
+  receive
+    {browser, "new_websocket"} ->
+      ?MODULE:new_client_connected(Ws),
+      Ws:send("You are connected!"),
+      handle_websocket(Ws);
+    {browser, Data} ->
+      Ws:send(["received '", Data, "'"]),
+      handle_websocket(Ws);
+    Msg ->
+      erlang:display({got_web_socket, Msg}),
+      handle_websocket(Ws)
+  after 5000 ->
+    Ws:send(["pushing!"]),
+    handle_websocket(Ws)
+  end.
