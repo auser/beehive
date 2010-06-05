@@ -45,14 +45,24 @@ start_link() ->
 % TODO: Update port args with config variables
 init([]) ->
   Port = config:search_for_application_value(app_port, 4999, router),
+  WebServerName = config:search_for_application_value(webserver, mochiweb, router),
   Settings = [
     "Http beehive rest server",
     {"Port", integer_to_list(Port)}
   ],
+  
   printer:banner(Settings),
   
-  mochiweb_http:start([ {port, Port},
-                        {loop, fun dispatch_requests/1}]).
+  Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
+  Docroot = filename:join([Dir, "priv", "www"]),
+  
+  WebServer = case WebServerName of
+    mochiweb -> mochiweb_http;
+    _ -> mochiweb_http
+  end,
+  
+  WebServer:start([ {port, Port},
+                    {loop, fun(Req) -> dispatch_requests(WebServerName, Docroot, Req) end}]).
 
 
 %%--------------------------------------------------------------------
@@ -107,42 +117,62 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-dispatch_requests(Req) ->
-  Path = Req:get(path),
-  Action = clean_path(Path),
-  handle(Action, Req).
+dispatch_requests(WebServerName, Docroot, RawRequest) ->
+  {Req, Resp} = case WebServerName of
+    mochiweb -> 
+      Info = {RawRequest, Docroot},
+      {simple_bridge:make_request(mochiweb_request_bridge, Info),
+        simple_bridge:make_response(mochiweb_response_bridge, Info)};
+    _ -> throw({uh_oh})
+  end,
+  Path = Req:path(),
+  handle(Path, Req, Resp).
 
 % Handle the requests
-handle("/favicon.ico", Req) -> Req:respond({200, [{"Content-Type", "text/html"}], ""});
+handle("/favicon.ico", _Req, Resp) -> 
+  Resp:status_code(200),
+  Resp:header("Content-Type", "text/html"),
+  Resp:data(""),
+  Resp:build_response();
 
-handle(Path, Req) ->
+handle(Path, Req, Resp) ->
   BaseController = lists:concat([top_level_request(Path), "_controller"]),
   CAtom = list_to_atom(BaseController),
   ControllerPath = parse_controller_path(Path),
   
-  QueryString = lists:map(fun({K,V}) -> {misc_utils:to_atom(K), misc_utils:to_list(V)} end, Req:parse_qs()),
-  Data = lists:flatten([QueryString|decode_data_from_request(Req)]),
+  Data = lists:flatten([Req:query_params(), decode_data_from_request(Req)]),
   
   case CAtom of
     home ->
-      IndexContents = ?ERROR_HTML("Uh oh"),
-      Req:ok({"text/html", IndexContents});
+      Resp1 = Resp:status_code(200),
+      Resp2 = Resp1:header("Content-Type", "text/html"),
+      Resp3 = Resp2:data(?ERROR_HTML("Uh oh")),
+      Resp3:build_response();
     ControllerAtom -> 
-    Meth = clean_method(Req:get(method)),
-    run_controller(Req, ControllerAtom, Meth, [ControllerPath, Data])
+      Meth = clean_method(Req:request_method()),
+      run_controller(Resp, ControllerAtom, Meth, [ControllerPath, Data])
   end.
 
 % Call the controller action here
-run_controller(Req, ControllerAtom, Meth, Args) ->
+run_controller(Resp, ControllerAtom, Meth, Args) ->
   case (catch erlang:apply(ControllerAtom, Meth, Args)) of
     {'EXIT', {undef, _}} = E ->
       ?LOG(error, "(~p:~p) Error in rest server: ~p~n", [?MODULE, ?LINE,E]),
-      Req:ok({"text/html", "Unimplemented controller. There is nothing to see here, go back from where you came"});
+      Resp1 = Resp:status_code(200),
+      Resp2 = Resp1:header("Content-Type", "text/html"),
+      Resp3 = Resp2:data("Unimplemented controller. There is nothing to see here, go back from where you came"),
+      Resp3:build_response();
     {'EXIT', E} -> 
       ?LOG(error, "(~p:~p) Error in rest server: ~p~n", [?MODULE, ?LINE, E]),
-      Req:not_found();
+      Resp1 = Resp:status_code(200),
+      Resp2 = Resp1:header("Content-Type", "text/html"),
+      Resp3 = Resp2:data("Nothing to see here"),
+      Resp3:build_response();
     Body -> 
-      Req:ok({"text/json", ?JSONIFY(Body)})
+      Resp1 = Resp:status_code(200),
+      Resp2 = Resp1:header("Content-Type", "text/json"),
+      Resp3 = Resp2:data(?JSONIFY(Body)),
+      Resp3:build_response()
   end.
 
 % Find the method used as a request. 
@@ -200,7 +230,7 @@ convert_to_struct(RawData) ->
 
 % Get the data off the request
 decode_data_from_request(Req) ->
-  RecvBody = Req:recv_body(),
+  RecvBody = Req:request_body(),
   Data = case RecvBody of
     undefined -> erlang:list_to_binary("{}");
     <<>> -> erlang:list_to_binary("{}");

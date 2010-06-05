@@ -166,7 +166,6 @@ serve_file(Path, Req, Docroot) ->
     _ -> not_found_web(Req, Docroot)
   end.
 
-
 handle_websocket(Ws) ->
   receive
     {browser, "new_websocket"} ->

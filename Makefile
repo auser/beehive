@@ -10,6 +10,10 @@ compile:
 	
 deps:
 	@./rebar get-deps
+
+check:
+	@echo "Dependencies"
+	@./rebar check-deps
 	
 clean:
 	@./rebar clean
