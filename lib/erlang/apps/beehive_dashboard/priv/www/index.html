@@ -12,30 +12,12 @@
   </style>
 
 </head>
-<body>
-  <h1>Basic Echo Example</h1>
-  <div id="msgs"></div>
-  <div id="connect">
-     <input id='cA' class='button' type='submit' name='connect' value='Connect'/>
-  </div>
-  <br/>
-  <div id="connected" class="hidden">
-    Say Something:&nbsp;<input id='phrase' type='text'/>
-    <input id='sendB' class='button' type='submit' name='connect' value='Send'/>
-  </div>
-
-  <script type='text/javascript'>
-    $('cA').onclick = function(event) { client.connect(); return false; };
-    $('sendB').onclick = function(event) { client.chat($F('phrase')); $('phrase').value=''; return false; };	
- </script>
+  <body>
+    <h1>Dashboard</h1>
+  
+    <div id="events">
+      <h3>Events</h3>
+      <div id="msgs"></div>
+    </div>
   </body>
 </html>
-
-  <meta http-equiv="Content-type" content="text/html; charset=utf-8">
-  <title>Beehive Dashboard</title>
-</head>
-<body id="index">
-  <h1>Dashboard</h1>
-</body>
-</html>
-  

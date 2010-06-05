@@ -162,7 +162,6 @@ not_found_web(Req, Docroot) -> serve_file(["not_found.html"], Req, Docroot).
 serve_file(Path, Req, Docroot) -> 
 	RealPath = filename:join(Path),
   FullPath = filename:join([Docroot, RealPath]),
-	erlang:display({serve_file, FullPath, Path, RealPath}),
   case filelib:is_file(FullPath) of
     true -> Req:file(FullPath);
     _ -> not_found_web(Req, Docroot)
@@ -181,6 +180,5 @@ handle_websocket(Ws) ->
       erlang:display({got_web_socket, Msg}),
       handle_websocket(Ws)
   after 5000 ->
-    Ws:send(["pushing!"]),
     handle_websocket(Ws)
   end.

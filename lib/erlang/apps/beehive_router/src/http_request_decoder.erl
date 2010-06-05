@@ -23,12 +23,7 @@
 % Take off the 'Host' parameter (or other sepcified parameter) from the header and return the 
 % routing key and the full request to the calling process
 handle_request(ClientSock) ->
-  inet:setopts(ClientSock, [{packet, http}]),
-  Req = request(ClientSock, 
-    fun(MochiReq) ->
-      MochiReq
-    end
-  ),
+  Req = beehive_request:new(ClientSock),
   
   RoutingParameter = misc_utils:to_atom(config:search_for_application_value(routing_parameter, "Host", beehive_router)),
   HeaderVal = mochiweb_headers:get_value(RoutingParameter, Req:get(headers)),
@@ -105,7 +100,7 @@ parse_route_from_request_without_base_domain(HostName) ->
   O = string:tokens(NoPortHostname, "."),
   parse_route_from_request_without_base_domain1(O, []).
 
-parse_route_from_request_without_base_domain1([], Acc)      -> base;
+parse_route_from_request_without_base_domain1([], _Acc)     -> base;
 parse_route_from_request_without_base_domain1(["com"], Acc) -> parse_route_from_request_without_base_domain2(Acc);
 parse_route_from_request_without_base_domain1(["org"], Acc) -> parse_route_from_request_without_base_domain2(Acc);
 parse_route_from_request_without_base_domain1(["net"], Acc) -> parse_route_from_request_without_base_domain2(Acc);
@@ -114,38 +109,3 @@ parse_route_from_request_without_base_domain1([H|Rest], Acc) ->
 
 parse_route_from_request_without_base_domain2(List) ->
   [H|_Rest] = lists:reverse(List), [H].
-
-% FROM MOCHIWEB
-request(Socket, Callback) ->
-    case gen_tcp:recv(Socket, 0, ?IDLE_TIMEOUT) of
-        {ok, {http_request, Method, Path, Version}} ->
-            headers(Socket, {Method, Path, Version}, [], Callback, 0);
-        {error, {http_error, "\r\n"}} ->
-            request(Socket, Callback);
-        {error, {http_error, "\n"}} ->
-            request(Socket, Callback);
-        _Other ->
-            gen_tcp:close(Socket),
-            exit(normal)
-    end.
-
-headers(Socket, Request, Headers, _Callback, ?MAX_HEADERS) ->
-  %% Too many headers sent, bad request.
-  inet:setopts(Socket, [{packet, raw}]),
-  Req = mochiweb:new_request({Socket, Request,lists:reverse(Headers)}),
-  Req:respond({400, [], []}),
-  gen_tcp:close(Socket),
-  exit(normal);
-headers(Socket, Request, Headers, Callback, HeaderCount) ->
-  case gen_tcp:recv(Socket, 0, ?IDLE_TIMEOUT) of
-    {ok, http_eoh} ->
-      inet:setopts(Socket, [{packet, raw}]),
-      Req = mochiweb:new_request({Socket, Request, lists:reverse(Headers)}),
-      Callback(Req);
-    {ok, {http_header, _, Name, _, Value}} ->
-      headers(Socket, Request, [{Name, Value} | Headers], Callback, 1 + HeaderCount);
-    _Other ->
-      gen_tcp:close(Socket),
-      exit(normal)
-  end.
-  

@@ -9,6 +9,7 @@
       bh_node_stats_srv,
       http_request_decoder,
       proxy_handler,
+      beehive_request,
       router_srv, router_srv_sup,
       tcp_socket_server, tcp_socket_server_sup
     ]},
