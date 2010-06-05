@@ -7,11 +7,13 @@
 %%%-------------------------------------------------------------------
 
 -module (home_controller).
+-include ("common.hrl").
+-include ("beehive.hrl").
 -include ("http.hrl").
 -export ([get/2, post/2, put/2, delete/2]).
 
 get(_, _Data) -> 
-  ?JSON_MSG("beehive", ["apps", "nodes", "bees", "stats", "users"]).
+  {"beehive", ["apps", "nodes", "bees", "stats", "users"]}.
 
 post(_Path, _Data) -> error("unhandled").
 put(_Path, _Data) -> error("unhandled").

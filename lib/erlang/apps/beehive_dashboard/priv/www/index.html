@@ -14,7 +14,7 @@
     
     var client = {
        connect: function(){
-         this._ws=new WebSocket("ws://localhost:4997");
+         this._ws=new WebSocket("ws://10.45.15.7:4998");
          this._ws.onopen=this._onopen;
          this._ws.onmessage=this._onmessage;
          this._ws.onclose=this._onclose;
@@ -24,7 +24,7 @@
           $('connect').className='hidden';
           $('connected').className='';
           $('phrase').focus();
-          client._send('client-connected');
+          client._send('new_websocket');
        },
 
        _send: function(message){

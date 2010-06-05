@@ -22,12 +22,10 @@ get([Email], _Data) ->
 	{struct, Json};
 get(_, _Data) -> 
   All = users:all(),
-  {struct, ?BINIFY([{
-    "users",
-    lists:map(fun(A) ->
-      {A#user.email, ?BINIFY([{"level", A#user.level}])}
+  { "users", lists:map(fun(A) ->
+      {A#user.email, [{"level", A#user.level}]}
     end, All)
-  }])}.
+  }.
 
 post([Name, "keys", "new"], Data) ->
   auth_utils:run_if_admin(fun(_) ->
@@ -38,7 +36,7 @@ post([Name, "keys", "new"], Data) ->
           User when is_record(User, user) ->
             case users:create(User#user{key = Key}) of
               User when is_record(User, user) -> 
-                {struct, ?BINIFY([{"user", User#user.email}, {"key", "added key"}])};
+                [{"user", User#user.email}, {"key", "added key"}];
               _Else -> 
                 error("There was an error adding bee")
             end;
@@ -52,7 +50,7 @@ post(["new"], Data) ->
   auth_utils:run_if_admin(fun(_) ->
     case users:create(Data) of
       User when is_record(User, user) -> 
-        {struct, ?BINIFY([{"user", misc_utils:to_bin(User#user.email)}])};
+        {user, [{email, User#user.email}]};
       E -> 
         io:format("Error: ~p~n", [E]),
         error("There was an error adding bee")

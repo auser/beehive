@@ -22,7 +22,9 @@
   proxy_event_handler, 
   bee_event_handler, 
   db_event_handler,
-  user_defined_event_handler]).
+  user_defined_event_handler,
+  user_event_handler,
+  dashboard_event_handler]).
 
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | {error,Error}
