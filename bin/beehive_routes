@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+require 'rubygems'
+require 'ap'
+
+CONTROLLER_DIR = File.join(File.dirname(__FILE__), "..", "lib/erlang/apps/beehive/src/bh_rest/app_controllers/")
+
+entries = Dir.entries(CONTROLLER_DIR)
+
+ap entries
