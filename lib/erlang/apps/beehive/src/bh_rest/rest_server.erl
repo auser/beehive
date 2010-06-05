@@ -191,14 +191,6 @@ parse_controller_path(CleanPath) ->
     [_RootPath|Rest] -> Rest
   end.
 
-% Get a clean path
-% strips off the query string
-clean_path(Path) ->
-  case string:str(Path, "?") of
-    0 -> Path;
-    N -> string:substr(Path, 1, N - 1)
-  end.
-
 % Get the query params from the path
 % query_params(Path) ->
 %   case string:str(Path, "?") of
