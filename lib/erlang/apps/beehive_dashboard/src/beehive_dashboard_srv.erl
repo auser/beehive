@@ -151,16 +151,18 @@ start_web_server(#state{docroot = DocRoot, web_port = Port} = _State) ->
 % Web requests
 handle_web_req(Req, Docroot) -> handle_web(Req:get(method), Req:resource([lowercase, urldecode]), Req, Docroot).
 
-handle_web('GET', [], Req, Docroot)       -> serve_file("index.html", Req, Docroot);
-handle_web('GET', [Path], Req, Docroot)   -> serve_file(Path, Req, Docroot);
-handle_web('HEAD', [Path], Req, Docroot)  -> serve_file(Path, Req, Docroot);
-handle_web('POST', [_], Req, _Docroot)  -> Req:respond({404, [], []});
+handle_web('GET', [], Req, Docroot)       -> serve_file(["index.html"], Req, Docroot);
+handle_web('GET', Path, Req, Docroot)   -> serve_file(Path, Req, Docroot);
+handle_web('HEAD', Path, Req, Docroot)  -> serve_file(Path, Req, Docroot);
+handle_web('POST', _, Req, _Docroot)  -> Req:respond({404, [], []});
 handle_web(_, _, Req, Docroot) ->
   not_found_web(Req, Docroot).
 
-not_found_web(Req, Docroot) -> serve_file("not_found.html", Req, Docroot).
+not_found_web(Req, Docroot) -> serve_file(["not_found.html"], Req, Docroot).
 serve_file(Path, Req, Docroot) -> 
-  FullPath = filename:join([Docroot, Path]),
+	RealPath = filename:join(Path),
+  FullPath = filename:join([Docroot, RealPath]),
+	erlang:display({serve_file, FullPath, Path, RealPath}),
   case filelib:is_file(FullPath) of
     true -> Req:file(FullPath);
     _ -> not_found_web(Req, Docroot)

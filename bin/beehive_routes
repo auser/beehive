@@ -1,0 +1,54 @@
+#!/usr/bin/env ruby
+require 'rubygems'
+require 'ap'
+
+def figure_route(controller, http_method, line)
+  route = {}
+  base = controller
+  paths = line[/\(.+\)/].gsub(/\(|\)|, _Data|\[|\]/, "").split(", ")
+  paths = paths.map do |path|
+    case path
+    when /^_$/
+      ""
+      # path
+    when /^".+"$/
+      path.gsub(/"/,"")
+      # path
+    else
+      ":" + path unless path.empty?
+      # path
+    end
+  end
+  route[:method] = http_method
+  route[:uri] = controller + "/" + paths.join("/")
+  route
+end
+
+CONTROLLER_DIR = File.join(File.dirname(__FILE__), "..", "lib/erlang/apps/beehive/src/bh_rest/app_controllers/")
+
+controller_files = Dir.entries(CONTROLLER_DIR) - %w(. ..)
+
+
+
+route_hash = {}
+# file = controller_files.first
+controller_files.each do |file|
+  controller = file.gsub(/_controller.erl$/, "")
+  route_hash[file] = []
+  lines = File.open(CONTROLLER_DIR + file).readlines
+  lines.each do |line|
+    case line
+    when /^get\(/
+      http_method = :get
+    when /^post\(/
+      http_method = :post
+    when /^put\(/
+      http_method = :put
+    when /^delete\(/
+      http_method = :delete
+    end
+    route_hash[file] << figure_route(controller, http_method, line) if http_method
+  end
+end
+
+ap route_hash
