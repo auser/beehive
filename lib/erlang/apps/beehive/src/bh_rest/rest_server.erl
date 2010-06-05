@@ -130,11 +130,16 @@ dispatch_requests(WebServerName, Docroot, RawRequest) ->
 
 % Handle the requests
 handle("/favicon.ico", _Req, Resp) -> 
-  Resp:status_code(200),
-  Resp:header("Content-Type", "text/html"),
-  Resp:data(""),
-  Resp:build_response();
+  Resp1 = Resp:status_code(200),
+  Resp2 = Resp1:header("Content-Type", "text/html"),
+  Resp3 = Resp2:data(""),
+  Resp3:build_response();
 
+handle("/", _Req, Resp) ->
+  Resp1 = Resp:status_code(200),
+  Resp2 = Resp1:header("Content-Type", "text/html"),
+  Resp3 = Resp2:file(["index.html"]),
+  Resp3:build_response();
 handle(Path, Req, Resp) ->
   BaseController = lists:concat([top_level_request(Path), "_controller"]),
   CAtom = list_to_atom(BaseController),
@@ -142,16 +147,8 @@ handle(Path, Req, Resp) ->
   
   Data = lists:flatten([Req:query_params(), decode_data_from_request(Req)]),
   
-  case CAtom of
-    home ->
-      Resp1 = Resp:status_code(200),
-      Resp2 = Resp1:header("Content-Type", "text/html"),
-      Resp3 = Resp2:data(?ERROR_HTML("Uh oh")),
-      Resp3:build_response();
-    ControllerAtom -> 
-      Meth = clean_method(Req:request_method()),
-      run_controller(Resp, ControllerAtom, Meth, [ControllerPath, Data])
-  end.
+  Meth = clean_method(Req:request_method()),
+  run_controller(Resp, CAtom, Meth, [ControllerPath, Data]).
 
 % Call the controller action here
 run_controller(Resp, ControllerAtom, Meth, Args) ->
@@ -191,18 +188,12 @@ parse_controller_path(CleanPath) ->
     [_RootPath|Rest] -> Rest
   end.
 
-% Get the query params from the path
-% query_params(Path) ->
-%   case string:str(Path, "?") of
-%     0 -> "";
-%     N -> string:substr(Path, N+1)
-%   end.
-
 % Query about the top level request path is
+top_level_request("/") -> home;
 top_level_request(Path) ->
   case string:tokens(Path, "/") of
     [CleanPath|_Others] -> CleanPath;
-    [] -> "home"
+    [] -> home
   end.
 
 % Convert each of the binary data proplists into a valid proplist
