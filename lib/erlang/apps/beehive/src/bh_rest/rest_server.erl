@@ -140,13 +140,12 @@ handle("/", _Req, Resp) ->
   Resp2 = Resp1:header("Content-Type", "text/html"),
   Resp3 = Resp2:file(["index.html"]),
   Resp3:build_response();
+  
 handle(Path, Req, Resp) ->
   BaseController = lists:concat([top_level_request(Path), "_controller"]),
   CAtom = list_to_atom(BaseController),
   ControllerPath = parse_controller_path(Path),
-  
   Data = lists:flatten([Req:query_params(), decode_data_from_request(Req)]),
-  
   Meth = clean_method(Req:request_method()),
   run_controller(Resp, CAtom, Meth, [ControllerPath, Data]).
 

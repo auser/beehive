@@ -442,7 +442,6 @@ flush_old_processes() ->
 % GARBAGE COLLECTION
 handle_non_ready_bees() ->
   TerminatedBees = lists:filter(fun(B) -> B#bee.status =:= terminated end, bees:all()),
-  ?LOG(debug, "garbage_collection on terminated: ~p", [TerminatedBees]),
   [ cleanup_bee(B) || B <- TerminatedBees ],
   
   DownBees = lists:filter(fun(B) -> B#bee.status =/= ready andalso B#bee.sticky =:= false end, bees:all()),
