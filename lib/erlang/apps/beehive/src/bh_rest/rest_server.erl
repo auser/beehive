@@ -154,15 +154,20 @@ run_controller(Resp, ControllerAtom, Meth, Args) ->
   case (catch erlang:apply(ControllerAtom, Meth, Args)) of
     {'EXIT', {undef, _}} = E ->
       ?LOG(error, "(~p:~p) Error in rest server: ~p~n", [?MODULE, ?LINE,E]),
-      Resp1 = Resp:status_code(200),
+      Resp1 = Resp:status_code(404),
       Resp2 = Resp1:header("Content-Type", "text/html"),
       Resp3 = Resp2:data("Unimplemented controller. There is nothing to see here, go back from where you came"),
       Resp3:build_response();
     {'EXIT', E} -> 
       ?LOG(error, "(~p:~p) Error in rest server: ~p~n", [?MODULE, ?LINE, E]),
-      Resp1 = Resp:status_code(200),
+      Resp1 = Resp:status_code(501),
       Resp2 = Resp1:header("Content-Type", "text/html"),
       Resp3 = Resp2:data("Nothing to see here"),
+      Resp3:build_response();
+    {error, E} ->
+      Resp1 = Resp:status_code(404),
+      Resp2 = Resp1:header("Content-Type", "text/json"),
+      Resp3 = Resp2:data(?JSONIFY(E)),
       Resp3:build_response();
     Body -> 
       Resp1 = Resp:status_code(200),
