@@ -165,6 +165,7 @@ run_controller(Resp, ControllerAtom, Meth, Args) ->
       Resp3 = Resp2:data("Nothing to see here"),
       Resp3:build_response();
     {error, E} ->
+      % Any errors must be thrown to be caught
       Resp1 = Resp:status_code(404),
       Resp2 = Resp1:header("Content-Type", "text/json"),
       Resp3 = Resp2:data(?JSONIFY(E)),

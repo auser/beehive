@@ -73,6 +73,7 @@ update_by_name(Name) ->
   case find_by_name(Name) of
     [] -> {error, "Cannot find app to update"};
     App -> 
+      % Should this be synchronous or asynchronous?
       NewApp = App#app{updated_at = date_util:now_to_seconds()},
       ?NOTIFY({app, updated, NewApp}),
       {ok, create(NewApp)}

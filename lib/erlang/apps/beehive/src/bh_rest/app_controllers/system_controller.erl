@@ -10,10 +10,6 @@
 -include ("http.hrl").
 -export ([get/2, post/2, put/2, delete/2]).
 
-
-get(["routes"], _Data) ->
-  throw({error, testing_error}),
-  {"routes", "more routers"};
 get(_, _Data) -> 
   {"beehive", ["routes"]}.
 
