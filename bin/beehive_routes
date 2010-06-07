@@ -19,8 +19,9 @@ def figure_route(controller, http_method, line)
       # path
     end
   end
-  route[:method] = http_method
+  route[:method] = http_method.to_s.upcase
   route[:uri] = controller + "/" + paths.join("/")
+  route[:controller] = controller
   route
 end
 
@@ -31,6 +32,7 @@ controller_files = Dir.entries(CONTROLLER_DIR) - %w(. ..)
 
 
 route_hash = {}
+routes = []
 # file = controller_files.first
 controller_files.each do |file|
   controller = file.gsub(/_controller.erl$/, "")
@@ -47,8 +49,29 @@ controller_files.each do |file|
     when /^delete\(/
       http_method = :delete
     end
-    route_hash[file] << figure_route(controller, http_method, line) if http_method
+    route = figure_route(controller, http_method, line) if http_method
+    route_hash[file] << route
+    routes << route
   end
 end
 
-ap route_hash
+routes.compact!
+
+# routes = routes.collect do |route|
+#   name = route[:controller]
+#   verb = route[:method].to_s.upcase
+#   uri = route[:uri]
+#   {:name => name, :verb => verb, :uri => uri}
+# end
+controller_width = routes.collect {|r| r[:controller]}.collect {|n| n.length}.max
+method_width = routes.collect {|r| r[:method]}.collect {|v| v.length}.max
+uri_width = routes.collect {|r| r[:uri]}.collect {|s| s.length}.max
+last_controller = ""
+routes.each do |r|
+  ctrl_display = (r[:controller] == last_controller) ? "" : r[:controller]
+  puts "#{ctrl_display.rjust(controller_width)} #{r[:method].ljust(method_width)} #{r[:uri].ljust(uri_width)}"
+  last_controller = r[:controller]
+end
+
+
+# ap route_hash
