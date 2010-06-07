@@ -145,8 +145,8 @@ handle(Path, Req, Resp) ->
   BaseController = lists:concat([top_level_request(Path), "_controller"]),
   CAtom = list_to_atom(BaseController),
   ControllerPath = parse_controller_path(Path),
-  Data = lists:flatten([Req:query_params(), decode_data_from_request(Req)]),
   Meth = clean_method(Req:request_method()),
+  Data = decode_data_from_request(Req, Meth),
   run_controller(Resp, CAtom, Meth, [ControllerPath, Data]).
 
 % Call the controller action here
@@ -217,14 +217,15 @@ convert_to_struct(RawData) ->
   end, RawData).
 
 % Get the data off the request
-decode_data_from_request(Req) ->
-  RecvBody = Req:request_body(),
-  Data = case RecvBody of
-    undefined -> erlang:list_to_binary("{}");
-    <<>> -> erlang:list_to_binary("{}");
-    Bin -> Bin
-  end,
+decode_data_from_request(Req, get) -> Req:query_params();
+decode_data_from_request(Req, _Meth) ->
+  lists:flatten([lists:map(fun({Key, Value}) ->
+    decode_data_from_request_into_json(Key, Value)
+  end, Req:post_params())]).
+
+decode_data_from_request_into_json(Data, []) ->
   case mochijson2:decode(Data) of
     {struct, Struct} -> convert_to_struct(Struct);
     B -> convert_to_struct(B)
-  end.
+  end;
+decode_data_from_request_into_json(Key, Value) -> {Key, Value}.

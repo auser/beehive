@@ -39,6 +39,7 @@ handle_event({user, Atom, User}, State) ->
   beehive_dashboard_srv:send_message_to_all_websockets(Msg),
   {ok, State};
 handle_event(Event, State) ->
+  erlang:display({dashboard_event_handler, Event}),
   % beehive_dashboard_srv:send_message_to_all_websockets(Event),
   {ok, State}.
 

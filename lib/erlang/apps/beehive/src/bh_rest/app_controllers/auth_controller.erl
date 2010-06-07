@@ -17,10 +17,10 @@ get(_, _Data) ->
 
 post([], Data) ->
   case proplists:is_defined(email, Data) of
-    false -> error("No email in auth request");
+    false -> {error, "No email in auth request"};
     true ->
       case proplists:is_defined(password, Data) of
-        false -> error("No password in auth request");
+        false -> {error, "No password in auth request"};
         true ->
           Email = proplists:get_value(email, Data),
           Pass = proplists:get_value(password, Data),
@@ -28,7 +28,7 @@ post([], Data) ->
             User when is_record(User, user) ->
               [{user, Email}, {token, User#user.token}];
             _Else ->
-              error("There was a problem authenticating")
+              {error, "There was a problem authenticating"}
           end
       end
   end;
@@ -37,6 +37,3 @@ post(_Path, _Data) -> "unhandled".
 
 put(_Path, _Data) -> "unhandled".
 delete(_Path, _Data) -> "unhandled".
-
-error(Msg) ->
-  {struct, [{error, misc_utils:to_bin(Msg)}]}.

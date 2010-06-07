@@ -39,7 +39,6 @@
 %% API
 %%====================================================================
 new_client_connected(WebSocket) -> 
-  erlang:display({called, new_client_connected, WebSocket}),
   gen_server:cast(?SERVER, {new_client_connected, WebSocket}).
 client_disconnected(WebSocket) -> gen_server:cast(?SERVER, {client_disconnected, WebSocket}).
 send_message_to_all_websockets(Msg) -> gen_server:cast(?SERVER, {send_message_to_all_websockets, Msg}).
@@ -98,8 +97,15 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({send_message_to_all_websockets, Msg}, #state{live_websockets = WebSocketArray} = State) ->
   lists:map(fun(WebSocket) -> 
-    JsonMsg = ?JSONIFY(Msg),
-    WebSocket:send(JsonMsg)
+    Socket = WebSocket:get(socket),
+    case erlang:port_info(Socket) of
+      undefined ->
+        % Port not connected anymore 
+        client_disconnected(WebSocket);
+      _ ->
+        JsonMsg = ?JSONIFY(Msg),
+        WebSocket:send(JsonMsg)
+    end
   end, WebSocketArray),
   {noreply, State};
 handle_cast({new_client_connected, WebSocket}, #state{live_websockets = WebSocketArray} = State) ->
@@ -169,7 +175,7 @@ serve_file(Path, Req, Docroot) ->
 
 handle_websocket(Ws) ->
   receive
-    {browser, "new_websocket"} ->
+    {browser, "client-connected"} ->
       ?MODULE:new_client_connected(Ws),
       Ws:send("You are connected!"),
       handle_websocket(Ws);
