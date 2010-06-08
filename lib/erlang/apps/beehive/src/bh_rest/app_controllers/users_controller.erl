@@ -48,13 +48,24 @@ post([Name, "keys", "new"], Data) ->
   
 post(["new"], Data) ->
   auth_utils:run_if_admin(fun(_) ->
-    case users:create(Data) of
-      User when is_record(User, user) -> 
-        {user, [{email, User#user.email}]};
-      E -> 
-        io:format("Error: ~p~n", [E]),
-        error("There was an error adding bee")
+    
+    case proplists:get_value(email, Data) of
+      undefined -> {error, "No email defined"};
+      Email ->
+        % The user has been submitted with an email
+        case users:exist(Email) of
+          true -> {error, "The user already exists"};
+          false ->
+            case users:create(Data) of
+              User when is_record(User, user) -> 
+                {user, [{email, User#user.email}]};
+              E -> 
+                io:format("Error: ~p~n", [E]),
+                {error, "There was an error adding bee"}
+            end
+        end
     end
+    
   end, Data);
       
 post(Path, _Data) -> 

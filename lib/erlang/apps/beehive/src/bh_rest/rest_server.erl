@@ -164,11 +164,11 @@ run_controller(Resp, ControllerAtom, Meth, Args) ->
       Resp2 = Resp1:header("Content-Type", "text/html"),
       Resp3 = Resp2:data("Nothing to see here"),
       Resp3:build_response();
-    {error, E} ->
+    {error, _} = Tuple ->
       % Any errors must be thrown to be caught
       Resp1 = Resp:status_code(404),
       Resp2 = Resp1:header("Content-Type", "text/json"),
-      Resp3 = Resp2:data(?JSONIFY(E)),
+      Resp3 = Resp2:data(?JSONIFY(Tuple)),
       Resp3:build_response();
     Body -> 
       Resp1 = Resp:status_code(200),
