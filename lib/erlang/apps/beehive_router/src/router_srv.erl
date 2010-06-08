@@ -142,7 +142,6 @@ handle_call({get_bee, Hostname}, From, State) ->
   case Hostname of
     base ->
       Bee = get_default_app_or_rest(Hostname, From, State),
-      erlang:display({base, Bee}),
       {reply, {ok, Bee}, State};
     [Head] -> 
       get_bee_by_hostname(Head, From, State);
@@ -378,7 +377,10 @@ get_default_app_or_rest(Hostname, From, State) ->
         id = Id, port = Port, host = Host, app_name = Hostname
       };
     Else ->
-      get_bee_by_hostname(Else, From, State)
+      case get_bee_by_hostname(Else, From, State) of
+        {reply, {ok, TheBee}, _State} -> TheBee;
+        _Else -> {error, could_not_start}
+      end
   end.
   
 get_bee_by_hostname(Hostname, From, State) ->
