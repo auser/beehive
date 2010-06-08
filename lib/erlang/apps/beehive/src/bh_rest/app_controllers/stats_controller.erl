@@ -66,16 +66,15 @@ delete(_Path, _Data) -> "unhandled".
 format_proxy_state() ->
   Backends = bees:all(),
   State = router_srv:get_proxy_state(),
-  StateHeaders = ?BINIFY([
-    {"proxy_start_time", State#proxy_state.start_time},
-    {"current_time", date_util:now_to_seconds()},
-    {"local_port", State#proxy_state.local_port},
-    {"connection_timeout", (State#proxy_state.conn_timeout / 1000)},
-    {"activity_timeout", (State#proxy_state.act_timeout / 1000)}
-  ]),
   [
-    {struct, StateHeaders},
-    {struct, [{"bees", format_bee_list(Backends)}]}
+    [
+      {"proxy_start_time", State#proxy_state.start_time},
+      {"current_time", date_util:now_to_seconds()},
+      {"local_port", State#proxy_state.local_port},
+      {"connection_timeout", (State#proxy_state.conn_timeout / 1000)},
+      {"activity_timeout", (State#proxy_state.act_timeout / 1000)}
+    ],
+    {"bees", format_bee_list(Backends)}
   ].
 
 format_bee_list(List) -> format_bee_list(List, []).
@@ -101,7 +100,7 @@ format_bee_list([B|Bs], Acc) ->
 
   % PidList = bee_pids:lookup(B#bee.app_name),
   % {Active, Pending} = count_reqs(PidList),
-  format_bee_list(Bs, [{struct, ?BINIFY([
+  format_bee_list(Bs, [[
     {"app_name", B#bee.app_name},
     {"host", B#bee.host},
     {"port", B#bee.port},
@@ -115,5 +114,5 @@ format_bee_list([B|Bs], Acc) ->
     {"total_time", TotalTime},
     {"packet_count", PacketCount},
     {"bytes_received", RecvBytes}
-  ])}|Acc]).
+  ]|Acc]).
       

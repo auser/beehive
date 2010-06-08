@@ -17,15 +17,14 @@ get(_, _Data) ->
   O = {struct, [{
     "bees",
     lists:map(fun(B) ->
-      Details = [
+      [
         {"app_name", B#bee.app_name},
         {"host", B#bee.host},
         {"port", B#bee.port},
         {"meta data", B#bee.meta_data},
         {"commit", B#bee.commit_hash},
         {"status", B#bee.status}
-      ],
-      {struct, ?BINIFY(Details)}
+      ]
     end, All)
   }]},
   O.

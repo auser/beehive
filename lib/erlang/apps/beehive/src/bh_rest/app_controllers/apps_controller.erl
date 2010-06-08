@@ -15,7 +15,7 @@
 
 get([Name], _Data) ->
   case apps:find_by_name(Name) of
-    [] -> {"error", ?BINIFY("App not found")};
+    [] -> {error, "App not found"};
     App ->
       AppDetails = [
         {"url", App#app.url},
@@ -42,17 +42,17 @@ get(_, _Data) ->
 post([], Data) ->
   case auth_utils:get_authorized_user(Data) of
     false -> 
-      ?JSON_ERROR("No user defined or invalid token");
+      {error, "No user defined or invalid token"};
       % {struct, [{"error", misc_utils:to_bin("No user defined or invalid token")}]};
     ReqUser ->
       case apps:create(Data) of
         {ok, App} when is_record(App, app) -> 
           user_apps:create(ReqUser, App),
           {app, misc_utils:to_bin(App#app.name)};
-        {error, app_exists} -> ?JSON_ERROR("App exists already");
+        {error, app_exists} -> {error, "App exists already"};
         E -> 
           ?LOG(error, "Unknown error adding app: ~p", [E]),
-          ?JSON_ERROR("Unknown error adding app. The error has been logged")
+          {error, "Unknown error adding app. The error has been logged"}
       end
   end;
 
@@ -84,8 +84,8 @@ put([Name], Data) ->
       {"error", misc_utils:to_bin("No user defined or invalid token")};
     _ReqUser ->
       case apps:update(Name, Data) of
-        {updated, App} when is_record(App, app) -> ?JSON_MSG("updated", App#app.name);
-        _ -> ?JSON_ERROR("There was an error adding bee")
+        {updated, App} when is_record(App, app) -> {updated, App#app.name};
+        _ -> {error, "There was an error adding bee"}
       end
   end;
 put(_Path, _Data) -> "unhandled".
@@ -93,11 +93,11 @@ put(_Path, _Data) -> "unhandled".
 delete([Name], Data) ->
   io:format("Data: ~p~n", [Data]),
   case auth_utils:get_authorized_user(Data) of
-    false -> ?JSON_ERROR("No user defined or invalid token");
+    false -> {error, "No user defined or invalid token"};
     _ReqUser ->
       case apps:delete(Name) of
-        ok -> ?JSON_MSG("app", "deleted");
-        _ -> ?JSON_ERROR("There was an error deleting app")
+        ok -> {app, "deleted"};
+        _ -> {error, "There was an error deleting app"}
       end
   end;
 delete(_Path, _Data) -> "unhandled".

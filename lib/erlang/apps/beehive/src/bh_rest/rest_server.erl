@@ -223,6 +223,8 @@ decode_data_from_request(Req, _Meth) ->
     decode_data_from_request_into_json(Key, Value)
   end, Req:post_params())]).
 
+decode_data_from_request_into_json(BinData, []) when is_binary(BinData) ->
+  decode_data_from_request_into_json(binary_to_list(BinData), []);
 decode_data_from_request_into_json(Data, []) ->
   case mochijson2:decode(Data) of
     {struct, Struct} -> convert_to_struct(Struct);
