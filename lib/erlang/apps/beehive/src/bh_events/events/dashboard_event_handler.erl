@@ -50,17 +50,12 @@ handle_event({app, Event, App}, State) ->
     }],
   beehive_dashboard_srv:send_message_to_all_websockets(Msg),
   {ok, State};
-handle_event({bee, used, Bee}, State) ->
+handle_event({bee, Event, Bee}, State) when is_record(Bee, bee) ->
   Msg = [
     {context, bee}, 
-    {event, used_bee}, 
-    {bee, [
-      {port, Bee#bee.port}, 
-      {size, Bee#bee.bee_size},
-      {os_pid, Bee#bee.os_pid},
-      {app_name, Bee#bee.app_name}
-      ]
-    }],
+    {event, Event}, 
+    {bee, bee_to_proplist(Bee)}
+    ],
   beehive_dashboard_srv:send_message_to_all_websockets(Msg),
   {ok, State};
 handle_event(Event, State) ->
@@ -111,3 +106,9 @@ code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
   
 % INTERNAL METHODS
+bee_to_proplist(Bee) ->
+  [
+    {host, web_utils:ip_to_list(Bee#bee.host)}, 
+    {port, Bee#bee.port}, 
+    {app_name, Bee#bee.app_name}
+  ].
