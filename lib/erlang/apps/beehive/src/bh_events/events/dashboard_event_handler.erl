@@ -35,8 +35,30 @@ init([]) ->
 %% each installed event handler to handle the event.
 %%--------------------------------------------------------------------
 handle_event({user, Atom, User}, State) ->
-  Msg = [{event, Atom}, {user, [{email, User#user.email}, {token, User#user.token}]}],
+  Msg = [{context, user}, {event, Atom}, {user, [{email, User#user.email}, {token, User#user.token}]}],
   beehive_dashboard_srv:send_message_to_all_websockets(Msg),
+  {ok, State};
+handle_event({app, Event, App}, State) ->
+  Msg = [
+    {context, app}, 
+    {event, Event}, 
+    {app, [
+      {name, App#app.name}, 
+      {url, App#app.url}, 
+      {updated_at, App#app.updated_at}
+      ]
+    }],
+  beehive_dashboard_srv:send_message_to_all_websockets(Msg),
+  {ok, State};
+handle_event({bee, Event, Bee}, State) when is_record(Bee, bee) ->
+  Msg = [
+    {context, bee}, 
+    {event, Event}, 
+    {bee, bee_to_proplist(Bee)}
+    ],
+  beehive_dashboard_srv:send_message_to_all_websockets(Msg),
+  {ok, State};
+handle_event({bee, closing_stats, _Bee, _Stats}, State) ->
   {ok, State};
 handle_event(Event, State) ->
   erlang:display({dashboard_event_handler, Event}),
@@ -86,3 +108,9 @@ code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
   
 % INTERNAL METHODS
+bee_to_proplist(Bee) ->
+  [
+    {host, web_utils:ip_to_list(Bee#bee.host)}, 
+    {port, Bee#bee.port}, 
+    {app_name, Bee#bee.app_name}
+  ].

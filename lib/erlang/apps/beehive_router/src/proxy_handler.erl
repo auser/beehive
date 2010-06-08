@@ -44,7 +44,7 @@ proxy_init(ClientSock) ->
   receive
     {start, ClientSock, RequestPid} ->
       {ok, RoutingKey, ForwardReq, Req} = ?BENCHMARK_LOG("Handling request", http_request_decoder, handle_request, [ClientSock]),
-      GetBee = ?BENCHMARK_LOG("Getting bee for routing key", router_srv, get_bee, [self(), RoutingKey]),
+      GetBee = ?BENCHMARK_LOG("Getting bee for routing key", router_srv, get_bee, [RoutingKey]),
       engage_bee(ClientSock, RequestPid, RoutingKey, ForwardReq, Req, GetBee);
     _E ->
       proxy_init(ClientSock)
@@ -98,13 +98,13 @@ engage_bee(ClientSock, RequestPid, RoutingKey, ForwardReq, Req, {ok, #bee{host =
       );
     {error,econnreset} ->
       timer:sleep(200),
-      GetBee = ?BENCHMARK_LOG("Getting bee for routing key after a connection reset", router_srv, get_bee, [RequestPid, RoutingKey]),
+      GetBee = ?BENCHMARK_LOG("Getting bee for routing key after a connection reset", router_srv, get_bee, [RoutingKey]),
       engage_bee(ClientSock, RequestPid, RoutingKey, ForwardReq, Req, GetBee);
     Error ->
       ?LOG(error, "Connection to remote TCP server: ~p:~p ~p", [Host, Port, Error]),
       ?NOTIFY({bee, cannot_connect, Bee#bee.id}),
       timer:sleep(1000),
-      GetBee = ?BENCHMARK_LOG("Getting bee for routing key after an error", router_srv, get_bee, [RequestPid, RoutingKey]),
+      GetBee = ?BENCHMARK_LOG("Getting bee for routing key after an error", router_srv, get_bee, [RoutingKey]),
       engage_bee(ClientSock, RequestPid, RoutingKey, ForwardReq, Req, GetBee)
   end;
 engage_bee(ClientSock, _RequestPid, Hostname, _ForwardReq, _Req, bee_timeout) ->
@@ -173,7 +173,12 @@ terminate1(Reason, #state{server_socket = SSock, client_socket = CSock, start_ti
     _ -> StatsProplist1
   end,
   
-  RealBee = bees:find_by_id(Bee#bee.id),
+  % A bee would only not exist if the bee is a 'fake' bee as in one constructed for the 'base'
+  RealBee = case bees:find_by_id(Bee#bee.id) of
+    [] -> Bee;
+    RealBee1 -> RealBee1
+  end,
+  
   ?NOTIFY({bee, ready, RealBee}),
   ?NOTIFY({bee, closing_stats, RealBee, StatsProplist}),
   gen_tcp:close(SSock), gen_tcp:close(CSock),

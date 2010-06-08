@@ -12,14 +12,23 @@
 -include ("http.hrl").
 -export ([get/2, post/2, put/2, delete/2]).
 
+get([Email, "apps"], _Data) ->
+  case users:find_by_email(Email) of 
+		[] -> {Email, "does_not_exist"}; 
+		User -> 
+		Apps = user_apps:all_apps(User#user.email),
+		{
+			user, [{"email", User#user.email}, {"level", User#user.level},
+			{apps, lists:map(fun(App) -> {name, App#app.name} end, Apps)}]
+		}
+	end;
 get([Email], _Data) ->
-	Json = case users:find_by_email(Email) of 
+	case users:find_by_email(Email) of 
 		[] -> {Email, "does_not_exist"}; 
 		User -> {
 			"user", [{"email", User#user.email}, {"level", User#user.level}]
 		}
-	end,
-	{struct, Json};
+	end;
 get(_, _Data) -> 
   All = users:all(),
   { "users", lists:map(fun(A) ->
@@ -48,13 +57,24 @@ post([Name, "keys", "new"], Data) ->
   
 post(["new"], Data) ->
   auth_utils:run_if_admin(fun(_) ->
-    case users:create(Data) of
-      User when is_record(User, user) -> 
-        {user, [{email, User#user.email}]};
-      E -> 
-        io:format("Error: ~p~n", [E]),
-        error("There was an error adding bee")
+    
+    case proplists:get_value(email, Data) of
+      undefined -> {error, "No email defined"};
+      Email ->
+        % The user has been submitted with an email
+        case users:exist(Email) of
+          true -> {error, "The user already exists"};
+          false ->
+            case users:create(Data) of
+              User when is_record(User, user) -> 
+                {user, [{email, User#user.email}]};
+              E -> 
+                io:format("Error: ~p~n", [E]),
+                {error, "There was an error adding bee"}
+            end
+        end
     end
+    
   end, Data);
       
 post(Path, _Data) -> 

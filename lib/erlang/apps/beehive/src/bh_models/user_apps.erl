@@ -30,10 +30,18 @@ find_by_email(Email) ->
 
 all_users(AppName) ->
   UserApps = find_all_by_app_name(AppName),
-  lists:map(fun(UserApp) -> UserApp#user_app.user_email end, UserApps).
-
+  lists:map(fun(UserApp) ->
+    UserEmail = UserApp#user_app.user_email,
+    users:find_by_email(UserEmail)
+  end, UserApps).
+  
+% find_by_email
 all_apps(Username) ->
-  find_all_by_email(Username).
+  UserApps = find_all_by_email(Username),
+  lists:map(fun(UserApp) ->
+    Appname = UserApp#user_app.app_name,
+    apps:find_by_name(Appname)
+  end, UserApps).
   
 find_by_app_name(Name) ->
   case find_all_by_app_name(Name) of

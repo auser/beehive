@@ -55,7 +55,7 @@ handle_event({bee, ready, Bee}, State) when is_record(Bee, bee) ->
   {ok, State};
 
 % Handle generic status update
-handle_event({bee, update_status, Bee, Status}, State) ->
+handle_event({bee, update_status, Bee, Status}, State) when is_record(Bee, bee) ->
   bees:transactional_save(fun() ->
     RealBee = bees:find_by_id(Bee#bee.id),
     bees:update(RealBee#bee{status = Status})
@@ -63,12 +63,12 @@ handle_event({bee, update_status, Bee, Status}, State) ->
   {ok, State};
 
 % Handle terminate bee
-handle_event({bee, terminate_please, Bee}, State) ->
+handle_event({bee, terminate_please, Bee}, State) when is_record(Bee, bee)  ->
   app_manager:request_to_terminate_bee(Bee),
   {ok, State};
 
 % Caught when a bee is marked as down
-handle_event({bee, bee_down, Bee}, State) ->
+handle_event({bee, bee_down, Bee}, State) when is_record(Bee, bee)  ->
   bees:transactional_save(fun() ->
     RealBee = bees:find_by_id(Bee#bee.id),
     bees:update(RealBee#bee{status = down})
@@ -98,7 +98,7 @@ handle_event({bee, cannot_connect, Id}, State) ->
   % end),
   {ok, State};
 
-handle_event({bee, closing_stats, #bee{id = Id} = Backend, StatsProplist}, State) ->
+handle_event({bee, closing_stats, #bee{id = Id} = Bee, StatsProplist}, State) when is_record(Bee, bee) ->
   % When the bee socket connection closes, let's save this data
   case proplists:get_value(socket, StatsProplist) of
     undefined -> ok;
@@ -110,10 +110,10 @@ handle_event({bee, closing_stats, #bee{id = Id} = Backend, StatsProplist}, State
   end,
   bh_bee_stats_srv:bee_stat({request_complete, Id}),
   
-  router_srv:maybe_handle_next_waiting_client(Backend#bee.app_name),
+  router_srv:maybe_handle_next_waiting_client(Bee#bee.app_name),
   {ok, State};
 
-handle_event({bee, bee_built, Proplists}, State) ->
+handle_event({bee, bee_built, _Proplists}, State) ->
   {ok, State};
 
 handle_event(_Event, State) ->

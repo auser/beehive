@@ -50,16 +50,17 @@ exist(Name) ->
 
 % Insert a new user
 create(User) when is_record(User, user) ->
+  EventMsg = case exist(User#user.email) of
+    true -> {user, updated, User};
+    false -> {user, created, User}
+  end,
   case db:write(User) of
     {'EXIT', {aborted, {no_exists, user}}} -> 
       ?NOTIFY({db, database_not_initialized, bee}),
       {error, database_not_initialized};
     {'EXIT', _} -> unknown_error;
     ok -> 
-      case exist(User#user.email) of
-        true -> ?NOTIFY({user, updated, User});
-        false -> ?NOTIFY({user, created, User})
-      end,
+      ?NOTIFY(EventMsg),
       User
   end;
   

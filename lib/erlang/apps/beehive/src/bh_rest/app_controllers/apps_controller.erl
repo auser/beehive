@@ -43,7 +43,6 @@ post([], Data) ->
   case auth_utils:get_authorized_user(Data) of
     false -> 
       {error, "No user defined or invalid token"};
-      % {struct, [{"error", misc_utils:to_bin("No user defined or invalid token")}]};
     ReqUser ->
       case apps:create(Data) of
         {ok, App} when is_record(App, app) -> 
@@ -91,7 +90,6 @@ put([Name], Data) ->
 put(_Path, _Data) -> "unhandled".
 
 delete([Name], Data) ->
-  io:format("Data: ~p~n", [Data]),
   case auth_utils:get_authorized_user(Data) of
     false -> {error, "No user defined or invalid token"};
     _ReqUser ->

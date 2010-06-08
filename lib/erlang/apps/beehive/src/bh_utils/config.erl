@@ -44,10 +44,7 @@ search_for_application_value_from_environment(_App, Param) ->
 %% Description: Read the configuration data
 %%--------------------------------------------------------------------
 read() ->
-  ConfigFile = case application:get_env(beehive, config_file) of
-    undefined -> ?BEEHIVE_DIR("etc/config.cfg");
-    {ok, Cf} -> Cf
-  end,
+  ConfigFile = find_config_file(),
   read(ConfigFile).
 
 read(ConfigFile) ->
@@ -76,4 +73,50 @@ get_or_default(Key, Default, Config) ->
     {ok, undefined} -> Default;
     {ok, V} -> V;
     {error, not_found} -> Default
+  end.
+
+%%--------------------------------------------------------------------
+%% Function: find_config_file () -> Path
+%% Description: Get the config file by looking in default/known locations
+%%--------------------------------------------------------------------
+find_config_file() ->
+  case find_config_file_in_app() of
+    false ->
+      case find_config_file_in_beehive_root() of
+        false ->
+          case find_config_file_in_etc() of
+            false -> undefined;
+            E3 -> E3
+          end;
+        E2 -> E2
+      end;
+    E1 -> E1
+  end.
+
+find_config_file_in_app() ->
+  case application:get_env(beehive, config_file) of
+    {ok, Cf} -> 
+      case is_file(Cf) of
+        false -> false;
+        Else -> Else
+      end;
+    undefined -> false
+  end.
+  
+find_config_file_in_beehive_root() ->
+  case is_file(?BEEHIVE_DIR("etc/beehive.conf")) of
+    false -> false;
+    E -> E
+  end.
+  
+find_config_file_in_etc() ->
+  case is_file("/etc/beehive.conf") of
+    false -> false;
+    E -> E
+  end.
+
+is_file(Path) ->
+  case filelib:is_file(Path) of
+    true -> Path;
+    _ -> false
   end.
