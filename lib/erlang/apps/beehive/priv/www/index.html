@@ -40,12 +40,24 @@
     	a:hover {color:#898f97;}
     	img {border:none;}
     	pre {
-    	  margin: 5px;
-    	  padding: 0;
-    	  background: #fff;
+    	  padding: 5px;
+    	  background: #eee;
+    	  overflow: auto;
+    	  border: 2px solid #333;
     	}
     	code {margin:0;padding:0;}
-
+      
+      #instructions {
+        background: #fff;
+        margin: 10px;
+        padding: 20px;
+        text-align: left;
+        font-size: 1.2em;
+      }
+      #instructions ul {
+        list-style: none;
+        margin: 0;
+      }
     </style>
   </head>
   <body id="index">
@@ -54,11 +66,14 @@
       <p>
         Welcome to Beehive. Clearly you haven't customized the Beehive setup. The instructions to do so are as follows:
       </p>
-      <p>
-        <pre><code>
-FILL THIS SECTION OUT
-        </code></pre>
-      </p>
+      <div id="instructions">
+        <ul>
+          <li>Create a configuration file (in $BEEHIVE_HOME/etc/beehive.conf or /etc/beehive.conf)</li>
+          <li>Add the line:<pre><code>base_app: name</code></pre></li>
+          <li>Add the base app<pre><code>curl -i -XPOST -d"{\"name\":\"name\", \"url\":\"url\",</br>\"token\":$TOKEN}" $HOST/apps</code></pre></li>
+          <li>That's it!</li>
+        </ul>
+      </div>
     </div>
   </body>
 </html>
