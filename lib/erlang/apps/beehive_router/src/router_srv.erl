@@ -20,7 +20,7 @@
   start_link/1,
   seed_nodes/1
 ]).
--export([ get_bee/2, 
+-export([ get_bee/1, 
           get_proxy_state/0,
           get_host/1,
           reset_host/1, 
@@ -53,8 +53,7 @@ start_link(Args) ->
   gen_cluster:start_link({local, ?MODULE}, ?MODULE, Args, []).
 
 %% Choose an available back-end host
-get_bee(Pid, Hostname) ->
-  gen_cluster:call(?MODULE, {Pid, get_bee, Hostname}, infinity).
+get_bee(Hostname) -> gen_cluster:call(?MODULE, {get_bee, Hostname}, infinity).
 
 %% Get the overall status summary of the balancer
 get_proxy_state() ->
@@ -136,30 +135,18 @@ init(_Args) ->
 %%          {stop, Reason, Reply, State}   | (terminate/2 is called)
 %%          {stop, Reason, State}            (terminate/2 is called)
 %%----------------------------------------------------------------------
-handle_call({Pid, get_bee, Hostname}, From, State) ->
+handle_call({get_bee, Hostname}, From, State) ->
   % If this is a request for an internal application, then serve that first
   % These are abnormal applications because they MUST be running for every router
   % and router_srv. 
   case Hostname of
     base ->
-      Port = config:search_for_application_value(app_port, 4999, router), 
-      Host = {127,0,0,1},
-      Id = {Hostname, Host, Port},
-      
-      Backend = #bee{ 
-        id = Id, port = Port, host = Host, app_name = Hostname
-      },
-      {reply, {ok, Backend}, State};
+      Bee = get_default_app_or_rest(Hostname, From, State),
+      {reply, {ok, Bee}, State};
+    [Head] -> 
+      get_bee_by_hostname(Head, From, State);
     _ ->
-      {AppMod, MetaParam} = case apps:find_by_name(Hostname) of
-        [] ->
-          M = config:search_for_application_value(bee_picker, bee_strategies, router),
-          Meta = config:search_for_application_value(bee_strategy, random, router),
-          {M, Meta};
-        App ->
-          pick_mod_and_meta_from_app(App)
-      end,
-      try_to_choose_bee_or_wait({Hostname, AppMod, MetaParam}, From, Pid, State)
+      get_bee_by_hostname(Hostname, From, State)
   end;
 handle_call({get_proxy_state}, _From, State) ->
   Reply = State,
@@ -255,8 +242,8 @@ handle_leave(_LeavingPid, _Pidlist, _Info, State) ->
 %%%----------------------------------------------------------------------
 %%% Internal functions
 %%%----------------------------------------------------------------------
-try_to_choose_bee_or_wait({Hostname, AppMod, MetaParam}, From, Pid, State) ->
-  case choose_bee({Hostname, AppMod, MetaParam}, From, Pid) of
+try_to_choose_bee_or_wait({Hostname, AppMod, MetaParam}, From, State) ->
+  case choose_bee({Hostname, AppMod, MetaParam}, From) of
 	  ?MUST_WAIT_MSG -> 
 	    timer:apply_after(1000, ?MODULE, maybe_handle_next_waiting_client, [Hostname]),
 	    {noreply, State};
@@ -270,12 +257,12 @@ try_to_choose_bee_or_wait({Hostname, AppMod, MetaParam}, From, Pid, State) ->
 	    {noreply, State}
   end.
   
-choose_bee({Name, _, _} = Tuple, From, FromPid) ->
+choose_bee({Name, _, _} = Tuple, From) ->
   case choose_bee(Tuple) of
 	  {ok, Backend} -> {ok, Backend};
 	  {error, Reason} -> {error, Reason};
 	  ?MUST_WAIT_MSG ->
-	    ?QSTORE:push(?WAIT_DB, Name, {Tuple, From, FromPid, date_util:now_to_seconds()}),
+	    ?QSTORE:push(?WAIT_DB, Name, {Tuple, From, date_util:now_to_seconds()}),
       ?MUST_WAIT_MSG
   end.
 
@@ -351,9 +338,9 @@ maybe_handle_next_waiting_client(Name, State) ->
       ?LOG(info, "Still not a timeout: ~p", [InsertTime - TOTime]),
       gen_cluster:reply(From, ?BACKEND_TIMEOUT_MSG),
       maybe_handle_next_waiting_client(Name, State);
-    {value, {{Hostname, _AppMod, _RoutingParam} = Tuple, From, Pid, _InsertTime}} ->
+    {value, {{Hostname, _AppMod, _RoutingParam} = Tuple, From, _InsertTime}} ->
       ?LOG(info, "Handling Q: ~p (~p)", [Hostname, Tuple]),
-      case try_to_choose_bee_or_wait(Tuple, From, Pid, State) of
+      case try_to_choose_bee_or_wait(Tuple, From, State) of
         % Clearly we are not ready for another bee connection request. :(
         % choose_bee puts the request in the pending queue, so we don't have
         % to take care of that here
@@ -377,3 +364,29 @@ pick_mod_and_meta_from_app(App) ->
     El -> El
   end,
   {Mod, R}.
+
+get_default_app_or_rest(Hostname, From, State) ->
+  DefaultAppName = config:search_for_application_value(base_app, router, router),
+  case DefaultAppName of
+    router ->
+      Port = config:search_for_application_value(app_port, 4999, router), 
+      Host = {127,0,0,1},
+      Id = {Hostname, Host, Port},
+
+      #bee{ 
+        id = Id, port = Port, host = Host, app_name = Hostname
+      };
+    Else ->
+      get_bee_by_hostname(Else, From, State)
+  end.
+  
+get_bee_by_hostname(Hostname, From, State) ->
+  {AppMod, MetaParam} = case apps:find_by_name(Hostname) of
+    [] ->
+      M = config:search_for_application_value(bee_picker, bee_strategies, router),
+      Meta = config:search_for_application_value(bee_strategy, random, router),
+      {M, Meta};
+    App ->
+      pick_mod_and_meta_from_app(App)
+  end,
+  try_to_choose_bee_or_wait({Hostname, AppMod, MetaParam}, From, State).
