@@ -12,14 +12,23 @@
 -include ("http.hrl").
 -export ([get/2, post/2, put/2, delete/2]).
 
+get([Email, "apps"], _Data) ->
+  case users:find_by_email(Email) of 
+		[] -> {Email, "does_not_exist"}; 
+		User -> 
+		Apps = user_apps:all_apps(User#user.email),
+		{
+			user, [{"email", User#user.email}, {"level", User#user.level},
+			{apps, lists:map(fun(App) -> {name, App#app.name} end, Apps)}]
+		}
+	end;
 get([Email], _Data) ->
-	Json = case users:find_by_email(Email) of 
+	case users:find_by_email(Email) of 
 		[] -> {Email, "does_not_exist"}; 
 		User -> {
 			"user", [{"email", User#user.email}, {"level", User#user.level}]
 		}
-	end,
-	{struct, Json};
+	end;
 get(_, _Data) -> 
   All = users:all(),
   { "users", lists:map(fun(A) ->
