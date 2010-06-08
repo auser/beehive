@@ -35,7 +35,19 @@ init([]) ->
 %% each installed event handler to handle the event.
 %%--------------------------------------------------------------------
 handle_event({user, Atom, User}, State) ->
-  Msg = [{event, Atom}, {user, [{email, User#user.email}, {token, User#user.token}]}],
+  Msg = [{context, user}, {event, Atom}, {user, [{email, User#user.email}, {token, User#user.token}]}],
+  beehive_dashboard_srv:send_message_to_all_websockets(Msg),
+  {ok, State};
+handle_event({app, Event, App}, State) ->
+  Msg = [
+    {context, app}, 
+    {event, Event}, 
+    {app, [
+      {name, App#app.name}, 
+      {url, App#app.url}, 
+      {updated_at, App#app.updated_at}
+      ]
+    }],
   beehive_dashboard_srv:send_message_to_all_websockets(Msg),
   {ok, State};
 handle_event(Event, State) ->

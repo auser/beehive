@@ -91,7 +91,6 @@ put([Name], Data) ->
 put(_Path, _Data) -> "unhandled".
 
 delete([Name], Data) ->
-  io:format("Data: ~p~n", [Data]),
   case auth_utils:get_authorized_user(Data) of
     false -> {error, "No user defined or invalid token"};
     _ReqUser ->
