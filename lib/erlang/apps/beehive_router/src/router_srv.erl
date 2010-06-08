@@ -142,6 +142,7 @@ handle_call({get_bee, Hostname}, From, State) ->
   case Hostname of
     base ->
       Bee = get_default_app_or_rest(Hostname, From, State),
+      erlang:display({base, Bee}),
       {reply, {ok, Bee}, State};
     [Head] -> 
       get_bee_by_hostname(Head, From, State);

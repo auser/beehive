@@ -98,7 +98,7 @@ handle_event({bee, cannot_connect, Id}, State) ->
   % end),
   {ok, State};
 
-handle_event({bee, closing_stats, #bee{id = Id} = Backend, StatsProplist}, State) ->
+handle_event({bee, closing_stats, #bee{id = Id} = Bee, StatsProplist}, State) when is_record(Bee, bee) ->
   % When the bee socket connection closes, let's save this data
   case proplists:get_value(socket, StatsProplist) of
     undefined -> ok;
@@ -110,10 +110,10 @@ handle_event({bee, closing_stats, #bee{id = Id} = Backend, StatsProplist}, State
   end,
   bh_bee_stats_srv:bee_stat({request_complete, Id}),
   
-  router_srv:maybe_handle_next_waiting_client(Backend#bee.app_name),
+  router_srv:maybe_handle_next_waiting_client(Bee#bee.app_name),
   {ok, State};
 
-handle_event({bee, bee_built, Proplists}, State) ->
+handle_event({bee, bee_built, _Proplists}, State) ->
   {ok, State};
 
 handle_event(_Event, State) ->

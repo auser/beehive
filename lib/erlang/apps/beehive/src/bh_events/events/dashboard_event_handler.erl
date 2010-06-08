@@ -58,6 +58,8 @@ handle_event({bee, Event, Bee}, State) when is_record(Bee, bee) ->
     ],
   beehive_dashboard_srv:send_message_to_all_websockets(Msg),
   {ok, State};
+handle_event({bee, closing_stats, _Bee, _Stats}, State) ->
+  {ok, State};
 handle_event(Event, State) ->
   erlang:display({dashboard_event_handler, Event}),
   % beehive_dashboard_srv:send_message_to_all_websockets(Event),

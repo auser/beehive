@@ -173,9 +173,14 @@ terminate1(Reason, #state{server_socket = SSock, client_socket = CSock, start_ti
     _ -> StatsProplist1
   end,
   
-  % RealBee = bees:find_by_id(Bee#bee.id),
-  ?NOTIFY({bee, ready, Bee}),
-  ?NOTIFY({bee, closing_stats, Bee, StatsProplist}),
+  % A bee would only not exist if the bee is a 'fake' bee as in one constructed for the 'base'
+  RealBee = case bees:find_by_id(Bee#bee.id) of
+    [] -> Bee;
+    RealBee1 -> RealBee1
+  end,
+  
+  ?NOTIFY({bee, ready, RealBee}),
+  ?NOTIFY({bee, closing_stats, RealBee, StatsProplist}),
   gen_tcp:close(SSock), gen_tcp:close(CSock),
   exit(Reason).
 
