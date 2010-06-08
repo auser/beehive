@@ -50,6 +50,19 @@ handle_event({app, Event, App}, State) ->
     }],
   beehive_dashboard_srv:send_message_to_all_websockets(Msg),
   {ok, State};
+handle_event({bee, used, Bee}, State) ->
+  Msg = [
+    {context, bee}, 
+    {event, used_bee}, 
+    {bee, [
+      {port, Bee#bee.port}, 
+      {size, Bee#bee.bee_size},
+      {os_pid, Bee#bee.os_pid},
+      {app_name, Bee#bee.app_name}
+      ]
+    }],
+  beehive_dashboard_srv:send_message_to_all_websockets(Msg),
+  {ok, State};
 handle_event(Event, State) ->
   erlang:display({dashboard_event_handler, Event}),
   % beehive_dashboard_srv:send_message_to_all_websockets(Event),

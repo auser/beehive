@@ -14,7 +14,7 @@
 
 get(_, _Data) -> 
   All = bees:all(),
-  O = {struct, [{
+  O = {
     "bees",
     lists:map(fun(B) ->
       [
@@ -26,7 +26,7 @@ get(_, _Data) ->
         {"status", B#bee.status}
       ]
     end, All)
-  }]},
+  },
   O.
 
 post(_Path, Data) ->
