@@ -146,7 +146,7 @@ handle(Path, Docroot, Req, Resp) ->
 % Call the controller action here
 run_controller(Req, Resp, Docroot, ControllerAtom, Meth, Args) ->
   case (catch erlang:apply(ControllerAtom, Meth, Args)) of
-    {'EXIT', {undef, _}} = _E ->
+    {'EXIT', {undef, _}} = E ->
       respond_to(Req, Resp, Docroot, undefined);
     {'EXIT', E} -> 
       ?LOG(error, "(~p:~p) Error in rest server: ~p~n", [?MODULE, ?LINE, E]),
@@ -165,8 +165,8 @@ run_controller(Req, Resp, Docroot, ControllerAtom, Meth, Args) ->
   end.
 
 respond_to(Req, Resp, Docroot, Body) ->
-  ReturnResp = case re:run(Req:header(accept), "application/json", [global,{capture,first,list}]) of
-    {match, _} ->
+  ReturnResp = case string:right(Req:path(), 5) of
+    ".json" ->
       Resp1 = Resp:status_code(200),
       Resp2 = Resp1:header("Content-Type", "text/json"),
       Resp2:data(?JSONIFY(Body));
@@ -191,7 +191,7 @@ clean_method(M) ->
 
 % parse the controller path
 parse_controller_path(CleanPath) ->
-  case string:tokens(CleanPath, "/") of
+  case string:tokens(generalize_request_path(CleanPath), "/") of
     [] -> [];
     [_RootPath|Rest] -> Rest
   end.
@@ -200,8 +200,17 @@ parse_controller_path(CleanPath) ->
 top_level_request("/") -> home;
 top_level_request(Path) ->
   case string:tokens(Path, "/") of
-    [CleanPath|_Others] -> CleanPath;
+    [CleanPath|_Others] -> generalize_request_path(CleanPath);
     [] -> home
+  end.
+
+% generalize request path
+generalize_request_path(Path) ->
+  case string:right(Path, 5) of
+    ".json" -> 
+      % EWWWW
+      string:substr(Path, 1, erlang:length(Path) - 5);
+    E -> E
   end.
 
 % Convert each of the binary data proplists into a valid proplist
