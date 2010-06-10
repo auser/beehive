@@ -15,6 +15,7 @@
 
 % API
 start(Nodes) ->
+  application:start(mnesia),
   ok = ensure_dir(),
   ok = ensure_running(),
   ok = add_slave(Nodes),

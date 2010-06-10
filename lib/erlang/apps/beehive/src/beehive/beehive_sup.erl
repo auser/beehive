@@ -12,7 +12,7 @@
 -compile([verbose, report_errors, report_warnings, trace, debug_info]).
 
 %% API
--export([start_link/1]).
+-export([start_link/0,start_link/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -29,7 +29,11 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the supervisor
 %%--------------------------------------------------------------------
+start_link() -> start_link([]).
 start_link(Args) ->
+  % Start os_mon
+  application:start(os_mon),
+  
   % Setup beehive
   NodeType = config:search_for_application_value(node_type, beehive_router, beehive),
   sanity_checks:check(NodeType),
@@ -60,7 +64,8 @@ init(_Args) ->
   Children = lists:flatten([
     ?CHILD(node_manager, worker),
     ?CHILD(app_manager, worker),
-    ?CHILD(event_manager, worker)
+    ?CHILD(event_manager, worker),
+    ?CHILD(beehive_db_srv, worker)
   ]),
   
   {ok,{{one_for_one,5,10}, Children}}.

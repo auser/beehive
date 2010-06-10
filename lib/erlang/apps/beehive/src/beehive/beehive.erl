@@ -11,14 +11,10 @@
 -include ("common.hrl").
 -behaviour(application).
 
--define (APPS, [os_mon, mnesia]).
-
 -export([start/2, stop/1]).
 
-start(_Type, Args) -> 
-  lists:foldr(fun(App, Acc) -> application:start(App), [App|Acc] end, [], ?APPS),
-  beehive_sup:start_link(Args).
+start(_Type, _Args) -> 
+  beehive_sup:start_link().
 
-stop(State) -> 
-  lists:foldr(fun(App) -> App:stop(State) end, ?APPS),
+stop(_State) -> 
   ok.

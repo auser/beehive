@@ -3,12 +3,11 @@
 -include_lib("eunit/include/eunit.hrl").
 
 setup() ->
-  db:clear_table(app),
-  db:start(),
+  application:start(beehive),
   ok.
   
 teardown(_X) ->
-  db:stop(),
+  application:stop(beehive),
   ok.
 
 starting_test_() ->
