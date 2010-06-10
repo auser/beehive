@@ -14,7 +14,6 @@ starting_test_() ->
       fun teardown/1,
       [
         fun test_query_to_proplist/0,
-        fun test_post_params_to_proplist/0,
         fun test_json_parsing/0
       ]
     }
@@ -26,10 +25,6 @@ test_query_to_proplist() ->
   ?assertEqual(web_utils:query_params_to_proplist("token"), []),
   ?assertEqual(web_utils:query_params_to_proplist("token="), [{token, ""}]),
   ?assertEqual(web_utils:query_params_to_proplist("token=hi&bears=boxing"), [{token, "hi"}, {bears, "boxing"}]),
-  passed.
-
-test_post_params_to_proplist() ->
-  ?assertEqual(web_utils:post_params_to_proplist(""), []),
   passed.
 
 test_json_parsing() ->

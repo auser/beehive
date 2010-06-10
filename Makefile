@@ -26,5 +26,5 @@ rel: all
 rel_erlang:
 	@./rebar generate force=1
 
-test: 
+test: compile
 	./rebar eunit

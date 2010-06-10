@@ -52,7 +52,7 @@ create(App) when is_record(App, app) ->
   case exist(App#app.name) of
     false ->
       case save(App) of
-        ok -> 
+        {ok, App} -> 
           ?NOTIFY({app, created, App}),
           {ok, App};
         {'EXIT',{aborted,{no_exists,_}}} -> 
@@ -91,7 +91,7 @@ restart_by_name(Name) ->
   case find_by_name(Name) of
     [] -> {error, "Cannot find app"};
     App ->
-      NewApp = App#app{updated_at = date_util:now_to_seconds()},
+      NewApp = App#app{updated_at = date_util:now_to_seconds(), latest_error = undefined},
       ?NOTIFY({app, restart, NewApp}),
       {ok, create(NewApp)}
   end.
@@ -116,7 +116,8 @@ transactional_save(F) ->
   db:transaction(F()).
 
 save(App) when is_record(App, app) ->
-  db:write(App).
+  ok = db:write(App),
+  {ok, App}.
   
 new(NewProps) ->
   PropList = ?rec_info(app, #app{}),
@@ -158,14 +159,20 @@ validate_app_proplists(PropList) ->
     end
   end, PropList).
 
-% Generate a new name for the app, if none are created
-generate_unique_name() ->
-  NewName = misc_utils:generate_unique_name(5),
-  case find_by_name(NewName) of
-    [] -> NewName;
-    _ -> generate_unique_name()
+%%-------------------------------------------------------------------
+%% @spec (Name) ->    {ok, Value}
+%% @doc Generate a unique name based on a given name
+%%      
+%% @end
+%%-------------------------------------------------------------------
+generate_unique_name(Name, Num) -> 
+  case find_by_name(Name) of
+    [] -> Name;
+    _ -> generate_unique_name(misc_utils:generate_unique_name(Name, Num), Num)
   end.
-  
+generate_unique_name(Num) -> generate_unique_name(misc_utils:generate_unique_name(Num), Num).
+generate_unique_name() -> generate_unique_name(5).
+    
 build_on_disk_app_name(App) ->
   App#app.name.
 
