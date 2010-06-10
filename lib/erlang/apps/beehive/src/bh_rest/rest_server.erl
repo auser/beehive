@@ -126,41 +126,31 @@ dispatch_requests(WebServerName, Docroot, RawRequest) ->
     _ -> throw({uh_oh})
   end,
   Path = Req:path(),
-  handle(Path, Req, Resp).
+  handle(Path, Docroot, Req, Resp).
 
 % Handle the requests
-handle("/favicon.ico", _Req, Resp) -> 
+handle("/favicon.ico", _Docroot, _Req, Resp) -> 
   Resp1 = Resp:status_code(200),
   Resp2 = Resp1:header("Content-Type", "text/html"),
   Resp3 = Resp2:data(""),
   Resp3:build_response();
-
-handle("/", _Req, Resp) ->
-  Resp1 = Resp:status_code(200),
-  Resp2 = Resp1:header("Content-Type", "text/html"),
-  Resp3 = Resp2:file(["index.html"]),
-  Resp3:build_response();
   
-handle(Path, Req, Resp) ->
+handle(Path, Docroot, Req, Resp) ->
   BaseController = lists:concat([top_level_request(Path), "_controller"]),
   CAtom = list_to_atom(BaseController),
-  ControllerPath = parse_controller_path(Path),
   Meth = clean_method(Req:request_method()),
   Data = decode_data_from_request(Req, Meth),
-  run_controller(Resp, CAtom, Meth, [ControllerPath, Data]).
+  ControllerPath = parse_controller_path(Path),
+  run_controller(Req, Resp, Docroot, CAtom, Meth, [ControllerPath, Data]).
 
 % Call the controller action here
-run_controller(Resp, ControllerAtom, Meth, Args) ->
+run_controller(Req, Resp, Docroot, ControllerAtom, Meth, Args) ->
   case (catch erlang:apply(ControllerAtom, Meth, Args)) of
     {'EXIT', {undef, _}} = E ->
-      ?LOG(error, "(~p:~p) Error in rest server: ~p~n", [?MODULE, ?LINE,E]),
-      Resp1 = Resp:status_code(404),
-      Resp2 = Resp1:header("Content-Type", "text/html"),
-      Resp3 = Resp2:data("Unimplemented controller. There is nothing to see here, go back from where you came"),
-      Resp3:build_response();
+      respond_to(Req, Resp, Docroot, undefined);
     {'EXIT', E} -> 
       ?LOG(error, "(~p:~p) Error in rest server: ~p~n", [?MODULE, ?LINE, E]),
-      Resp1 = Resp:status_code(501),
+      Resp1 = Resp:status_code(503),
       Resp2 = Resp1:header("Content-Type", "text/html"),
       Resp3 = Resp2:data("Nothing to see here"),
       Resp3:build_response();
@@ -171,11 +161,24 @@ run_controller(Resp, ControllerAtom, Meth, Args) ->
       Resp3 = Resp2:data(?JSONIFY(Tuple)),
       Resp3:build_response();
     Body -> 
+      respond_to(Req, Resp, Docroot, Body)
+  end.
+
+respond_to(Req, Resp, Docroot, Body) ->
+  ReturnResp = case string:right(Req:path(), 5) of
+    ".json" ->
       Resp1 = Resp:status_code(200),
       Resp2 = Resp1:header("Content-Type", "text/json"),
-      Resp3 = Resp2:data(?JSONIFY(Body)),
-      Resp3:build_response()
-  end.
+      Resp2:data(?JSONIFY(Body));
+    _ ->
+      Resp1 = Resp:header("Content-Type", "text/html"),
+      Filename = case Req:path() of
+        "/" -> "index.html";
+        "/" ++ E -> E
+      end,
+      serve_file(Filename, Resp1, Docroot, true)
+  end,
+  ReturnResp:build_response().
 
 % Find the method used as a request. 
 % This turns 'GET' into get
@@ -188,7 +191,7 @@ clean_method(M) ->
 
 % parse the controller path
 parse_controller_path(CleanPath) ->
-  case string:tokens(CleanPath, "/") of
+  case string:tokens(generalize_request_path(CleanPath), "/") of
     [] -> [];
     [_RootPath|Rest] -> Rest
   end.
@@ -197,8 +200,17 @@ parse_controller_path(CleanPath) ->
 top_level_request("/") -> home;
 top_level_request(Path) ->
   case string:tokens(Path, "/") of
-    [CleanPath|_Others] -> CleanPath;
+    [CleanPath|_Others] -> generalize_request_path(CleanPath);
     [] -> home
+  end.
+
+% generalize request path
+generalize_request_path(Path) ->
+  case string:right(Path, 5) of
+    ".json" -> 
+      % EWWWW
+      string:substr(Path, 1, erlang:length(Path) - 5);
+    E -> E
   end.
 
 % Convert each of the binary data proplists into a valid proplist
@@ -231,3 +243,18 @@ decode_data_from_request_into_json(Data, []) ->
     B -> convert_to_struct(B)
   end;
 decode_data_from_request_into_json(Key, Value) -> {Key, Value}.
+
+not_found_web(Resp, Docroot, _Redirect) -> serve_file("not_found.html", Resp:status_code(404), Docroot, false).
+serve_file(Path, Resp, Docroot, Redirect) -> 
+	RealPath = filename:join([Path]),
+  FullPath = filename:join([Docroot, RealPath]),
+  case filelib:is_file(FullPath) of
+    true -> 
+      Resp1 = Resp:status_code(200),
+      Resp1:file([[], Path]); % this is dumb... thanks simple_bridge
+    _ -> 
+      case Redirect of
+        true -> not_found_web(Resp, Docroot, false);
+        _ -> ?ERROR_HTML(io_lib:format("Error with serving the page: ~p", [FullPath]))
+      end
+  end.

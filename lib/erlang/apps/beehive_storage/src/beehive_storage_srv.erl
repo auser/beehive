@@ -204,7 +204,8 @@ fetch_bee(App, #state{squashed_disk = SquashedDisk} = _State) ->
 %%      
 %% @end
 %%-------------------------------------------------------------------
-build_bee(App, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} = State) ->
+build_bee(#app{latest_error = undefined} = App, 
+        #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} = State) ->
   case handle_repos_lookup(App) of
     {ok, ReposUrl} ->
       WorkingDir = lists:flatten([ScratchDisk, "/", App#app.name]),
@@ -232,10 +233,14 @@ build_bee(App, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} 
           end;
         Else ->
           erlang:display({got_something_else,babysitter_run, Else}),
+          Error = #app_error{},
+          apps:save(App#app{latest_error = Error}),
           {error, {babysitter, Else}}
       end;
     {error, _} = T -> T
-  end.
+  end;
+build_bee(App, _State) ->
+  {error, App#app.latest_error}.
   
 handle_repos_lookup(AppName) ->
   case config:search_for_application_value(git_store, offsite, storage) of

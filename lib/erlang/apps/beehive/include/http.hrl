@@ -25,7 +25,14 @@
   </body></html>", [Code, Msg])).
 
 % Error page
--define (ERROR_HTML (App), io_lib:format("HTTP/1.1 200 Internal Server Error\r\n\r\n<html>
+-define (ERROR_HTML (App), io_lib:format("<html>
+  <head><title>Error - ~s</title></head>
+  <body>
+    <h1>Beehive Error | There was an error</h1>
+    <p>Check the url again to make sure you typed it correctly</p>
+  </body></html>", [App])).
+
+-define (NOT_FOUND_HTML (App), io_lib:format("<html>
   <head><title>Error - ~s Not found</title></head>
   <body>
     <h1>Beehive Error | The site you have requested was not found.</h1>

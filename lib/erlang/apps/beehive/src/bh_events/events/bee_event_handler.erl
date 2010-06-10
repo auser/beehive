@@ -49,16 +49,21 @@ handle_event({bee, used, Backend}, State) when is_record(Backend, bee) ->
 handle_event({bee, ready, Bee}, State) when is_record(Bee, bee) ->
   router_srv:maybe_handle_next_waiting_client(Bee#bee.app_name),
   bees:transactional_save(fun() ->
-    RealBee = bees:find_by_id(Bee#bee.id),
-    bees:update(RealBee#bee{lastresp_time = date_util:now_to_seconds()})
+    case bees:find_by_id(Bee#bee.id) of
+      [] -> ok;
+      RealBee ->
+        bees:update(RealBee#bee{lastresp_time = date_util:now_to_seconds()})
+    end
   end),
   {ok, State};
 
 % Handle generic status update
 handle_event({bee, update_status, Bee, Status}, State) when is_record(Bee, bee) ->
   bees:transactional_save(fun() ->
-    RealBee = bees:find_by_id(Bee#bee.id),
-    bees:update(RealBee#bee{status = Status})
+    case bees:find_by_id(Bee#bee.id) of
+      [] -> ok;
+      RealBee -> bees:update(RealBee#bee{status = Status})
+    end
   end),
   {ok, State};
 
@@ -70,8 +75,11 @@ handle_event({bee, terminate_please, Bee}, State) when is_record(Bee, bee)  ->
 % Caught when a bee is marked as down
 handle_event({bee, bee_down, Bee}, State) when is_record(Bee, bee)  ->
   bees:transactional_save(fun() ->
-    RealBee = bees:find_by_id(Bee#bee.id),
-    bees:update(RealBee#bee{status = down})
+    case bees:find_by_id(Bee#bee.id) of
+      [] -> ok;
+      RealBee ->
+        bees:update(RealBee#bee{status = down})
+    end
   end),
   {ok, State};
 
@@ -92,8 +100,10 @@ handle_event({bee, cannot_connect, Id}, State) ->
   erlang:display({bee, cannot_connect, Id}),
   ?LOG(debug, "{bee, cannot_connect, ~p}", [Id]),
   spawn(fun() ->
-    RealBee = bees:find_by_id(Id),
-    bees:update(RealBee#bee{status = down})
+    case bees:find_by_id(Id) of
+      [] -> ok;
+      RealBee -> bees:update(RealBee#bee{status = down})
+    end
   end),
   % end),
   {ok, State};
