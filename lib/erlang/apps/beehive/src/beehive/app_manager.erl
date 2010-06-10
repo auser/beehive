@@ -125,7 +125,33 @@ handle_call({remove_app, AppName}, _From, State) ->
   terminate_app_instances(AppName),
   {reply, ok, State};
 
-  
+handle_call({request_to_update_app, App}, _From, State) ->
+  update_instance_by_app(App),
+  {noreply, State};
+
+handle_call({request_to_expand_app, App}, _From, State) ->
+  expand_instance_by_app(App),
+  {noreply, State};
+
+handle_call({request_to_start_new_bee_by_app, App}, _From, State) ->
+  start_new_instance_by_app(App),
+  {noreply, State};
+
+handle_call({request_to_start_new_bee_by_name, Name}, _From, State) ->
+  case apps:find_by_name(Name) of
+    [] -> error;
+    App -> start_new_instance_by_app(App)
+  end,
+  {noreply, State};
+
+handle_call({request_to_terminate_bee, #bee{status = Status} = Bee}, _From, State) when Status =:= ready ->
+  % rpc:cast(Node, app_handler, stop_instance, [Bee]),
+  % app_killer_fsm
+  {ok, P} = app_killer_fsm:start_link(Bee, self()),
+  erlang:link(P),
+  app_killer_fsm:kill(P),  
+  {noreply, State};
+
 handle_call(_Request, _From, State) ->
   Reply = ok,
   {reply, Reply, State}.
@@ -152,33 +178,6 @@ handle_call(_Request, _From, State) ->
 %   {noreply, State};
 % request_to_update_app(App) -> gen_server:cast(?SERVER, {request_to_update_app, App}).
 % request_to_start_new_bee_by_app(App) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_app, App}).
-
-handle_cast({request_to_update_app, App}, State) ->
-  update_instance_by_app(App),
-  {noreply, State};
-
-handle_cast({request_to_expand_app, App}, State) ->
-  expand_instance_by_app(App),
-  {noreply, State};
-  
-handle_cast({request_to_start_new_bee_by_app, App}, State) ->
-  start_new_instance_by_app(App),
-  {noreply, State};
-  
-handle_cast({request_to_start_new_bee_by_name, Name}, State) ->
-  case apps:find_by_name(Name) of
-    [] -> error;
-    App -> start_new_instance_by_app(App)
-  end,
-  {noreply, State};
-
-handle_cast({request_to_terminate_bee, #bee{status = Status} = Bee}, State) when Status =:= ready ->
-  % rpc:cast(Node, app_handler, stop_instance, [Bee]),
-  % app_killer_fsm
-  {ok, P} = app_killer_fsm:start_link(Bee, self()),
-  erlang:link(P),
-  app_killer_fsm:kill(P),  
-  {noreply, State};
 
 handle_cast({request_to_terminate_bee, _Bee}, State) ->
   {noreply, State};
@@ -276,6 +275,10 @@ handle_info({bee_started_normally, _Bee, _App}, State) ->
 
 handle_info({error, State, {error, {babysitter, Msg}}}, State) ->
   ?LOG(info, "app_manager caught babysitter error: ~p", [Msg]),
+  {noreply, State};
+
+handle_info({error, State, Error}, State) ->
+  ?LOG(info, "something died: ~p", [Error]),
   {noreply, State};
 
 handle_info(Info, State) ->
@@ -551,6 +554,7 @@ app_launcher_fsm_go(AppToPidTable, PidToAppTable, Method, App, Updating) ->
       Now = date_util:now_to_seconds(),
       StartOpts = [{app, App}, {caller, self()}, {updating, Updating}],
       {ok, P} = app_launcher_fsm:start_link(StartOpts),
+      erlang:link(P),
       apply(app_launcher_fsm, Method, [P]),
       ets:insert(AppToPidTable, {App, P, Now}), 
       ets:insert(PidToAppTable, {P, App, Now}), 

@@ -86,20 +86,8 @@
   max_instances = 1,
   sha,                              % sha of the latest working push
   updated_at,
+  latest_error = undefined,         % last error that occured on the app
   template = default                % default app
-}).
-
-% Launching app record
--record (launching_app_state, {
-  app,
-  temp_name,
-  commit_hash,
-  bee_size,
-  storage_node,
-  host_node,
-  id,
-  port,
-  bee
 }).
 
 % User levels
@@ -152,4 +140,12 @@
 -record (node, {
   name,               % name of the node
   host                % host of the node (ip)
+}).
+
+-record (app_error, {
+  stage,        % stage at which the app failed
+  stderr,       % string with the stderr
+  stdout,       % string with the stdout
+  exit_status,  % exit status code
+  timestamp     % time when the exit happened
 }).

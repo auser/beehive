@@ -31,7 +31,6 @@ handle_request(ClientSock) ->
   BaseDomain = config:search_for_application_value(domain, undefined, beehive_router),
   Subdomain = parse_route_from_request(HeaderVal, BaseDomain),
   ForwardReq = build_request_headers(Req),
-  erlang:display({subdomain, Subdomain}),
   {ok, Subdomain, ForwardReq, Req}.
   
 %%--------------------------------------------------------------------

@@ -138,12 +138,12 @@ init(_Args) ->
 handle_call({get_bee, Hostname}, From, State) ->
   % If this is a request for an internal application, then serve that first
   % These are abnormal applications because they MUST be running for every router
-  % and router_srv. 
+  % and router_srv.
   case Hostname of
     base ->
       Bee = get_default_app_or_rest(Hostname, From, State),
       {reply, {ok, Bee}, State};
-    [Head] -> 
+    [Head] ->
       get_bee_by_hostname(Head, From, State);
     _ ->
       get_bee_by_hostname(Hostname, From, State)

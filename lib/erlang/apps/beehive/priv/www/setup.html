@@ -1,0 +1,79 @@
+<html>
+  <head>
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8">
+    <title>Beehive homepage</title>
+    <style type="text/css"> 
+    	body {
+      	font-family:Tahoma Arial, Helvetica, sans-serif;
+      	color:#60656a;
+      	font-size:16px;
+      	background-color:#eeebe2;
+    	}
+
+    	.container {
+      	margin:0 auto;
+      	width:800px;
+      	text-align:center;
+      	padding:50px 0 0 0;
+    	}
+
+    	h1 {
+      	font-weight:normal;
+      	font-size:85px;
+      	line-height:28px;
+      	color:#000;
+      	margin:30px 0px;
+      	font-weight:bold;
+      	letter-spacing:-0.05em;
+    	}
+
+    	h2 {
+      	font-weight:normal;
+      	font-size:24px;
+      	line-height:28px;
+      	color:#000;
+      	margin:30px 0px 50px 0px;
+      	letter-spacing:-0.05em;
+    	}
+
+    	a {color:#86a800;}
+    	a:hover {color:#898f97;}
+    	img {border:none;}
+    	pre {
+    	  padding: 5px;
+    	  background: #eee;
+    	  overflow: auto;
+    	  border: 2px solid #333;
+    	}
+    	code {margin:0;padding:0;}
+      
+      #instructions {
+        background: #fff;
+        margin: 10px;
+        padding: 20px;
+        text-align: left;
+        font-size: 1.2em;
+      }
+      #instructions ul {
+        list-style: none;
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body id="index">
+    <div class="container">
+      <h1>Beehive homepage</h1>
+      <p>
+        Welcome to Beehive. Clearly you haven't customized the Beehive setup. The instructions to do so are as follows:
+      </p>
+      <div id="instructions">
+        <ul>
+          <li>Create a configuration file (in $BEEHIVE_HOME/etc/beehive.conf or /etc/beehive.conf)</li>
+          <li>Add the line:<pre><code>base_app: name</code></pre></li>
+          <li>Add the base app<pre><code>curl -i -XPOST -d"{\"name\":\"name\", \"url\":\"url\",</br>\"token\":$TOKEN}" $HOST/apps</code></pre></li>
+          <li>That's it!</li>
+        </ul>
+      </div>
+    </div>
+  </body>
+</html>
