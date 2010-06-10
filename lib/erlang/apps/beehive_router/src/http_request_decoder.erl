@@ -31,6 +31,7 @@ handle_request(ClientSock) ->
   BaseDomain = config:search_for_application_value(domain, undefined, beehive_router),
   Subdomain = parse_route_from_request(HeaderVal, BaseDomain),
   ForwardReq = build_request_headers(Req),
+  erlang:display({subdomain, Subdomain}),
   {ok, Subdomain, ForwardReq, Req}.
   
 %%--------------------------------------------------------------------
@@ -101,11 +102,15 @@ parse_route_from_request_without_base_domain(HostName) ->
   parse_route_from_request_without_base_domain1(O, []).
 
 parse_route_from_request_without_base_domain1([], _Acc)     -> base;
+parse_route_from_request_without_base_domain1(["localhost"], Acc) ->  
+  parse_route_from_request_without_base_domain2(Acc);
+  
 parse_route_from_request_without_base_domain1(["com"], Acc) -> parse_route_from_request_without_base_domain2(Acc);
 parse_route_from_request_without_base_domain1(["org"], Acc) -> parse_route_from_request_without_base_domain2(Acc);
 parse_route_from_request_without_base_domain1(["net"], Acc) -> parse_route_from_request_without_base_domain2(Acc);
 parse_route_from_request_without_base_domain1([H|Rest], Acc) -> 
   parse_route_from_request_without_base_domain1(Rest, [H|Acc]).
 
+parse_route_from_request_without_base_domain2([]) -> base;
 parse_route_from_request_without_base_domain2(List) ->
   [H|_Rest] = lists:reverse(List), [H].
