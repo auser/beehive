@@ -1,2 +1,24 @@
 %h3
-  Events
+  Latest Events
+
+%table
+  %thead
+    %tr
+      %th context
+      %th event
+      %th msg
+  %tfoot
+    %tr
+      %td ...
+  %tbody
+    :each evt in events
+      %tr
+        %td= evt.context
+        %td= evt.event
+        :if evt.context == "bee"
+          %td= evt.bee.app_name
+             (
+            = evt.bee.host
+            :
+            = evt.bee.port
+            )

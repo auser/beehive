@@ -1,35 +1,24 @@
 %h3
   Apps
 
-%ul.apps 
-  :each app in apps
-    %li= app.name
-    %ul.app_attrs
-      %li 
-        %strong
-          = "url: "
-        = app.url
-      %li
-        %strong
-          = "routing_param: "
-        = app.routing_param
-      %li
-        %strong
-          = "owners: " 
-        = app.owners
-      %li
-        %strong
-          = "updated_at: " 
-        = app.updated_at
-      %li
-        %strong
-          = "type: " 
-        = app.type
-      %li
-        %strong
-          = "template: " 
-        = app.template
-      %li
-        %strong
-          = "bee_picker: " 
-        = app.bee_picker
+%table
+  %thead
+    %tr
+      %th name
+      %th url
+      %th template
+      %th owners
+      %th updated_at
+      %th type
+  %tfoot
+    %tr
+      %td ...
+  %tbody
+    :each app in apps
+      %tr
+        %td= app.name
+        %td= app.url
+        %td= app.template
+        %td= app.owners
+        %td= app.updated_at
+        %td= app.type

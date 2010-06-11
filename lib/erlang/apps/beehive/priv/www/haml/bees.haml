@@ -1,2 +1,22 @@
 %h3
   Bees
+
+%table
+  %thead
+    %tr
+      %th app name
+      %th host
+      %th port
+      %th status
+      %th commit
+  %tfoot
+    %tr
+      %td ...
+  %tbody
+    :each bee in bees
+      %tr
+        %td= bee.app_name
+        %td= bee.host
+        %td= bee.port
+        %td= bee.status
+        %td= bee.commit
