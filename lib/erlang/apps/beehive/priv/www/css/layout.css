@@ -224,6 +224,7 @@ caption {
   overflow: hidden; 
 }
 #header h1 {
+  font-size: 14px;
   display: inline;
   float: left;
   height: 70px;

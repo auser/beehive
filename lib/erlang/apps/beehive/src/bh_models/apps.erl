@@ -49,7 +49,7 @@ new(Else) -> {error, {cannot_make_new_app, Else}}.
 
 read(Name) ->
   case find_by_name(Name) of
-    {app, App} -> App;
+    App when is_record(App, app) -> App;
     _E -> {error, not_found}
   end.
 
@@ -64,19 +64,20 @@ all() -> ?DB:all(app).
 
 exist(Name) ->
   case find_by_name(Name) of
-    {ok, _App} -> true;
+    App when is_record(App, app) -> true;
     _ -> false
   end.
 
 find_by_name(Name) ->
   case find_all_by_name(Name) of
     [H|_Rest] -> H;
+    [] -> not_found;
     E -> E
   end.
 
 find_all_by_name(Name) ->
   case ?DB:read(app, Name) of
-    [App|_Rest] when is_record(App, app) -> {ok, App};
+    Apps when is_list(Apps) -> Apps;
     _ -> not_found
   end.
   
@@ -229,7 +230,7 @@ validate_app([_H|Rest], App) -> validate_app(Rest, App).
 %%-------------------------------------------------------------------
 generate_unique_name(Name, Num) -> 
   case find_by_name(Name) of
-    {ok, A} when is_record(A, app) -> misc_utils:generate_unique_name(Name, Num);
+    A when is_record(A, app) -> misc_utils:generate_unique_name(Name, Num);
     not_found -> Name
   end.
 generate_unique_name(Num) -> 

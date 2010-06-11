@@ -355,6 +355,7 @@ maybe_handle_next_waiting_client(Name, State) ->
 % routing_param is the name of the method in the bee_picker
 % Defaults to bee_strategies:random if none are specified on the app
 pick_mod_and_meta_from_app(App) ->
+  erlang:display({pick_mod_and_meta_from_app, App}),
   Mod = case App#app.bee_picker of
     undefined -> config:search_for_application_value(bee_picker, bee_strategies, router);
     E -> E

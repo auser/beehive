@@ -62,7 +62,7 @@ test_delete_app() ->
 test_read_app() ->
   delete_all(),
   {ok, App1} = apps:save(#app{name = "test_app"}),
-  {ok, FoundApp1} = apps:find_by_name("test_app"),
+  FoundApp1 = apps:find_by_name("test_app"),
   ?assertEqual(App1, FoundApp1),
   passed.
 
