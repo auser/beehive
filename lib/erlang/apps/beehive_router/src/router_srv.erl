@@ -135,15 +135,15 @@ init(_Args) ->
 %%          {stop, Reason, Reply, State}   | (terminate/2 is called)
 %%          {stop, Reason, State}            (terminate/2 is called)
 %%----------------------------------------------------------------------
+handle_call({get_bee, default}, From, State) ->
+  Bee = get_default_app_or_rest(From, State),
+  {reply, {ok, Bee}, State};
 handle_call({get_bee, Hostname}, From, State) ->
   % If this is a request for an internal application, then serve that first
   % These are abnormal applications because they MUST be running for every router
   % and router_srv.
   case Hostname of
-    base ->
-      Bee = get_default_app_or_rest(Hostname, From, State),
-      {reply, {ok, Bee}, State};
-    [Head] ->
+    [Head|_Rest] ->
       get_bee_by_hostname(Head, From, State);
     _ ->
       get_bee_by_hostname(Hostname, From, State)
@@ -366,16 +366,16 @@ pick_mod_and_meta_from_app(App) ->
   end,
   {Mod, R}.
 
-get_default_app_or_rest(Hostname, From, State) ->
+get_default_app_or_rest(From, State) ->
   DefaultAppName = config:search_for_application_value(base_app, router, router),
   case DefaultAppName of
     router ->
       Port = config:search_for_application_value(app_port, 4999, router), 
       Host = {127,0,0,1},
-      Id = {Hostname, Host, Port},
+      Id = {default, Host, Port},
 
       #bee{ 
-        id = Id, port = Port, host = Host, app_name = Hostname
+        id = Id, port = Port, host = Host, app_name = default
       };
     Else ->
       case get_bee_by_hostname(Else, From, State) of

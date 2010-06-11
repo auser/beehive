@@ -83,7 +83,7 @@ headers_to_list(Headers) ->
 %%      
 %% @end
 %%-------------------------------------------------------------------
-parse_route_from_request(undefined, _) -> base;
+parse_route_from_request(undefined, _) -> default;
 parse_route_from_request(HostName, undefined) -> parse_route_from_request_without_base_domain(HostName);
 parse_route_from_request(HostName, BaseDomain) ->
   [NoPortHostname|_] = string:tokens(HostName, ":"),
@@ -91,7 +91,7 @@ parse_route_from_request(HostName, BaseDomain) ->
   T = string:tokens(BaseDomain, "."),
   
   case lists:subtract(O, T) of
-    [] -> base; % The requested resource is no different from the basedomain
+    [] -> default; % The requested resource is no different from the basedomain
     List -> List
   end.
   
@@ -100,7 +100,7 @@ parse_route_from_request_without_base_domain(HostName) ->
   O = string:tokens(NoPortHostname, "."),
   parse_route_from_request_without_base_domain1(O, []).
 
-parse_route_from_request_without_base_domain1([], _Acc)     -> base;
+parse_route_from_request_without_base_domain1([], _Acc)     -> default;
 parse_route_from_request_without_base_domain1(["localhost"], Acc) ->  
   parse_route_from_request_without_base_domain2(Acc);
   
@@ -110,6 +110,6 @@ parse_route_from_request_without_base_domain1(["net"], Acc) -> parse_route_from_
 parse_route_from_request_without_base_domain1([H|Rest], Acc) -> 
   parse_route_from_request_without_base_domain1(Rest, [H|Acc]).
 
-parse_route_from_request_without_base_domain2([]) -> base;
+parse_route_from_request_without_base_domain2([]) -> default;
 parse_route_from_request_without_base_domain2(List) ->
   [H|_Rest] = lists:reverse(List), [H].
