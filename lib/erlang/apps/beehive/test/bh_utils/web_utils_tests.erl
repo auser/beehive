@@ -37,6 +37,7 @@ test_json_parsing() ->
     {false, "false"},
     {{hello, "world"}, "{\"hello\":\"world\"}"},
     {{hello, [1,2,3]}, "{\"hello\":[1,2,3]}"},
+    {{app, [{name, "test"}, {var, "10"}]}, "{\"app\":{\"name\":\"test\",\"var\":\"10\"}}"},
     {{all_your, {bases, are}}, "{\"all_your\":{\"bases\":\"are\"}}"}
   ],
   lists:map(fun({Test,EExpected}) ->
