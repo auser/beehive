@@ -354,7 +354,7 @@ maybe_handle_next_waiting_client(Name, State) ->
 % bee_picker is the custom module to choose the bee from
 % routing_param is the name of the method in the bee_picker
 % Defaults to bee_strategies:random if none are specified on the app
-pick_mod_and_meta_from_app(App) ->
+pick_mod_and_meta_from_app(App) when is_record(App, app) ->
   erlang:display({pick_mod_and_meta_from_app, App}),
   Mod = case App#app.bee_picker of
     undefined -> config:search_for_application_value(bee_picker, bee_strategies, router);
@@ -390,7 +390,7 @@ get_bee_by_hostname(Hostname, From, State) ->
       M = config:search_for_application_value(bee_picker, bee_strategies, router),
       Meta = config:search_for_application_value(bee_strategy, random, router),
       {M, Meta};
-    App ->
+    App when is_record(App, app) ->
       pick_mod_and_meta_from_app(App)
   end,
   try_to_choose_bee_or_wait({Hostname, AppMod, MetaParam}, From, State).
