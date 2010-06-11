@@ -182,8 +182,7 @@ handle_websocket(Ws) ->
     {browser, Data} ->
       Ws:send(["received '", Data, "'"]),
       handle_websocket(Ws);
-    Msg ->
-      erlang:display({got_web_socket, Msg}),
+    _Msg ->
       handle_websocket(Ws)
   after 5000 ->
     handle_websocket(Ws)

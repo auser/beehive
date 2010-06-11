@@ -192,7 +192,6 @@ fetch_bee(App, #state{squashed_disk = SquashedDisk} = _State) ->
     true -> 
       Resp = bees:meta_data(BeeLocation, EnvLocation),
       ?NOTIFY({bee, bee_built, Resp}),
-      erlang:display({bee_built, Resp}),
       {bee_built, Resp};
     false -> {error, bee_not_found_after_creation}
   end.
@@ -204,8 +203,7 @@ fetch_bee(App, #state{squashed_disk = SquashedDisk} = _State) ->
 %%      
 %% @end
 %%-------------------------------------------------------------------
-build_bee(#app{latest_error = undefined} = App, 
-        #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} = State) ->
+build_bee(App, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} = State) ->
   case handle_repos_lookup(App) of
     {ok, ReposUrl} ->
       WorkingDir = lists:flatten([ScratchDisk, "/", App#app.name]),
@@ -231,16 +229,29 @@ build_bee(#app{latest_error = undefined} = App,
             {bee_built, _Resp} = T -> T;
             E -> E
           end;
+        {error, Stage, _OsPid, ExitCode, Stdout, Stderr} ->
+          % stage,        % stage at which the app failed
+          % stderr,       % string with the stderr
+          % stdout,       % string with the stdout
+          % exit_status,  % exit status code
+          % timestamp     % time when the exit happened
+          Error = #app_error{
+            stage = Stage,
+            stderr = Stderr,
+            stdout = Stdout,
+            exit_status = ExitCode,
+            timestamp = date_util:now_to_seconds()
+          },
+          erlang:display({build_bee, saving, App#app{latest_error = Error}}),
+          erlang:display({find_new_app, apps:find_by_name(App#app.name)}),
+          {ok, NewApp} = apps:save(App#app{latest_error = Error}),
+          {error, {babysitter, NewApp}};
         Else ->
           erlang:display({got_something_else,babysitter_run, Else}),
-          Error = #app_error{},
-          apps:save(App#app{latest_error = Error}),
-          {error, {babysitter, Else}}
+          {error, Else}
       end;
     {error, _} = T -> T
-  end;
-build_bee(App, _State) ->
-  {error, App#app.latest_error}.
+  end.
   
 handle_repos_lookup(AppName) ->
   case config:search_for_application_value(git_store, offsite, storage) of
@@ -265,7 +276,6 @@ handle_lookup_squashed_repos(#app{sha = CurrentAppSha } = App, Sha, #state{squas
   case handle_find_application_location(App, SquashedDir) of
     false -> false;
     FullFilePath ->
-      erlang:display({handle_find_application_location,FullFilePath}),
       case CurrentAppSha =:= Sha of
         true -> FullFilePath;
         false -> 

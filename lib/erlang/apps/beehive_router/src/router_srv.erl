@@ -272,13 +272,19 @@ choose_bee({Name, _, _} = Tuple, From) ->
 choose_bee({Hostname, AppMod, RoutingParameter}) ->
   case (catch bees:find_all_by_name(Hostname)) of
     [] -> 
-      case apps:exist(Hostname) of
-        false ->
+      case apps:find_by_name(Hostname) of
+        not_found ->
           {error, unknown_app};
-        true ->
-          % {app, request_to_start_new_bee, App, Host, Sha}
-          ?NOTIFY({app, request_to_start_new_bee, Hostname}),
-          ?MUST_WAIT_MSG
+        App ->
+          case App#app.latest_error of
+            undefined ->
+              % {app, request_to_start_new_bee, App, Host, Sha}
+              erlang:display({app, choose_bee, App}),
+              ?NOTIFY({app, request_to_start_new_bee, App}),
+              ?MUST_WAIT_MSG;
+            _ ->
+              {error, cannot_choose_bee}
+          end
       end;
     {'EXIT', {_, {no_exists, Err}}} ->
       ?LOG(error, "No exists for bees: ~p", [Err]),
@@ -315,10 +321,12 @@ choose_bee({Hostname, AppMod, RoutingParameter}) ->
 choose_from_bees([], _AppMod, _RoutingParameter) -> ?MUST_WAIT_MSG;
 choose_from_bees(Backends, Mod, AppRoutingParam) ->
   PreferredStrategy = config:search_for_application_value(bee_strategy, random, router),
-  Fun = case AppRoutingParam of
-    undefined -> PreferredStrategy;
-    F -> F
-  end,
+  Fun = PreferredStrategy,
+  % TODO: Reimplement
+  % Fun = case AppRoutingParam of
+  %   undefined -> PreferredStrategy;
+  %   F -> F
+  % end,
   Backend = Mod:Fun(Backends),
   {ok, Backend}.
 
@@ -346,7 +354,8 @@ maybe_handle_next_waiting_client(Name, State) ->
         % to take care of that here
         {reply, {ok, Bee}, _NewState} -> gen_cluster:reply(From, {ok, Bee});
         {reply, {error, Reason}, _NewState} -> gen_cluster:reply(From, {error, Reason});
-        {noreply, _NewState} ->  ok
+        {noreply, _NewState} -> 
+          ok
       end
   end.
   
@@ -355,7 +364,6 @@ maybe_handle_next_waiting_client(Name, State) ->
 % routing_param is the name of the method in the bee_picker
 % Defaults to bee_strategies:random if none are specified on the app
 pick_mod_and_meta_from_app(App) when is_record(App, app) ->
-  erlang:display({pick_mod_and_meta_from_app, App}),
   Mod = case App#app.bee_picker of
     undefined -> config:search_for_application_value(bee_picker, bee_strategies, router);
     E -> E

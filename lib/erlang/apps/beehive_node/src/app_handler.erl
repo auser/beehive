@@ -253,7 +253,7 @@ internal_update_instance(_App, _AppLauncher, _From) ->
 mount_application(App, PropLists) ->
   ScratchDisk = config:search_for_application_value(scratch_disk, ?BEEHIVE_DIR("tmp"), storage),
   RunDir = config:search_for_application_value(squashed_storage, ?BEEHIVE_DIR("run"), storage),
-  UniqueName = apps:build_on_disk_app_name(App),
+  UniqueName = App#app.name,
 
   WorkingDir = filename:join([ScratchDisk, App#app.name]),
   MountedDir = filename:join([RunDir, UniqueName]),
@@ -271,13 +271,10 @@ mount_application(App, PropLists) ->
   EnvOpts = apps:build_app_env(App, OtherOpts),
   CmdOpts = lists:flatten([{cd, MountedDir}|EnvOpts]),
   
-  erlang:display({cmd_opts, CmdOpts}),
-  
   babysitter:run(App#app.template, mount, CmdOpts).
 
 % Initialize the node
 initialize_application(App, PropLists, AppLauncher, _From) ->
-  erlang:display({initialize_application, PropLists}),
   Sha = proplists:get_value(sha, PropLists),
   Port = proplists:get_value(port, PropLists),
   ImagePath = proplists:get_value(bee_image, PropLists),

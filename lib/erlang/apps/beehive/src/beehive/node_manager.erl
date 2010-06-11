@@ -133,7 +133,6 @@ get_next_available(Type, Count) ->
     [] -> 
       % Should we be starting an instance automagically?
       AtomType = erlang:list_to_atom(lists:flatten(["beehive_", erlang:atom_to_list(Type)])),
-      erlang:display({application, start, AtomType}),
       ok = application:start(AtomType),
       timer:sleep(500),
       get_next_available(Type, Count - 1);
