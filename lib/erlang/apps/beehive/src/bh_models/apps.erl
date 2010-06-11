@@ -56,6 +56,7 @@ read(Name) ->
 delete(App) when is_record(App, app) ->
   ?DB:delete(app, App#app.name);
 delete(Proplist) when is_list(Proplist) -> ?DB:delete(app, Proplist);
+delete(Name) when is_list(Name) -> ?DB:delete(app, Name);
 delete([]) -> invalid;
 delete(Else) -> {error, {cannot_delete, Else}}.
 
@@ -75,7 +76,7 @@ find_by_name(Name) ->
 
 find_all_by_name(Name) ->
   case ?DB:read(app, Name) of
-    App when is_record(App, app) -> {ok, App};
+    [App|_Rest] when is_record(App, app) -> {ok, App};
     _ -> not_found
   end.
   
@@ -228,10 +229,8 @@ validate_app([_H|Rest], App) -> validate_app(Rest, App).
 %%-------------------------------------------------------------------
 generate_unique_name(Name, Num) -> 
   case find_by_name(Name) of
-    A when is_record(A, app) -> generate_unique_name(misc_utils:generate_unique_name(Name, Num), Num);
-    not_found -> 
-      erlang:display({generate_unique_name, Name}),
-      Name
+    {ok, A} when is_record(A, app) -> misc_utils:generate_unique_name(Name, Num);
+    not_found -> Name
   end.
 generate_unique_name(Num) -> 
   generate_unique_name(misc_utils:generate_unique_name(Num), Num).

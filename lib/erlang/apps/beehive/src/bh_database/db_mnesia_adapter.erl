@@ -24,23 +24,19 @@ start(Nodes) ->
 
 % read
 read(Table, Key) ->
-  {_Time, Value} = timer:tc(mnesia, dirty_read, [Table, Key]),
+  {_Time, Value} = timer:tc(mnesia, dirty_read, [{Table, Key}]),
   Value.
 
 write(_Table, _Key, Record) ->
-  F = fun() ->
-    mnesia:write(Record)
-  end,
-  case mnesia:transaction(F) of
-    {aborted, Reason} -> {error, Reason};
-    {atomic, _} -> ok
-  end.
+  {_Time, Value} = timer:tc(mnesia, dirty_write, [Record]),
+  Value.
+  % case mnesia:transaction(fun() -> mnesia:write(Record) end) of
+  %   {aborted, Reason} -> {error, Reason};
+  %   {atomic, _} -> ok
+  % end.
 
-delete(_Table, Record) ->
-  F = fun() ->
-    mnesia:delete(Record)
-  end,
-  case mnesia:transaction(F) of
+delete(Table, Record) ->
+  case mnesia:transaction(fun() -> mnesia:delete({Table, Record}) end) of
     {aborted, Reason} -> {error, Reason};
     {atomic, _} -> ok
   end.
@@ -48,9 +44,15 @@ delete(_Table, Record) ->
 run(Fun) ->   qlc:eval( Fun() ).
 
 all(Table) -> 
-  {atomic, List} = mnesia:transaction(fun() -> mnesia:all_keys(Table) end),
-  List.
-
+  Fun = fun() ->
+    Query = qlc:q([ Ele || Ele <- mnesia:table(Table) ]),
+    qlc:e(Query)
+  end,
+  case mnesia:transaction(Fun) of
+    {aborted, Reason} -> {error, Reason};
+    {atomic, V} -> V
+  end.
+  
 dir() ->
   DefaultDatabaseDir = config:search_for_application_value(database_dir, ?BEEHIVE_DIR("db"), beehive),
   case application:get_env(mnesia, dir) of

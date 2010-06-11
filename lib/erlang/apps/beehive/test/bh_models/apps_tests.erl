@@ -20,7 +20,8 @@ starting_test_() ->
     fun teardown/1,
     [
       fun test_save/0,
-      fun test_save_app_with_same_name/0
+      fun test_save_app_with_same_name/0,
+      fun test_delete_app/0
     ]
   }.
 
@@ -44,14 +45,21 @@ test_save_app_with_same_name() ->
   App1 = #app{name="test_app", url="http://github.com/auser/test_app1.git"},
   App2 = #app{name="test_app", url="http://github.com/auser/test_app2.git"},
   {ok, App3} = apps:save(App1),
-  erlang:display({apps:find_by_name("test_app")}),
   {ok, App4} = apps:save(App2),
-  erlang:display({all_apps, apps:all()}),
-  erlang:display({app, App3}),
-  erlang:display({app, App4}),
+  ?assert(App3#app.name == "test_app"),
+  ?assert(App4#app.name =/= "test_app"),
   passed.
 
+test_delete_app() ->
+  delete_all(),
+  {ok, App1} = apps:save(#app{name = "test_app"}),
+  ?assert(apps:all() == [App1]),
+  apps:delete(App1),
+  ?assert(apps:all() == []),
+  passed.
+
+% Utils
 delete_all() ->
-  lists:map(fun(AppName) ->
-    apps:delete(AppName)
+  lists:map(fun(App) ->
+    apps:delete(App#app.name)
   end, apps:all()).
