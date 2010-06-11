@@ -347,7 +347,7 @@ internal_stop_instance(Bee, _State) ->
     {error, _} = T -> T;
     {ok, App, CmdOpts} ->
       case babysitter:run(App#app.template, stop, CmdOpts) of
-        {ok, _OsPid} ->
+        {ok, _OsPid, _ExitStatus} ->
           case ets:lookup(?TAB_ID_TO_BEE, Bee#bee.id) of
             [{Key, _B}] ->
               catch ets:delete(?TAB_NAME_TO_BEE, App#app.name),
@@ -355,6 +355,7 @@ internal_stop_instance(Bee, _State) ->
             _ -> true
           end,      
           {bee_terminated, Bee};
+        {error, no_command} -> {bee_terminated, Bee};
         Else -> {error, Else}
       end
   end.
@@ -366,6 +367,7 @@ internal_unmount_instance(Bee, _State) ->
     {ok, App, CmdOpts} ->
       case babysitter:run(App#app.template, unmount, CmdOpts) of
         {ok, _OsPid} -> {bee_unmounted, Bee};
+        {error, no_command} -> {bee_unmounted, Bee};
         Else -> {error, Else}
       end
   end.
@@ -375,7 +377,8 @@ internal_cleanup_instance(Bee, _State) ->
     {error, _} = T -> T;
     {ok, App, CmdOpts} ->
       case babysitter:run(App#app.template, cleanup, CmdOpts) of
-        {ok, _OsPid} -> {bee_cleaned_up, Bee};
+        {ok, _OsPid, _ExitStatus} -> {bee_cleaned_up, Bee};
+        {error, no_command} -> {bee_cleaned_up, Bee};
         Else -> {error, Else}
       end
   end.

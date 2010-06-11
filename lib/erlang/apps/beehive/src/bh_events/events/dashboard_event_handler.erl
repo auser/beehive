@@ -11,19 +11,33 @@
 
 -behaviour(gen_event).
 
+-define (DASHBOARD_EVENTS_TABLE, dashboard_event_handler_table).
+
+%% API
+-export ([get_latest_events/0]).
+
 %% gen_event callbacks
 -export([init/1, handle_event/2, handle_call/2, handle_info/2, terminate/2, code_change/3]).
+
+-record (state, {
+  last_trans  = 0
+}).
 
 %%====================================================================
 %% gen_event callbacks
 %%====================================================================
+get_latest_events() ->
+  Ret = ets:tab2list(?DASHBOARD_EVENTS_TABLE),
+  prune_table(?DASHBOARD_EVENTS_TABLE, lists:map(fun({K,_}) -> K end, Ret)),
+  Ret.
 %%--------------------------------------------------------------------
 %% Function: init(Args) -> {ok, State}
 %% Description: Whenever a new event handler is added to an event manager,
 %% this function is called to initialize the event handler.
 %%--------------------------------------------------------------------
 init([]) ->
-  {ok, 500}.
+  ?DASHBOARD_EVENTS_TABLE = ets:new(?DASHBOARD_EVENTS_TABLE, [public,named_table]),
+  {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% Function:
@@ -36,8 +50,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_event({user, Atom, User}, State) ->
   Msg = [{context, user}, {event, Atom}, {user, [{email, User#user.email}, {token, User#user.token}]}],
-  beehive_dashboard_srv:send_message_to_all_websockets(Msg),
-  {ok, State};
+  {ok, handle_msg(Msg, State)};
 handle_event({app, Event, App}, State) when is_record(App, app) ->
   Msg = [
     {context, app}, 
@@ -48,16 +61,14 @@ handle_event({app, Event, App}, State) when is_record(App, app) ->
       {updated_at, App#app.updated_at}
       ]
     }],
-  beehive_dashboard_srv:send_message_to_all_websockets(Msg),
-  {ok, State};
+  {ok, handle_msg(Msg, State)};
 handle_event({bee, Event, Bee}, State) when is_record(Bee, bee) ->
   Msg = [
     {context, bee}, 
     {event, Event}, 
     {bee, bee_to_proplist(Bee)}
     ],
-  beehive_dashboard_srv:send_message_to_all_websockets(Msg),
-  {ok, State};
+  {ok, handle_msg(Msg, State)};
 handle_event({bee, closing_stats, _Bee, _Stats}, State) ->
   {ok, State};
 handle_event(Event, State) ->
@@ -98,6 +109,7 @@ handle_info(_Info, State) ->
 %% do any necessary cleaning up.
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
+  true = ets:delete(?DASHBOARD_EVENTS_TABLE),
   ok.
 
 %%--------------------------------------------------------------------
@@ -114,3 +126,24 @@ bee_to_proplist(Bee) ->
     {port, Bee#bee.port}, 
     {app_name, Bee#bee.app_name}
   ].
+
+handle_msg(Msg, #state{last_trans = LastTrans} = State) ->
+  TransId = next_trans(LastTrans),
+  ets:insert(?DASHBOARD_EVENTS_TABLE, [{TransId, Msg}]),
+  beehive_dashboard_srv:send_message_to_all_websockets(Msg),
+  State#state{last_trans = TransId}.
+
+% So that we can get a unique id for each communication
+next_trans(I) when I < 268435455 -> I+1;
+next_trans(_) -> 1.
+
+% Prune the table
+prune_table(Tab, Keys) ->
+  true = ets:safe_fixtable(Tab, true),
+  ok = prune_table(Tab, Keys, ets:first(Tab)),
+  true = ets:safe_fixtable(Tab, false).
+
+prune_table(_Tab, _Keys, '$end_of_table') -> ok;
+prune_table(Tab, Keys, Key) ->
+  ets:match_delete(Tab, {Key, '_'}),
+  prune_table(Tab, Keys, ets:next(Tab, Key)).

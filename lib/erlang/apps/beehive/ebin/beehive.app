@@ -14,7 +14,7 @@
                   rest_server, rest_server_sup,
                   apps_controller, auth_controller, bees_controller, git_controller,
                   home_controller, nodes_controller, stats_controller, system_controller,
-                  users_controller,
+                  users_controller, events_controller,
                   % UI
                   beehive_control,
                   % Utils
