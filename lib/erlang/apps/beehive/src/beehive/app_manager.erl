@@ -51,21 +51,24 @@
 %%====================================================================
 %% API
 %%====================================================================
+%%====================================================================
+%% Asynchronous methods
+%%====================================================================
+request_to_expand_app(App) -> gen_server:cast(?SERVER, {request_to_expand_app, App}).
 status() -> gen_server:call(?SERVER, {status}).
 instance() -> whereis(?SERVER).
-
-terminate_all() -> gen_server:cast(?SERVER, {terminate_all}).
-terminate_app_instances(Appname) -> gen_server:cast(?SERVER, {terminate_app_instances, Appname}).
-  
-add_application(ConfigProplist) -> gen_server:call(?SERVER, {add_application_by_configuration, ConfigProplist}).
-
-request_to_update_app(App) -> gen_server:cast(?SERVER, {request_to_update_app, App}).
-request_to_expand_app(App) -> gen_server:cast(?SERVER, {request_to_expand_app, App}).
+garbage_collection() -> gen_server:cast(?SERVER, {garbage_collection}).
 request_to_start_new_bee_by_app(App) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_app, App}).
 request_to_start_new_bee_by_name(Name) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_name, Name}).
+
+%%====================================================================
+%% Synchronous methods
+%%====================================================================
+add_application(ConfigProplist) -> gen_server:call(?SERVER, {add_application_by_configuration, ConfigProplist}).
+request_to_update_app(App) -> gen_server:cast(?SERVER, {request_to_update_app, App}).
 request_to_terminate_bee(Bee) -> gen_server:cast(?SERVER, {request_to_terminate_bee, Bee}).
-  
-garbage_collection() -> gen_server:cast(?SERVER, {garbage_collection}).
+terminate_app_instances(Appname) -> gen_server:cast(?SERVER, {terminate_app_instances, Appname}).
+terminate_all() -> gen_server:cast(?SERVER, {terminate_all}).
 
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
@@ -124,33 +127,6 @@ handle_call({remove_app, AppName}, _From, State) ->
   terminate_app_instances(AppName),
   {reply, ok, State};
 
-handle_call({request_to_update_app, App}, _From, State) ->
-  update_instance_by_app(App),
-  {noreply, State};
-
-handle_call({request_to_expand_app, App}, _From, State) ->
-  expand_instance_by_app(App),
-  {noreply, State};
-
-handle_call({request_to_start_new_bee_by_app, App}, _From, State) ->
-  start_new_instance_by_app(App),
-  {noreply, State};
-
-handle_call({request_to_start_new_bee_by_name, Name}, _From, State) ->
-  case apps:find_by_name(Name) of
-    [] -> error;
-    App -> start_new_instance_by_app(App)
-  end,
-  {noreply, State};
-
-handle_call({request_to_terminate_bee, #bee{status = Status} = Bee}, _From, State) when Status =:= ready ->
-  % rpc:cast(Node, app_handler, stop_instance, [Bee]),
-  % app_killer_fsm
-  {ok, P} = app_killer_fsm:start_link(Bee, self()),
-  erlang:link(P),
-  app_killer_fsm:kill(P),  
-  {noreply, State};
-
 handle_call(_Request, _From, State) ->
   Reply = ok,
   {reply, Reply, State}.
@@ -177,6 +153,34 @@ handle_call(_Request, _From, State) ->
 %   {noreply, State};
 % request_to_update_app(App) -> gen_server:cast(?SERVER, {request_to_update_app, App}).
 % request_to_start_new_bee_by_app(App) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_app, App}).
+
+handle_cast({request_to_update_app, App}, State) ->
+  update_instance_by_app(App),
+  {noreply, State};
+
+handle_cast({request_to_expand_app, App}, State) ->
+  expand_instance_by_app(App),
+  {noreply, State};
+
+handle_cast({request_to_start_new_bee_by_app, App}, State) ->
+  start_new_instance_by_app(App),
+  {noreply, State};
+
+handle_cast({request_to_start_new_bee_by_name, Name}, State) ->
+  case apps:find_by_name(Name) of
+    [] -> error;
+    App when is_record(App, app) -> start_new_instance_by_app(App)
+  end,
+  {noreply, State};
+
+handle_cast({request_to_terminate_bee, #bee{status = Status} = Bee}, State) when Status =:= ready ->
+  % rpc:cast(Node, app_handler, stop_instance, [Bee]),
+  % app_killer_fsm
+  {ok, P} = app_killer_fsm:start_link(Bee, self()),
+  erlang:link(P),
+  app_killer_fsm:kill(P),  
+  {noreply, State};
+
 
 handle_cast({request_to_terminate_bee, _Bee}, State) ->
   {noreply, State};
@@ -240,7 +244,6 @@ handle_info({'EXIT',_Pid, {received_unknown_message, {_FsmState, {error, {babysi
   {noreply, State};
 
 handle_info({'EXIT', Pid, _Reason}, State) ->
-  io:format("Pid exited: ~p~n", [Pid]),
   case ets:lookup(?UPDATERS_PID_TO_APP, Pid) of
     [{Pid, App, _Time}] ->
       ets:delete(?UPDATERS_PID_TO_APP, Pid),
@@ -258,22 +261,24 @@ handle_info({'EXIT', Pid, _Reason}, State) ->
 handle_info({bee_updated_normally, #bee{commit_hash = Sha} = Bee, #app{name = AppName} = App}, State) ->
   % StartedBee#bee{commit_hash = Sha}, App#app{sha = Sha}
   ?LOG(debug, "app_event_handler got bee_started_normally: ~p, ~p", [Bee, App]),
-  apps:transactional_save(fun() ->
-    RealApp = apps:find_by_name(AppName),
-    apps:save(RealApp#app{sha = Sha})
-  end),
-  bees:transactional_save(fun() ->
-    RealBee = bees:find_by_id(Bee#bee.id),
-    bees:save(RealBee#bee{lastresp_time = date_util:now_to_seconds()})
-  end),
+  case apps:find_by_name(AppName) of
+    RealApp when is_record(RealApp, app) ->
+      apps:save(RealApp#app{sha = Sha, latest_error = undefined});
+    _ -> ok
+  end,
+  case bees:find_by_id(Bee#bee.id) of
+    RealBee when is_record(RealBee, bee) -> bees:save(RealBee#bee{lastresp_time = date_util:now_to_seconds()});
+    _ -> ok
+  end,
   ok = kill_other_bees(Bee),
   {noreply, State};
 
 handle_info({bee_started_normally, _Bee, _App}, State) ->
   {noreply, State};
 
-handle_info({error, State, {error, {babysitter, Msg}}}, State) ->
-  ?LOG(info, "app_manager caught babysitter error: ~p", [Msg]),
+% {error, {updating, {error, {babysitter, {app,"fake-lvpae",
+handle_info({error, {_Stage, {error, {babysitter, App}}}}, State) ->
+  ?LOG(info, "app_manager caught babysitter error: ~p", [App]),
   {noreply, State};
 
 handle_info({error, State, Error}, State) ->
@@ -548,7 +553,7 @@ expand_instance_by_app(App) -> start_new_instance_by_app(App).
 app_launcher_fsm_go(AppToPidTable, PidToAppTable, Method, App, Updating) ->
   case App#app.type of
     static -> ok;
-    _T -> 
+    _T ->
       process_flag(trap_exit, true),
       Now = date_util:now_to_seconds(),
       StartOpts = [{app, App}, {caller, self()}, {updating, Updating}],

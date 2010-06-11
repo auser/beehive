@@ -38,7 +38,7 @@ handle_event({user, Atom, User}, State) ->
   Msg = [{context, user}, {event, Atom}, {user, [{email, User#user.email}, {token, User#user.token}]}],
   beehive_dashboard_srv:send_message_to_all_websockets(Msg),
   {ok, State};
-handle_event({app, Event, App}, State) ->
+handle_event({app, Event, App}, State) when is_record(App, app) ->
   Msg = [
     {context, app}, 
     {event, Event}, 

@@ -134,8 +134,8 @@ launching({started_bee, Be}, State) ->
   app_manager:spawn_update_bee_status(Be, Self, 20),
   {next_state, pending, State#state{bee = Be}};
 
-launching({error, _} = T, State) ->
-  stop_error(T, State);
+launching({error, Reason}, State) ->
+  stop_error({launching, Reason}, State);
 
 launching(Event, State) ->
   ?LOG(info, "Uncaught event: ~p while in state: ~p ~n", [Event, launching]),
