@@ -21,7 +21,8 @@ starting_test_() ->
     [
       fun test_save/0,
       fun test_save_app_with_same_name/0,
-      fun test_delete_app/0
+      fun test_delete_app/0,
+      fun test_read_app/0
     ]
   }.
 
@@ -56,6 +57,13 @@ test_delete_app() ->
   ?assert(apps:all() == [App1]),
   apps:delete(App1),
   ?assert(apps:all() == []),
+  passed.
+
+test_read_app() ->
+  delete_all(),
+  {ok, App1} = apps:save(#app{name = "test_app"}),
+  {ok, FoundApp1} = apps:find_by_name("test_app"),
+  ?assertEqual(App1, FoundApp1),
   passed.
 
 % Utils

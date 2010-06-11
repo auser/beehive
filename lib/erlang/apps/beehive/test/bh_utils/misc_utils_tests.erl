@@ -23,7 +23,8 @@ starting_test_() ->
 
 test_generate_unique_name() ->
   A = misc_utils:generate_unique_name("butter", 2),
-  erlang:display({generate_unique_name, A}),
+  ?assert(string:left(A, 6) == "butter"),
+  ?assert(erlang:length(A) =/= 6),
   passed.
 
 chop_test() ->
