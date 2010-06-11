@@ -146,8 +146,9 @@ handle(Path, Docroot, Req, Resp) ->
 % Call the controller action here
 run_controller(Req, Resp, Docroot, ControllerAtom, Meth, Args) ->
   case (catch erlang:apply(ControllerAtom, Meth, Args)) of
-    {'EXIT', {undef, _}} = E ->
-      respond_to(Req, Resp, Docroot, undefined);
+    {'EXIT', {undef, Reason}} ->
+      % ?LOG(error, "(~p:~p) Undefined method rest server: ~p~n", [?MODULE, ?LINE, Reason]),
+      respond_to(Req, Resp, Docroot, Reason);
     {'EXIT', E} -> 
       ?LOG(error, "(~p:~p) Error in rest server: ~p~n", [?MODULE, ?LINE, E]),
       Resp1 = Resp:status_code(503),
@@ -206,11 +207,11 @@ top_level_request(Path) ->
 
 % generalize request path
 generalize_request_path(Path) ->
-  case string:right(Path, 5) of
-    ".json" -> 
+  case string:rstr(Path, ".json") of
+    0 -> Path;
+    _ -> 
       % EWWWW
-      string:substr(Path, 1, erlang:length(Path) - 5);
-    E -> E
+      string:substr(Path, 1, erlang:length(Path) - 5)
   end.
 
 % Convert each of the binary data proplists into a valid proplist
