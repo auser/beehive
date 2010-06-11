@@ -34,8 +34,8 @@ get([Name], _Data) ->
 get(_, _Data) -> 
   All = apps:all(),
   {"apps", lists:map(fun(A) ->
-      Details = compile_app_details(A),
-      {A#app.name, Details}
+      compile_app_details(A)
+      
     end, All)
   }.
 

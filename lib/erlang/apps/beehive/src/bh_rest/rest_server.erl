@@ -157,7 +157,7 @@ run_controller(Req, Resp, Docroot, ControllerAtom, Meth, Args) ->
     {error, _} = Tuple ->
       % Any errors must be thrown to be caught
       Resp1 = Resp:status_code(404),
-      Resp2 = Resp1:header("Content-Type", "text/json"),
+      Resp2 = Resp1:header("Content-Type", "application/json"),
       Resp3 = Resp2:data(?JSONIFY(Tuple)),
       Resp3:build_response();
     Body -> 
@@ -168,7 +168,7 @@ respond_to(Req, Resp, Docroot, Body) ->
   ReturnResp = case string:right(Req:path(), 5) of
     ".json" ->
       Resp1 = Resp:status_code(200),
-      Resp2 = Resp1:header("Content-Type", "text/json"),
+      Resp2 = Resp1:header("Content-Type", "application/json"),
       Resp2:data(?JSONIFY(Body));
     _ ->
       Resp1 = Resp:header("Content-Type", "text/html"),
