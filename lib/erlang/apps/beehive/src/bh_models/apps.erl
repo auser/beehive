@@ -72,7 +72,9 @@ find_by_name(Name) ->
   case find_all_by_name(Name) of
     [H|_Rest] -> H;
     [] -> not_found;
-    E -> E
+    E -> 
+      erlang:display({apps, find_by_name, E}),
+      E
   end.
 
 find_all_by_name(Name) ->

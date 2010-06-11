@@ -386,7 +386,7 @@ get_default_app_or_rest(From, State) ->
   
 get_bee_by_hostname(Hostname, From, State) ->
   {AppMod, MetaParam} = case apps:find_by_name(Hostname) of
-    [] ->
+    not_found ->
       M = config:search_for_application_value(bee_picker, bee_strategies, router),
       Meta = config:search_for_application_value(bee_strategy, random, router),
       {M, Meta};

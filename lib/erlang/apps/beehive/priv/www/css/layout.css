@@ -14,10 +14,12 @@ table, caption, tbody, tfoot, thead, tr, th, td {
   font-style: inherit;
   font-size: 100%;
   font-family: inherit;
-  vertical-align: baseline; }
+  vertical-align: baseline; 
+}
 
 *:focus {
-  outline: 0; }
+  outline: 0; 
+}
 
 body {
   line-height: 1;
@@ -237,9 +239,10 @@ caption {
   font-size: 1.4em;
 }
 #header h1 a {
-  background: url("../images/site/logo.png") no-repeat;
+  background: url("/images/logo.png") no-repeat;
   display: block;
   height: 70px;
+  width: 270px;
   text-indent: -99999em;
 }
 #header #header_nav {
