@@ -67,4 +67,5 @@ handle_single_query_value([], Key, Val) -> {misc_utils:to_atom(Key), misc_utils:
 handle_single_query_value([Chr|Rest], K, Val) -> handle_single_query_value(Rest, K, [Chr|Val]).
   
 ip_to_list({IP, _Port}) -> ip_to_list(IP);
-ip_to_list({A, B, C, D}) -> lists:flatten(io_lib:format("~w.~w.~w.~w", [A, B, C, D])).
+ip_to_list({A, B, C, D}) -> lists:flatten(io_lib:format("~w.~w.~w.~w", [A, B, C, D]));
+ip_to_list(List) -> List.
