@@ -2,6 +2,7 @@
 -include ("common.hrl").
 -compile (export_all).
 
+-define (ETS_CONFIG_FILE, 'in_memory_config_file').
 
 % Find the application config value
 search_for_application_value(Param, Default, App) ->

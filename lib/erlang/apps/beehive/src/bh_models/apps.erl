@@ -4,6 +4,7 @@
 
 % DATABASE STUFF
 -export ([
+  create/1,
   read/1,
   save/1,
   update/2,
@@ -30,10 +31,11 @@
 
 -export ([validate_app/1]).
 
+create(A) -> save(new(A)).
+
 save(App) when is_record(App, app) ->
-  NewApp = validate_app(App), 
-  ok = ?DB:write(app, NewApp#app.name, NewApp),
-  {ok, NewApp};
+  ok = ?DB:write(app, App#app.name, App),
+  {ok, App};
 save([]) -> invalid;
 save(Proplists) when is_list(Proplists) -> 
   case from_proplists(Proplists) of
@@ -41,6 +43,9 @@ save(Proplists) when is_list(Proplists) ->
     App -> 
       save(App)
   end;
+save(Func) when is_function(Func) ->
+  ?DB:save(Func);
+  
 save(Else) -> {error, {cannot_save, Else}}.
 
 new([]) -> error;
@@ -72,9 +77,8 @@ find_by_name(Name) ->
   case find_all_by_name(Name) of
     [H|_Rest] -> H;
     [] -> not_found;
-    E -> 
-      erlang:display({apps, find_by_name, E}),
-      E
+    % This should ALWAYS be not_found, but just to be safe
+    E -> E
   end.
 
 find_all_by_name(Name) ->
