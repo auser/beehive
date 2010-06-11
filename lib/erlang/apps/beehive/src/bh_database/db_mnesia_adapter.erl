@@ -7,6 +7,7 @@
 -export ([
   start/1,
   read/2,
+  save/1,
   write/3,
   run/1,
   delete/2,
@@ -34,6 +35,12 @@ write(_Table, _Key, Record) ->
   %   {aborted, Reason} -> {error, Reason};
   %   {atomic, _} -> ok
   % end.
+
+save(Fun) ->
+  case mnesia:transaction(Fun) of
+    {aborted, Reason} -> {error, Reason};
+    {atomic, _} -> ok
+  end.
 
 delete(Table, Record) ->
   case mnesia:transaction(fun() -> mnesia:delete({Table, Record}) end) of

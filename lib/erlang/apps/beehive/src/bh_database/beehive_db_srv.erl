@@ -14,6 +14,7 @@
   delete/2,
   all/1,
   run/1,
+  save/1,
   status/0
 ]).
 
@@ -36,6 +37,7 @@
 status() -> gen_server:call(?SERVER, {status}).
 read(Table, Key) -> gen_server:call(?SERVER, {read, Table, Key}).
 write(Table, Key, Proplist) -> gen_server:call(?SERVER, {write, Table, Key, Proplist}).
+save(Function) -> gen_server:call(?SERVER, {save, Function}).
 delete(Table, Key) -> gen_server:call(?SERVER, {delete, Table, Key}).
 all(Table) -> gen_server:call(?SERVER, {all, Table}).
 run(Fun) -> gen_server:call(?SERVER, {run, Fun}).
@@ -91,6 +93,10 @@ init([DbAdapterName, Nodes]) ->
 handle_call({write, Table, Key, Proplist}, From, #state{adapter = Adapter, queries = OldTransQ, last_trans = LastTrans} = State) ->
   TransId = next_trans(LastTrans),
   try_to_call(TransId, Adapter, write, [Table, Key, Proplist]),
+  {noreply, State#state{queries = queue:in({TransId, From}, OldTransQ)}};
+handle_call({save, Fun}, From, #state{adapter = Adapter, queries = OldTransQ, last_trans = LastTrans} = State) ->
+  TransId = next_trans(LastTrans),
+  try_to_call(TransId, Adapter, save, [Fun]),
   {noreply, State#state{queries = queue:in({TransId, From}, OldTransQ)}};
 handle_call({read, Table, Key}, From, #state{adapter = Adapter, queries = OldTransQ, last_trans = LastTrans} = State) ->
   TransId = next_trans(LastTrans),
