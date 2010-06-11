@@ -37,7 +37,14 @@ prepare_for_json(Tuple) when is_tuple(Tuple) ->
 prepare_for_json(V) -> V.
 
 list_to_json([], Acc) -> lists:reverse(Acc);
+list_to_json([{_Key, _Value}|_Rest] = List, Acc) -> {struct, proplist_to_json(List, Acc)};
 list_to_json([H|Rest], Acc) -> list_to_json(Rest, [prepare_for_json(H)|Acc]).
+
+proplist_to_json([], Acc) -> lists:reverse(Acc);
+proplist_to_json([{Key, Value}|Rest], Acc) ->
+  ValidKey    = prepare_for_json(Key),
+  ValidValue  = prepare_for_json(Value),
+  proplist_to_json(Rest, [{ValidKey, ValidValue}|Acc]).
 
 tuple_to_json(_Tuple, 0, Acc) ->  {struct, [erlang:list_to_tuple(Acc)]};
 tuple_to_json(Tuple, CurrPos, Acc) ->

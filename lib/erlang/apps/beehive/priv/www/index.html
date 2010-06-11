@@ -2,8 +2,11 @@
 <head>
   <title>Beehive Dashboard</title>
 
-  <script src="js/jquery-1.3.2.min.js" type="text/javascript" charset="utf-8"></script>
+  <script src="js/jquery-1.4.2.min.js" type="text/javascript" charset="utf-8"></script>
   <script src="js/sammy/sammy.js" type="text/javascript" charset="utf-8"></script>
+  <script src="js/sammy/plugins/sammy.template.js" type="text/javascript" charset="utf-8"></script>
+  <script src="js/sammy/plugins/sammy.haml.js" type="text/javascript" charset="utf-8"></script>
+  <script src="js/sammy/plugins/sammy.json.js" type="text/javascript" charset="utf-8"></script>
   <script src="js/websocket.js" type="text/javascript" charset="utf-8"></script>
   <script src="js/app.js" type="text/javascript" charset="utf-8"></script>
   
@@ -41,7 +44,9 @@
         </div>
 
         <div id="content">
+          <div id="main"></div>
         </div>
+        
       </div>
       
     </div>
