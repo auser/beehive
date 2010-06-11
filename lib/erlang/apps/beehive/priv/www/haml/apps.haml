@@ -1,0 +1,35 @@
+%h3
+  Apps
+
+%ul.apps 
+  :each app in apps
+    %li= app.name
+    %ul.app_attrs
+      %li 
+        %strong
+          = "url: "
+        = app.url
+      %li
+        %strong
+          = "routing_param: "
+        = app.routing_param
+      %li
+        %strong
+          = "owners: " 
+        = app.owners
+      %li
+        %strong
+          = "updated_at: " 
+        = app.updated_at
+      %li
+        %strong
+          = "type: " 
+        = app.type
+      %li
+        %strong
+          = "template: " 
+        = app.template
+      %li
+        %strong
+          = "bee_picker: " 
+        = app.bee_picker
