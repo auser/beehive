@@ -3,11 +3,15 @@
 -include_lib("eunit/include/eunit.hrl").
 
 setup() ->
-  application:start(beehive),
+  Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
+  ConfigFile = filename:join([Dir, "test", "beehive.cfg"]),
+  application:set_env(beehive, config_file, ConfigFile),
+  
+  beehive:start(),
   ok.
   
 teardown(_X) ->
-  application:stop(beehive),
+  beehive:stop(),
   ok.
 
 starting_test_() ->
@@ -15,20 +19,39 @@ starting_test_() ->
     fun setup/0,
     fun teardown/1,
     [
-      fun test_create/0
+      fun test_save/0,
+      fun test_save_app_with_same_name/0
     ]
   }.
 
-test_create() ->
-  erlang:display({apps_test, test_create}),
-  App1 = #app{name="test_app"},
-  apps:create(App1),
+test_save() ->
+  % Delete all
+  delete_all(),
+  {ok, App1} = apps:save(#app{name="test_app"}),
   {atomic,Results1} = mnesia:transaction(fun() -> mnesia:match_object(#app{_='_'}) end),
-  ?assertEqual([App1], Results1),
-  % create via proplists
+  [FoundApp1|_Rest] = Results1,
+  ?assertEqual(FoundApp1#app.name, App1#app.name),
+  % save via proplists
   Props = [{name, "another_app"}, {min_instances, 1}, {max_instances, 10}],
   App2 = apps:new(Props),
-  apps:create(Props),
+  apps:save(Props),
   {atomic,Results2} = mnesia:transaction(fun() -> mnesia:match_object(#app{_='_'}) end),
-  erlang:display({result, Results2}),
   ?assertEqual([App1,App2], Results2).
+
+test_save_app_with_same_name() ->
+  % Delete all
+  delete_all(),
+  App1 = #app{name="test_app", url="http://github.com/auser/test_app1.git"},
+  App2 = #app{name="test_app", url="http://github.com/auser/test_app2.git"},
+  {ok, App3} = apps:save(App1),
+  erlang:display({apps:find_by_name("test_app")}),
+  {ok, App4} = apps:save(App2),
+  erlang:display({all_apps, apps:all()}),
+  erlang:display({app, App3}),
+  erlang:display({app, App4}),
+  passed.
+
+delete_all() ->
+  lists:map(fun(AppName) ->
+    apps:delete(AppName)
+  end, apps:all()).

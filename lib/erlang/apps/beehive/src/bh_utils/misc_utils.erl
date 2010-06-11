@@ -81,6 +81,17 @@ max(M, []) -> M;
 max(M, [H|L]) when M > H -> max(M, L);
 max(_M, [H|L]) -> max(H,L).
 
+update_proplist(OldProplist, []) -> lists:reverse(OldProplist);
+update_proplist(OldProplist, [{Key, Value}|Rest]) ->
+  case proplists:is_defined(Key, OldProplist) of
+    true -> 
+      OldProplist2 = proplists:delete(Key, OldProplist),
+      update_proplist([{Key, Value}|OldProplist2], Rest);
+    false ->
+      update_proplist([{Key, Value}|OldProplist], Rest)
+  end.
+
+
 % Only choose values that are actually in the proplist
 filter_proplist(_Proplist, [], Acc) -> Acc;
 filter_proplist(Proplist, [{K,V}|Rest], Acc) ->

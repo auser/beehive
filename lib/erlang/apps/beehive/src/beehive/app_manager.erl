@@ -103,7 +103,6 @@ init([]) ->
   % timer:send_interval(timer:minutes(2), {maintain_bee_counts}),
   timer:send_interval(timer:minutes(2), {clean_up_apps}),
   
-  erlang:display({?MODULE,init}),
   {ok, #state{}}.
 
 %%--------------------------------------------------------------------

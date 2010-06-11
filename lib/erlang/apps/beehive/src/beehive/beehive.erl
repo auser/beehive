@@ -11,10 +11,11 @@
 -include ("common.hrl").
 -behaviour(application).
 
--export([start/2, stop/1]).
+-export([start/0, start/2, stop/0, stop/1]).
 
+start() -> start([], []).
 start(_Type, _Args) -> 
   beehive_sup:start_link().
 
-stop(_State) -> 
-  ok.
+stop() -> stop([]).
+stop(_State) -> ok.

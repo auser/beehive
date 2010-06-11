@@ -15,7 +15,8 @@ starting_test_() ->
       [
         fun test_generate_unique_name/0,
         fun chop_test/0,
-        fun propmerge_test/0
+        fun propmerge_test/0,
+        fun update_proplist_test/0
       ]
     }
   }.
@@ -41,4 +42,8 @@ propmerge_test() ->
   ?assertEqual([{a, "a"}, {b, "b"}, {c, ["c", "not c"]}, {d, "doggie"}],
     misc_utils:proplist_merge([{a, "a"}, {b, "b"}, {c, "c"}], [{c, "not c"}, {d, "doggie"}])
   ),
+  passed.
+
+update_proplist_test() ->
+  ?assertEqual([{a, "a"}, {b, "b"}], misc_utils:update_proplist([{a, "a"}, {b, "c"}], [{b, "b"}])),
   passed.

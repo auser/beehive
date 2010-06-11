@@ -60,7 +60,7 @@ start_link(Args) ->
 %% to find out about restart strategy, maximum restart frequency and child
 %% specifications.
 %%--------------------------------------------------------------------
-init(_Args) ->    
+init(_Args) ->
   Children = lists:flatten([
     ?CHILD(node_manager, worker),
     ?CHILD(app_manager, worker),
