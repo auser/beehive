@@ -17,25 +17,13 @@ get([Name], _Data) ->
   case apps:find_by_name(Name) of
     [] -> {error, "App not found"};
     App ->
-      AppDetails = [
-        {"url", App#app.url},
-        {"routing_param", App#app.routing_param},
-        {"owners", lists:map(fun(Owner) -> Owner#user.email end, user_apps:get_owners(App))},
-        {"updated_at", App#app.updated_at},
-        {"bee_picker", App#app.bee_picker},
-        {"min_instances", App#app.min_instances},
-        {"max_instances", App#app.max_instances},
-        {"timeout", App#app.timeout},
-        {"sticky", App#app.sticky},
-        {"latest_sha", App#app.sha}
-      ],
-      {Name, AppDetails}
+      AppDetails = compile_app_details(App),
+      {"application", AppDetails}
   end;
 get(_, _Data) -> 
   All = apps:all(),
   {"apps", lists:map(fun(A) ->
       compile_app_details(A)
-      
     end, All)
   }.
 
@@ -110,7 +98,18 @@ compile_app_details(App) ->
       {"updated_at", App#app.updated_at},
       {"type", misc_utils:to_list(App#app.type)},
       {"template", misc_utils:to_list(App#app.template)},
-      {"bee_picker", App#app.bee_picker}
+      {"bee_picker", App#app.bee_picker},
+      {latest_error, case App#app.latest_error of
+        undefined -> undefined;
+        AppError ->
+          [
+            {stage, AppError#app_error.stage},
+            {exit_status, AppError#app_error.exit_status},
+            {stdout, AppError#app_error.stdout},
+            {stderr, AppError#app_error.stderr},
+            {timestamp, AppError#app_error.timestamp}
+          ]
+      end}
     ], []).
 
 compile_app_details1(_App, [], Acc) -> lists:reverse(Acc);

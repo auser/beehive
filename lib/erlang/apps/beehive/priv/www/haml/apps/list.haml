@@ -10,15 +10,17 @@
       %th owners
       %th updated_at
       %th type
+      %th latest_error
   %tfoot
     %tr
       %td ...
   %tbody
     :each app in apps
       %tr
-        %td= app.name
+        %td= '<a href="#/apps/'+app.name+'">'+app.name+"</a>"
         %td= app.url
         %td= app.template
         %td= app.owners
         %td= app.updated_at
         %td= app.type
+        %td= app.latest_error.timestamp

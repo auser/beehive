@@ -282,7 +282,7 @@ choose_bee({Hostname, AppMod, RoutingParameter}) ->
               erlang:display({app, choose_bee, App}),
               ?NOTIFY({app, request_to_start_new_bee, App}),
               ?MUST_WAIT_MSG;
-            _ ->
+            _E ->
               {error, cannot_choose_bee}
           end
       end;
@@ -319,7 +319,7 @@ choose_bee({Hostname, AppMod, RoutingParameter}) ->
 % then that is used to choose the backend, otherwise the default router param will
 % be used
 choose_from_bees([], _AppMod, _RoutingParameter) -> ?MUST_WAIT_MSG;
-choose_from_bees(Backends, Mod, AppRoutingParam) ->
+choose_from_bees(Backends, Mod, _AppRoutingParam) ->
   PreferredStrategy = config:search_for_application_value(bee_strategy, random, router),
   Fun = PreferredStrategy,
   % TODO: Reimplement

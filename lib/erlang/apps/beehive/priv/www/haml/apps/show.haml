@@ -1,0 +1,46 @@
+%h2= application.name
+
+%h4 Details
+
+%table
+  %thead
+    %tr
+      %th name
+      %th url
+      %th template
+      %th owners
+      %th updated_at
+      %th type
+  %tfoot
+    %tr
+      %td ...
+  %tbody
+    %tr
+      %td= '<a href="#/apps/'+application.name+'">'+application.name+"</a>"
+      %td= application.url
+      %td= application.template
+      %td= application.owners
+      %td= application.updated_at
+      %td= application.type
+
+:if application.latest_error != "undefined"
+  %h4 Latest Error
+  
+  %table
+    %thead
+      %tr
+        %th stage
+        %th stderr
+        %th stdout
+        %th exit_status
+        %th timestamp
+    %tfoot
+      %tr
+        %td ...
+    %tbody
+      %tr
+        %td= application.latest_error.stage
+        %td= application.latest_error.stderr
+        %td= application.latest_error.stdout
+        %td= application.latest_error.exit_status
+        %td= application.latest_error.timestamp
