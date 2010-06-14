@@ -47,7 +47,7 @@ seed_nodes(_State) -> global:whereis_name(node_manager).
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-rebuild_bee(App) -> gen_cluster:call(?SERVER, {build_bee, App}).
+rebuild_bee(App) -> gen_cluster:call(?SERVER, {build_bee, App}, infinity).
 rebuild_bee(App, Caller) -> gen_cluster:cast(?SERVER, {build_bee, App, Caller}).
   
 fetch_or_build_bee(App) ->
@@ -222,7 +222,6 @@ build_bee(App, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} 
       EnvOpts = apps:build_app_env(App, OtherOpts),
       CmdOpts = lists:flatten([{cd, SquashedDir}|EnvOpts]),
       
-      erlang:display({babysitter_run, App#app.template, bundle, CmdOpts}),
       case babysitter:run(App#app.template, bundle, CmdOpts) of
         {ok, _OsPid, 0} ->
           case fetch_bee(App, State) of

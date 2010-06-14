@@ -35,7 +35,10 @@ post([], Data) ->
       case apps:create(Data) of
         {ok, App} when is_record(App, app) -> 
           user_apps:create(ReqUser, App),
-          {app, misc_utils:to_bin(App#app.name)};
+          case rebuild_bee(App) of
+            ok -> {app, misc_utils:to_bin(App#app.name)};
+            _ -> {error, "there was an error"}
+          end;
         {error, app_exists} -> {error, "App exists already"};
         E -> 
           ?LOG(error, "Unknown error adding app: ~p", [E]),
@@ -71,7 +74,9 @@ put([Name], Data) ->
       {"error", misc_utils:to_bin("No user defined or invalid token")};
     _ReqUser ->
       case apps:update(Name, Data) of
-        {updated, App} when is_record(App, app) -> {updated, App#app.name};
+        {updated, App} when is_record(App, app) -> 
+          rebuild_bee(App),
+          {updated, App#app.name};
         _ -> {error, "There was an error adding bee"}
       end
   end;
@@ -111,3 +116,11 @@ compile_app_details(App) ->
         ]
     end}
   ].
+
+rebuild_bee(App) ->
+  Pid = node_manager:get_next_available(storage),
+  Node = node(Pid),
+  case rpc:call(Node, beehive_storage_srv, rebuild_bee, [App], 60*1000) of
+    {bee_built, _Proplist} -> ok;
+    _ -> error
+  end.
