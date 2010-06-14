@@ -195,8 +195,16 @@ to_proplist([_H|T], App, Acc) -> to_proplist(T, App, Acc).
 validate_app(App) when is_record(App, app) -> validate_app(record_info(fields, app), App).
 validate_app([], App) ->  App;
 % Validate the name
-validate_app([name|Rest], #app{name = undefined} = App) -> validate_app(Rest, App#app{name = generate_unique_name(5)});
-validate_app([name|Rest], #app{name = Name} = App) -> validate_app(Rest, App#app{name = generate_unique_name(Name, 5)});
+validate_app([name|Rest], #app{name = undefined} = App) -> 
+  validate_app(Rest, App#app{name = generate_unique_name(5)});
+validate_app([name|Rest], #app{name = Name} = App) -> 
+  Realname = case string:tokens(Name, "/") of
+    [N] -> validate_app(Rest, App#app{name = generate_unique_name(N, 5)});
+    [A,B] -> validate_app(Rest, App#app{name = generate_unique_name(A, 5), branch = B})
+  end;
+% Validate the branch
+validate_app([branch|Rest], #app{branch = undefined} = App) -> validate_app(Rest, App#app{branch = "master"});
+validate_app([branch|Rest], App) -> validate_app(Rest, App);
 % Validate the url
 validate_app([url|Rest], #app{url = _Url} = App) -> validate_app(Rest, App);
 % Validate the type, it can only be either static or dynamic

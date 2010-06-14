@@ -79,6 +79,7 @@
   sticky        = false,            % if an app is sticky, the apps are not requested after timeout time
   min_instances = 0,
   max_instances = 1,
+  branch = "master",                % The branch of the app to check out
   sha,                              % sha of the latest working push
   updated_at,
   latest_error = undefined,         % last error that occured on the app
