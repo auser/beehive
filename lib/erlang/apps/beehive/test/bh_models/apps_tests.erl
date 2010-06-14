@@ -37,16 +37,17 @@ test_save() ->
   Props = [{name, "another_app"}, {min_instances, 1}, {max_instances, 10}],
   App2 = apps:new(Props),
   apps:save(Props),
-  {atomic,Results2} = mnesia:transaction(fun() -> mnesia:match_object(#app{_='_'}) end),
-  ?assertEqual([App1,App2], Results2).
+  {atomic,Results2} = mnesia:transaction(fun() -> 
+      lists:map(fun(App) -> App#app.name end,
+      mnesia:match_object(#app{_='_'}))
+    end),
+  ?assertEqual([App1#app.name,App2#app.name], Results2).
 
 test_save_app_with_same_name() ->
   % Delete all
   delete_all(),
-  App1 = #app{name="test_app", url="http://github.com/auser/test_app1.git"},
-  App2 = #app{name="test_app", url="http://github.com/auser/test_app2.git"},
-  {ok, App3} = apps:save(App1),
-  {ok, App4} = apps:save(App2),
+  {ok, App3} = apps:create(#app{name="test_app", url="http://github.com/auser/test_app1.git"}),
+  {ok, App4} = apps:create(#app{name="test_app", url="http://github.com/auser/test_app2.git"}),
   ?assert(App3#app.name == "test_app"),
   ?assert(App4#app.name =/= "test_app"),
   passed.

@@ -76,7 +76,13 @@ init([Proplist]) ->
   App = proplists:get_value(app, Proplist),
   From = proplists:get_value(caller, Proplist),
   Updating = proplists:get_value(updating, Proplist),
-  {ok, preparing, #state{app = App, from = From, updating = Updating, bee = #bee{}}}.
+  
+  case App#app.latest_error of
+    undefined ->
+      {ok, preparing, #state{app = App, from = From, updating = Updating, bee = #bee{}}};
+    _ ->
+      {stop, {error, pending_app_error}}
+  end.
 
 %%--------------------------------------------------------------------
 %% Function:

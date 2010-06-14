@@ -25,5 +25,5 @@ test_parse_route_from_request() ->
   ?assertEqual(["teeth"], http_request_decoder:parse_route_from_request("teeth.and.nails.test.beehive.com", undefined)),
   ?assertEqual(["hello"], http_request_decoder:parse_route_from_request("hello.test.beehive.com", "test.beehive.com")),
   ?assertEqual(["hello", "world"], http_request_decoder:parse_route_from_request("hello.world.test.beehive.com", "test.beehive.com")),
-  ?assertEqual(base, http_request_decoder:parse_route_from_request("test.beehive.com", "test.beehive.com")),
+  ?assertEqual(default, http_request_decoder:parse_route_from_request("test.beehive.com", "test.beehive.com")),
   passed.

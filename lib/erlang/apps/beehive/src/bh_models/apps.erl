@@ -31,7 +31,7 @@
 
 -export ([validate_app/1]).
 
-create(A) -> save(new(A)).
+create(A) -> save(validate_app(new(A))).
 
 save(App) when is_record(App, app) ->
   ok = ?DB:write(app, App#app.name, App),
@@ -49,6 +49,7 @@ save(Func) when is_function(Func) ->
 save(Else) -> {error, {cannot_save, Else}}.
 
 new([]) -> error;
+new(App) when is_record(App, app) -> App;
 new(Proplist) when is_list(Proplist) -> validate_app(from_proplists(Proplist));
 new(Else) -> {error, {cannot_make_new_app, Else}}.
 
