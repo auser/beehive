@@ -193,7 +193,7 @@ fetch_bee(App, #state{squashed_disk = SquashedDisk} = _State) ->
       Resp = bees:meta_data(BeeLocation, EnvLocation),
       ?NOTIFY({bee, bee_built, Resp}),
       {bee_built, Resp};
-    false -> {error, bee_not_found_after_creation}
+    false -> {error, bee_not_found_after_creation, App}
   end.
 
 %%-------------------------------------------------------------------
@@ -242,8 +242,6 @@ build_bee(App, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} 
             exit_status = ExitCode,
             timestamp = date_util:now_to_seconds()
           },
-          erlang:display({build_bee, saving, App#app{latest_error = Error}}),
-          erlang:display({find_new_app, apps:find_by_name(App#app.name)}),
           {ok, NewApp} = apps:save(App#app{latest_error = Error}),
           {error, {babysitter, NewApp}};
         Else ->

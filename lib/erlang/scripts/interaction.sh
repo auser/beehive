@@ -17,6 +17,9 @@ curl -i -XPOST -d"{\"name\":\"teambox\", \"url\":\"http://github.com/micho/teamb
 # How about one that will fail?
 curl -i -XPOST -d"{\"name\":\"fake\", \"url\":\"http://github.com/auser/doesnt_exist.git\", \"token\":$TOKEN, \"template\":\"rails\"}" $HOST/apps.json
 
+# Let's fix that
+curl -i -XPUT -d"{\"name\":\"fake\", \"url\":\"http://github.com/auser/getbeehive.com.git\", \"token\":$TOKEN, \"template\":\"rails\"}" $HOST/apps/fake.json
+
 # Check on the application
 curl -i $HOST/apps.json
 
