@@ -7,6 +7,7 @@
     %tr
       %th name
       %th url
+      %th branch
       %th template
       %th owners
       %th updated_at
@@ -18,6 +19,7 @@
     %tr
       %td= '<a href="#/apps/'+application.name+'">'+application.name+"</a>"
       %td= application.url
+      %td= application.branch
       %td= application.template
       %td= application.owners
       %td= application.updated_at
