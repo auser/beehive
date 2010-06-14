@@ -119,8 +119,8 @@ restart_by_name(Name) ->
 update([], _) -> ok;
 update(App, NewProps) when is_record(App, app) ->
   NewApp = misc_utils:update_proplist(to_proplist(App), NewProps),
-  ok = save(NewApp),
-  {updated, App};
+  {ok, NewApp1} = save(NewApp),
+  {updated, NewApp1};
 update(Name, NewProps) ->
   App = find_by_name(Name),
   update(App, NewProps).

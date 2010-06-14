@@ -283,7 +283,7 @@ read_babysitter_config() ->
                     ),
   try
     babysitter_config:read(ConfigDir)
-  catch _X:Reason ->
-    erlang:display({error, {read_babysitter_config, Reason}}),
+  catch X:Reason ->
+    erlang:display({error, {read_babysitter_config, {error, X, Reason}, ConfigDir}}),
     ok
   end.
