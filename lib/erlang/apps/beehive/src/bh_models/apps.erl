@@ -139,6 +139,7 @@ build_app_env(App, Other) ->
     build_env({repos, App#app.url}),
     build_env({sha, App#app.sha}),
     build_env({path, BeehivePath}),
+    build_env({branch, App#app.branch}),
     OtherEnvs
   ]).
 
@@ -198,7 +199,7 @@ validate_app([], App) ->  App;
 validate_app([name|Rest], #app{name = undefined} = App) -> 
   validate_app(Rest, App#app{name = generate_unique_name(5)});
 validate_app([name|Rest], #app{name = Name} = App) -> 
-  Realname = case string:tokens(Name, "/") of
+  case string:tokens(Name, "/") of
     [N] -> validate_app(Rest, App#app{name = generate_unique_name(N, 5)});
     [A,B] -> validate_app(Rest, App#app{name = generate_unique_name(A, 5), branch = B})
   end;
