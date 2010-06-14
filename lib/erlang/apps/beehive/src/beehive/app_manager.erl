@@ -277,8 +277,31 @@ handle_info({bee_started_normally, _Bee, _App}, State) ->
   {noreply, State};
 
 % {error, {updating, {error, {babysitter, {app,"fake-lvpae",
-handle_info({error, {_Stage, {error, {babysitter, App}}}}, State) ->
+handle_info({error, {Stage, {error, bee_not_found_after_creation, App}}}, State) ->
+  ?LOG(info, "could not find the bee after creation: ~p", [App#app.name]),
+  Error = #app_error{
+    stage = Stage,
+    stderr = "",
+    stdout = "Bee could not be found after creating it. Check the repository",
+    exit_status = 128,
+    timestamp = date_util:now_to_seconds()
+  },
+  {ok, _NewApp} = apps:save(App#app{latest_error = Error}),
+  {noreply, State};
+  
+handle_info({app_launcher_fsm, error, {_Stage, {error, {babysitter, App}}}}, State) ->
   ?LOG(info, "app_manager caught babysitter error: ~p", [App]),
+  {noreply, State};
+
+handle_info({app_launcher_fsm, error, {_Stage, {error, ComandStage, _Ospid, ExitCode, Stderr, Stdout}}, App}, State) ->
+  Error = #app_error{
+    stage = ComandStage,
+    stderr = Stderr,
+    stdout = Stdout,
+    exit_status = ExitCode,
+    timestamp = date_util:now_to_seconds()
+  },
+  {ok, _NewApp} = apps:save(App#app{latest_error = Error}),
   {noreply, State};
 
 handle_info({error, State, Error}, State) ->

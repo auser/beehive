@@ -259,7 +259,7 @@ start_instance(#state{from = From, app = App, bee = Bee, latest_sha = Sha} = Sta
   rpc:cast(Node, app_handler, start_new_instance, [App, Sha, self(), From]),
   State#state{bee = Bee#bee{host_node = Node}}.
 
-stop_error(Msg, #state{from = From} = State) ->
-  Tuple = {error, Msg},
+stop_error(Msg, #state{from = From, app = App} = State) ->
+  Tuple = {?MODULE, error, Msg, App},
   From ! Tuple,
   {stop, Tuple, State}.
