@@ -14,6 +14,9 @@ curl -i -XPOST -d"{\"name\":\"beehive\", \"url\":\"git://github.com/auser/getbee
 # Now another
 curl -i -XPOST -d"{\"name\":\"teambox\", \"url\":\"http://github.com/micho/teambox.git\", \"token\":$TOKEN, \"template\":\"rails\"}" $HOST/apps.json
 
+# How about one that will fail?
+curl -i -XPOST -d"{\"name\":\"fake\", \"url\":\"http://github.com/auser/doesnt_exist.git\", \"token\":$TOKEN, \"template\":\"rails\"}" $HOST/apps.json
+
 # Check on the application
 curl -i $HOST/apps.json
 

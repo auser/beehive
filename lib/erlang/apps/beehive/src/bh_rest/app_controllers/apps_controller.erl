@@ -90,32 +90,24 @@ delete(_Path, _Data) -> "unhandled".
 
 % Internal
 compile_app_details(App) ->
-  compile_app_details1(App, [ 
-      {"name", App#app.name}, 
-      {"url", App#app.url}, 
-      {"routing_param", App#app.routing_param}, 
-      {"owners", lists:map(fun(Owner) -> Owner#user.email end, user_apps:get_owners(App))}, 
-      {"updated_at", App#app.updated_at},
-      {"type", misc_utils:to_list(App#app.type)},
-      {"template", misc_utils:to_list(App#app.template)},
-      {"bee_picker", App#app.bee_picker},
-      {latest_error, case App#app.latest_error of
-        undefined -> undefined;
-        AppError ->
-          [
-            {stage, AppError#app_error.stage},
-            {exit_status, AppError#app_error.exit_status},
-            {stdout, AppError#app_error.stdout},
-            {stderr, AppError#app_error.stderr},
-            {timestamp, AppError#app_error.timestamp}
-          ]
-      end}
-    ], []).
-
-compile_app_details1(_App, [], Acc) -> lists:reverse(Acc);
-compile_app_details1(App, [{K,V}|Rest], Acc) ->
-  case V of
-    % [] -> compile_app_details1(App, Rest, Acc);
-    % undefined -> compile_app_details1(App, Rest, Acc);
-    _E -> compile_app_details1(App, Rest, [{K,V}|Acc])
-  end.
+  [ 
+    {"name", App#app.name}, 
+    {"url", App#app.url}, 
+    {"routing_param", App#app.routing_param}, 
+    {"owners", lists:map(fun(Owner) -> Owner#user.email end, user_apps:get_owners(App))}, 
+    {"updated_at", App#app.updated_at},
+    {"type", misc_utils:to_list(App#app.type)},
+    {"template", misc_utils:to_list(App#app.template)},
+    {"bee_picker", App#app.bee_picker},
+    {"latest_error", case App#app.latest_error of
+      undefined -> undefined;
+      AppError ->
+        [
+          {"stage", AppError#app_error.stage},
+          {"exit_status", AppError#app_error.exit_status},
+          {"stdout", AppError#app_error.stdout},
+          {"stderr", AppError#app_error.stderr},
+          {"timestamp", AppError#app_error.timestamp}
+        ]
+    end}
+  ].
