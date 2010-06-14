@@ -13,7 +13,11 @@
 get(_, _Data) -> 
   {"beehive", ["routes"]}.
 
-post(["_reload"], Data) ->
+% /system/reload/config
+post(["reload", "config"], _Data) ->
+  node_manager:read_babysitter_config(),
+  {ok, "reloaded"};
+post(["reload"], Data) ->
   auth_utils:run_if_admin(fun(_) ->
     misc_utils:reload_all()
   end, Data);
