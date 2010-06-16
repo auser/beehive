@@ -278,7 +278,6 @@ choose_bee({Hostname, AppMod, RoutingParameter}) ->
         App ->
           case App#app.latest_error of
             undefined ->
-              % {app, request_to_start_new_bee, App, Host, Sha}
               erlang:display({app, choose_bee, App}),
               ?NOTIFY({app, request_to_start_new_bee, App}),
               ?MUST_WAIT_MSG;

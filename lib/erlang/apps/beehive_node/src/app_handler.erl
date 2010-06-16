@@ -320,6 +320,13 @@ find_and_transfer_bee(App, Sha) ->
   ScratchDisk = config:search_for_application_value(scratch_disk, ?BEEHIVE_DIR("storage"), storage),
   
   LocalPath = filename:join([filename:absname(ScratchDisk), lists:append([App#app.name, ".bee"])]),
+  
+  lists:map(fun(Dir) ->
+    case filelib:is_dir(Dir) of
+      true -> ok;
+      false -> filelib:ensure_dir(Dir)
+    end
+  end, [LocalPath]),
   case find_bee_on_storage_nodes(App, Sha, Nodes) of
     {ok, Node, RemotePath} ->
       ?LOG(info, "find_bee_on_storage_nodes found on ~p at ~p to ~p", [Node, LocalPath, RemotePath]),
