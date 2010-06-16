@@ -35,10 +35,11 @@ post([], Data) ->
       case apps:create(Data) of
         {ok, App} when is_record(App, app) -> 
           user_apps:create(ReqUser, App),
-          case rebuild_bee(App) of
-            ok -> {app, misc_utils:to_bin(App#app.name)};
-            _ -> {error, "there was an error"}
-          end;
+          {ok, created};
+          % case rebuild_bee(App) of
+          %   ok -> {app, misc_utils:to_bin(App#app.name)};
+          %   _ -> {error, "there was an error"}
+          % end;
         {error, app_exists} -> {error, "App exists already"};
         E -> 
           ?LOG(error, "Unknown error adding app: ~p", [E]),
@@ -75,7 +76,7 @@ put([Name], Data) ->
     _ReqUser ->
       case apps:update(Name, Data) of
         {updated, App} when is_record(App, app) -> 
-          rebuild_bee(App),
+          % rebuild_bee(App),
           {updated, App#app.name};
         _ -> {error, "There was an error adding bee"}
       end

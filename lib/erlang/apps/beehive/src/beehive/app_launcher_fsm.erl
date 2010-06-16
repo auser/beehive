@@ -147,6 +147,10 @@ launching(Event, State) ->
   ?LOG(info, "Uncaught event: ~p while in state: ~p ~n", [Event, launching]),
   {next_state, launching, State}.
 
+pending({updated_bee_status, broken}, State) ->
+  erlang:display({pending, updated_bee_status, broken}),
+  stop_error({error, broken_start}, State);
+  
 pending({updated_bee_status, BackendStatus}, #state{app = App, bee = Bee, from = From, latest_sha = Sha, updating = Updating} = State) ->
   ?LOG(info, "Application started ~p: ~p", [BackendStatus, App#app.name]),
   % App started normally
