@@ -1,0 +1,19 @@
+%h3
+  New App
+
+#new_app
+  %form{ action: "#/apps/create", method: "post" }
+    
+    %label App Name:
+    %input{ type: "text", name: "name" }    
+    %br
+    
+    %label App URL:
+    %input{ type: "text", name: "url" }
+    %br
+    
+    %label App Template:
+    %input{ type: "text", name: "template" }
+    %br
+
+    %input{ type: "submit", value: "Create App"}
