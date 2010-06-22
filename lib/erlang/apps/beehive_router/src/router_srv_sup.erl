@@ -47,7 +47,7 @@ init([]) ->
   AppSrv  = {router_srv,{gen_cluster, start_link, [{local, router_srv}, router_srv, [], []]}, permanent,2000,worker,dynamic},
   RestServer  = ?CHILD(rest_server_sup, worker),
   
-  ShouldRunRestServer = config:search_for_application_value(run_rest_server, true, beehive),
+  ShouldRunRestServer = config:search_for_application_value(run_rest_server, true),
   
   Children = lists:flatten([
     AppSrv,

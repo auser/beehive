@@ -44,8 +44,8 @@ start_link() ->
 %%--------------------------------------------------------------------
 % TODO: Update port args with config variables
 init([]) ->
-  Port = config:search_for_application_value(app_port, 4999, router),
-  WebServerName = config:search_for_application_value(webserver, mochiweb, router),
+  Port = config:search_for_application_value(app_port, 4999),
+  WebServerName = config:search_for_application_value(webserver, mochiweb),
   Settings = [
     "Http beehive rest server",
     {"Port", integer_to_list(Port)}

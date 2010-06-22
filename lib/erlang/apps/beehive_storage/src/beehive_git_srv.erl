@@ -19,7 +19,7 @@
 
 start_link()          -> init().
 % Start listening on the application port
-init()                -> init(config:search_for_application_value(git_port, 9148, storage)).
+init()                -> init(config:search_for_application_value(git_port, 9148)).
 init(LocalPort) -> 
   Pid = spawn_link(?MODULE, init_accept, [LocalPort, 10]),
   {ok, Pid}.

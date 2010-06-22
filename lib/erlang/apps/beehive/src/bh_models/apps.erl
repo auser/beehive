@@ -133,7 +133,7 @@ update(Name, NewProps) ->
 %%-------------------------------------------------------------------
 build_app_env(App, Other) ->
   OtherEnvs = lists:map(fun build_env/1, Other),
-  BeehivePath = config:search_for_application_value(path, "/usr/bin:/usr/local/bin:/bin", router),
+  BeehivePath = config:search_for_application_value(path, "/usr/bin:/usr/local/bin:/bin"),
   lists:flatten([
     build_env({name, App#app.name}),
     build_env({repos, App#app.url}),

@@ -106,9 +106,9 @@ maybe_handle_next_waiting_client(Name) ->
 %%----------------------------------------------------------------------
 init(_Args) ->
   process_flag(trap_exit, true),  
-  LocalPort   = config:search_for_application_value(client_port, 8080,     router),
-  ConnTimeout = config:search_for_application_value(connection_timeout, 120*1000, router),
-  ActTimeout  = config:search_for_application_value(activity_timeout, 120*1000, router),
+  LocalPort   = config:search_for_application_value(client_port, 8080),
+  ConnTimeout = config:search_for_application_value(connection_timeout, 120*1000),
+  ActTimeout  = config:search_for_application_value(activity_timeout, 120*1000),
   
   Pid     = whereis(tcp_socket_server),
   
@@ -319,7 +319,7 @@ choose_bee({Hostname, AppMod, RoutingParameter}) ->
 % be used
 choose_from_bees([], _AppMod, _RoutingParameter) -> ?MUST_WAIT_MSG;
 choose_from_bees(Backends, Mod, _AppRoutingParam) ->
-  PreferredStrategy = config:search_for_application_value(bee_strategy, random, router),
+  PreferredStrategy = config:search_for_application_value(bee_strategy, random),
   Fun = PreferredStrategy,
   % TODO: Reimplement
   % Fun = case AppRoutingParam of
@@ -364,20 +364,20 @@ maybe_handle_next_waiting_client(Name, State) ->
 % Defaults to bee_strategies:random if none are specified on the app
 pick_mod_and_meta_from_app(App) when is_record(App, app) ->
   Mod = case App#app.bee_picker of
-    undefined -> config:search_for_application_value(bee_picker, bee_strategies, router);
+    undefined -> config:search_for_application_value(bee_picker, bee_strategies);
     E -> E
   end,
   R = case App#app.routing_param of
-    undefined -> config:search_for_application_value(bee_strategy, random, router);
+    undefined -> config:search_for_application_value(bee_strategy, random);
     El -> El
   end,
   {Mod, R}.
 
 get_default_app_or_rest(From, State) ->
-  DefaultAppName = config:search_for_application_value(base_app, router, router),
+  DefaultAppName = config:search_for_application_value(base_app, router),
   case DefaultAppName of
     router ->
-      Port = config:search_for_application_value(app_port, 4999, router), 
+      Port = config:search_for_application_value(app_port, 4999), 
       Host = {127,0,0,1},
       Id = {default, Host, Port},
 
@@ -394,8 +394,8 @@ get_default_app_or_rest(From, State) ->
 get_bee_by_hostname(Hostname, From, State) ->
   {AppMod, MetaParam} = case apps:find_by_name(Hostname) of
     not_found ->
-      M = config:search_for_application_value(bee_picker, bee_strategies, router),
-      Meta = config:search_for_application_value(bee_strategy, random, router),
+      M = config:search_for_application_value(bee_picker, bee_strategies),
+      Meta = config:search_for_application_value(bee_strategy, random),
       {M, Meta};
     App when is_record(App, app) ->
       pick_mod_and_meta_from_app(App)

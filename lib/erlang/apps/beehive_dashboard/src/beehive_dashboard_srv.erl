@@ -64,7 +64,7 @@ start_link() ->
 init([]) ->
   Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
   Docroot = filename:join([Dir, "priv", "www"]),
-  Port = config:search_for_application_value(dashboard_port, 4998, beehive),
+  Port = config:search_for_application_value(dashboard_port, 4998),
 	
 	State = #state{
     docroot = Docroot,

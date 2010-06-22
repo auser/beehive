@@ -5,12 +5,12 @@
 -define (ETS_CONFIG_FILE, 'in_memory_config_file').
 
 % Find the application config value
-search_for_application_value(Param, Default, App) ->
-  case search_for_application_value_from_environment(App, Param) of
+search_for_application_value(Param, Default) ->
+  case search_for_application_value_from_environment(Param) of
     false ->
-      case search_for_application_value_on_env(App, Param) of
+      case search_for_application_value_from_config(Param) of
         false ->
-          case search_for_application_value_from_config(App, Param) of
+          case search_for_application_value_on_env(Param) of
             false -> Default;
             C -> C
           end;
@@ -19,21 +19,21 @@ search_for_application_value(Param, Default, App) ->
     A -> A
   end.
   
-search_for_application_value_on_env(App, Param) ->
-  case application:get_env(App, Param) of
+search_for_application_value_on_env(Param) ->
+  case application:get_env(beehive, Param) of
     undefined         -> false;
     {ok, undefined}   -> false;
     {ok, V}    -> V
   end.
 
-search_for_application_value_from_config(_App, Param) ->
+search_for_application_value_from_config(Param) ->
 	case config:get(Param) of
 		{error, _} -> false;
 		{ok, V} -> V
 	end.
 
-% BEEHIVE_HOME === config:search_for_application_value(home, "/tmp/beehive", beehive),
-search_for_application_value_from_environment(_App, Param) ->
+% BEEHIVE_HOME === config:search_for_application_value(home, "/tmp/beehive"),
+search_for_application_value_from_environment(Param) ->
   EnvParam = string:to_upper(lists:flatten(["beehive_", erlang:atom_to_list(Param)])),
   case os:getenv(EnvParam) of
     false -> false;

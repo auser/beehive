@@ -47,7 +47,7 @@ start_link(Args) ->
 init(_Args) ->
   Dashboard = ?CHILD(beehive_dashboard_sup, worker),
   
-  ShouldRunDashboard = config:search_for_application_value(dashboard, true, beehive),
+  ShouldRunDashboard = config:search_for_application_value(dashboard, true),
   
   Children = lists:flatten([
     ?CHILD(router_srv_sup, worker),

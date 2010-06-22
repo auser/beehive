@@ -61,7 +61,7 @@ all(Table) ->
   end.
   
 dir() ->
-  DefaultDatabaseDir = config:search_for_application_value(database_dir, ?BEEHIVE_DIR("db"), beehive),
+  DefaultDatabaseDir = config:search_for_application_value(database_dir, ?BEEHIVE_DIR("db")),
   case application:get_env(mnesia, dir) of
     {ok, Dir} -> Dir; 
     _Else -> 
