@@ -30,7 +30,7 @@
           add_bee/1,
           del_bee/1,
           maybe_handle_next_waiting_client/1
-        ]). 
+        ]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
@@ -111,7 +111,6 @@ init(_Args) ->
   Pid     = whereis(tcp_socket_server),
   
   LocalHost = bh_host:myip(),
-  
   erlang:display({localhost, LocalHost}),
   % {ok, TOTimer} = timer:send_interval(1000, {check_waiter_timeouts}),
   {ok, #proxy_state{
@@ -258,7 +257,7 @@ try_to_choose_bee_or_wait({Hostname, AppMod, MetaParam}, From, State) ->
   
 choose_bee({Name, _, _} = Tuple, From) ->
   case choose_bee(Tuple) of
-	  {ok, Backend} -> {ok, Backend};
+	  {ok, Bee} -> {ok, Bee};
 	  {error, Reason} -> {error, Reason};
 	  ?MUST_WAIT_MSG ->
 	    ?QSTORE:push(?WAIT_DB, Name, {Tuple, From, date_util:now_to_seconds()}),
@@ -267,23 +266,10 @@ choose_bee({Name, _, _} = Tuple, From) ->
 
 % Find a bee host that is ready and choose it based on the strategy
 % given for the bee
-% Tuple = {name, Hostname}
+% Tuple = {Hostname, AppModule, RoutingParameter}
 choose_bee({Hostname, AppMod, RoutingParameter}) ->
   case (catch bees:find_all_by_name(Hostname)) of
-    [] -> 
-      case apps:find_by_name(Hostname) of
-        not_found ->
-          {error, unknown_app};
-        App ->
-          case App#app.latest_error of
-            undefined ->
-              erlang:display({app, choose_bee, App}),
-              ?NOTIFY({app, request_to_start_new_bee, App}),
-              ?MUST_WAIT_MSG;
-            _E ->
-              {error, cannot_choose_bee}
-          end
-      end;
+    [] -> handle_no_ready_bees(Hostname);
     {'EXIT', {_, {no_exists, Err}}} ->
       ?LOG(error, "No exists for bees: ~p", [Err]),
       ?NOTIFY({db, database_not_initialized, bees}),
@@ -294,16 +280,24 @@ choose_bee({Hostname, AppMod, RoutingParameter}) ->
     Backends ->
       % We should move this out of here so that it doesn't slow down the proxy
       AvailableBackends = lists:filter(fun(B) -> (catch B#bee.status =:= ready) end, Backends),
-      case choose_from_bees(AvailableBackends, AppMod, RoutingParameter) of
-        ?MUST_WAIT_MSG ->
-          case apps:exist(Hostname) of
-            false ->
-              {error, unknown_app};
-            true ->
-              ?NOTIFY({app, request_to_start_new_bee, Hostname}),
-              ?MUST_WAIT_MSG
-          end;
+      case choose_from_ready_bees(AvailableBackends, AppMod, RoutingParameter) of
+        ?MUST_WAIT_MSG -> handle_no_ready_bees(Hostname);
         E -> E
+      end
+  end.
+
+handle_no_ready_bees(Hostname) ->
+  case apps:find_by_name(Hostname) of
+    not_found ->
+      {error, unknown_app};
+    App ->
+      case App#app.latest_error of
+        undefined ->
+          erlang:display({app, choose_bee, App}),
+          ?NOTIFY({app, request_to_start_new_bee, App}),
+          ?MUST_WAIT_MSG;
+        _E ->
+          {error, cannot_choose_bee}
       end
   end.
 
@@ -315,8 +309,8 @@ choose_bee({Hostname, AppMod, RoutingParameter}) ->
 % If the application defines it's own routing mechanism with the routing_param
 % then that is used to choose the backend, otherwise the default router param will
 % be used
-choose_from_bees([], _AppMod, _RoutingParameter) -> ?MUST_WAIT_MSG;
-choose_from_bees(Backends, Mod, _AppRoutingParam) ->
+choose_from_ready_bees([], _AppMod, _RoutingParameter) -> ?MUST_WAIT_MSG;
+choose_from_ready_bees(Bees, Mod, _AppRoutingParam) ->
   PreferredStrategy = config:search_for_application_value(bee_strategy, random),
   Fun = PreferredStrategy,
   % TODO: Reimplement
@@ -324,8 +318,8 @@ choose_from_bees(Backends, Mod, _AppRoutingParam) ->
   %   undefined -> PreferredStrategy;
   %   F -> F
   % end,
-  Backend = Mod:Fun(Backends),
-  {ok, Backend}.
+  Bee = Mod:Fun(Bees),
+  {ok, Bee}.
 
 % Handle adding a new bee
 handle_add_bee(NewBE) ->

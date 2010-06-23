@@ -57,6 +57,7 @@ handle_event({app, app_not_squashed, App}, State) ->
   handle_update_app(App),
   {ok, State};
 
+% THIS NEEDS TO BE FEDERATED... 
 handle_event({app, request_to_start_new_bee, App}, State) when is_record(App, app) ->
   app_manager:request_to_start_new_bee_by_app(App),
   {ok, State};
