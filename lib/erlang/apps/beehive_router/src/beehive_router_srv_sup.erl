@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% File    : router_srv_sup.erl
+%%% File    : beehive_router_srv_sup.erl
 %%% Author  : Ari Lerner
 %%% Description : 
 %%%
 %%% Created :  Thu Oct  8 02:09:02 PDT 2009
 %%%-------------------------------------------------------------------
 
--module (router_srv_sup).
+-module (beehive_router_srv_sup).
 -include ("beehive.hrl").
 -behaviour(supervisor).
 
@@ -44,7 +44,7 @@ start_link() -> supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 %%--------------------------------------------------------------------
 init([]) ->
   % gen_cluster:start_link({local, Name}, Mod, RealArgs, Opts);
-  AppSrv  = {router_srv,{gen_cluster, start_link, [{local, router_srv}, router_srv, [], []]}, permanent,2000,worker,dynamic},
+  AppSrv  = {beehive_router_srv,{gen_cluster, start_link, [{local, beehive_router_srv}, beehive_router_srv, [], []]}, permanent,2000,worker,dynamic},
   RestServer  = ?CHILD(rest_server_sup, worker),
   
   ShouldRunRestServer = config:search_for_application_value(run_rest_server, true),

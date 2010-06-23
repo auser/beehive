@@ -47,7 +47,7 @@ handle_event({bee, used, Backend}, State) when is_record(Backend, bee) ->
 
 % Caught when a connection has disconnected
 handle_event({bee, ready, Bee}, State) when is_record(Bee, bee) ->
-  router_srv:maybe_handle_next_waiting_client(Bee#bee.app_name),
+  beehive_router_srv:maybe_handle_next_waiting_client(Bee#bee.app_name),
   bees:transactional_save(fun() ->
     case bees:find_by_id(Bee#bee.id) of
       [] -> ok;
@@ -120,7 +120,7 @@ handle_event({bee, closing_stats, #bee{id = Id} = Bee, StatsProplist}, State) wh
   end,
   bh_bee_stats_srv:bee_stat({request_complete, Id}),
   
-  router_srv:maybe_handle_next_waiting_client(Bee#bee.app_name),
+  beehive_router_srv:maybe_handle_next_waiting_client(Bee#bee.app_name),
   {ok, State};
 
 handle_event({bee, bee_built, _Proplists}, State) ->

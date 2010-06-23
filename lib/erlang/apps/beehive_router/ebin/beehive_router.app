@@ -10,7 +10,7 @@
       http_request_decoder,
       proxy_handler,
       beehive_request,
-      router_srv, router_srv_sup,
+      beehive_router_srv, beehive_router_srv_sup,
       tcp_socket_server, tcp_socket_server_sup
     ]},
   {registered,   []},
@@ -20,7 +20,7 @@
     {client_port, undefined},
     {routing_parameter, undefined},
     {run_rest, undefined},
-    {beehive_app_port, undefined},
+    {beehive_default_app_port, undefined},
     {bees, undefined},
     {bee_picker, undefined},
     {bee_strategy, undefined}
