@@ -28,7 +28,7 @@
 % TODO: Move to proc_lib:start_link
 start_link()          -> init().
 % Start listening on the application port
-init()                -> init(config:search_for_application_value(client_port, 8080, router)).
+init()                -> init(config:search_for_application_value(client_port, 8080)).
 init(LocalPort) -> 
   Pid = spawn_link(?MODULE, init_accept, [LocalPort]),
   {ok, Pid}.

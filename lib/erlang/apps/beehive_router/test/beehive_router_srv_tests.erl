@@ -1,4 +1,4 @@
--module (router_srv_tests).
+-module (beehive_router_srv_tests).
 -include_lib("eunit/include/eunit.hrl").
 
 setup() ->
@@ -19,5 +19,5 @@ starting_test_() ->
   }.
 
 test_startup() ->
-  erlang:display({router_srv_tests, test_startup}),
+  erlang:display({beehive_router_srv_tests, test_startup}),
   passed.

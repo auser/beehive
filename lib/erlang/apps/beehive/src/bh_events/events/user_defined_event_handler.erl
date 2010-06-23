@@ -37,7 +37,7 @@ init([]) ->
 %% each installed event handler to handle the event.
 %%--------------------------------------------------------------------
 handle_event(Event, State) ->
-  case config:search_for_application_value(user_defined_event_handler, undefined, beehive) of
+  case config:search_for_application_value(user_defined_event_handler, undefined) of
     undefined -> ok;
     E ->
       case (catch E:handle_event(Event)) of

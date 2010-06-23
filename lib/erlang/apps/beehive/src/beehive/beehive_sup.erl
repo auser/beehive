@@ -35,7 +35,7 @@ start_link(Args) ->
   application:start(os_mon),
   
   % Setup beehive
-  NodeType = config:search_for_application_value(node_type, beehive_router, beehive),
+  NodeType = config:search_for_application_value(node_type, beehive_router),
   sanity_checks:check(NodeType),
   % Seed the random number generator
   random:seed(now()),

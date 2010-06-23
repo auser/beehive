@@ -13,7 +13,7 @@ module Beehive
         parse_args do |opts|
           opts.on('-n name', '--name name') {|n| @app_name = n}
           opts.on('-s host', '--host host') {|h| @app_host = h}
-          opts.on('-P port', '--port port') {|p| @app_port = p}
+          opts.on('-P port', '--port port') {|p| @default_app_port = p}
         end
         
         get_token unless @token
@@ -25,14 +25,14 @@ module Beehive
         #   password: #{password}
         #   #{@app_name}
         #   #{@app_host}
-        #   #{@app_port}
+        #   #{@default_app_port}
         # EOE
       end
       
       def new_bee
         r = post("bees/new", {  "app_name" => @app_name,
                                 "host" => @app_host,
-                                "port" => @app_port,
+                                "port" => @default_app_port,
                                 "token" => @token })
       end
             

@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% File    : router_srv.erl
+%%% File    : beehive_router_srv.erl
 %%% Author  : Ari Lerner
 %%% Description : 
 %%%
 %%% Created :  Wed Oct  7 22:37:21 PDT 2009
 %%%-------------------------------------------------------------------
 
--module (router_srv).
+-module (beehive_router_srv).
 
 -include ("beehive.hrl").
 -include ("common.hrl").
@@ -31,8 +31,6 @@
           del_bee/1,
           maybe_handle_next_waiting_client/1
         ]). 
-
--define (BEEHIVE_APPS, ["beehive"]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
@@ -106,14 +104,15 @@ maybe_handle_next_waiting_client(Name) ->
 %%----------------------------------------------------------------------
 init(_Args) ->
   process_flag(trap_exit, true),  
-  LocalPort   = config:search_for_application_value(client_port, 8080,     router),
-  ConnTimeout = config:search_for_application_value(connection_timeout, 120*1000, router),
-  ActTimeout  = config:search_for_application_value(activity_timeout, 120*1000, router),
+  LocalPort   = config:search_for_application_value(client_port, 8080),
+  ConnTimeout = config:search_for_application_value(connection_timeout, 120*1000),
+  ActTimeout  = config:search_for_application_value(activity_timeout, 120*1000),
   
   Pid     = whereis(tcp_socket_server),
   
   LocalHost = bh_host:myip(),
   
+  erlang:display({localhost, LocalHost}),
   % {ok, TOTimer} = timer:send_interval(1000, {check_waiter_timeouts}),
   {ok, #proxy_state{
     local_port = LocalPort, 
@@ -141,7 +140,7 @@ handle_call({get_bee, default}, From, State) ->
 handle_call({get_bee, Hostname}, From, State) ->
   % If this is a request for an internal application, then serve that first
   % These are abnormal applications because they MUST be running for every router
-  % and router_srv.
+  % and beehive_router_srv.
   case Hostname of
     [Head|_Rest] ->
       get_bee_by_hostname(Head, From, State);
@@ -294,7 +293,6 @@ choose_bee({Hostname, AppMod, RoutingParameter}) ->
       ?MUST_WAIT_MSG;
     Backends ->
       % We should move this out of here so that it doesn't slow down the proxy
-      % as it is right now, this will slow down the proxy quite a bit
       AvailableBackends = lists:filter(fun(B) -> (catch B#bee.status =:= ready) end, Backends),
       case choose_from_bees(AvailableBackends, AppMod, RoutingParameter) of
         ?MUST_WAIT_MSG ->
@@ -319,7 +317,7 @@ choose_bee({Hostname, AppMod, RoutingParameter}) ->
 % be used
 choose_from_bees([], _AppMod, _RoutingParameter) -> ?MUST_WAIT_MSG;
 choose_from_bees(Backends, Mod, _AppRoutingParam) ->
-  PreferredStrategy = config:search_for_application_value(bee_strategy, random, router),
+  PreferredStrategy = config:search_for_application_value(bee_strategy, random),
   Fun = PreferredStrategy,
   % TODO: Reimplement
   % Fun = case AppRoutingParam of
@@ -358,26 +356,11 @@ maybe_handle_next_waiting_client(Name, State) ->
       end
   end.
   
-% These are commands that can be specified on an application
-% bee_picker is the custom module to choose the bee from
-% routing_param is the name of the method in the bee_picker
-% Defaults to bee_strategies:random if none are specified on the app
-pick_mod_and_meta_from_app(App) when is_record(App, app) ->
-  Mod = case App#app.bee_picker of
-    undefined -> config:search_for_application_value(bee_picker, bee_strategies, router);
-    E -> E
-  end,
-  R = case App#app.routing_param of
-    undefined -> config:search_for_application_value(bee_strategy, random, router);
-    El -> El
-  end,
-  {Mod, R}.
-
 get_default_app_or_rest(From, State) ->
-  DefaultAppName = config:search_for_application_value(base_app, router, router),
+  DefaultAppName = config:search_for_application_value(base_app, router),
   case DefaultAppName of
     router ->
-      Port = config:search_for_application_value(app_port, 4999, router), 
+      Port = config:search_for_application_value(default_app_port, 4999), 
       Host = {127,0,0,1},
       Id = {default, Host, Port},
 
@@ -394,10 +377,25 @@ get_default_app_or_rest(From, State) ->
 get_bee_by_hostname(Hostname, From, State) ->
   {AppMod, MetaParam} = case apps:find_by_name(Hostname) of
     not_found ->
-      M = config:search_for_application_value(bee_picker, bee_strategies, router),
-      Meta = config:search_for_application_value(bee_strategy, random, router),
+      M = config:search_for_application_value(bee_picker, bee_strategies),
+      Meta = config:search_for_application_value(bee_strategy, random),
       {M, Meta};
     App when is_record(App, app) ->
       pick_mod_and_meta_from_app(App)
   end,
   try_to_choose_bee_or_wait({Hostname, AppMod, MetaParam}, From, State).
+
+% These are commands that can be specified on an application
+% bee_picker is the custom module to choose the bee from
+% routing_param is the name of the method in the bee_picker
+% Defaults to bee_strategies:random if none are specified on the app
+pick_mod_and_meta_from_app(App) when is_record(App, app) ->
+  Mod = case App#app.bee_picker of
+    undefined -> config:search_for_application_value(bee_picker, bee_strategies);
+    E -> E
+  end,
+  R = case App#app.routing_param of
+    undefined -> config:search_for_application_value(bee_strategy, random);
+    El -> El
+  end,
+  {Mod, R}.

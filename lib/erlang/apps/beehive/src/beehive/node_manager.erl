@@ -74,8 +74,8 @@ start_server(Mod, Args, Opts) -> start(?MODULE, Mod, Args, Opts).
 start_server(Name, Mod, Args, Opts) -> start(Name, Mod, Args, Opts).
 
 start(Name, Mod, Args, Opts) ->
-  Seed = config:search_for_application_value(seed, global:whereis_name(node_manager), beehive),
-  Type = config:search_for_application_value(node_type, beehive_router, beehive),
+  Seed = config:search_for_application_value(seed, global:whereis_name(node_manager)),
+  Type = config:search_for_application_value(node_type, beehive_router),
   
   RealArgs = lists:flatten([[{seed, Seed}, {node_type, Type}], Args]),
   case whereis(Name) of
@@ -93,7 +93,7 @@ get_servers() ->
   {ok, Plist} = gen_cluster:plist(?MODULE),
   Plist.
 
-get_servers(router) -> proplists:get_value(router_srv, get_servers(), []);
+get_servers(router) -> proplists:get_value(beehive_router_srv, get_servers(), []);
 get_servers(node) -> proplists:get_value(app_handler, get_servers(), []);
 get_servers(storage) -> proplists:get_value(beehive_storage_srv, get_servers(), []);
 
@@ -279,7 +279,7 @@ get_server_load([H|Rest], Acc) ->
 read_babysitter_config() ->
   DefaultConfigDir = filename:join([?BH_ROOT, "etc", "app_templates"]),
   ConfigDir       = misc_utils:to_list(
-                      config:search_for_application_value(app_config_dir, DefaultConfigDir, beehive)
+                      config:search_for_application_value(app_config_dir, DefaultConfigDir)
                     ),
   try
     babysitter_config:read(ConfigDir)

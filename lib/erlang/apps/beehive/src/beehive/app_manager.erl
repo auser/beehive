@@ -137,23 +137,6 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-% Terminate all instances of every app
-% handle_cast({terminate_all}, State) ->
-%   ?LOG(info, "Terminating all apps", []),
-%   lists:map(fun(_Name, Bees) ->
-%     lists:map(fun(Bee) -> app_handler:stop_instance(Bee, State) end, Bees)
-%     end, router_srv:all(instances)),
-%   {reply, ok, State};
-  
-% Terminate all the instances of a certain application
-% handle_cast({terminate_app_instances, AppName}, State) ->
-%   Bees = router_srv:lookup(instances, AppName),
-%   lists:map(fun(Bee) -> app_handler:stop_instance(Bee, State) end, Bees),
-%   router_srv:store(instances, AppName, []),
-%   {noreply, State};
-% request_to_update_app(App) -> gen_server:cast(?SERVER, {request_to_update_app, App}).
-% request_to_start_new_bee_by_app(App) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_app, App}).
-
 handle_cast({request_to_update_app, App}, State) ->
   update_instance_by_app(App),
   {noreply, State};

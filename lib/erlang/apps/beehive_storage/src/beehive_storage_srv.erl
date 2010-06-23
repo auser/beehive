@@ -74,8 +74,8 @@ start_link() ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
-  ScratchDisk = config:search_for_application_value(scratch_disk, ?BEEHIVE_DIR("tmp"), storage),
-  SquashedDir = config:search_for_application_value(squashed_storage, ?BEEHIVE_DIR("squashed"), storage),
+  ScratchDisk = config:search_for_application_value(scratch_disk, ?BEEHIVE_DIR("tmp")),
+  SquashedDir = config:search_for_application_value(squashed_storage, ?BEEHIVE_DIR("squashed")),
   
   lists:map(fun(Dir) ->
     case filelib:is_dir(Dir) of
@@ -251,7 +251,7 @@ build_bee(App, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} 
   end.
   
 handle_repos_lookup(AppName) ->
-  case config:search_for_application_value(git_store, offsite, storage) of
+  case config:search_for_application_value(git_store, offsite) of
     offsite -> 
       {ok, handle_offsite_repos_lookup(AppName)};
     _ -> 
