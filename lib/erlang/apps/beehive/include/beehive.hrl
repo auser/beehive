@@ -115,6 +115,7 @@
 -record(proxy_state, {
   local_port,				          % Local TCP port number
   local_host,                 % Local host ip tuple or name
+  local_cache,                % Local cache table
   conn_timeout = (1*1000),		% Connection timeout (ms)
   act_timeout = (120*1000),		% Activity timeout (ms)
   acceptor,				            % Pid of listener proc

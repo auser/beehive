@@ -14,6 +14,8 @@
 
 -behaviour(gen_cluster).
 
+-define (LOCAL_CACHE, 'router_srv_local_cache').
+
 %% External exports
 -export([
   start_link/0,
@@ -21,6 +23,7 @@
   seed_nodes/1
 ]).
 -export([ get_bee/1, 
+          flush_cache/0, flush_cache/1,
           get_proxy_state/0,
           get_host/1,
           reset_host/1, 
@@ -29,7 +32,8 @@
           update_bee_status/2,
           add_bee/1,
           del_bee/1,
-          maybe_handle_next_waiting_client/1
+          maybe_handle_next_waiting_client/1,
+          get_bee_by_hostname/3
         ]). 
 
 -define (BEEHIVE_APPS, ["beehive"]).
@@ -51,6 +55,10 @@ start_link() ->
 %% start_link/3 used by everyone else
 start_link(Args) ->
   gen_cluster:start_link({local, ?MODULE}, ?MODULE, Args, []).
+
+% Flush the local cache
+flush_cache() -> gen_cluster:cast(?MODULE, {flush_cache}).
+flush_cache(Hostname) -> gen_cluster:cast(?MODULE, {flush_cache, Hostname}).
 
 %% Choose an available back-end host
 get_bee(Hostname) -> gen_cluster:call(?MODULE, {get_bee, Hostname}, infinity).
@@ -114,10 +122,14 @@ init(_Args) ->
   
   LocalHost = bh_host:myip(),
   
+  % Public so we can access it externally
+  CacheTb = ets:new(?LOCAL_CACHE, [set, named_table, public]),
+  
   % {ok, TOTimer} = timer:send_interval(1000, {check_waiter_timeouts}),
   {ok, #proxy_state{
     local_port = LocalPort, 
     local_host = LocalHost,
+    local_cache = CacheTb,
     conn_timeout = ConnTimeout,
     act_timeout = ActTimeout,
     start_time = date_util:now_to_seconds(), 
@@ -142,12 +154,13 @@ handle_call({get_bee, Hostname}, From, State) ->
   % If this is a request for an internal application, then serve that first
   % These are abnormal applications because they MUST be running for every router
   % and router_srv.
-  case Hostname of
+  Out = case Hostname of
     [Head|_Rest] ->
       get_bee_by_hostname(Head, From, State);
     _ ->
       get_bee_by_hostname(Hostname, From, State)
-  end;
+  end,
+  {reply, Out, State};
 handle_call({get_proxy_state}, _From, State) ->
   Reply = State,
   {reply, Reply, State};
@@ -170,7 +183,12 @@ handle_call(Request, From, State) ->
 handle_cast({maybe_handle_next_waiting_client, Hostname}, State) ->
   maybe_handle_next_waiting_client(Hostname, State),
   {noreply, State};
-
+handle_cast({flush_cache}, State) ->
+  ets:delete(?LOCAL_CACHE), 
+  {noreply, State};
+handle_cast({flush_cache, Hostname}, State) ->
+  ets:match_delete(?LOCAL_CACHE, {Hostname, '_'}),
+  {noreply, State};
 handle_cast(stop, State) -> 
   {stop, normal, State};
 handle_cast(Msg, State) ->
@@ -247,13 +265,14 @@ try_to_choose_bee_or_wait({Hostname, AppMod, MetaParam}, From, State) ->
 	  ?MUST_WAIT_MSG -> 
 	    timer:apply_after(1000, ?MODULE, maybe_handle_next_waiting_client, [Hostname]),
 	    {noreply, State};
-	  {ok, Backend} -> 
-	    {reply, {ok, Backend}, State};
+	  {ok, Backend} -> {ok, Backend};
 	  {error, Reason} -> 
 	    ?LOG(error, "handle_call (~p:~p) failed because: ~p, ~p", [?MODULE, ?LINE, Reason, Hostname]),
-	    {reply, {error, Reason}, State};
+	    flush_cache(Hostname),
+	    {error, Reason};
 	  Else ->
 	    ?LOG(error, "Got weird response in get_bees: ~p", [Else]),
+	    flush_cache(Hostname),
 	    {noreply, State}
   end.
   
@@ -271,20 +290,7 @@ choose_bee({Name, _, _} = Tuple, From) ->
 % Tuple = {name, Hostname}
 choose_bee({Hostname, AppMod, RoutingParameter}) ->
   case (catch bees:find_all_by_name(Hostname)) of
-    [] -> 
-      case apps:find_by_name(Hostname) of
-        not_found ->
-          {error, unknown_app};
-        App ->
-          case App#app.latest_error of
-            undefined ->
-              erlang:display({app, choose_bee, App}),
-              ?NOTIFY({app, request_to_start_new_bee, App}),
-              ?MUST_WAIT_MSG;
-            _E ->
-              {error, cannot_choose_bee}
-          end
-      end;
+    [] -> handle_no_running_bees_found(Hostname);
     {'EXIT', {_, {no_exists, Err}}} ->
       ?LOG(error, "No exists for bees: ~p", [Err]),
       ?NOTIFY({db, database_not_initialized, bees}),
@@ -292,20 +298,31 @@ choose_bee({Hostname, AppMod, RoutingParameter}) ->
     {'EXIT', _} ->
       ?LOG(error, "Undefined error with choose_bee", []),
       ?MUST_WAIT_MSG;
-    Backends ->
+    Bees ->
       % We should move this out of here so that it doesn't slow down the proxy
       % as it is right now, this will slow down the proxy quite a bit
-      AvailableBackends = lists:filter(fun(B) -> (catch B#bee.status =:= ready) end, Backends),
-      case choose_from_bees(AvailableBackends, AppMod, RoutingParameter) of
-        ?MUST_WAIT_MSG ->
-          case apps:exist(Hostname) of
-            false ->
-              {error, unknown_app};
-            true ->
-              ?NOTIFY({app, request_to_start_new_bee, Hostname}),
-              ?MUST_WAIT_MSG
-          end;
-        E -> E
+      AvailableBees = lists:filter(fun(B) -> (catch B#bee.status =:= ready) end, Bees),
+      % Required to get the app into the cache, adds an extra db call
+      App = apps:find_by_name(Hostname),
+      ets:insert(?LOCAL_CACHE, [{Hostname, App, AvailableBees}]),
+      pick_bee_from_list_of_bees(Hostname, AppMod, RoutingParameter, AvailableBees)
+  end.
+
+% In the event that there are no running bees found, this 
+% will let us know if we are trying to find an application that doesn't exist
+% or will try to launch one if necessary
+handle_no_running_bees_found(Hostname) ->
+  case apps:find_by_name(Hostname) of
+    not_found ->
+      {error, unknown_app};
+    App ->
+      case App#app.latest_error of
+        undefined ->
+          erlang:display({app, choose_bee, App}),
+          ?NOTIFY({app, request_to_start_new_bee, App}),
+          ?MUST_WAIT_MSG;
+        _E ->
+          {error, cannot_choose_bee}
       end
   end.
 
@@ -317,6 +334,11 @@ choose_bee({Hostname, AppMod, RoutingParameter}) ->
 % If the application defines it's own routing mechanism with the routing_param
 % then that is used to choose the backend, otherwise the default router param will
 % be used
+pick_bee_from_list_of_bees(Hostname, AppMod, RoutingParameter, Bees) ->
+  case choose_from_bees(Bees, AppMod, RoutingParameter) of
+    ?MUST_WAIT_MSG -> handle_no_running_bees_found(Hostname);
+    E -> E
+  end.
 choose_from_bees([], _AppMod, _RoutingParameter) -> ?MUST_WAIT_MSG;
 choose_from_bees(Backends, Mod, _AppRoutingParam) ->
   PreferredStrategy = config:search_for_application_value(bee_strategy, random),
@@ -351,8 +373,8 @@ maybe_handle_next_waiting_client(Name, State) ->
         % Clearly we are not ready for another bee connection request. :(
         % choose_bee puts the request in the pending queue, so we don't have
         % to take care of that here
-        {reply, {ok, Bee}, _NewState} -> gen_cluster:reply(From, {ok, Bee});
-        {reply, {error, Reason}, _NewState} -> gen_cluster:reply(From, {error, Reason});
+        {ok, Bee} -> gen_cluster:reply(From, {ok, Bee});
+        {error, Reason} -> gen_cluster:reply(From, {error, Reason});
         {noreply, _NewState} -> 
           ok
       end
@@ -386,18 +408,63 @@ get_default_app_or_rest(From, State) ->
       };
     Else ->
       case get_bee_by_hostname(Else, From, State) of
-        {reply, {ok, TheBee}, _State} -> TheBee;
+        {ok, TheBee} -> TheBee;
         _Else -> {error, could_not_start}
       end
   end.
-  
+
+%%-------------------------------------------------------------------
+%% @spec (Hostname, From, State) ->    Bee
+%% @doc 
+%%      
+%% @end
+%%-------------------------------------------------------------------
+
 get_bee_by_hostname(Hostname, From, State) ->
-  {AppMod, MetaParam} = case apps:find_by_name(Hostname) of
+  case get_bee_by_hostname_from_source(Hostname) of
+    {AppMod, MetaParam, Bees} -> pick_bee_from_list_of_bees(Hostname, AppMod, MetaParam, Bees);
+    {AppMod, MetaParam} -> try_to_choose_bee_or_wait({Hostname, AppMod, MetaParam}, From, State)
+  end.
+
+%%-------------------------------------------------------------------
+%% @spec (Hostname) ->    {AppModule, MetaParam}
+%% @doc Get the bee, either from the local cache or from the database
+%%      
+%% @end
+%%-------------------------------------------------------------------
+get_bee_by_hostname_from_source(Hostname) ->
+  case get_bee_by_hostname_from_cache(Hostname) of
+    {error, _Code} -> get_bee_by_hostname_from_db(Hostname);
+    {_Mod, _Param, _Bees} = E -> E
+  end.
+
+%%-------------------------------------------------------------------
+%% @spec (Hostname) ->  {AppModule, MetaParam}
+%%                      | {error, not_found}
+%% @doc Get the bee from the cache
+%%      
+%% @end
+%%-------------------------------------------------------------------
+get_bee_by_hostname_from_cache(Hostname) ->
+  case ets:lookup(?LOCAL_CACHE, Hostname) of
+    [] -> {error, not_found};
+    [{Hostname, App, Bees}|_Rest] -> 
+      {AppMod, MetaParam} = pick_mod_and_meta_from_app(App),
+      {AppMod, MetaParam, Bees}
+  end.
+%%-------------------------------------------------------------------
+%% @spec (Hostname, From, State) ->    {AppMod, MetaParam}
+%% @doc Lookup the bee by hostname from the database
+%%      
+%% @end
+%%-------------------------------------------------------------------
+get_bee_by_hostname_from_db(Hostname) ->
+  case apps:find_by_name(Hostname) of
     not_found ->
       M = config:search_for_application_value(bee_picker, bee_strategies),
       Meta = config:search_for_application_value(bee_strategy, random),
       {M, Meta};
     App when is_record(App, app) ->
+      % Store app in ets table
       pick_mod_and_meta_from_app(App)
-  end,
-  try_to_choose_bee_or_wait({Hostname, AppMod, MetaParam}, From, State).
+  end.
