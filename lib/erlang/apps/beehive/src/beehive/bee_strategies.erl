@@ -15,11 +15,15 @@
   least_loaded/1
 ]).
 
-random([]) -> [] ; %% Come back and update this,
-                   %% throw an exception when emtpy?
-random( Backends ) ->
-  RandNum = random:uniform(length(Backends)),
-  lists:nth(RandNum, Backends).
+random([]) -> [];
+random(Backends) -> random_sort(Backends, []).
+
+random_sort([], Acc) -> Acc;
+random_sort(Bees, Acc) ->
+  RandNum = random:uniform(length(Bees)),
+  Bee = lists:nth(RandNum, Bees),
+  NewBees = lists:delete(Bee, Bees),
+  random_sort(NewBees, [Bee|Acc]).
 
 % Get the least loaded bee
 least_loaded(Backends) ->
@@ -30,7 +34,4 @@ least_loaded(Backends) ->
     end,
     {CurrentReq, B}
   end, Backends),
-  SortedBees = lists:sort(fun({A, _},{B, _}) -> A < B end, ListsOfBees),
-  {_, Bee} = hd(SortedBees),
-  Bee.
-  
+  lists:sort(fun({A, _},{B, _}) -> A < B end, ListsOfBees).
