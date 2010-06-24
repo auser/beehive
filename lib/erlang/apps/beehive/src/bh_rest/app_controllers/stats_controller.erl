@@ -48,7 +48,7 @@ post("/new", Data) ->
     {stop_command, StopCmd}
   ],
   
-  bee_store:add_application(ConfigProplist),
+  apps:create(ConfigProplist),
   
   Out = {added, misc_utils:to_bin(Name)},
   {json, 200, [], Out};

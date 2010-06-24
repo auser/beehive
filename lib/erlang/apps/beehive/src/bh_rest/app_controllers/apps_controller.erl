@@ -104,7 +104,6 @@ compile_app_details(App) ->
     {"updated_at", App#app.updated_at},
     {"type", misc_utils:to_list(App#app.type)},
     {"template", misc_utils:to_list(App#app.template)},
-    {"bee_picker", App#app.bee_picker},
     {"latest_error", case App#app.latest_error of
       undefined -> undefined;
       AppError ->

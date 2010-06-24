@@ -160,7 +160,6 @@ from_proplists([], App)  -> App;
 from_proplists([{name, V}|Rest], App) -> from_proplists(Rest, App#app{name = V});
 from_proplists([{url, V}|Rest], App) -> from_proplists(Rest, App#app{url = V});
 from_proplists([{type, V}|Rest], App) -> from_proplists(Rest, App#app{type = V});
-from_proplists([{bee_picker, V}|Rest], App) -> from_proplists(Rest, App#app{bee_picker = V});
 from_proplists([{timeout, V}|Rest], App) -> from_proplists(Rest, App#app{timeout = V});
 from_proplists([{sticky, V}|Rest], App) -> from_proplists(Rest, App#app{sticky = V});
 from_proplists([{min_instances, V}|Rest], App) -> from_proplists(Rest, App#app{min_instances = V});
@@ -176,7 +175,6 @@ to_proplist([], _App, Acc) -> Acc;
 to_proplist([name|Rest], #app{name = Name} = App, Acc) -> to_proplist(Rest, App, [{name, Name}|Acc]);
 to_proplist([url|Rest], #app{url = Value} = App, Acc) -> to_proplist(Rest, App, [{url, Value}|Acc]);
 to_proplist([type|Rest], #app{type = Value} = App, Acc) -> to_proplist(Rest, App, [{type, Value}|Acc]);
-to_proplist([bee_picker|Rest], #app{bee_picker = Value} = App, Acc) -> to_proplist(Rest, App, [{bee_picker, Value}|Acc]);
 to_proplist([timeout|Rest], #app{timeout = Value} = App, Acc) -> to_proplist(Rest, App, [{timeout, Value}|Acc]);
 to_proplist([sticky|Rest], #app{sticky = Value} = App, Acc) -> to_proplist(Rest, App, [{sticky, Value}|Acc]);
 to_proplist([min_instances|Rest], #app{min_instances = Value} = App, Acc) -> to_proplist(Rest, App, [{min_instances, Value}|Acc]);
@@ -212,8 +210,6 @@ validate_app([url|Rest], #app{url = _Url} = App) -> validate_app(Rest, App);
 validate_app([type|Rest], #app{type = static} = App) -> validate_app(Rest, App);
 validate_app([type|Rest], #app{type = dynamic} = App) -> validate_app(Rest, App);
 validate_app([type|Rest], #app{type = _Else} = App) -> validate_app(Rest, App#app{type = dynamic});
-% Validate the bee picker
-validate_app([bee_picker|Rest], App) -> validate_app(Rest, App);
 % Validate the timeout
 validate_app([timeout|Rest], #app{timeout = undefined} = App) -> validate_app(Rest, App#app{timeout = 10*1000});
 validate_app([timeout|Rest], #app{timeout = V} = App) -> validate_app(Rest, App#app{timeout = misc_utils:to_integer(V)*1000});

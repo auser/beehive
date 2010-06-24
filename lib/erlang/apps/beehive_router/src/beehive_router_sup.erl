@@ -50,7 +50,6 @@ init(_Args) ->
   ShouldRunDashboard = config:search_for_application_value(dashboard, true),
   
   Children = lists:flatten([
-    ?CHILD(bee_store_sup, worker),
     ?CHILD(tcp_socket_server_sup, worker),
     ?CHILD(bh_node_stats_srv, worker),
     ?IF(ShouldRunDashboard, Dashboard, [])

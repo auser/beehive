@@ -9,6 +9,9 @@
 -module (proxy_handler).
 
 -include ("router.hrl").
+-include ("common.hrl").
+-include ("http.hrl").
+-include ("beehive.hrl").
 
 -export ([
   start_link/1
@@ -61,58 +64,31 @@ proxy_init(ClientSock) ->
 % Let the packet_decoder address the forwarding of the packet to the server and start the proxy loop
 % If the bee cannot be reached, send an alert through the event handler that we could not reach
 % the bee and try to find a new bee
-engage_bee(ClientSock, RequestPid, RoutingKey, ForwardReq, Req, {ok, #bee{host = Host, port = Port} = Bee}) ->
-  SockOpts = [binary, {active, false}, {packet, raw} ],
-  case gen_tcp:connect(Host, Port, SockOpts, ?CONNECT_TIMEOUT) of
-    {ok, ServerSock} ->
-      ?NOTIFY({bee, used, Bee}),
-      % Sending raw request to bee server
-      gen_tcp:send(ServerSock, ForwardReq),
+engage_bee(ClientSock, RequestPid, RoutingKey, ForwardReq, Req, {ok, #bee{host = Host, port = Port} = Bee, ServerSock}) ->
+  ?NOTIFY({bee, used, Bee}),
+  % Sending raw request to bee server
+  gen_tcp:send(ServerSock, ForwardReq),
+  
+  Timeout = timer:seconds(10),
+  ProxyPid = self(),
       
-      Timeout = timer:seconds(10),
-      ProxyPid = self(),
+  State = #state{
+      start_time = date_util:now_to_seconds(),
+      client_socket = ClientSock, 
+      server_socket = ServerSock, 
+      request = Req,
+      routing_key = RoutingKey,
+      host = Host,
+      port = Port,
+      timeout = Timeout,
+      bee = Bee},
       
-      State = #state{
-                  start_time = date_util:now_to_seconds(),
-                  client_socket = ClientSock, 
-                  server_socket = ServerSock, 
-                  request = Req,
-                  routing_key = RoutingKey,
-                  host = Host,
-                  port = Port,
-                  timeout = Timeout,
-                  bee = Bee},
+  ClientPid = spawn(fun() -> handle_streaming_data(client, ProxyPid, State) end),
+  ServerPid = spawn(fun() -> handle_streaming_data(server, ProxyPid, State) end),
       
-      ClientPid = spawn(fun() -> handle_streaming_data(client, ProxyPid, State) end),
-      ServerPid = spawn(fun() -> handle_streaming_data(server, ProxyPid, State) end),
+  NewState = State#state{server_pid = ServerPid, client_pid = ClientPid},
       
-      NewState = State#state{server_pid = ServerPid, client_pid = ClientPid},
-      
-      proxy_loop(NewState);
-    {error, emfile} ->
-      ?LOG(error, "Maximum number of sockets open. Die instead", []),
-      ?NOTIFY({bee, cannot_connect, Bee}),
-      send_and_terminate(
-        ClientSock, 503,
-        ?APP_ERROR(503, "503 Service Unavailable")
-      );
-    {error,econnreset} ->
-      timer:sleep(200),
-      GetBee = ?BENCHMARK_LOG("Getting bee for routing key after a connection reset", bee_store, get_bee, [RoutingKey]),
-      engage_bee(ClientSock, RequestPid, RoutingKey, ForwardReq, Req, GetBee);
-    Error ->
-      ?LOG(error, "Connection to remote TCP server: ~p:~p ~p", [Host, Port, Error]),
-      ?NOTIFY({bee, cannot_connect, Bee#bee.id}),
-      timer:sleep(1000),
-      GetBee = ?BENCHMARK_LOG("Getting bee for routing key after an error", bee_store, get_bee, [RoutingKey]),
-      engage_bee(ClientSock, RequestPid, RoutingKey, ForwardReq, Req, GetBee)
-  end;
-engage_bee(ClientSock, _RequestPid, Hostname, _ForwardReq, _Req, bee_timeout) ->
-  ?LOG(error, "Error getting bee because of timeout: ~p", [Hostname]),
-  send_and_terminate(
-    ClientSock, bee_timeout, 
-    ?APP_ERROR(404, io_lib:format("Error: ~p", [bee_timeout]))
-  );
+  proxy_loop(NewState);
 engage_bee(ClientSock, _RequestPid, Hostname, _ForwardReq, _Req, {error, Reason}) ->
   send_and_terminate(
     ClientSock, Reason, 
