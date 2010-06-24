@@ -73,8 +73,7 @@
   name,
   url,
   type = dynamic,                   % dynamic | static (if this is set to static, we cannot launch a new one)
-  routing_param = undefined,        % determine the method of choosing the backend
-  bee_picker = bee_strategies,      % Defined the bee picker module (defaults to bee_strategies)
+  routing_param = 'Host',
   timeout,
   sticky        = false,            % if an app is sticky, the apps are not requested after timeout time
   min_instances = 0,
