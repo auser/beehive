@@ -557,6 +557,7 @@ expand_instance_by_app(App) -> start_new_instance_by_app(App).
 
 % PRIVATE
 app_launcher_fsm_go(AppToPidTable, PidToAppTable, Method, App, Updating) ->
+  erlang:display({app_launcher_fsm_go, App#app.name}),
   case App#app.type of
     static -> ok;
     _T ->
