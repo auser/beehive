@@ -68,9 +68,9 @@ The parameters that must be included are the app_name (the routing key), the hos
 
 These can also be added at the erlang command-line by:
 
-    beehive_router_srv:add_bee({"streaming",{127,0,0,1}, 5001}).
+    bee_store:add_bee({"streaming",{127,0,0,1}, 5001}).
     % or
-    beehive_router_srv:add_bee([{app_name, "streaming"}, {host, "127.0.0.1"}, {port, 5001}]).
+    bee_store:add_bee([{app_name, "streaming"}, {host, "127.0.0.1"}, {port, 5001}]).
 
 ## Apps
 Adding an application can also be added via the RESTful interface. For example:

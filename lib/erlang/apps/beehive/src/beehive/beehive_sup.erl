@@ -61,11 +61,16 @@ start_link(Args) ->
 %% specifications.
 %%--------------------------------------------------------------------
 init(_Args) ->
+  RestServer  = ?CHILD(rest_server_sup, worker),
+  
+  ShouldRunRestServer = config:search_for_application_value(run_rest_server, true),
+  
   Children = lists:flatten([
     ?CHILD(node_manager, worker),
     ?CHILD(app_manager, worker),
     ?CHILD(event_manager, worker),
-    ?CHILD(beehive_db_srv, worker)
+    ?CHILD(beehive_db_srv, worker),
+    ?IF(ShouldRunRestServer, RestServer, [])
   ]),
   
   {ok,{{one_for_one,5,10}, Children}}.

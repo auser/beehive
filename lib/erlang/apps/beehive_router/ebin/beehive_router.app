@@ -10,7 +10,7 @@
       http_request_decoder,
       proxy_handler,
       beehive_request,
-      beehive_router_srv, beehive_router_srv_sup,
+      bee_store, bee_store_sup,
       tcp_socket_server, tcp_socket_server_sup
     ]},
   {registered,   []},

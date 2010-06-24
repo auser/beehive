@@ -29,12 +29,12 @@ test_is_a_type() ->
   ?assert(node_manager:is_a(router)).
 
 test_get_node_of_type() ->
-  ?assertEqual([global:whereis_name(beehive_router_srv)], node_manager:get_servers(router)),
+  ?assertEqual([global:whereis_name(bee_store)], node_manager:get_servers(router)),
   ?assertEqual([], node_manager:get_servers(node)),
   ?assertEqual([], node_manager:get_servers(storage)).
 
 test_sort_servers_by_load() ->
-  {ok, Pid1} = node_manager:start_server(beehive_router_srv), {ok, Pid2} = node_manager:start_server(beehive_router_srv),
+  {ok, Pid1} = node_manager:start_server(bee_store), {ok, Pid2} = node_manager:start_server(bee_store),
   NextAvailable = node_manager:get_next_available(router),
   Routers = node_manager:get_servers(router),
   ?assert(lists:member(NextAvailable, Routers)),

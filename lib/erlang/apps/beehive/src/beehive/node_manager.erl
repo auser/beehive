@@ -93,7 +93,7 @@ get_servers() ->
   {ok, Plist} = gen_cluster:plist(?MODULE),
   Plist.
 
-get_servers(router) -> proplists:get_value(beehive_router_srv, get_servers(), []);
+get_servers(router) -> proplists:get_value(bee_store, get_servers(), []);
 get_servers(node) -> proplists:get_value(app_handler, get_servers(), []);
 get_servers(storage) -> proplists:get_value(beehive_storage_srv, get_servers(), []);
 

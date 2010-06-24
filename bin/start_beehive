@@ -23,7 +23,7 @@ OPTIONS
 	-D                                  Daemonize the process
 	-e, --erlang_opts                   Additional erlang options
 	-g, --bee_strategy                  Strategy to choose a bee. (default: random)
-	-i, --initial_bees                  Initial bees to start the beehive_router_srv
+	-i, --initial_bees                  Initial bees to start the bee_store
 	-l, --log_path                      Path of the logs
 	-m                                  Mnesia directory (defaults to ./db)
 	-n                                  Name of the erlang process (useful for multiple nodes on the same instance)
