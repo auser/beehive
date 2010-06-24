@@ -15,17 +15,26 @@
 
 -export([get_bee/1]).
 
-get_bee(Hostname) -> get_bee(Hostname, date_util:now_to_seconds()).
+get_bee(default) -> get_default_app_or_rest();
+get_bee([Hostname|_Rest] = List) ->
+ % For now, since we are only looking up on a single char_list
+ % we have to hack it
+ % LAME! 
+  case io_lib:char_list(List) of
+    true -> get_bee(List, date_util:now_to_seconds());
+    false -> get_bee(Hostname, date_util:now_to_seconds())
+  end.
 
 %% Choose an available back-end host
-get_bee([Hostname|_Rest], TimeofRequest) -> get_bee(Hostname, TimeofRequest);
+%% If a bee cannot be found within the requested time (before the CONNECTION_TIMEOUT)
+%% then we pass back a timeout
 get_bee(Hostname, TimeofRequest) -> 
   TOTime = date_util:now_to_seconds() - TimeofRequest,
-  case TOTime - TimeofRequest > ?CONNECT_TIMEOUT of
+  case TOTime - TimeofRequest > ?CONNECTION_TIMEOUT of
     true -> {error, timeout};
     false ->
       case get_bee_by_hostname(Hostname) of
-        {ok, _Bee} = Tuple -> Tuple;
+        {ok, _Bee, _Socket} = Tuple -> Tuple;
         ?MUST_WAIT_MSG ->
           timer:sleep(500),
           get_bee(Hostname);
@@ -40,7 +49,6 @@ handle_no_ready_bees(Hostname) ->
     App ->
       case App#app.latest_error of
         undefined ->
-          erlang:display({app, choose_bee, App}),
           ?NOTIFY({app, request_to_start_new_bee, App}),
           ?MUST_WAIT_MSG;
         _E ->
@@ -48,27 +56,7 @@ handle_no_ready_bees(Hostname) ->
       end
   end.
 
-% Choose from the list of bees
-% Here is the logic to choose a bee from the list of bees
-% The user defines the preferred strategy for choosing backends when starting
-% the router with the -g option
-% i.e. start_beehive.com -g random
-% If the application defines it's own routing mechanism with the routing_param
-% then that is used to choose the backend, otherwise the default router param will
-% be used
-choose_from_ready_bees([], _AppMod, _RoutingParameter) -> ?MUST_WAIT_MSG;
-choose_from_ready_bees(Bees, Mod, _AppRoutingParam) ->
-  PreferredStrategy = config:search_for_application_value(bee_strategy, random),
-  Fun = PreferredStrategy,
-  % TODO: Reimplement
-  % Fun = case AppRoutingParam of
-  %   undefined -> PreferredStrategy;
-  %   F -> F
-  % end,
-  Bee = Mod:Fun(Bees),
-  {ok, Bee}.
-
-get_default_app_or_rest(From, State) ->
+get_default_app_or_rest() ->
   DefaultAppName = config:search_for_application_value(base_app, router),
   case DefaultAppName of
     router ->
@@ -76,25 +64,29 @@ get_default_app_or_rest(From, State) ->
       Host = {127,0,0,1},
       Id = {default, Host, Port},
 
-      #bee{ 
+      Bee = #bee{ 
         id = Id, port = Port, host = Host, app_name = default
-      };
+      },
+      try_to_connect(Bee, fun(Error) -> Error end);
     Else ->
-      case get_bee_by_hostname(Else, From, State) of
-        {ok, TheBee} -> {ok, TheBee};
+      case get_bee_by_hostname(Else) of
+        {ok, _Bee, _Socket} = Tuple -> Tuple;
         _Else -> {error, could_not_start}
       end
   end.
 
 % Fetch a running bee by the hostname
-get_bee_by_hostname(Hostname, From, State) ->
+get_bee_by_hostname(Hostname) ->
   case get_bees_by_hostname(Hostname) of
     {error, Reason} -> {error, Reason};
     [] -> handle_no_ready_bees(Hostname);
-    {ok, App, Bees} ->
-      case choose_bee(Bees) of
+    ?MUST_WAIT_MSG -> ?MUST_WAIT_MSG;
+    {ok, _App, Bees} ->
+      PreferredStrategy = config:search_for_application_value(bee_strategy, random),
+      SortedBees = bee_strategies:PreferredStrategy(Bees),
+      case choose_from_ready_bees(SortedBees) of
         ?MUST_WAIT_MSG -> ?MUST_WAIT_MSG;
-    	  {ok, Bee} -> Bee;
+    	  {ok, _Bee, _Socket} = Tuple -> Tuple;
     	  Else -> {error, Else}
     	end
   end.
@@ -114,22 +106,25 @@ get_bees_by_hostname(Hostname) ->
           ?LOG(error, "Undefined error with choose_bee", []),
           ?MUST_WAIT_MSG;
         Bees ->
-          {ok, App, lists:filter(fun(B) -> (catch B#bee.status =:= ready) end, Bees)}
+          ReadyBees = lists:filter(fun(B) -> (catch B#bee.status =:= ready) end, Bees),
+          case ReadyBees of
+            [] -> handle_no_ready_bees(Hostname);
+            _ -> {ok, App, ReadyBees}
+          end
       end;
     _ -> {error, unknown}
   end.
 
-% These are commands that can be specified on an application
-% bee_picker is the custom module to choose the bee from
-% routing_param is the name of the method in the bee_picker
-% Defaults to bee_strategies:random if none are specified on the app
-pick_mod_and_meta_from_app(App) when is_record(App, app) ->
-  Mod = case App#app.bee_picker of
-    undefined -> config:search_for_application_value(bee_picker, bee_strategies);
-    E -> E
-  end,
-  R = case App#app.routing_param of
-    undefined -> config:search_for_application_value(bee_strategy, random);
-    El -> El
-  end,
-  {Mod, R}.
+choose_from_ready_bees([]) -> ?MUST_WAIT_MSG;  
+choose_from_ready_bees([Bee|Rest]) ->
+  try_to_connect(Bee, fun(_) -> 
+                            ?NOTIFY({bee, cannot_connect, Bee#bee.id}),
+                            choose_from_ready_bees(Rest) 
+                      end).
+
+try_to_connect(#bee{host = Host, port = Port} = Bee, Failure) ->
+  SockOpts = [binary, {active, false}, {packet, raw} ],
+  case gen_tcp:connect(Host, Port, SockOpts, ?NODE_CONNECT_TIMEOUT) of
+    {ok, Socket} -> {ok, Bee, Socket};
+    Else -> Failure(Else)
+  end.
