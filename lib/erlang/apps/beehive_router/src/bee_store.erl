@@ -15,6 +15,13 @@
 
 -export([get_bee/1]).
 
+%%-------------------------------------------------------------------
+%% @spec (Hostname) ->    {ok, Bee, Socket}
+%%                        | {error, Reason}
+%% @doc Get the bee and a socket connection to the bee
+%%      
+%% @end
+%%-------------------------------------------------------------------
 get_bee(default) -> get_default_app_or_rest();
 get_bee([Hostname|_Rest] = List) ->
  % For now, since we are only looking up on a single char_list
@@ -41,7 +48,14 @@ get_bee(Hostname, TimeofRequest) ->
         {error, Reason} -> {error, Reason}
       end
   end.
-  
+
+%%-------------------------------------------------------------------
+%% @spec (Hostname) ->      MUST_WAIT_MSG
+%%                        | {error, Reason}
+%% @doc In the case that there are no 'ready' bees, fire this event
+%%      
+%% @end
+%%-------------------------------------------------------------------
 handle_no_ready_bees(Hostname) ->
   case apps:find_by_name(Hostname) of
     not_found ->
