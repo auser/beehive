@@ -21,7 +21,7 @@
   %tbody
     :each app in apps
       %tr
-        %td= '<a href="#/apps/'+app.name+'">'+app.name+"</a>"
+        %td= link_to(app.name, "#/apps/" + app.name)
         %td= app.url
         %td= app.branch
         %td= app.template

@@ -12,18 +12,20 @@
       %th owners
       %th updated_at
       %th type
+      %th delete
   %tfoot
     %tr
       %td ...
   %tbody
     %tr
-      %td= '<a href="#/apps/'+application.name+'">'+application.name+"</a>"
+      %td= link_to(application.name, "#/apps/"+ application.name)
       %td= application.url
       %td= application.branch
       %td= application.template
       %td= application.owners
       %td= application.updated_at
       %td= application.type
+      %td= link_to("delete?", "#/apps/delete/"+ application.name, {class: "delete"})
 
 :if application.latest_error != "undefined"
   %h4 Latest Error
