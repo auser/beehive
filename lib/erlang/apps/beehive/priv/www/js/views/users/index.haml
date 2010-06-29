@@ -1,2 +1,16 @@
 %h3
   Users
+  
+%table
+  %thead
+    %tr
+      %th User
+      %th Level
+  %tfoot
+    %tr
+      %td ...
+  %tbody
+    :each user in users_list
+      %tr
+        %td= user.name
+        %td= user.level
