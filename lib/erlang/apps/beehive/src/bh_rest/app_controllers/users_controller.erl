@@ -32,7 +32,7 @@ get([Email], _Data) ->
 get(_, _Data) -> 
   All = users:all(),
   { "users", lists:map(fun(A) ->
-      {A#user.email, [{"level", A#user.level}]}
+      [{"level", A#user.level}, {"email", A#user.email}]
     end, All)
   }.
 
