@@ -12,6 +12,7 @@
   true -> io:format(user, "TRACE ~p:~p ~p ~p~n", [?MODULE, ?LINE, X, M]);
   false -> ok
 end).
+-define (ERROR_MSG (Msg1), {"ERROR", {"Beehive could not start", Msg1}}).
 
 
 %% API
@@ -170,7 +171,12 @@ init(Args) ->
   read_babysitter_config(),
   
   % Start the database and application
-  db:start(),
+  case catch db:start() of
+    {error, enoent} ->
+      printer:banner(?ERROR_MSG("The database could not start because the database directory does not exist. Create it and try again")),
+      throw({error, db});
+    _ -> ok
+  end,
   application:start(Type),
   timer:send_interval(timer:minutes(1), {update_node_pings}),
   

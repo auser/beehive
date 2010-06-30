@@ -3,6 +3,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 setup() ->
+  application:start(sasl),
   Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
   ConfigFile = filename:join([Dir, "test", "beehive.cfg"]),
   application:set_env(beehive, config_file, ConfigFile),
