@@ -173,7 +173,7 @@ init(Args) ->
   % Start the database and application
   case catch db:start() of
     {error, enoent} ->
-      printer:banner(?ERROR_MSG("The database could not start because the database directory does not exist. Create it and try again")),
+      printer:banner("ERROR", ["The database could not start because the database directory does not exist. Create it and try again"]),
       throw({error, db});
     _ -> ok
   end,
