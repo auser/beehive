@@ -2,9 +2,11 @@
 
 . `dirname $0`/beehive_env
 
-ERL_OPTS="-pa $BEEHIVE_SRC/ebin -pa $BEEHIVE_SRC/include -pz $BEEHIVE_SRC/deps/*/ebin"
+ERL_OPTS="-pa $BEEHIVE_SRC/../../../deps/*/ebin \
+          -pa $BEEHIVE_SRC/*/ebin \
+          -pa $BEEHIVE_SRC/*/include"
 HOSTNAME=`hostname -f`
-NAME=control@$HOSTNAME
+NAME=control@127.0.0.1
 
 exec erl \
     -noinput \

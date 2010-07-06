@@ -1,0 +1,24 @@
+#!/bin/sh
+
+APP=beehive
+LIBDIR=$(erl -eval 'io:format("~s~n", [code:lib_dir()])' -s init stop -noshell)
+VERSION=`cat VERSION`
+INSTALLED_DIR=$LIBDIR/$APP-$VERSION
+ERL_ROOT_DIR=$(dirname $0)/../lib/erlang/apps
+if [ -z $BEEHIVE_HOME ]; then
+  export BEEHIVE_HOME=$BEEHIVE_PREFIX/var/lib/beehive
+fi
+if [ -z $BEEHIVE_SRC ]; then
+  if [ -d $INSTALLED_DIR ]; then
+    BEEHIVE_SRC=$INSTALLED_DIR
+  else
+    BEEHIVE_SRC="$ERL_ROOT_DIR"
+  fi
+fi
+print_version() {
+cat <<EOF
+$progname $version
+
+`cat LICENSE`
+EOF
+}

@@ -7,17 +7,17 @@ all: deps compile
 
 compile:
 	@./rebar compile
-	
+
 deps:
 	@./rebar get-deps
 
 check:
 	@echo "Dependencies"
 	@./rebar check-deps
-	
+
 clean:
 	@./rebar clean
-	
+
 rel: all
 	@(cp -Rf etc/app_templates rel/overlay/etc)
 	@(make rel_erlang)
