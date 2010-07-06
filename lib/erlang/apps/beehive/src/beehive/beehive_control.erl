@@ -18,16 +18,20 @@
 
 -record (params, {
   command,
+  app_file,
+  bee_file,
   args,
   node = undefined
 }).
--define (ALLOWED_TYPE_OF_NODES, [router,node,storage]).
+-define (ALLOWED_TYPE_OF_NODES, [beehive,router,node,storage]).
 -export ([start/0]).
 
 start() ->
   FullCommand = init:get_plain_arguments(),
 
   #params{
+    app_file = _AppFile,
+    bee_file = _BeeFile,
     command = Command,
     args = Args,
     node = UserNode
@@ -50,12 +54,20 @@ start() ->
     {error, could_not_connect} ->
       show_could_not_connect_error();
     ok -> ok;
+    {ok, Output} ->
+      io:format("~p~n", [Output]),
+      ok;
     Else ->
       io:format("Uh oh: ~p~n", [{Else}]),
       ok
   end,
   
   halt(0).
+
+% Run a babysitter command
+command(Node, babysitter, Args) -> 
+  erlang:display({args, Args}),
+  call(Node, babysitter_integration, command, Args);
 
 % Stop the router
 command(Node, stop_beehive, []) -> call(Node, init, stop, []);
@@ -96,13 +108,15 @@ command(_Node, app_updated, []) -> error("app_updated requires an argument: name
 command(Node, app_updated, [AppName]) ->
   notify(Node, {app, updated, AppName}),
   ok;
-command(_Node, hello, Args) ->
-  io:format("Hello world: ~p~n", [Args]),
-  hello;
+command(_Node, hello, _Args) ->
+  io:format("Hello world~n", []),
+  ok;
 command(_, _Else, _) ->
   unknown_command.
 
 parse_args([ "-h" | _Rest], _Params) -> show_usage();
+parse_args([ "-a", AppFile | Rest], Params) -> parse_args(Rest, Params#params{app_file = AppFile});
+parse_args([ "-b", BeeFile | Rest], Params) -> parse_args(Rest, Params#params{bee_file = BeeFile});
 parse_args([ "-n", NodeName | Args], Params) ->
   parse_args(Args, Params#params{node = erlang:list_to_atom(NodeName)});
 parse_args([H | Args], Params) ->
@@ -127,7 +141,9 @@ show_usage() ->
     
     OPTIONS
     -h                              Display this message
-    -n                              Local node to connect
+    -a [file]                       File to load app descriptors
+    -b [file]                       File to load bee descriptors
+    -l                              Local node to connect
     
     COMMANDS
     stop                            Stop the beehive server entirely
