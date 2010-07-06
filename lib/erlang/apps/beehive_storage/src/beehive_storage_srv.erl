@@ -210,19 +210,16 @@ build_bee(App, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} 
       SquashedDir = lists:flatten([SquashedDisk, "/", App#app.name]),
       FinalLocation = lists:flatten([SquashedDir, "/", App#app.name, ".bee"]),
       EnvFileLocation = lists:flatten([SquashedDir, "/", App#app.name, ".env"]),
-      lists:map(fun(Dir) -> file:make_dir(Dir) end, [ScratchDisk, WorkingDir, SquashedDisk, SquashedDir]),
   
-      OtherOpts = [
+      Proplist = [
         {working_directory, WorkingDir},
         {squashed_directory, SquashedDir},
         {env_file, EnvFileLocation},
         {squashed_file, FinalLocation},
         {repos, ReposUrl}
       ],
-      EnvOpts = apps:build_app_env(App, OtherOpts),
-      CmdOpts = lists:flatten([{cd, SquashedDir}|EnvOpts]),
       
-      case babysitter:run(App#app.template, bundle, CmdOpts) of
+      case babysitter_integration:command(bundle, App, unusued, Proplist) of
         {ok, _OsPid, 0} ->
           case fetch_bee(App, State) of
             {bee_built, _Resp} = T -> T;

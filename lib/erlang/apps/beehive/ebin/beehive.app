@@ -23,7 +23,7 @@
                   date_util, db, string_utils, yaml,
                   event_manager, printer, port_handler, node_manager, 
                   auth_utils,bee_strategies,bh_bee_stats_srv,
-                  web_utils,
+                  web_utils, babysitter_integration,
                   % Launchers
                   app_launcher_fsm, app_killer_fsm,
                   % Stores

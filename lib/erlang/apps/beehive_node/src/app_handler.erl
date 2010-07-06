@@ -24,7 +24,6 @@
   seed_nodes/1
 ]).
 
-
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
@@ -250,63 +249,14 @@ internal_update_instance(_App, _AppLauncher, _From) ->
   ok.
 
 % Run the mount action on the app
-mount_application(App, PropLists) ->
-  ScratchDisk = config:search_for_application_value(scratch_disk, ?BEEHIVE_DIR("tmp")),
-  RunDir = config:search_for_application_value(squashed_storage, ?BEEHIVE_DIR("run")),
-  UniqueName = App#app.name,
-
-  WorkingDir = filename:join([ScratchDisk, App#app.name]),
-  MountedDir = filename:join([RunDir, UniqueName]),
-  BeeImage = proplists:get_value(bee_image, PropLists),
-  Port = misc_utils:to_list(proplists:get_value(port, PropLists)),
-  
-  OtherOpts = [
-    {working_directory, WorkingDir},
-    {target_directory, MountedDir},
-    {bee_image, BeeImage},
-    {run_dir, RunDir},
-    {port, Port}
-  ],
-  lists:map(fun(Dir) -> file:make_dir(Dir) end, [RunDir, ScratchDisk, WorkingDir, MountedDir]),
-  EnvOpts = apps:build_app_env(App, OtherOpts),
-  CmdOpts = lists:flatten([{cd, MountedDir}|EnvOpts]),
-  
-  babysitter:run(App#app.template, mount, CmdOpts).
+mount_application(App, PropLists) -> babysitter_integration:command(mount, App, unused, PropLists).
 
 % Initialize the node
 initialize_application(App, PropLists, AppLauncher, _From) ->
-  Sha = proplists:get_value(sha, PropLists),
-  Port = proplists:get_value(port, PropLists),
-  ImagePath = proplists:get_value(bee_image, PropLists),
-  StorageNode = proplists:get_value(storage_node, PropLists),
-    
-  HostIp = bh_host:myip(),
-  Id = {App#app.name, HostIp, Port},
-  StartedAt = date_util:now_to_seconds(),
-  
-  Bee  = #bee{
-    id                      = Id,
-    app_name                = App#app.name,
-    host                    = HostIp,
-    host_node               = node(self()),
-    storage_node            = StorageNode,
-    % path                    = AppRootPath,
-    port                    = Port,
-    status                  = pending,
-    commit_hash             = Sha,
-    start_time              = StartedAt
-  },
-  
-  {ok, _App, CmdOpts1} = bees:build_app_env(Bee),
-  CmdOpts = lists:flatten([
-    {bee_image, ImagePath}, 
-    CmdOpts1]),
-      
-  io:format("------ App handler using babysitter spawn_new: ~p~n", [CmdOpts]),
-  case babysitter:run(App#app.template, start, CmdOpts) of
-    {ok, Pid, OsPid} ->
+  case babysitter_integration:command(start, App, built_in_command, PropLists) of
+    {ok, Pid, OsPid, Bee} ->
       NewBee = Bee#bee{pid = Pid, os_pid = OsPid},
-      ets:insert(?TAB_ID_TO_BEE, {Id, NewBee}),
+      ets:insert(?TAB_ID_TO_BEE, {Bee#bee.id, NewBee}),
       ets:insert(?TAB_NAME_TO_BEE, {App#app.name, NewBee}),
       AppLauncher ! {started_bee, NewBee},
       NewBee;
@@ -350,46 +300,35 @@ find_bee_on_storage_nodes(App, Sha, [Node|Rest]) ->
 
 % kill the instance of the application  
 internal_stop_instance(Bee, _State) ->  
-  case bees:build_app_env(Bee) of
-    {error, _} = T -> T;
-    {ok, App, CmdOpts} ->
-      case babysitter:run(App#app.template, stop, CmdOpts) of
-        {ok, _OsPid, _ExitStatus} ->
-          case ets:lookup(?TAB_ID_TO_BEE, Bee#bee.id) of
-            [{Key, _B}] ->
-              catch ets:delete(?TAB_NAME_TO_BEE, App#app.name),
-              catch ets:delete(?TAB_ID_TO_BEE, Key);
-            _ -> true
-          end,      
-          {bee_terminated, Bee};
-        {error, no_command} -> {bee_terminated, Bee};
-        Else -> {error, Else}
-      end
+  case babysitter_integration:command(stop, unused, Bee, []) of
+    {ok, _OsPid, _ExitStatus, App} ->
+      case ets:lookup(?TAB_ID_TO_BEE, Bee#bee.id) of
+        [{Key, _B}] ->
+          catch ets:delete(?TAB_NAME_TO_BEE, App#app.name),
+          catch ets:delete(?TAB_ID_TO_BEE, Key);
+        _ -> true
+      end,      
+      {bee_terminated, Bee};
+    {error, no_command} -> {bee_terminated, Bee};
+    Else -> {error, Else}
   end.
 
 internal_unmount_instance(Bee, _State) ->
-  case bees:build_app_env(Bee) of
-    {error, _} = T -> 
-      T;
-    {ok, App, CmdOpts} ->
-      case babysitter:run(App#app.template, unmount, CmdOpts) of
-        {ok, _OsPid} -> {bee_unmounted, Bee};
-        {error, no_command} -> {bee_unmounted, Bee};
-        Else -> {error, Else}
-      end
+  case babysitter_integration:command(unmount, unused, Bee, []) of
+    {ok, _OsPid} -> {bee_unmounted, Bee};
+    {error, no_command} -> {bee_unmounted, Bee};
+    Else -> {error, Else}
   end.
 
 internal_cleanup_instance(Bee, _State) ->
-  case bees:build_app_env(Bee) of
-    {error, _} = T -> T;
-    {ok, App, CmdOpts} ->
-      case babysitter:run(App#app.template, cleanup, CmdOpts) of
-        {ok, _OsPid, _ExitStatus} -> {bee_cleaned_up, Bee};
-        {error, no_command} -> {bee_cleaned_up, Bee};
-        Else -> {error, Else}
-      end
+  case babysitter_integration:command(cleanup, unused, Bee, []) of
+    {ok, _OsPid} -> {bee_unmounted, Bee};
+    {error, no_command} -> {bee_unmounted, Bee};
+    Else -> {error, Else}
   end.
   
 
 handle_pid_exit(_Pid, _Reason, State) ->
   State.
+
+% Babysitter commands
