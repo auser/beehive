@@ -1,8 +1,17 @@
 -module (printer).
 
--export ([banner/1]).
+-export ([banner/1, banner/2]).
 -define (HEADER_CHAR, $-).
 
+banner(Header, Lines) ->
+  DescrLen = lists:max([length(L) || L <- Lines]),
+  divider(Header, DescrLen),
+  lists:foreach(fun(L) ->
+    io:format(" ~-" ++ integer_to_list(DescrLen) ++ "s~n", [L])
+  end, Lines),
+  divider(DescrLen + length(Header) - 2).
+  
+  
 banner(Lines) ->
   DescrLen = lists:max([length(K) + length(V) || {K, V} <- Lines]),
   LongestHeader = lists:max([length(K) || {K, _V} <- Lines]) + 1,
