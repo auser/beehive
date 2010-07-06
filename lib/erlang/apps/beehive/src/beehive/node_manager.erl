@@ -27,7 +27,8 @@ end).
   dump/1,
   get_next_available/1,
   notify/1,
-  read_babysitter_config/0
+  read_babysitter_config/0,
+  current_load_of_node/0
 ]).
 
 %% gen_server callbacks
@@ -115,6 +116,20 @@ is_a(Type) ->
 notify(Msg) ->
   rpc:call(node(seed_pid()), event_manager, notify, [Msg]),    
   ok.
+
+%%-------------------------------------------------------------------
+%% @spec () ->    Float
+%% @doc Return the current load of this node
+%%  in float representation
+%% @end
+%%-------------------------------------------------------------------
+current_load_of_node() ->
+  Cpu = cpu_sup:avg1(),
+  CurrentMemProplist = memsup:get_system_memory_data(),
+  SystemMem = proplist:get_value(system_total_memory, CurrentMemProplist),
+  % Put an algorithm here
+  % and return the float
+  0.5.
 
 %%====================================================================
 %% server-specific methods
@@ -279,7 +294,8 @@ sort_servers_by_load(Servers) ->
 
 get_server_load([], Acc) -> Acc;
 get_server_load([H|Rest], Acc) ->
-  Stat = rpc:call(node(H), erlang, statistics, [run_queue]),
+  % os_mon lookups can go here
+  Stat = rpc:call(node(H), ?MODULE, current_load_of_node, []),
   get_server_load(Rest, [{H, Stat}|Acc]).
 
 read_babysitter_config() ->
