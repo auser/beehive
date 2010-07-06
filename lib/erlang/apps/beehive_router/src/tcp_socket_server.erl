@@ -28,6 +28,8 @@
 % TODO: Move to proc_lib:start_link
 start_link()          -> init().
 % Start listening on the application port
+% this can be modified with a config file or an environment variable
+% e.g. BEEHIVE_CLIENT_PORT=80
 init()                -> init(config:search_for_application_value(client_port, 8080)).
 init(LocalPort) -> 
   Pid = spawn_link(?MODULE, init_accept, [LocalPort]),

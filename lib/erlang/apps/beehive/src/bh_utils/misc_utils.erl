@@ -160,4 +160,4 @@ reload_code() ->
 reload_all() ->
   reload_code(),
   rpc:multicall(nodes(), misc_utils, reload_code, [], timer:seconds(30)),
-  ok.
+  node_manager:read_babysitter_config().
