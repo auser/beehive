@@ -12,4 +12,6 @@ The app template is the basic atom that describes an application lifecycle. Ther
   * unmount
   * cleanup
 
-Each of these phases
+Every phase in the application template has a before hook and an after hook. It's important to note that all of these are synchronous operations; meaning that if one fails, the entire command fails. 
+
+The format of an application template is strikingly similar shell script. 
