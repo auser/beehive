@@ -1,0 +1,15 @@
+BUILD AN APP TEMPLATE
+-----------------------
+
+h3. What is an app template?
+
+The app template is the basic atom that describes an application lifecycle. There are 6 phases of an application lifecycle:
+
+  * bundle
+  * mount
+  * start
+  * stop
+  * unmount
+  * cleanup
+
+Each of these phases
