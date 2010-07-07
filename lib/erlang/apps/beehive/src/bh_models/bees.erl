@@ -120,46 +120,45 @@ all() ->
 is_the_same_as(Bee, Otherbee) ->
   Bee#bee.id == Otherbee#bee.id.
 
-build_app_env(Bee, RunningDir) -> 
-  CmdOpts = build_app_env(Bee),
-  CmdOpts2 = proplists:delete(cd, CmdOpts),
-  lists:flatten([{cd, RunningDir}, CmdOpts2]).
-build_app_env(#bee{ port        = Port, 
-                    host        = HostIp, 
-                    app_name    = AppName,
-                    commit_hash = Sha,
-                    start_time  = StartedAt
-                  } = _Bee) ->  
+build_app_env(#bee{app_name = AppName} = Bee) ->
   case apps:find_by_name(AppName) of 
     [] -> {error, not_associated_with_an_app};
-    App ->
-      ScratchDisk = config:search_for_application_value(scratch_disk, ?BEEHIVE_DIR("tmp")),
-      RunningDisk = config:search_for_application_value(scratch_disk, ?BEEHIVE_DIR("run")),
-      LogDisk     = config:search_for_application_value(log_path, ?BEEHIVE_DIR("application_logs")),
-
-      WorkingDir = filename:join([ScratchDisk, AppName]),
-      RunningDir = filename:join([RunningDisk, AppName]),
-      LogDir     = filename:join([LogDisk, AppName]),
-
-      OtherOpts = [
-        {name, AppName},
-        {host_ip, HostIp},
-        {sha, Sha},
-        {port, misc_utils:to_list(Port)},
-        {start_time, misc_utils:to_list(StartedAt)},
-        {log_directory, LogDir},
-        {working_directory, WorkingDir},
-        {run_dir, RunningDir}
-      ],
-      EnvOpts = apps:build_app_env(App, OtherOpts),
-      lists:map(fun(Dir) -> 
-        file:make_dir(Dir) 
-      end, [ScratchDisk, WorkingDir, RunningDisk, RunningDir, LogDisk, LogDir]),
-      Opts = lists:flatten([{cd, RunningDir}, EnvOpts]),
-      {ok, App, Opts}
+    App -> build_app_env(Bee, App)
   end.
 
-% INERNAL
+build_app_env(  #bee{ port        = Port, 
+                      host        = HostIp, 
+                      app_name    = AppName,
+                      commit_hash = Sha,
+                      start_time  = StartedAt
+                    } = _Bee, App) -> 
+  ScratchDisk = config:search_for_application_value(scratch_disk, ?BEEHIVE_DIR("tmp")),
+  RunningDisk = config:search_for_application_value(scratch_disk, ?BEEHIVE_DIR("run")),
+  LogDisk     = config:search_for_application_value(log_path, ?BEEHIVE_DIR("application_logs")),
+
+  WorkingDir = filename:join([ScratchDisk, AppName]),
+  RunningDir = filename:join([RunningDisk, AppName]),
+  LogDir     = filename:join([LogDisk, AppName]),
+
+  OtherOpts = [
+    {name, AppName},
+    {host_ip, HostIp},
+    {sha, Sha},
+    {port, misc_utils:to_list(Port)},
+    {start_time, misc_utils:to_list(StartedAt)},
+    {log_directory, LogDir},
+    {working_directory, WorkingDir},
+    {run_dir, RunningDir}
+  ],
+  
+  EnvOpts = apps:build_app_env(App, OtherOpts),
+  lists:map(fun(Dir) -> 
+    file:make_dir(Dir) 
+  end, [ScratchDisk, WorkingDir, RunningDisk, RunningDir, LogDisk, LogDir]),
+  Opts = lists:flatten([{cd, RunningDir}, EnvOpts]),
+  {ok, App, Opts}.
+
+
 new(NewProps) ->
   PropList = ?rec_info(bee, #bee{}),
   FilteredProplist1 = misc_utils:filter_proplist(PropList, NewProps, []),
