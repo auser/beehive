@@ -249,7 +249,8 @@ internal_update_instance(_App, _AppLauncher, _From) ->
   ok.
 
 % Run the mount action on the app
-mount_application(App, PropLists) -> babysitter_integration:command(mount, App, unused, PropLists).
+mount_application(App, PropLists) -> 
+  babysitter_integration:command(mount, App, unused, PropLists).
 
 % Initialize the node
 initialize_application(App, PropLists, AppLauncher, _From) ->
@@ -277,6 +278,7 @@ find_and_transfer_bee(App, Sha) ->
       false -> filelib:ensure_dir(Dir)
     end
   end, [LocalPath]),
+  
   case find_bee_on_storage_nodes(App, Sha, Nodes) of
     {ok, Node, RemotePath} ->
       ?LOG(info, "find_bee_on_storage_nodes found on ~p at ~p to ~p", [Node, LocalPath, RemotePath]),

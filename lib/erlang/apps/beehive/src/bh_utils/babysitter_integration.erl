@@ -5,10 +5,10 @@
 -export ([command/4]).
 
 command(bundle, App, _Bee, PropLists) ->
-  ScratchDisk = proplists:get_value(scratch_disk, PropLists),
-  SquashedDisk = proplists:get_value(squashed_disk, PropLists),
-  WorkingDir  = proplists:get_value(working_dir, PropLists),
-  ReposUrl    = proplists:get_value(repos, PropLists),
+  ScratchDisk = proplists:get_value(scratch_disk, PropLists, "/tmp/beehive"),
+  SquashedDisk = proplists:get_value(squashed_disk, PropLists, "/tmp/beehive"),
+  % WorkingDir  = proplists:get_value(working_dir, PropLists),
+  % ReposUrl    = proplists:get_value(repos, PropLists),
   
   WorkingDir = lists:flatten([ScratchDisk, "/", App#app.name]),
   SquashedDir = lists:flatten([SquashedDisk, "/", App#app.name]),
@@ -20,8 +20,8 @@ command(bundle, App, _Bee, PropLists) ->
     {working_directory, WorkingDir},
     {squashed_directory, SquashedDir},
     {env_file, EnvFileLocation},
-    {squashed_file, FinalLocation},
-    {repos, ReposUrl}
+    {squashed_file, FinalLocation}
+    % {repos, ReposUrl}
   ],
   EnvOpts = apps:build_app_env(App, OtherOpts),
   CmdOpts = lists:flatten([{cd, SquashedDir}|EnvOpts]),
@@ -75,7 +75,10 @@ command(start, App, _Bee, PropLists) ->
     start_time              = StartedAt
   },
   
-  {ok, _App, CmdOpts1} = bees:build_app_env(Bee),
+  {ok, _App, CmdOpts1} = case App of
+    App when is_record(App, app) -> bees:build_app_env(Bee, App);
+    _ -> bees:build_app_env(Bee)
+  end,
   CmdOpts = lists:flatten([
     {bee_image, ImagePath}, 
     CmdOpts1]),
@@ -86,32 +89,35 @@ command(start, App, _Bee, PropLists) ->
     E -> E
   end;
 
-command(stop, _App, Bee, _PropLists) ->
-  case bees:build_app_env(Bee) of
+command(stop, CliApp, Bee, _PropLists) ->
+  {ok, App, CmdOpts} = case CliApp of
+    FoundApp when is_record(FoundApp, app) -> bees:build_app_env(Bee, FoundApp);
     {error, _} = T -> T;
-    {ok, App, CmdOpts} -> 
-      case babysitter:run(App#app.template, stop, CmdOpts) of
-        {ok, _OsPid, _ExitStatus} -> {ok, _OsPid, _ExitStatus, App};
-        E -> E
-      end
+    _ -> bees:build_app_env(Bee)
+  end,
+  case babysitter:run(App#app.template, stop, CmdOpts) of
+    {ok, _OsPid, _ExitStatus} -> {ok, _OsPid, _ExitStatus, App};
+    E -> E
   end;
-command(unmount, _App, Bee, _PropLists) ->
-  case bees:build_app_env(Bee) of
+command(unmount, CliApp, Bee, _PropLists) ->
+  {ok, App, CmdOpts} = case CliApp of
+    FoundApp when is_record(FoundApp, app) -> bees:build_app_env(Bee, FoundApp);
     {error, _} = T -> T;
-    {ok, App, CmdOpts} -> 
-      case babysitter:run(App#app.template, unmount, CmdOpts) of
-        {ok, _OsPid, _ExitStatus} -> {ok, _OsPid, _ExitStatus, App};
-        E -> E
-      end
+    _ -> bees:build_app_env(Bee)
+  end,
+  case babysitter:run(App#app.template, unmount, CmdOpts) of
+    {ok, _OsPid, _ExitStatus} -> {ok, _OsPid, _ExitStatus, App};
+    E -> E
   end;
-command(cleanup, _App, Bee, _PropLists) ->
-  case bees:build_app_env(Bee) of
+command(cleanup, CliApp, Bee, _PropLists) ->
+  {ok, App, CmdOpts} = case CliApp of
+    FoundApp when is_record(FoundApp, app) -> bees:build_app_env(Bee, FoundApp);
     {error, _} = T -> T;
-    {ok, App, CmdOpts} ->
-      case babysitter:run(App#app.template, cleanup, CmdOpts) of
-        {ok, _OsPid, _ExitStatus} -> {ok, _OsPid, _ExitStatus, App};
-        E -> E
-      end
+    _ -> bees:build_app_env(Bee)
+  end,
+  case babysitter:run(App#app.template, cleanup, CmdOpts) of
+    {ok, _OsPid, _ExitStatus} -> {ok, _OsPid, _ExitStatus, App};
+    E -> E
   end;
 command(Else, _, _, _) ->
   throw({error, unknown_babysitter_command, Else}).

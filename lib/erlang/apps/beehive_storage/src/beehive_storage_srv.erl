@@ -215,11 +215,10 @@ build_bee(App, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} 
         {working_directory, WorkingDir},
         {squashed_directory, SquashedDir},
         {env_file, EnvFileLocation},
-        {squashed_file, FinalLocation},
-        {repos, ReposUrl}
+        {squashed_file, FinalLocation}
       ],
       
-      case babysitter_integration:command(bundle, App, unusued, Proplist) of
+      case babysitter_integration:command(bundle, App#app{url = ReposUrl}, unusued, Proplist) of
         {ok, _OsPid, 0} ->
           case fetch_bee(App, State) of
             {bee_built, _Resp} = T -> T;
