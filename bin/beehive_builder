@@ -1,0 +1,14 @@
+#!/bin/sh
+
+. `dirname $0`/beehive_env
+
+ERL_OPTS="-pa $BEEHIVE_SRC/../../../deps/*/ebin \
+          -pa $BEEHIVE_SRC/*/ebin \
+          -pa $BEEHIVE_SRC/*/include"
+
+erl -noshell \
+    -hidden \
+    $ERL_OPTS \
+    -s beehive_builder \
+    -s init stop \
+    -extra "$@"
