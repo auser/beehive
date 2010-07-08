@@ -2,7 +2,7 @@
 
 APP=beehive
 LIBDIR=$(erl -eval 'io:format("~s~n", [code:lib_dir()])' -s init stop -noshell)
-VERSION=`cat VERSION`
+VERSION=`cat ../VERSION`
 INSTALLED_DIR=$LIBDIR/$APP-$VERSION
 ERL_ROOT_DIR=$(dirname $0)/../lib/erlang/apps
 if [ -z $BEEHIVE_HOME ]; then
@@ -17,7 +17,7 @@ if [ -z $BEEHIVE_SRC ]; then
 fi
 print_version() {
 cat <<EOF
-$progname $version
+$progname $VERSION
 
 `cat LICENSE`
 EOF

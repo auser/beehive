@@ -8,7 +8,6 @@ logs
 *.sw?
 .DS_Store
 pkg
-VERSION
 deps
 rel/beehive
 node.log
