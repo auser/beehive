@@ -155,8 +155,8 @@ build_app_env(  #bee{ port        = Port,
                       commit_hash = Sha,
                       start_time  = StartedAt
                     } = _Bee, App) -> 
-  ScratchDisk = config:search_for_application_value(scratch_disk, ?BEEHIVE_DIR("tmp")),
-  RunningDisk = config:search_for_application_value(scratch_disk, ?BEEHIVE_DIR("run")),
+  ScratchDisk = config:search_for_application_value(scratch_dir, ?BEEHIVE_DIR("tmp")),
+  RunningDisk = config:search_for_application_value(scratch_dir, ?BEEHIVE_DIR("run")),
   LogDisk     = config:search_for_application_value(log_path, ?BEEHIVE_DIR("application_logs")),
 
   WorkingDir = filename:join([ScratchDisk, AppName]),

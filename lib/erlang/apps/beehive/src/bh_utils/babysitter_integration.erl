@@ -5,15 +5,15 @@
 -export ([command/4]).
 
 command(bundle, App, _Bee, PropLists) ->
-  ScratchDisk = proplists:get_value(scratch_disk, PropLists, "/tmp/beehive"),
+  ScratchDisk = proplists:get_value(scratch_dir, PropLists, "/tmp/beehive"),
   SquashedDisk = proplists:get_value(squashed_disk, PropLists, "/tmp/beehive"),
   % WorkingDir  = proplists:get_value(working_dir, PropLists),
   % ReposUrl    = proplists:get_value(repos, PropLists),
   
-  WorkingDir = lists:flatten([ScratchDisk, "/", App#app.name]),
-  SquashedDir = lists:flatten([SquashedDisk, "/", App#app.name]),
-  FinalLocation = lists:flatten([SquashedDir, "/", App#app.name, ".bee"]),
-  EnvFileLocation = lists:flatten([SquashedDir, "/", App#app.name, ".env"]),
+  WorkingDir      = filename:join([ScratchDisk, App#app.name]),
+  SquashedDir     = filename:join([SquashedDisk, App#app.name]),
+  FinalLocation   = filename:join([SquashedDir, App#app.name, ".bee"]),
+  EnvFileLocation = filename:join([SquashedDir, App#app.name, ".env"]),
   lists:foreach(fun(Dir) -> file:make_dir(Dir) end, [ScratchDisk, WorkingDir, SquashedDisk, SquashedDir]),
 
   OtherOpts = [
@@ -29,14 +29,15 @@ command(bundle, App, _Bee, PropLists) ->
   babysitter:run(App#app.template, bundle, CmdOpts);
 
 command(mount, App, _Bee, PropLists) ->
-  ScratchDisk = config:search_for_application_value(scratch_disk, ?BEEHIVE_DIR("tmp")),
-  RunDir = config:search_for_application_value(squashed_storage, ?BEEHIVE_DIR("run")),
+  ScratchDisk = proplists:get_value(scratch_dir, PropLists, "/tmp/beehive"),
+  RunDir      = proplists:get_value(run_dir, PropLists, "/tmp/beehive"),
+  
   UniqueName = App#app.name,
 
-  WorkingDir = filename:join([ScratchDisk, App#app.name]),
-  MountedDir = filename:join([RunDir, UniqueName]),
-  BeeImage = proplists:get_value(bee_image, PropLists),
-  Port = misc_utils:to_list(proplists:get_value(port, PropLists)),
+  WorkingDir    = filename:join([ScratchDisk, App#app.name]),
+  MountedDir    = filename:join([RunDir, UniqueName]),
+  BeeImage      = proplists:get_value(bee_image, PropLists),
+  Port          = misc_utils:to_list(proplists:get_value(port, PropLists)),
   
   OtherOpts = [
     {working_directory, WorkingDir},
@@ -45,7 +46,9 @@ command(mount, App, _Bee, PropLists) ->
     {run_dir, RunDir},
     {port, Port}
   ],
-  lists:map(fun(Dir) -> file:make_dir(Dir) end, [RunDir, ScratchDisk, WorkingDir, MountedDir]),
+  
+  bh_file_utils:ensure_dir_exists([RunDir, ScratchDisk, WorkingDir, MountedDir]),
+  
   EnvOpts = apps:build_app_env(App, OtherOpts),
   CmdOpts = lists:flatten([{cd, MountedDir}|EnvOpts]),
   
@@ -82,8 +85,7 @@ command(start, App, _Bee, PropLists) ->
   CmdOpts = lists:flatten([
     {bee_image, ImagePath}, 
     CmdOpts1]),
-      
-  io:format("------ App handler using babysitter spawn_new: ~p~n", [CmdOpts]),
+  
   case babysitter:run(App#app.template, start, CmdOpts) of
     {ok, Pid, OsPid} -> {ok, Pid, OsPid, Bee};
     E -> E

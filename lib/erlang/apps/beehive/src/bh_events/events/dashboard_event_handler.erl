@@ -127,11 +127,12 @@ bee_to_proplist(Bee) ->
     {app_name, Bee#bee.app_name}
   ].
 
-handle_msg(Msg, #state{last_trans = LastTrans} = State) ->
-  TransId = next_trans(LastTrans),
-  ets:insert(?DASHBOARD_EVENTS_TABLE, [{TransId, Msg}]),
-  beehive_dashboard_srv:send_message_to_all_websockets(Msg),
-  State#state{last_trans = TransId}.
+handle_msg(_Msg, State) ->
+  % TransId = next_trans(LastTrans),
+  % ets:insert(?DASHBOARD_EVENTS_TABLE, [{TransId, Msg}]),
+  % beehive_dashboard_srv:send_message_to_all_websockets(Msg),
+  % State#state{last_trans = TransId}.
+  State.
 
 % So that we can get a unique id for each communication
 next_trans(I) when I < 268435455 -> I+1;
