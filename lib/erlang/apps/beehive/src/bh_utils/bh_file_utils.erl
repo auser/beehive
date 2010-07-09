@@ -38,3 +38,8 @@ abs_or_relative_filepath(P) ->
 % Get the relative path joined with the filename
 relative_path(P) ->
   filename:join([filename:absname(""), P]).
+  
+ensure_dir_exists([]) -> ok;
+ensure_dir_exists([Dir|Rest]) ->
+  filelib:ensure_dir(Dir ++ "/.nonexistant_file"),
+  ensure_dir_exists(Rest).

@@ -35,7 +35,7 @@ start() ->
   application:set_env(beehive, beehive_home, RootDir),
   
   % Build all the args here
-  ScratchDisk = config:search_for_application_value(scratch_disk, "/tmp/beehive/scratch"),  
+  ScratchDisk = config:search_for_application_value(scratch_dir, "/tmp/beehive/scratch"),  
   SquashedDisk = config:search_for_application_value(squashed_disk, "/tmp/beehive/squashed"),
   BeeImage = filename:join([filename:absname(SquashedDisk), App#app.name, lists:append([App#app.name, ".bee"])]),
   HostIp = bh_host:myip(),
@@ -44,7 +44,7 @@ start() ->
     {bee_image, BeeImage},
     {port, Port},
     {host, HostIp},
-    {scratch_disk, ScratchDisk}, 
+    {scratch_dir, ScratchDisk}, 
     {squashed_disk, SquashedDisk}
   |CliArgs1],
   

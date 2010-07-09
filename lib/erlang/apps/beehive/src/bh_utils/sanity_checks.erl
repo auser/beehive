@@ -27,7 +27,7 @@ check_db_directory() ->
         true -> ok;
         false -> 
           % If the directory doesn't exist yet, let's create it
-          case filelib:ensure_dir(Dir) of
+          case bh_file_utils:ensure_dir_exists([Dir]) of
             ok -> ok;
             _ -> 
               MnesiaDir = filename:join(?BEEHIVE_HOME, "db"),

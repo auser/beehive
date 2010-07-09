@@ -50,7 +50,7 @@ save(Contents, To) ->
     true -> ok;
     false ->
       FullPath = filename:join([filename:absname(""), To]),
-      filelib:ensure_dir(FullPath),
+      bh_file_utils:ensure_dir_exists([filename:dirname(FullPath)]),
       FullPath
   end,
   prim_file:write_file(FullFilePath, Contents).
