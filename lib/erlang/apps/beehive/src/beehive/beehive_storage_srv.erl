@@ -75,6 +75,7 @@ start_link() ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
+  erlang:display({init, ?MODULE, ?BEEHIVE_DIR("tmp"), }),
   ScratchDisk = config:search_for_application_value(scratch_disk, ?BEEHIVE_DIR("tmp")),
   SquashedDir = config:search_for_application_value(squashed_storage, ?BEEHIVE_DIR("squashed")),
   
@@ -188,7 +189,6 @@ handle_vote({build_bee, _App}, State) ->
   % For now, always try to get the vote
   {reply, 1, State};
 handle_vote({has_squashed_repos, App, Sha}, State) ->
-  erlang:display({has_squashed_repos, self()}),
   Val = case handle_lookup_squashed_repos(App, Sha, State) of
     false -> 0;
     _ -> 1
@@ -221,20 +221,21 @@ fetch_bee(App, #state{squashed_disk = SquashedDisk} = _State) ->
 %% @end
 %%-------------------------------------------------------------------
 internal_build_bee(App, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} = State) ->
-  erlang:display({build_bee, App}),
   case handle_repos_lookup(App) of
     {ok, ReposUrl} ->
       WorkingDir = lists:flatten([ScratchDisk, "/", App#app.name]),
       SquashedDir = lists:flatten([SquashedDisk, "/", App#app.name]),
       FinalLocation = lists:flatten([SquashedDir, "/", App#app.name, ".bee"]),
       EnvFileLocation = lists:flatten([SquashedDir, "/", App#app.name, ".env"]),
-  
+      
       Proplist = [
         {working_directory, WorkingDir},
         {squashed_directory, SquashedDir},
         {env_file, EnvFileLocation},
         {squashed_file, FinalLocation}
       ],
+      
+      erlang:display({bundle, Proplist}),
       
       case babysitter_integration:command(bundle, App#app{url = ReposUrl}, unusued, Proplist) of
         {ok, _OsPid, 0} ->
@@ -285,7 +286,7 @@ handle_offsite_repos_lookup(AppName) ->
 
 handle_lookup_squashed_repos(#app{sha = CurrentAppSha } = App, Sha, #state{squashed_disk = SquashedDir} = State) ->
   case handle_find_application_location(App, SquashedDir) of
-    false -> false;
+    false -> {error, not_found};
     FullFilePath ->
       case CurrentAppSha =:= Sha of
         true -> FullFilePath;

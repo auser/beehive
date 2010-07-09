@@ -275,25 +275,24 @@ find_and_transfer_bee(App, Sha) ->
   ScratchDisk = config:search_for_application_value(scratch_disk, ?BEEHIVE_DIR("storage")),
   LocalPath = filename:join([filename:absname(ScratchDisk), lists:append([App#app.name, ".bee"])]),
   
-  case gen_cluster:ballot_run(beehive_storage_srv, {has_squashed_repos, App, Sha}) of
+  case gen_cluster:run(beehive_storage_srv, {has_squashed_repos, App, Sha}) of
     {error, Reason} ->
       % No nodes wanted to play, so let's force one
-      erlang:display({error, Reason}),
-      case gen_cluster:ballot_run(beehive_storage_srv, {build_bee, App}) of
-        {ok, Pid, _Res} ->
-          {ok, _, RemotePath} = gen_cluster:call(Pid, {has_squashed_repos, App, Sha}),
-          fetch_bee_from_into(Pid, RemotePath, LocalPath),
-          {ok, Pid, LocalPath};
-        T ->
-          erlang:display({got_something_else, T}),
-          {error, T}
-      end;
-    {ok, _Pid1, Result} -> 
+      erlang:display({error, ballot_run, Reason});
+    {ok, Pid1, Result} -> 
       case Result of
         {ok, Node, RemotePath} ->
           % We have a node with the repos
           fetch_bee_from_into(Node, RemotePath, LocalPath),
           {ok, Node, LocalPath};
+        {error, not_found} ->
+          % We have not found the repos, so instruct this backend to pull the repos
+          % because we have to fulfill the request, regardless
+          case gen_cluster:call(Pid1, {build_bee, App}, infinity) of
+            T ->
+              erlang:display({from,build_bee,T}),
+              ok
+          end;
         Else ->
           erlang:display({error, Else})
       end

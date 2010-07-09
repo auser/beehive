@@ -14,7 +14,7 @@ command(bundle, App, _Bee, PropLists) ->
   SquashedDir = lists:flatten([SquashedDisk, "/", App#app.name]),
   FinalLocation = lists:flatten([SquashedDir, "/", App#app.name, ".bee"]),
   EnvFileLocation = lists:flatten([SquashedDir, "/", App#app.name, ".env"]),
-  lists:map(fun(Dir) -> file:make_dir(Dir) end, [ScratchDisk, WorkingDir, SquashedDisk, SquashedDir]),
+  lists:foreach(fun(Dir) -> file:make_dir(Dir) end, [ScratchDisk, WorkingDir, SquashedDisk, SquashedDir]),
 
   OtherOpts = [
     {working_directory, WorkingDir},

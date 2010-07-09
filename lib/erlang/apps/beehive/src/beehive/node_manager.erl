@@ -303,13 +303,13 @@ get_server_load([H|Rest], Acc) ->
   get_server_load(Rest, [{H, Stat}|Acc]).
 
 read_babysitter_config() ->
-  DefaultConfigDir = filename:join([?BH_ROOT, "etc", "app_templates"]),
-  ConfigDir       = misc_utils:to_list(
-                      config:search_for_application_value(app_config_dir, DefaultConfigDir)
-                    ),
+  DefaultConfigDir    = filename:join([?BH_ROOT, "etc", "app_templates"]),
+  SpecifiedConfigDir  = misc_utils:to_list(config:search_for_application_value(app_config_dir, DefaultConfigDir)),
+  RootDir             = filename:dirname(config:find_config_file()),
+  
   try
-    babysitter_config:read(ConfigDir)
+    babysitter_config:read(filename:join([RootDir, SpecifiedConfigDir]))
   catch X:Reason ->
-    erlang:display({error, {read_babysitter_config, {error, X, Reason}, ConfigDir}}),
+    erlang:display({error, {babysitter_config, {error, X, Reason}}}),
     ok
   end.
