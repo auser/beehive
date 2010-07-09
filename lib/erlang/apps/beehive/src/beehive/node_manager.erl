@@ -22,6 +22,7 @@ end).
   get_servers/1, get_servers/0,
   start_link/0,
   is_a/1,
+  seed_nodes/0,
   seed_pid/0, seed_pids/1,
   stop/0,
   dump/1,
@@ -36,7 +37,7 @@ end).
     handle_info/2, terminate/2, code_change/3]).
 
 % gen_cluster callback
--export([handle_join/3, handle_leave/4]).
+-export([handle_join/2, handle_leave/3]).
 
 -record (state, {
   type,             % type of node (router|bee|storage)
@@ -106,9 +107,12 @@ get_servers(PidType) ->
   end.
 
 dump(Pid) -> gen_server:call(seed_pid(), {dump, Pid}).
+seed_nodes() -> [node(seed_pid())].
 
 seed_pid() -> hd(seed_pids([])).
-seed_pids(_State) -> [global:whereis_name(?MODULE)].
+seed_pids(_State) -> 
+  {ok, Plist} = gen_cluster:plist(?MODULE),
+  Plist.
 
 is_a(Type) -> 
   gen_cluster:call(seed_pid(), {is_a, Type}).
@@ -270,8 +274,8 @@ code_change(_OldVsn, State, _Extra) ->
 %% join more than once. Pidlist contains all known pids. Pidlist includes
 %% JoiningPid.
 %%--------------------------------------------------------------------
-handle_join(JoiningPid, Pidlist, State) ->
-  ?TRACE("~p:~p handle join called: ~p Pidlist: ~p~n", [?MODULE, ?LINE, JoiningPid, Pidlist]),
+handle_join(JoiningPid, State) ->
+  ?TRACE("~p:~p handle join called: ~p~n", [?MODULE, ?LINE, JoiningPid]),
   {ok, State}.
 
 %%--------------------------------------------------------------------
@@ -281,8 +285,8 @@ handle_join(JoiningPid, Pidlist, State) ->
 %% Description: Called whenever a node joins the cluster via another node and
 %%     the joining node is simply announcing its presence.
 %%--------------------------------------------------------------------
-handle_leave(LeavingPid, Pidlist, Info, State) ->
-  ?TRACE("~p:~p handle leave called: ~p, Info: ~p Pidlist: ~p~n", [?MODULE, ?LINE, LeavingPid, Info, Pidlist]),
+handle_leave(LeavingPid, Info, State) ->
+  ?TRACE("~p:~p handle leave called: ~p, Info: ~p~n", [?MODULE, ?LINE, LeavingPid, Info]),
   {ok, State}.
 
 

@@ -66,10 +66,19 @@ init(_Args) ->
   ShouldRunRestServer = config:search_for_application_value(run_rest_server, true),
   
   Children = lists:flatten([
+    % Manage the nodes and apps
     ?CHILD(node_manager, worker),
     ?CHILD(app_manager, worker),
+    % Start the event manager
     ?CHILD(event_manager, worker),
+    % For the distributed database
     ?CHILD(beehive_db_srv, worker),
+    ?CHILD(babysitter, worker),
+    ?CHILD(app_handler, worker),
+    % Storage stuff
+    ?CHILD(beehive_storage_srv, worker),
+    ?CHILD(beehive_git_srv, worker),
+    % Rest server, should we run it?    
     ?IF(ShouldRunRestServer, RestServer, [])
   ]),
   

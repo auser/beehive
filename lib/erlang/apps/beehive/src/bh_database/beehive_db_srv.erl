@@ -9,13 +9,15 @@
 %% API
 -export([
   start_link/0, start_link/1, start_link/2,
+  stop/0,
   read/2,
   write/3,
-  delete/2,
+  delete/2, delete_all/1,
   all/1,
   run/1,
   save/1,
-  status/0
+  status/0,
+  match/1
 ]).
 
 %% gen_server callbacks
@@ -39,8 +41,10 @@ read(Table, Key) -> gen_server:call(?SERVER, {read, Table, Key}).
 write(Table, Key, Proplist) -> gen_server:call(?SERVER, {write, Table, Key, Proplist}).
 save(Function) -> gen_server:call(?SERVER, {save, Function}).
 delete(Table, Key) -> gen_server:call(?SERVER, {delete, Table, Key}).
+delete_all(Table) -> gen_server:call(?SERVER, {delete_all, Table}).
 all(Table) -> gen_server:call(?SERVER, {all, Table}).
 run(Fun) -> gen_server:call(?SERVER, {run, Fun}).
+match(Mod) -> gen_server:call(?SERVER, {match, Mod}).
 
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
@@ -51,6 +55,8 @@ start_link(DbAdapter) -> start_link(DbAdapter, []).
 start_link(DbAdapter, Nodes) when is_atom(DbAdapter) -> 
   gen_server:start_link({local, ?SERVER}, ?MODULE, [erlang:atom_to_list(DbAdapter), Nodes], []);
 start_link(DbAdapter, Nodes) -> gen_server:start_link({local, ?SERVER}, ?MODULE, [DbAdapter, Nodes], []).
+
+stop() -> gen_server:cast(?SERVER, {stop}).
 
 %%====================================================================
 %% gen_server callbacks
@@ -90,38 +96,29 @@ init([DbAdapterName, Nodes]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call({write, Table, Key, Proplist}, From, #state{adapter = Adapter, queries = OldTransQ, last_trans = LastTrans} = State) ->
-  TransId = next_trans(LastTrans),
-  try_to_call(TransId, Adapter, write, [Table, Key, Proplist]),
-  {noreply, State#state{queries = queue:in({TransId, From}, OldTransQ)}};
-handle_call({save, Fun}, From, #state{adapter = Adapter, queries = OldTransQ, last_trans = LastTrans} = State) ->
-  TransId = next_trans(LastTrans),
-  try_to_call(TransId, Adapter, save, [Fun]),
-  {noreply, State#state{queries = queue:in({TransId, From}, OldTransQ)}};
-handle_call({read, Table, Key}, From, #state{adapter = Adapter, queries = OldTransQ, last_trans = LastTrans} = State) ->
-  TransId = next_trans(LastTrans),
-  try_to_call(TransId, Adapter, read, [Table, Key]),
-  {noreply, State#state{queries = queue:in({TransId, From}, OldTransQ)}};
-handle_call({delete, Table, Key}, From, #state{adapter = Adapter, queries = OldTransQ, last_trans = LastTrans} = State) ->
-  TransId = next_trans(LastTrans),
-  try_to_call(TransId, Adapter, delete, [Table, Key]),
-  {noreply, State#state{queries = queue:in({TransId, From}, OldTransQ)}};
+handle_call({write, Table, Key, Proplist}, From, State) ->
+  handle_queued_call(write, From, [Table, Key, Proplist], State);
+handle_call({save, Fun}, From, State) ->
+  handle_queued_call(save, From, [Fun], State);
+handle_call({read, Table, Key}, From, State) ->
+  handle_queued_call(read, From, [Table, Key], State);
+% Deletions
+handle_call({delete, Table, Key}, From, State) ->
+  handle_queued_call(delete, From, [Table, Key], State);
+handle_call({delete_all, Table}, From, State) ->
+  handle_queued_call(delete_all, From, [Table], State);
   % {reply, try_to_call(Adapter, delete, [Table, Key]), State};
-handle_call({status}, From, #state{adapter = Adapter, queries = OldTransQ, last_trans = LastTrans} = State) ->
-  TransId = next_trans(LastTrans),
-  try_to_call(TransId, Adapter, status, []),
-  {noreply, State#state{queries = queue:in({TransId, From}, OldTransQ)}};
+handle_call({status}, From, State) ->
+  handle_queued_call(status, From, [], State);
   % {reply, try_to_call(Adapter, status, []), State};
-handle_call({all, Table}, From, #state{adapter = Adapter, queries = OldTransQ, last_trans = LastTrans} = State) ->
-  TransId = next_trans(LastTrans),
-  try_to_call(TransId, Adapter, all, [Table]),
-  {noreply, State#state{queries = queue:in({TransId, From}, OldTransQ)}};
+handle_call({all, Table}, From, State) ->
+  handle_queued_call(all, From, [Table], State);
   % {reply, try_to_call(Adapter, all, [Table]), State};
-handle_call({run, Fun}, From, #state{adapter = Adapter, queries = OldTransQ, last_trans = LastTrans} = State) ->
-  TransId = next_trans(LastTrans),
-  try_to_call(TransId, Adapter, run, [Fun]),
-  {noreply, State#state{queries = queue:in({TransId, From}, OldTransQ)}};
+handle_call({run, Fun}, From, State) ->
+  handle_queued_call(run, From, [Fun], State);
   % {reply, try_to_call(Adapter, run, [Fun]), State};
+handle_call({match, Mod}, From, State) ->
+  handle_queued_call(match, From, [Mod], State);
 handle_call(_Request, _From, State) ->
   Reply = ok,
   {reply, Reply, State}.
@@ -132,6 +129,8 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
+handle_cast({stop}, State) ->
+  {stop, normal, State};
 handle_cast(_Msg, State) ->
   {noreply, State}.
 
@@ -179,6 +178,10 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc The directory for the database
 %% @end
 %%-------------------------------------------------------------------
+handle_queued_call(Action, From, Args, #state{adapter = Adapter, queries = OldTransQ, last_trans = LastTrans} = State) ->
+  TransId = next_trans(LastTrans),
+  try_to_call(TransId, Adapter, Action, Args),
+  {noreply, State#state{queries = queue:in({TransId, From}, OldTransQ)}}.
 % Super utility
 try_to_call(TransId, M, F, A) ->
   From = self(),

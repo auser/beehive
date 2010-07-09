@@ -6,12 +6,14 @@
 
 -export ([
   start/1,
+  stop/0,
   read/2,
   save/1,
   write/3,
   run/1,
-  delete/2,
-  all/1
+  delete/2, delete_all/1,
+  all/1,
+  match/1
 ]).
 
 % API
@@ -21,6 +23,10 @@ start(Nodes) ->
   ok = ensure_running(),
   ok = add_slave(Nodes),
   ok = wait_for_tables(),
+  ok.
+
+stop() ->
+  application:stop(mnesia),
   ok.
 
 % read
@@ -36,11 +42,18 @@ write(_Table, _Key, Record) ->
   %   {atomic, _} -> ok
   % end.
 
+match(Pattern) ->
+  {_Time, Value} = timer:tc(mnesia, dirty_match_object, [Pattern]),
+  Value.
+
 save(Fun) ->
   case mnesia:transaction(Fun) of
     {aborted, Reason} -> {error, Reason};
     {atomic, _} -> ok
   end.
+
+delete_all(Table) ->
+  mnesia:clear_table(Table).
 
 delete(Table, Record) ->
   case mnesia:transaction(fun() -> mnesia:delete({Table, Record}) end) of

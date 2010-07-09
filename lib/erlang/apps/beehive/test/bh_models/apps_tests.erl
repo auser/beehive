@@ -3,16 +3,11 @@
 -include_lib("eunit/include/eunit.hrl").
 
 setup() ->
-  application:start(sasl),
-  Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
-  ConfigFile = filename:join([Dir, "test", "beehive.cfg"]),
-  application:set_env(beehive, config_file, ConfigFile),
-  
-  beehive:start(),
+  test_util:setup_test(bee),
   ok.
   
 teardown(_X) ->
-  beehive:stop(),
+  test_util:teardown_test(),
   ok.
 
 starting_test_() ->
@@ -32,6 +27,7 @@ test_save() ->
   % Delete all
   delete_all(),
   {ok, App1} = apps:save(#app{name="test_app"}),
+  ?assert(App1#app.branch =:= "master"),
   {atomic,Results1} = mnesia:transaction(fun() -> mnesia:match_object(#app{_='_'}) end),
   [FoundApp1|_Rest] = Results1,
   ?assertEqual(FoundApp1#app.name, App1#app.name),

@@ -97,19 +97,19 @@ init([Proplist]) ->
 %% called if a timeout occurs.
 %%--------------------------------------------------------------------
 preparing({update}, #state{app = App} = State) ->
-  Pid = node_manager:get_next_available(storage),
-  Node = node(Pid),
+  % Pid = node_manager:get_next_available(storage),
+  % Node = node(Pid),
   Self = self(),
-  rpc:cast(Node, beehive_storage_srv, rebuild_bee, [App, Self]),
+  % rpc:cast(Node, beehive_storage_srv, rebuild_bee, [App, Self]),
+  % beehive_storage_srv:
+  gen_cluster:ballot_run(beehive_storage_srv, {rebuild_bee, App, Self}),
   {next_state, updating, State};
 
-preparing({launch}, #state{host = Host, app = App} = State) ->
-  case Host of
-    false -> {stop, no_node_found, State};
-    _ ->
-      NewState = start_instance(State#state{latest_sha = App#app.sha}),
-      {next_state, launching, NewState}
-  end;
+preparing({launch}, #state{from = From, app = App, bee = Bee, latest_sha = Sha} = State) ->
+  Pid = gen_cluster:ballot_run(app_handler, {start_new_instance, [App, Sha, self(), From]}),
+  Node = node(Pid),
+  NewState = State#state{bee = Bee#bee{host_node = Node}},
+  {next_state, launching, NewState};
 
 preparing({start_new}, State) ->
   self() ! {bee_built, []},

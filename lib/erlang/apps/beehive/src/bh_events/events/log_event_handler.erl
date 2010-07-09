@@ -14,8 +14,7 @@
 -export([init/1, handle_event/2, handle_call/2, handle_info/2, terminate/2, code_change/3]).
 
 -record (state, {
-  log_level,
-  log_handle
+  log_level
 }).
 
 % Log levels
@@ -47,11 +46,16 @@ init([]) ->
   LogPath  = misc_utils:to_list(config:search_for_application_value(log_path, ?BEEHIVE_DIR("logs"))),
   LogLevel = misc_utils:to_list(config:search_for_application_value(log_level, ?VERBOSE)),
   % Get the full path for the file
-  LogName1 = misc_utils:to_list(config:search_for_application_value(node_type, node)),
   
-  LogHandle = make_log(LogPath, LogName1),
-  
-  {ok, #state{log_handle = LogHandle, log_level = LogLevel}}.
+  lists:map(fun(Level) ->
+    disk_log:open( lists:flatten([
+      {name, Level}, 
+      {file, make_log(LogPath, erlang:atom_to_list(Level))},
+      {distributed, [node()]},
+      {format, internal}
+    ]))
+  end, ?LOG_LEVELS),
+  {ok, #state{log_level = LogLevel}}.
 
 %%--------------------------------------------------------------------
 %% Function:
@@ -100,8 +104,10 @@ handle_info(_Info, State) ->
 %% this function is called. It should be the opposite of Module:init/1 and
 %% do any necessary cleaning up.
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{log_handle = Handle} = _State) ->
-  lists:map(fun(_, Fd) -> file:close(Fd) end, [Handle]),
+terminate(_Reason, _State) ->
+  lists:map(fun(Level) ->
+    disk_log:close(Level)
+  end, ?LOG_LEVELS),
   ok.
 
 %%--------------------------------------------------------------------
@@ -112,33 +118,23 @@ code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
   
 % INTERNAL FUNCTIONS
-
-ensure_logfile_exists(FullFilepath) ->
-  case (catch file:open(FullFilepath, [append])) of
-    {ok, F} -> F;
-    _E -> 
-      FullPath = filename:join([filename:absname("./"), filename:basename(FullFilepath)]),
-      filelib:ensure_dir(filename:dirname(FullPath)),
-      {ok, F} = file:open(FullPath, [write]),
-      F
-  end.
-
-write(Level, _File, _Line, Message, #state{log_handle = Handle, log_level = LogLevel} = State) ->
-  Msg = io_lib:format("[~s] [~p] ~s\r\n", [httpd_util:rfc1123_date(), Level, Message]),
-  write_to_sasl(LogLevel, Handle, Msg),
-  case LogLevel of
-    0 -> ok;
-    _ -> write_to_console(Msg)
-  end,
+write(Level, _File, _Line, Message, State) ->
+  FlatMsg = io_lib:format("[~s] [~p] ~s\r\n", [httpd_util:rfc1123_date(), Level, Message]),
+  Msg = erlang:iolist_to_binary(FlatMsg),
+  disk_log:blog(Level, Msg),
   State.
 
-write_to_console(Msg) -> io:format("~s", [Msg]).
-write_to_sasl(Level, Fd, Msg) ->
-  case Level of
-    ?QUIET -> ok;
-    _ -> io:format(Fd, "~s", [Msg])
-  end.
+% write_to_console(Msg) -> io:format("~s", [Msg]).
+% write_to_sasl(Level, Fd, Msg) ->
+%   case Level of
+%     ?QUIET -> ok;
+%     _ -> io:format(Fd, "~s", [Msg])
+%   end.
 
 make_log(LogPath, LogName) ->
-  FullFilepath = filename:join([LogPath, lists:append([LogName, ".log"])]),
-  ensure_logfile_exists(FullFilepath).
+  File = filename:join([LogPath, lists:append([LogName, ".log"])]),
+  lists:map(fun(Dir) ->
+    filelib:ensure_dir(Dir)
+  end, [File]),
+  File.
+  % ensure_logfile_exists(FullFilepath).

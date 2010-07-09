@@ -26,6 +26,10 @@
                   web_utils, babysitter_integration, beehive_builder,
                   % Launchers
                   app_launcher_fsm, app_killer_fsm,
+                  % App handler
+                  app_handler,
+                  % Storage
+                  beehive_git_srv, beehive_storage_srv,
                   % Stores
                   beehive_db_srv, db_mnesia_adapter,
                   queue_store
