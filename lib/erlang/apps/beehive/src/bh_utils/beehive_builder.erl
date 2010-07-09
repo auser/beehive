@@ -25,12 +25,14 @@ start() ->
   
   App = build_app_from_args(AppFile),
   
-  _RootDir = case RootDir1 of
+  RootDir = case RootDir1 of
     undefined -> 
       {ok, D} = file:get_cwd(),
       D;
     _ -> RootDir1
   end,
+
+  application:set_env(beehive, beehive_home, RootDir),
   
   % Build all the args here
   ScratchDisk = config:search_for_application_value(scratch_disk, "/tmp/beehive/scratch"),  
