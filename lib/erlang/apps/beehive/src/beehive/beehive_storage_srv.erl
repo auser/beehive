@@ -32,7 +32,7 @@
 
 
 -record(state, {
-  scratch_disk,
+  scratch_dir,
   squashed_disk
 }).
 
@@ -54,8 +54,7 @@ fetch_or_build_bee(App) ->
   gen_cluster:call(?SERVER, {fetch_or_build_bee, App}).
 
 has_squashed_repos(App, Sha) ->
-  erlang:display({has_squashed_repos, App}),
-  gen_cluster:call(?SERVER, {handle_lookup_squashed_repos, App, Sha}).
+  gen_cluster:call(?SERVER, {has_squashed_repos, App, Sha}).
 
 can_pull_new_app() ->
   gen_cluster:call(?SERVER, {can_pull_new_app}).
@@ -75,19 +74,13 @@ start_link() ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
-  erlang:display({init, ?MODULE, ?BEEHIVE_DIR("tmp"), }),
-  ScratchDisk = config:search_for_application_value(scratch_disk, ?BEEHIVE_DIR("tmp")),
+  ScratchDisk = config:search_for_application_value(scratch_dir, ?BEEHIVE_DIR("tmp")),
   SquashedDir = config:search_for_application_value(squashed_storage, ?BEEHIVE_DIR("squashed")),
   
-  lists:map(fun(Dir) ->
-    case filelib:is_dir(Dir) of
-      true -> ok;
-      false -> filelib:ensure_dir(Dir)
-    end
-  end, [ScratchDisk, SquashedDir]),
+  bh_file_utils:ensure_dir_exists([ScratchDisk, SquashedDir]),
   
   {ok, #state{
-    scratch_disk = ScratchDisk,
+    scratch_dir = ScratchDisk,
     squashed_disk = SquashedDir
   }}.
 
@@ -109,8 +102,6 @@ handle_call({fetch_or_build_bee, App}, _From, State) ->
 handle_call({build_bee, App}, _From, State) ->
   Resp = internal_build_bee(App, State),
   {reply, Resp, State};
-handle_call({handle_lookup_squashed_repos, App, Sha}, _From, State) ->
-  {reply, handle_lookup_squashed_repos(App, Sha, State), State};
 handle_call({has_squashed_repos, App, Sha}, _From, State) ->
   {reply, handle_lookup_squashed_repos(App, Sha, State), State};
 handle_call({can_pull_new_app}, _From, State) ->
@@ -220,22 +211,14 @@ fetch_bee(App, #state{squashed_disk = SquashedDisk} = _State) ->
 %%      
 %% @end
 %%-------------------------------------------------------------------
-internal_build_bee(App, #state{scratch_disk = ScratchDisk, squashed_disk = SquashedDisk} = State) ->
+internal_build_bee(App, #state{scratch_dir = ScratchDisk, squashed_disk = SquashedDisk} = State) ->
   case handle_repos_lookup(App) of
     {ok, ReposUrl} ->
-      WorkingDir = lists:flatten([ScratchDisk, "/", App#app.name]),
-      SquashedDir = lists:flatten([SquashedDisk, "/", App#app.name]),
-      FinalLocation = lists:flatten([SquashedDir, "/", App#app.name, ".bee"]),
-      EnvFileLocation = lists:flatten([SquashedDir, "/", App#app.name, ".env"]),
-      
+            
       Proplist = [
-        {working_directory, WorkingDir},
-        {squashed_directory, SquashedDir},
-        {env_file, EnvFileLocation},
-        {squashed_file, FinalLocation}
+        {scratch_dir, ScratchDisk},
+        {squashed_disk, SquashedDisk}
       ],
-      
-      erlang:display({bundle, Proplist}),
       
       case babysitter_integration:command(bundle, App#app{url = ReposUrl}, unusued, Proplist) of
         {ok, _OsPid, 0} ->
@@ -284,20 +267,14 @@ handle_offsite_repos_lookup(AppName) ->
     _ -> false
   end.
 
-handle_lookup_squashed_repos(#app{sha = CurrentAppSha } = App, Sha, #state{squashed_disk = SquashedDir} = State) ->
+handle_lookup_squashed_repos(App, _Sha, #state{squashed_disk = SquashedDir} = _State) ->
   case handle_find_application_location(App, SquashedDir) of
     false -> {error, not_found};
-    FullFilePath ->
-      case CurrentAppSha =:= Sha of
-        true -> FullFilePath;
-        false -> 
-          file:delete(FullFilePath),
-          internal_build_bee(App, State),
-          FullFilePath
-      end
+    FullFilePath -> {ok, node(self()), FullFilePath}
   end.
 
 handle_find_application_location(#app{name = Name} = _App, SquashedDir) ->
+  bh_file_utils:ensure_dir_exists([SquashedDir]),
   {ok, Folders} = file:list_dir(SquashedDir),
   case lists:member(Name, Folders) of
     true ->

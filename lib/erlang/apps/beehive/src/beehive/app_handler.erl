@@ -33,6 +33,8 @@
 -export ([handle_vote/2]).
 
 -record(state, {
+  run_dir,
+  scratch_dir,
   max_bees             % maximum number of bees on this host
 }).
 -define(SERVER, ?MODULE).
@@ -61,7 +63,7 @@ can_deploy_new_app() ->
   gen_cluster:call(?SERVER, {can_deploy_new_app}).
   
 start_new_instance(App, Sha, AppLauncher, From) ->
-  gen_cluster:call(?SERVER, {start_new_instance, App, Sha, AppLauncher, From}).
+  gen_cluster:call(?SERVER, {start_new_instance, App, Sha, AppLauncher, From}, infinity).
 
 update_instance(App, AppLauncher, From) ->
   gen_cluster:call(?SERVER, {update_instance, App, AppLauncher, From}).
@@ -102,7 +104,12 @@ init(_Args) ->
   
   MaxBackends     = ?MAX_BACKENDS_PER_HOST,
   
+  ScratchDisk = config:search_for_application_value(scratch_dir, ?BEEHIVE_DIR("tmp")),
+  RunDir = config:search_for_application_value(squashed_storage, ?BEEHIVE_DIR("run")),
+  
   {ok, #state{
+    run_dir = RunDir,
+    scratch_dir = ScratchDisk,
     max_bees = MaxBackends
   }}.
 
@@ -119,7 +126,7 @@ handle_call({start_new_instance, App, Sha, AppLauncher, From}, _From, State) ->
   Port = bh_host:unused_port(),
   % Then start it :)
   ?LOG(debug, "internal_start_new_instance: ~p, ~p, ~p, ~p, ~p~n", [App, Sha, Port, AppLauncher, From]),
-  internal_start_new_instance(App, Sha, Port, AppLauncher, From),
+  internal_start_new_instance(App, Sha, Port, AppLauncher, From, State),
   {reply, ok, State};
 
 handle_call({update_instance, App, AppLauncher, From}, _From, State) ->
@@ -236,11 +243,12 @@ handle_leave(_LeavingPid, _Info, State) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 % Start new instance
-internal_start_new_instance(App, Sha, Port, AppLauncher, From) ->
+internal_start_new_instance(App, Sha, Port, AppLauncher, From, State) ->
   case find_and_transfer_bee(App, Sha) of
     {ok, Node, LocalPath} ->
       Proplists = [{sha, Sha}, {port, Port}, {bee_image, LocalPath}, {storage_node, Node}],
-      case mount_application(App, Proplists) of
+      
+      case mount_application(App, Proplists, State) of
         {ok, _OtherPid, _Status} ->
           initialize_application(App, Proplists, AppLauncher, From);
         Error -> Error
@@ -254,8 +262,13 @@ internal_update_instance(_App, _AppLauncher, _From) ->
   ok.
 
 % Run the mount action on the app
-mount_application(App, PropLists) -> 
-  babysitter_integration:command(mount, App, unused, PropLists).
+mount_application(App, OtherPropLists, #state{scratch_dir = ScratchDisk, run_dir = RunDir} = _State) -> 
+  Proplist = lists:flatten([
+    {scratch_dir, ScratchDisk},
+    {run_dir, RunDir},
+    OtherPropLists
+  ]),
+  babysitter_integration:command(mount, App, unused, Proplist).
 
 % Initialize the node
 initialize_application(App, PropLists, AppLauncher, _From) ->
@@ -272,7 +285,7 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
 
 % Find and transfer the bee
 find_and_transfer_bee(App, Sha) ->
-  ScratchDisk = config:search_for_application_value(scratch_disk, ?BEEHIVE_DIR("storage")),
+  ScratchDisk = config:search_for_application_value(scratch_dir, ?BEEHIVE_DIR("storage")),
   LocalPath = filename:join([filename:absname(ScratchDisk), lists:append([App#app.name, ".bee"])]),
   
   case gen_cluster:run(beehive_storage_srv, {has_squashed_repos, App, Sha}) of
@@ -288,24 +301,34 @@ find_and_transfer_bee(App, Sha) ->
         {error, not_found} ->
           % We have not found the repos, so instruct this backend to pull the repos
           % because we have to fulfill the request, regardless
-          case gen_cluster:call(Pid1, {build_bee, App}, infinity) of
-            T ->
-              erlang:display({from,build_bee,T}),
-              ok
-          end;
+          build_and_then_fetch_into(Pid1, App, Sha, LocalPath);
         Else ->
           erlang:display({error, Else})
       end
   end.
+  
+% Build the application and then fetch it
+build_and_then_fetch_into(Pid, App, Sha, LocalPath) ->
+  case gen_cluster:call(Pid, {build_bee, App}, infinity) of
+    {bee_built, Props} ->
+      % Since we know that the bundle has been built somewhere,
+      % we can fetch it now
+      CurrentSha = proplists:get_value(sha, Props),
+      case gen_cluster:call(Pid, {has_squashed_repos, App#app{sha = CurrentSha}, Sha}) of
+        {ok, Node, RemotePath} -> 
+          fetch_bee_from_into(Node, RemotePath, LocalPath), 
+          {ok, Node, LocalPath};
+        {error, not_found} ->
+          throw({fata, {cannot_find_bee}})
+      end;
+    E ->
+      erlang:display({error, E}),
+      error
+  end.
 
 fetch_bee_from_into(Pid, RemotePath, LocalPath) ->
-  % Make sure the directory exists
-  lists:map(fun(Dir) ->
-    case filelib:is_dir(Dir) of
-      true -> ok;
-      false -> filelib:ensure_dir(Dir)
-    end
-  end, [LocalPath]),
+  % Make sure the directory exists  
+  bh_file_utils:ensure_dir_exists([filename:dirname(LocalPath)]),
   % Get the squashed file
   slugger:get(Pid, RemotePath, LocalPath).
 

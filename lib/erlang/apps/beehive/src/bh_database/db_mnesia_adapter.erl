@@ -96,7 +96,7 @@ ensure_not_running() ->
   end.
 
 ensure_dir() ->
-  case filelib:ensure_dir(dir() ++ "/") of
+  case bh_file_utils:ensure_dir_exists([dir()]) of
     {error, Reason} -> throw({error, Reason});
     ok -> ok
   end.
