@@ -6,7 +6,8 @@ setup_test() ->
   Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
   ConfigFile = filename:join([Dir, "test", "fixtures", "beehive.cfg"]),
   application:set_env(beehive, config_file, ConfigFile),
-  application:set_env(beehive, database_dir, "/tmp/beehive_test_db"),
+  application:set_env(beehive, beehive_home, "/tmp/beehive/test"),
+  application:set_env(beehive, database_dir, "/tmp/beehive/test/test_db"),
   
   beehive:start(),
   ok.
@@ -19,7 +20,9 @@ setup_test(Table) ->
   ok.
 
 teardown_test() ->
+  application:set_env(beehive, beehive_home, "/tmp/beehive/test"),
   beehive:stop(),
+  erlang:display({reminder, remove, beehive_home, "/tmp/beehive/test"}),
   ok.
   
 delete_all(Table) ->
