@@ -126,8 +126,8 @@ handle_call({start_new_instance, App, Sha, AppLauncher, From}, _From, State) ->
   Port = bh_host:unused_port(),
   % Then start it :)
   ?LOG(debug, "internal_start_new_instance: ~p, ~p, ~p, ~p, ~p~n", [App, Sha, Port, AppLauncher, From]),
-  internal_start_new_instance(App, Sha, Port, AppLauncher, From, State),
-  {reply, ok, State};
+  Reply = internal_start_new_instance(App, Sha, Port, AppLauncher, From, State),
+  {reply, Reply, State};
 
 handle_call({update_instance, App, AppLauncher, From}, _From, State) ->
   ?LOG(debug, "update_instance: ~p, ~p, ~p~n", [App, AppLauncher, From]),
@@ -272,6 +272,7 @@ mount_application(App, OtherPropLists, #state{scratch_dir = ScratchDisk, run_dir
 
 % Initialize the node
 initialize_application(App, PropLists, AppLauncher, _From) ->
+  erlang:display({initialize_application, PropLists}),
   case babysitter_integration:command(start, App, built_in_command, PropLists) of
     {ok, Pid, OsPid, Bee} ->
       NewBee = Bee#bee{pid = Pid, os_pid = OsPid},

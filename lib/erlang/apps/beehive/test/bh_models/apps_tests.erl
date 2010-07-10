@@ -3,11 +3,11 @@
 -include_lib("eunit/include/eunit.hrl").
 
 setup() ->
-  test_util:setup_test(bee),
+  bh_test_util:setup(bee),
   ok.
   
 teardown(_X) ->
-  test_util:teardown_test(),
+  bh_test_util:teardown(),
   ok.
 
 starting_test_() ->
