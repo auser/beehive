@@ -1,6 +1,7 @@
 -module (apps).
 
 -include ("beehive.hrl").
+-include ("common.hrl").
 
 % DATABASE STUFF
 -export ([
@@ -134,12 +135,20 @@ update(Name, NewProps) ->
 build_app_env(App, Other) ->
   OtherEnvs = lists:map(fun build_env/1, Other),
   BeehivePath = config:search_for_application_value(path, "/usr/bin:/usr/local/bin:/bin"),
+  LogDisk     = config:search_for_application_value(log_path, ?BEEHIVE_DIR("application_logs")),
+  LogDir      = filename:join([LogDisk, App#app.name]),
+  
+  StdOut     = filename:join([LogDir, "beehive.out"]),
+  StdErr     = filename:join([LogDir, "beehive.err"]),
+  
   lists:flatten([
     build_env({name, App#app.name}),
     build_env({repos, App#app.url}),
     build_env({sha, App#app.sha}),
     build_env({path, BeehivePath}),
     build_env({branch, App#app.branch}),
+    {stdout, StdOut},
+    {stderr, StdErr},
     OtherEnvs
   ]).
 

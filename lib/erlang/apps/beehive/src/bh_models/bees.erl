@@ -162,7 +162,7 @@ build_app_env(  #bee{ port        = Port,
   WorkingDir = filename:join([ScratchDisk, AppName]),
   RunningDir = filename:join([RunningDisk, AppName]),
   LogDir     = filename:join([LogDisk, AppName]),
-
+  
   OtherOpts = [
     {name, AppName},
     {host_ip, HostIp},

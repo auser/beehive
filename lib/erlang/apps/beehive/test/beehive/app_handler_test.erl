@@ -38,7 +38,8 @@ start_new_instance_test() ->
       timer:sleep(3000), % give them sometime to start up
       {ok, Code, Body} = bh_test_util:get_url([{host, Bee#bee.host}, {port, Bee#bee.port}, {path, "/"}]),
       ?assert(Code =:= 200),
-      ?assert(Body =:= "you win");
+      ?assert(Body =:= "you win"),
+      kill_app_by_bee(App, Bee)
     after 5000 ->
       erlang:display({error, timeout})
   end,
@@ -47,3 +48,7 @@ start_new_instance_test() ->
   % bh_test_util:teardown(),
     
   passed.
+
+kill_app_by_bee(App, Bee) ->
+  erlang:display({kill_app_by_bee, App, Bee}),
+  babysitter_integration:command(stop, App, Bee, []).

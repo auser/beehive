@@ -83,7 +83,7 @@ command(start, App, _Bee, PropLists) ->
     _ -> bees:build_app_env(Bee)
   end,
   CmdOpts = lists:flatten([
-    {bee_image, ImagePath}, 
+    {bee_image, ImagePath},
     CmdOpts1]),
   
   case babysitter:run(App#app.template, start, CmdOpts) of
