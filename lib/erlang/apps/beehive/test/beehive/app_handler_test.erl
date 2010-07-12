@@ -15,7 +15,6 @@ starting_test_() ->
   }.
 
 start_new_instance_test() ->
-  erlang:display({start_new_instance_test}),
   bh_test_util:setup(),
   
   Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
@@ -35,7 +34,7 @@ start_new_instance_test() ->
   app_handler:start_new_instance(App, "test", AppLauncher, From),
   receive
     {started_bee, Bee} ->
-      timer:sleep(3000), % give them sometime to start up
+      timer:sleep(2000), % give them sometime to start up
       {ok, Code, Body} = bh_test_util:get_url([{host, Bee#bee.host}, {port, Bee#bee.port}, {path, "/"}]),
       ?assert(Code =:= 200),
       ?assert(Body =:= "you win"),
@@ -49,6 +48,8 @@ start_new_instance_test() ->
     
   passed.
 
-kill_app_by_bee(App, Bee) ->
-  erlang:display({kill_app_by_bee, App, Bee}),
-  babysitter_integration:command(stop, App, Bee, []).
+kill_app_by_bee(_App, #bee{pid = Pid} = _Bee) when Pid > 1 ->
+  Pid ! {stop},
+  erlang:display({pid, Pid});
+kill_app_by_bee(_App, _Bee) -> ok.
+  % spawn(fun() -> babysitter_integration:command(stop, App, Bee, []) end).
