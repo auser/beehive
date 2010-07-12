@@ -272,7 +272,6 @@ mount_application(App, OtherPropLists, #state{scratch_dir = ScratchDisk, run_dir
 
 % Initialize the node
 initialize_application(App, PropLists, AppLauncher, _From) ->
-  erlang:display({initialize_application, PropLists}),
   case babysitter_integration:command(start, App, built_in_command, PropLists) of
     {ok, Pid, OsPid, Bee} ->
       NewBee = Bee#bee{pid = Pid, os_pid = OsPid},

@@ -4,31 +4,22 @@
 
 starting_test_() ->
   % These are longer tests
-  {timeout, 90000,
+  {timeout, 900000,
     % {setup,
     %   fun setup/0,
     %   fun teardown/1,
       [
-        fun start_new_instance_test/0
+        fun start_new_instance_test/0,
+        fun update_an_instance_test/0,
+        fun teardown_an_instance_test/0
       ]
     % }
   }.
 
-start_new_instance_test() ->
+start_new_instance_test() ->  
   bh_test_util:setup(),
+  App = dummy_app(),
   
-  Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
-  ReposDir = filename:join([Dir, "test", "fixtures", "dummy_srv"]),
-  ReposUrl = lists:concat(["file://", ReposDir]),
-  
-  {ok, App} = case apps:find_by_name("test_app") of
-    not_found ->
-      AppC = #app{name = "test_app", url = ReposUrl},
-      apps:create(AppC);
-    App1 ->
-      {ok, App1}
-  end,
-  % erlang:display({repos, ReposUrl}),
   AppLauncher = self(),
   From = self(),
   app_handler:start_new_instance(App, "test", AppLauncher, From),
@@ -42,14 +33,30 @@ start_new_instance_test() ->
     after 5000 ->
       erlang:display({error, timeout})
   end,
-  
-  % start_new_instance(App, Sha, AppLauncher, From) ->
-  % bh_test_util:teardown(),
-    
   passed.
 
+update_an_instance_test() ->
+  passed.
+  
+teardown_an_instance_test() ->
+  passed.
+
+
 kill_app_by_bee(_App, #bee{pid = Pid} = _Bee) when Pid > 1 ->
-  Pid ! {stop},
-  erlang:display({pid, Pid});
+  % spawn(fun() -> babysitter_integration:command(stop, App, Bee, []) end),
+  Pid ! {stop};
 kill_app_by_bee(_App, _Bee) -> ok.
-  % spawn(fun() -> babysitter_integration:command(stop, App, Bee, []) end).
+
+dummy_app() ->
+  Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
+  ReposDir = filename:join([Dir, "test", "fixtures", "dummy_srv"]),
+  ReposUrl = lists:concat(["file://", ReposDir])
+  
+  {ok, App} = case apps:find_by_name("test_app") of
+    not_found ->
+      AppC = #app{name = "test_app", url = ReposUrl},
+      apps:create(AppC);
+    App1 ->
+      {ok, App1}
+  end,
+  App.
