@@ -47,7 +47,7 @@ handle_event({bee, used, Backend}, State) when is_record(Backend, bee) ->
 
 % Caught when a connection has disconnected
 handle_event({bee, ready, Bee}, State) when is_record(Bee, bee) ->
-  bees:transactional_save(fun() ->
+  bees:save(fun() ->
     case bees:find_by_id(Bee#bee.id) of
       [] -> ok;
       RealBee ->
@@ -58,7 +58,7 @@ handle_event({bee, ready, Bee}, State) when is_record(Bee, bee) ->
 
 % Handle generic status update
 handle_event({bee, update_status, Bee, Status}, State) when is_record(Bee, bee) ->
-  bees:transactional_save(fun() ->
+  bees:save(fun() ->
     case bees:find_by_id(Bee#bee.id) of
       [] -> ok;
       RealBee -> bees:update(RealBee#bee{status = Status})
@@ -73,7 +73,7 @@ handle_event({bee, terminate_please, Bee}, State) when is_record(Bee, bee)  ->
 
 % Caught when a bee is marked as down
 handle_event({bee, bee_down, Bee}, State) when is_record(Bee, bee)  ->
-  bees:transactional_save(fun() ->
+  bees:save(fun() ->
     case bees:find_by_id(Bee#bee.id) of
       [] -> ok;
       RealBee ->
@@ -95,7 +95,7 @@ handle_event({bee, bee_terminated, Bee}, State) when is_record(Bee, bee) ->
 
 % Catch a cannot connect error
 handle_event({bee, cannot_connect, Id}, State) ->
-  % bees:transactional_save(fun() ->
+  % bees:save(fun() ->
   erlang:display({bee, cannot_connect, Id}),
   ?LOG(debug, "{bee, cannot_connect, ~p}", [Id]),
   spawn(fun() ->

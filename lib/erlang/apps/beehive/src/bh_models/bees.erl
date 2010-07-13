@@ -29,7 +29,7 @@
 % APPLICATION STUFF
 -export ([
   meta_data/2,
-  build_app_env/2
+  build_app_env/1, build_app_env/2
 ]).
 
 -define (DB, beehive_db_srv).
@@ -149,6 +149,11 @@ is_same_as(Bee, Otherbee) ->
 %%      
 %% @end
 %%-------------------------------------------------------------------
+build_app_env(Bee) ->
+  case apps:find_by_name(Bee#bee.app_name) of
+    App when is_record(App, app) -> build_app_env(Bee, App);
+    _ -> throw({error, {cannot_stop_bee, no_app}})
+  end.
 build_app_env(  #bee{ port        = Port, 
                       host        = HostIp, 
                       app_name    = AppName,

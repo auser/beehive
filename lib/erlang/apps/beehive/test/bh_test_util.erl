@@ -9,7 +9,10 @@ setup() ->
   application:set_env(beehive, beehive_home, "/tmp/beehive/test"),
   application:set_env(beehive, database_dir, "/tmp/beehive/test/test_db"),
   
+  erlang:display({setup,bh_test_util}),
   beehive:start(),
+  erlang:display({beehive,started}),
+  application:start(inets),
   ok.
   
 setup(Table) ->
@@ -31,9 +34,10 @@ get_url(Props) ->
     _ -> lists:flatten(["http://", Host, ":", integer_to_list(Port), Path])
   end,
   
-  application:start(inets),
-  {ok, {{_HttpVer, Code, _Msg}, _Headers, Body}} = http:request(get, {Url, [{"User-Agent", UA}]}, [], []),
-  {ok, Code, Body}.
+  case httpc:request(get, {Url, [{"User-Agent", UA}]}, [], []) of
+    {ok, {{_HttpVer, Code, _Msg}, _Headers, Body}} -> {ok, Code, Body};
+    {error, E} -> E
+  end.
   
 
 teardown() ->
