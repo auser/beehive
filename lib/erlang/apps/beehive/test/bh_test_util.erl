@@ -9,9 +9,7 @@ setup() ->
   application:set_env(beehive, beehive_home, "/tmp/beehive/test"),
   application:set_env(beehive, database_dir, "/tmp/beehive/test/test_db"),
   
-  erlang:display({setup,bh_test_util}),
   beehive:start(),
-  erlang:display({beehive,started}),
   application:start(inets),
   ok.
   

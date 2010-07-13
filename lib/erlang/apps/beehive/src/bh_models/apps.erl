@@ -138,6 +138,8 @@ build_app_env(App, Other) ->
   LogDisk     = config:search_for_application_value(log_path, ?BEEHIVE_DIR("application_logs")),
   LogDir      = filename:join([LogDisk, App#app.name]),
   
+  bh_file_utils:ensure_dir_exists([LogDir, LogDisk]),
+  
   StdOut     = filename:join([LogDir, "beehive.out"]),
   StdErr     = filename:join([LogDir, "beehive.err"]),
   
