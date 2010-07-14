@@ -152,8 +152,11 @@ is_same_as(Bee, Otherbee) ->
 build_app_env(Bee) ->
   case apps:find_by_name(Bee#bee.app_name) of
     App when is_record(App, app) -> build_app_env(Bee, App);
-    _ -> throw({error, {cannot_stop_bee, no_app}})
+    _ -> build_app_env(Bee, no_app)
   end.
+build_app_env(#bee{app_name = AppName} = Bee, no_app) ->
+  build_app_env(Bee, #app{name = AppName});
+                
 build_app_env(  #bee{ port        = Port, 
                       host        = HostIp, 
                       app_name    = AppName,
