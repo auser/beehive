@@ -1,6 +1,7 @@
 -module (bh_test_util).
 -author("Ari Lerner <arilerner@mac.com>").
 -compile(export_all).
+-include ("beehive.hrl").
 
 setup() ->
   Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
@@ -75,3 +76,18 @@ context_run(Count, Fun) ->
   {ok, Nodes} = start(Count),
   Fun(),
   shutdown(Nodes).
+
+% FIXTURE
+dummy_app() ->
+  Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
+  ReposDir = filename:join([Dir, "test", "fixtures", "dummy_srv"]),
+  ReposUrl = lists:concat(["file://", ReposDir]),
+  
+  {ok, App} = case apps:find_by_name("test_app") of
+    not_found ->
+      AppC = #app{name = "test_app", url = ReposUrl},
+      apps:create(AppC);
+    App1 ->
+      {ok, App1}
+  end,
+  App.

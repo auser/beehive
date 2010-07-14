@@ -3,7 +3,6 @@
 -include_lib("eunit/include/eunit.hrl").
 
 setup() ->
-  erlang:display({starting,app_handler_test}),
   bh_test_util:setup(),
   ok.
   
@@ -50,8 +49,10 @@ teardown_an_instance_test() ->
     {bee_terminated, _Bee} ->
       timer:sleep(1000),
       C = bh_test_util:get_url([{host, Bee#bee.host}, {port, Bee#bee.port}, {path, "/"}]),
+      erlang:display({c, C}),
       ?assert(element(1, C) =:= error);
-    _ ->
+    T ->
+      erlang:display({else, T}),
       ?assert(something_went_wrong =:= true)
   end,
   passed.
@@ -62,19 +63,7 @@ kill_app_by_bee(_App, #bee{pid = Pid} = _Bee) when Pid > 1 ->
   Pid ! {stop};
 kill_app_by_bee(_App, _Bee) -> ok.
 
-dummy_app() ->
-  Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
-  ReposDir = filename:join([Dir, "test", "fixtures", "dummy_srv"]),
-  ReposUrl = lists:concat(["file://", ReposDir]),
-  
-  {ok, App} = case apps:find_by_name("test_app") of
-    not_found ->
-      AppC = #app{name = "test_app", url = ReposUrl},
-      apps:create(AppC);
-    App1 ->
-      {ok, App1}
-  end,
-  App.
+dummy_app() -> bh_test_util:dummy_app().
   
 start_dummy_app(From) ->
   App = dummy_app(),

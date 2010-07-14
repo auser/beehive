@@ -91,35 +91,43 @@ command(start, App, _Bee, PropLists) ->
     E -> E
   end;
 
-command(stop, CliApp, Bee, _PropLists) ->
-  {ok, App, CmdOpts} = case CliApp of
-    FoundApp when is_record(FoundApp, app) -> bees:build_app_env(Bee, FoundApp);
-    {error, _} = T -> T;
-    _ -> bees:build_app_env(Bee)
-  end,
-  case babysitter:run(App#app.template, stop, CmdOpts) of
-    {ok, _OsPid, _ExitStatus} -> {ok, _OsPid, _ExitStatus, App};
-    E -> E
+command(stop, CliApp, #bee{os_pid = OsPid} = Bee, _PropLists) ->
+  erlang:display({babysitter, kill_pid, OsPid}),
+  babysitter:kill_pid(OsPid),
+  timer:sleep(200),
+  case find_and_build_app_env(CliApp, Bee) of
+    {ok, App, CmdOpts} ->
+      case babysitter:run(App#app.template, stop, CmdOpts) of
+        {ok, _OsPid, _ExitStatus} -> {ok, _OsPid, _ExitStatus, App};
+        E -> E
+      end;
+    Else -> Else
   end;
 command(unmount, CliApp, Bee, _PropLists) ->
-  {ok, App, CmdOpts} = case CliApp of
-    FoundApp when is_record(FoundApp, app) -> bees:build_app_env(Bee, FoundApp);
-    {error, _} = T -> T;
-    _ -> bees:build_app_env(Bee)
-  end,
-  case babysitter:run(App#app.template, unmount, CmdOpts) of
-    {ok, _OsPid, _ExitStatus} -> {ok, _OsPid, _ExitStatus, App};
-    E -> E
+  case find_and_build_app_env(CliApp, Bee) of
+    {ok, App, CmdOpts} ->
+      case babysitter:run(App#app.template, unmount, CmdOpts) of
+        {ok, _OsPid, _ExitStatus} -> {ok, _OsPid, _ExitStatus, App};
+        E -> E
+      end;
+    Else -> Else
   end;
 command(cleanup, CliApp, Bee, _PropLists) ->
-  {ok, App, CmdOpts} = case CliApp of
-    FoundApp when is_record(FoundApp, app) -> bees:build_app_env(Bee, FoundApp);
-    {error, _} = T -> T;
-    _ -> bees:build_app_env(Bee)
-  end,
-  case babysitter:run(App#app.template, cleanup, CmdOpts) of
-    {ok, _OsPid, _ExitStatus} -> {ok, _OsPid, _ExitStatus, App};
-    E -> E
+  case find_and_build_app_env(CliApp, Bee) of
+    {ok, App, CmdOpts} ->
+      case babysitter:run(App#app.template, cleanup, CmdOpts) of
+        {ok, _OsPid, _ExitStatus} -> {ok, _OsPid, _ExitStatus, App};
+        E -> E
+      end;
+    Else -> Else
   end;
 command(Else, _, _, _) ->
   throw({error, unknown_babysitter_command, Else}).
+
+% INTERNAL
+find_and_build_app_env(CliApp, Bee) ->
+  case CliApp of
+    FoundApp when is_record(FoundApp, app) -> bees:build_app_env(Bee, FoundApp);
+    unused -> bees:build_app_env(Bee);
+    E -> {error, E}
+  end.
