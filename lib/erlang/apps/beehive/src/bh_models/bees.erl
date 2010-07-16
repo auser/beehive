@@ -58,8 +58,8 @@ save(Bee) when is_record(Bee, bee) ->
     {'EXIT',{aborted,{no_exists,_}}} -> 
       ?NOTIFY({db, database_not_initialized, bee}),
       {error, database_not_initialized};
-    E ->
-      erlang:display({error, saving_Bee, Bee, E}),
+    _E ->
+      % TODO: Investigate why this EVER happens...
       {error, did_not_write}
   end;
 save([]) -> invalid;

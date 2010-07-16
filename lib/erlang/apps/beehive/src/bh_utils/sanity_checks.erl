@@ -11,6 +11,7 @@
 
 -export ([check/1]).
 
+check(test_type) -> ok;
 check(beehive_node) -> check_for_all();
 check(beehive_storage) -> check_for_all();
 check(beehive_router) -> check_for_all().

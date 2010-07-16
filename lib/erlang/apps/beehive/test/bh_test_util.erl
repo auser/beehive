@@ -9,14 +9,16 @@ setup() ->
   application:set_env(beehive, config_file, ConfigFile),
   application:set_env(beehive, beehive_home, "/tmp/beehive/test"),
   application:set_env(beehive, database_dir, "/tmp/beehive/test/test_db"),
+  application:set_env(beehive, node_type, test_type),
   
+  application:start(sasl),
   beehive:start(),
   application:start(inets),
   ok.
   
 setup(Table) ->
   % beehive_db_srv:start_link(),
-  % application:start(sasl),
+  application:start(sasl),
   setup(),
   delete_all(Table),
   ok.
@@ -46,9 +48,7 @@ teardown() ->
   ok.
   
 delete_all(Table) ->
-  lists:map(fun(Obj) ->
-    beehive_db_srv:delete(Table, Obj)
-  end, beehive_db_srv:all(Table)),
+  beehive_db_srv:delete_all(Table),
   ok.
 
 start(Count)      -> start(Count, example_cluster_srv, 0, []).

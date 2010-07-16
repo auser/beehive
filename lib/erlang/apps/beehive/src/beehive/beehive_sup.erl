@@ -34,19 +34,11 @@ start_link(Args) ->
   % Start os_mon
   application:start(os_mon),
   
-  % Setup beehive
-  NodeType = config:search_for_application_value(node_type, beehive_router),
-  sanity_checks:check(NodeType),
   % Seed the random number generator
   random:seed(now()),
   
-  case supervisor:start_link({local, ?SERVER}, ?MODULE, Args) of
-    {ok, Pid} ->
-      application:start(NodeType),
-      {ok, Pid};
-    Else -> 
-      Else
-  end.
+  % Start the whole chain
+  supervisor:start_link({local, ?SERVER}, ?MODULE, Args).
 
 %%====================================================================
 %% Supervisor callbacks
@@ -61,8 +53,16 @@ start_link(Args) ->
 %% specifications.
 %%--------------------------------------------------------------------
 init(_Args) ->
-  RestServer  = ?CHILD(rest_server_sup, worker),
+  RestServer    = ?CHILD(rest_server_sup, worker),
+  BeehiveRouter = ?CHILD(beehive_router_sup, supervisor),
+  % Setup beehive
+  NodeType = config:search_for_application_value(node_type, beehive_router),
+  sanity_checks:check(NodeType),
   
+  ShouldRunRouter     = case NodeType of
+    beehive_router -> true;
+    _ -> false
+  end,
   ShouldRunRestServer = config:search_for_application_value(run_rest_server, true),
   
   Children = lists:flatten([
@@ -78,7 +78,8 @@ init(_Args) ->
     % Storage stuff
     ?CHILD(beehive_storage_srv, worker),
     ?CHILD(beehive_git_srv, worker),
-    % Rest server, should we run it?    
+    % Rest server, should we run it?
+    ?IF(ShouldRunRouter, BeehiveRouter, []),    
     ?IF(ShouldRunRestServer, RestServer, [])
   ]),
   

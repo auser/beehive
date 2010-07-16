@@ -49,7 +49,6 @@ teardown_an_instance_test() ->
     {bee_terminated, _Bee} ->
       timer:sleep(1000),
       C = bh_test_util:get_url([{host, Bee#bee.host}, {port, Bee#bee.port}, {path, "/"}]),
-      erlang:display({c, C}),
       ?assert(element(1, C) =:= error);
     T ->
       erlang:display({else, T}),
