@@ -110,9 +110,13 @@ dump(Pid) -> gen_server:call(seed_pid(), {dump, Pid}).
 seed_nodes() -> [node(seed_pid())].
 
 seed_pid() -> hd(seed_pids([])).
-seed_pids(_State) -> 
-  {ok, Plist} = gen_cluster:plist(?MODULE),
-  Plist.
+seed_pids(_State) ->
+  case global:whereis_name(?MODULE) of
+    undefined -> [self()]; % We are the master
+    _ ->
+      {ok, Plist} = gen_cluster:plist(?MODULE),
+      Plist
+  end.
 
 is_a(Type) -> 
   gen_cluster:call(seed_pid(), {is_a, Type}).
@@ -182,7 +186,7 @@ stop() -> gen_cluster:cast(?SERVER, stop).
 %%--------------------------------------------------------------------
 init(Args) ->
   Type = proplists:get_value(node_type, Args, beehive_router),
-
+  
   timer:send_interval(timer:seconds(30), {update_node_stats}),
     
   % Get babysitter situated
@@ -196,7 +200,6 @@ init(Args) ->
       throw({error, db});
     _ -> ok
   end,
-  application:start(Type),
   timer:send_interval(timer:minutes(1), {update_node_pings}),
   
   LocalHost = bh_host:myip(),
