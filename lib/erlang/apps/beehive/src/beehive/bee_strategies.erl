@@ -34,4 +34,5 @@ least_loaded(Backends) ->
     end,
     {CurrentReq, B}
   end, Backends),
-  lists:sort(fun({A, _},{B, _}) -> A < B end, ListsOfBees).
+  SortedWithLoad = lists:sort(fun({A, _},{B, _}) -> A < B end, ListsOfBees),
+  lists:map(fun({_Load, Bee}) -> Bee end, SortedWithLoad).

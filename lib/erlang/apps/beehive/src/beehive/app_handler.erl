@@ -16,7 +16,6 @@
   start_link/0,
   stop/0,
   start_new_instance/4,
-  update_instance/3,
   stop_instance/2, cleanup_instance/2, unmount_instance/2,
   stop_app/2,
   can_deploy_new_app/0,
@@ -64,9 +63,6 @@ can_deploy_new_app() ->
   
 start_new_instance(App, Sha, AppLauncher, From) ->
   gen_cluster:call(?SERVER, {start_new_instance, App, Sha, AppLauncher, From}, infinity).
-
-update_instance(App, AppLauncher, From) ->
-  gen_cluster:call(?SERVER, {update_instance, App, AppLauncher, From}).
 
 stop_instance(Bee, From) when is_record(Bee, bee) -> gen_cluster:cast(?SERVER, {stop_instance, Bee, From});
 stop_instance(Else, _) -> {error, Else}.
@@ -128,11 +124,6 @@ handle_call({start_new_instance, App, Sha, AppLauncher, From}, _From, State) ->
   ?LOG(debug, "internal_start_new_instance: ~p, ~p, ~p, ~p, ~p~n", [App, Sha, Port, AppLauncher, From]),
   Reply = internal_start_new_instance(App, Sha, Port, AppLauncher, From, State),
   {reply, Reply, State};
-
-handle_call({update_instance, App, AppLauncher, From}, _From, State) ->
-  ?LOG(debug, "update_instance: ~p, ~p, ~p~n", [App, AppLauncher, From]),
-  internal_update_instance(App, AppLauncher, From),
-  {reply, ok, State};
 
 handle_call({has_app_named, Name}, _From, State) ->
   Reply = case ets:lookup(?TAB_NAME_TO_BEE, Name) of
@@ -257,9 +248,6 @@ internal_start_new_instance(App, Sha, Port, AppLauncher, From, State) ->
       io:format("[~p] Error: ~p~n", [?MODULE, E]),
       E
   end.
-
-internal_update_instance(_App, _AppLauncher, _From) ->
-  ok.
 
 % Run the mount action on the app
 mount_application(App, OtherPropLists, #state{scratch_dir = ScratchDisk, run_dir = RunDir} = _State) -> 

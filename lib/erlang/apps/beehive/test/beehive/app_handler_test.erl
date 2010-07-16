@@ -18,7 +18,6 @@ starting_test_() ->
       fun teardown/1,
       [
         fun start_new_instance_test/0,
-        fun update_an_instance_test/0,
         fun teardown_an_instance_test/0
       ]
     }
@@ -37,9 +36,6 @@ start_new_instance_test() ->
       erlang:display({error, start_new_instance_test, E}),
       failed
   end.
-
-update_an_instance_test() ->
-  passed.
   
 teardown_an_instance_test() ->
   {ok, _App, Bee} = start_dummy_app(self()),
