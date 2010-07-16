@@ -44,8 +44,10 @@ teardown_an_instance_test() ->
   receive
     {bee_terminated, _Bee} ->
       timer:sleep(1000),
-      C = bh_test_util:get_url([{host, Bee#bee.host}, {port, Bee#bee.port}, {path, "/"}]),
-      ?assert(element(1, C) =:= error);
+      case catch gen_tcp:connect(Bee#bee.host, Bee#bee.port, [binary]) of
+        {ok, _Sock} -> ?assert(failed);
+        {error,econnrefused} -> ?assert(true)
+      end;
     T ->
       erlang:display({else, T}),
       ?assert(something_went_wrong =:= true)

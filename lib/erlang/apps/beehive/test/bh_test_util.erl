@@ -13,7 +13,8 @@ setup() ->
   
   application:start(sasl),
   beehive:start(),
-  application:start(inets),
+  % We don't need any error output here
+  inets:start(),
   ok.
   
 setup(Table) ->

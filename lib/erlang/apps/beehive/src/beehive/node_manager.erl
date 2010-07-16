@@ -279,7 +279,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 handle_join(JoiningPid, State) ->
   ?TRACE("~p:~p handle join called: ~p~n", [?MODULE, ?LINE, JoiningPid]),
-  {ok, State}.
+  {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_leave(LeavingPid, Pidlist, Info, State) -> {ok, State} 

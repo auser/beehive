@@ -341,36 +341,12 @@ try_to_connect_to_new_instance(Bee, Attempts) ->
   
 % Update configuration for an application from a proplist of configuration details
 update_app_configuration(ConfigProplist, App, State) ->
-  % TODO: Define app base...
-  Name      = update_app_configuration_param(name, App#app.name, ConfigProplist, App),
-  Url       = update_app_configuration_param(url, "", ConfigProplist, App),
-  Sticky    = update_app_configuration_param(sticky, false, ConfigProplist, App),
-  UpdatedAt = update_app_configuration_param(updated_at, date_util:now_to_seconds(), ConfigProplist, App),
-  % Hostnames = update_app_configuration_param(hostname, Name, ConfigProplist, App),
-  Timeout   = update_app_configuration_param(timeout, 3600, ConfigProplist, App),
-  MaxInst   = update_app_configuration_param(max_instances, 2, ConfigProplist, App),
-  MinInst   = update_app_configuration_param(min_instances, 1, ConfigProplist, App),
-    
-  NewApp = App#app{
-    url = Url, name = Name, 
-    updated_at = UpdatedAt,
-    timeout = misc_utils:to_integer(Timeout), 
-    sticky = Sticky,
-    max_instances = misc_utils:to_integer(MaxInst),
-    min_instances = misc_utils:to_integer(MinInst)
-  },
-  
-  apps:create(NewApp),
-  State.
-
-% Get the current application configuration or the default
-update_app_configuration_param(Param, Default, ConfigProplist, App) ->
-  PropList = ?rec_info(app, App),
-  % Get the value on the current application 
-  CurrentVal = proplists:get_value(Param, PropList),
-  case CurrentVal of
-    undefined -> config:get_or_default(Param, Default, ConfigProplist);
-    V -> V
+  case apps:new(ConfigProplist) of
+    NewApp when is_record(App, app) ->
+      apps:save(NewApp),
+      State;
+    E ->
+      {error, invalid_app}
   end.
 
 % Add an application based on it's proplist

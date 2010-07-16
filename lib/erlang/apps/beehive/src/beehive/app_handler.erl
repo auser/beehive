@@ -218,7 +218,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% JoiningPid.
 %%--------------------------------------------------------------------
 handle_join(_JoiningPid, State) ->
-  {ok, State}.
+  {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_leave(LeavingPid, Pidlist, Info, State) -> {ok, State} 
