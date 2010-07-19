@@ -57,6 +57,7 @@ save(Bee) when is_record(Bee, bee) ->
     ok -> {ok, Bee};
     {'EXIT',{aborted,{no_exists,_}}} -> 
       ?NOTIFY({db, database_not_initialized, bee}),
+      timer:sleep(100),
       {error, database_not_initialized};
     _E ->
       % TODO: Investigate why this EVER happens...
@@ -179,7 +180,7 @@ build_app_env(  #bee{ port        = Port,
     {start_time, misc_utils:to_list(StartedAt)},
     {log_directory, LogDir},
     {working_directory, WorkingDir},
-    {run_dir, RunningDir}
+    {run_directory, RunningDir}
   ],
   
   EnvOpts = apps:build_app_env(App, OtherOpts),
@@ -250,7 +251,9 @@ to_proplist([_H|T], Bee, Acc) -> to_proplist(T, Bee, Acc).
 %%      
 %% @end
 %%-------------------------------------------------------------------
-validate_bee(Bee) when is_record(Bee, bee) -> validate_bee(record_info(fields, bee), Bee).
+validate_bee(Bee) when is_record(Bee, bee) -> validate_bee(record_info(fields, bee), Bee);
+validate_bee(Else) -> Else.
+
 validate_bee([], Bee) ->  Bee;
 % Validate the id
 validate_bee([id|Rest], #bee{id = undefined, app_name = AppName, host = Host, port = Port} = Bee) -> 
