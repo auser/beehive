@@ -20,7 +20,7 @@
   status/0,
   terminate_all/0,
   terminate_app_instances/1,
-  add_application/1,
+  add_application/1, add_application/2,
   spawn_update_bee_status/3,
   request_to_start_new_bee_by_name/1,
   request_to_start_new_bee_by_app/1,
@@ -35,9 +35,8 @@
          terminate/2, code_change/3]).
 
 -record(state, {
-  app_dir,              % Default directory of applications
-  active_apps = [],     % Active applications (that have their socket handled via proxy_handler)
-  dead_apps = []        % Apps that have been killed and or are dead
+  queries = queue:new(),
+  last_trans = 0
 }).
 
 -define (LAUNCHERS_APP_TO_PID, 'launchers_app_to_pid').
@@ -60,15 +59,21 @@ instance() -> whereis(?SERVER).
 garbage_collection() -> gen_server:cast(?SERVER, {garbage_collection}).
 request_to_start_new_bee_by_app(App) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_app, App}).
 request_to_start_new_bee_by_name(Name) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_name, Name}).
-
-%%====================================================================
-%% Synchronous methods
-%%====================================================================
-add_application(ConfigProplist) -> gen_server:call(?SERVER, {add_application_by_configuration, ConfigProplist}).
 request_to_update_app(App) -> gen_server:cast(?SERVER, {request_to_update_app, App}).
 request_to_terminate_bee(Bee) -> gen_server:cast(?SERVER, {request_to_terminate_bee, Bee}).
 terminate_app_instances(Appname) -> gen_server:cast(?SERVER, {terminate_app_instances, Appname}).
 terminate_all() -> gen_server:cast(?SERVER, {terminate_all}).
+
+%%====================================================================
+%% Synchronous methods
+%%====================================================================
+add_application(ConfigProplist) ->
+  case proplists:get_value(user_email, ConfigProplist) of
+    undefined -> {error, no_user_email_given};
+    V -> add_application(lists:delete(user_email, ConfigProplist), V)
+  end.
+add_application(ConfigProplist, UserEmail) -> 
+  gen_server:call(?SERVER, {add_application_by_configuration, ConfigProplist, UserEmail}).
 
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
@@ -118,9 +123,9 @@ init([]) ->
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
 % Add an application
-handle_call({add_application_by_configuration, ConfigProplist}, _From, State) ->
-  NewState = add_application_by_configuration(ConfigProplist, State),
-  {reply, ok, NewState};
+handle_call({add_application_by_configuration, ConfigProplist, UserEmail}, From, State) ->
+  % NewState = add_application_by_configuration(ConfigProplist, State),
+  handle_queued_call(fun() -> add_application_by_configuration(ConfigProplist, UserEmail) end, From, State);
 
 % Remove an application from this application server
 handle_call({remove_app, AppName}, _From, State) ->
@@ -164,7 +169,6 @@ handle_cast({request_to_terminate_bee, #bee{status = Status} = Bee}, State) when
   app_killer_fsm:kill(P),  
   {noreply, State};
 
-
 handle_cast({request_to_terminate_bee, _Bee}, State) ->
   {noreply, State};
 
@@ -181,7 +185,7 @@ handle_cast(_Msg, State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------  
-handle_info({bee_terminated, Bee}, State) ->
+handle_info({bee_terminated, Bee}, State) when is_record(Bee, bee) ->
   ?NOTIFY({bee, bee_terminated, Bee}),
   {noreply, State};
 
@@ -189,22 +193,24 @@ handle_info({clean_up}, State) ->
   {noreply, State};
 
 handle_info({manage_pending_bees}, State) ->
-  PendingBees = lists:filter(fun(B) -> B#bee.status == pending end, bees:all()),
-  lists:map(fun(B) ->
-      Status = try_to_connect_to_new_instance(B, 10),
-      ?NOTIFY({bee, update_status, B, Status})
-    % lists:map(fun(B) ->
-      % ?LOG(info, "Garbage cleaning up on: ~p", [Bees#bee.app_name])
-    % end, Bees)
-  end, PendingBees),
+  spawn(fun() ->
+    PendingBees = lists:filter(fun(B) -> B#bee.status == pending end, bees:all()),
+    lists:map(fun(B) ->
+        Status = try_to_connect_to_new_instance(B, 10),
+        ?NOTIFY({bee, update_status, B, Status})
+      % lists:map(fun(B) ->
+        % ?LOG(info, "Garbage cleaning up on: ~p", [Bees#bee.app_name])
+      % end, Bees)
+    end, PendingBees)
+  end),
   {noreply, State};
 
 handle_info({maintain_bee_counts}, State) ->
-  maintain_bee_counts(),
+  spawn(fun() -> maintain_bee_counts() end),
   {noreply, State};
 
 handle_info({flush_old_processes}, State) ->
-  flush_old_processes(),
+  spawn(fun() -> flush_old_processes() end),
   {noreply, State};
 
 handle_info({ping_bees}, State) ->
@@ -212,7 +218,7 @@ handle_info({ping_bees}, State) ->
   {noreply, State};
 
 handle_info({garbage_collection}, State) ->
-  handle_non_ready_bees(),
+  spawn(fun() -> handle_non_ready_bees() end),
   {noreply, State};
     
 handle_info({clean_up_apps}, State) ->
@@ -291,6 +297,16 @@ handle_info({error, State, Error}, State) ->
   ?LOG(info, "something died: ~p", [Error]),
   {noreply, State};
 
+handle_info({answer, TransId, Result}, #state{queries = Queries} = State) ->
+  case get_transaction(Queries, TransId) of
+    {true, From, Q} ->
+      gen_server:reply(From, Result);
+    {false, Q} ->
+      ok
+  end,
+  {noreply, State#state{queries = Q}};
+
+
 handle_info(Info, State) ->
   ?LOG(info, "app_manager got: ~p", [Info]),
   {noreply, State}.
@@ -316,6 +332,16 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
+handle_queued_call(Fun, From, #state{queries = OldTransQ, last_trans = LastTrans} = State) ->
+  TransId = next_trans(LastTrans),
+  FromServer = self(),
+  spawn(fun() -> 
+    case Fun() of
+      {ok, _} = T1 -> FromServer ! {answer, TransId, T1};
+      {error, _} = T2 -> FromServer ! {answer, TransId, T2}
+    end
+  end),
+  {noreply, State#state{queries = queue:in({TransId, From}, OldTransQ)}}.
 
 % Spawn a process to try to connect to the instance
 spawn_update_bee_status(Bee, From, Nums) ->
@@ -339,19 +365,16 @@ try_to_connect_to_new_instance(Bee, Attempts) ->
       try_to_connect_to_new_instance(Bee, Attempts - 1)
   end.
   
-% Update configuration for an application from a proplist of configuration details
-update_app_configuration(ConfigProplist, App, State) ->
-  case apps:new(ConfigProplist) of
-    NewApp when is_record(App, app) ->
-      apps:save(NewApp),
-      State;
-    E ->
-      {error, invalid_app}
-  end.
-
 % Add an application based on it's proplist
-add_application_by_configuration(ConfigProplist, State) ->
-  update_app_configuration(ConfigProplist, #app{}, State).
+add_application_by_configuration(ConfigProplist, UserEmail) ->
+  case apps:new(ConfigProplist) of
+    NewApp when is_record(NewApp, app) ->
+      {ok, _App} = apps:save(NewApp),
+      {ok, _UserApp} = user_apps:create(UserEmail, NewApp),
+      {ok, NewApp};
+    E ->
+      {error, E}
+  end.
 
 % Clean up applications
 clean_up() ->
@@ -533,7 +556,6 @@ expand_instance_by_app(App) -> start_new_instance_by_app(App).
 
 % PRIVATE
 app_launcher_fsm_go(AppToPidTable, PidToAppTable, Method, App, Updating) ->
-  erlang:display({app_launcher_fsm_go, App#app.name}),
   case App#app.type of
     static -> ok;
     _T ->
@@ -565,3 +587,18 @@ kill_other_bees(#bee{app_name = Name, id = StartedId, commit_hash = StartedSha} 
       lists:map(fun(B) -> ?NOTIFY({bee, terminate_please, B}) end, OtherBees),
       ok
   end.
+
+% So that we can get a unique id for each communication
+next_trans(I) when I < 268435455 -> I+1;
+next_trans(_) -> 1.
+
+get_transaction(Q, I) -> get_transaction(Q, I, Q).
+get_transaction(Q, I, OldQ) ->
+  case queue:out(Q) of
+    {{value, {I, From}}, Q2} ->
+      {true, From, Q2};
+    {empty, _} ->
+      {false, OldQ};
+    {_E, Q2} ->
+      get_transaction(Q2, I, OldQ)
+    end.
