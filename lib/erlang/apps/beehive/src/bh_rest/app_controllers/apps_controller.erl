@@ -32,9 +32,8 @@ post([], Data) ->
     false -> 
       {error, "No user defined or invalid token"};
     ReqUser ->
-      case apps:create(Data) of
+      case app_manager:add_application(Data, ReqUser) of
         {ok, App} when is_record(App, app) -> 
-          user_apps:create(ReqUser, App),
           {ok, created};
           % case rebuild_bee(App) of
           %   ok -> {app, misc_utils:to_bin(App#app.name)};
