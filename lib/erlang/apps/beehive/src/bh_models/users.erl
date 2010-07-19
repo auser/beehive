@@ -26,19 +26,24 @@
   new/1
 ]).
 
+-define (DB, beehive_db_srv).
+
 find_by_email(Hostemail) ->
   case find_all_by_email(Hostemail) of
     [B|_] -> B;
-    _ -> []
+    _ -> not_found
   end.
 
 find_all_by_email(Name) -> 
-  db:read({user, Name}).
+  case ?DB:read(user, Name) of
+    Users when is_list(Users) -> Users;
+    _ -> []
+  end.
 
 find_by_token(Token) ->
-  case db:match(#user{token = Token, _='_'}) of
+  case ?DB:match(#user{token = Token, _='_'}) of
     [U|_] -> U;
-    _ -> []
+    _ -> not_found
   end.
 
 % Does this user exist?
@@ -61,7 +66,7 @@ create(User) when is_record(User, user) ->
     {'EXIT', _} -> unknown_error;
     ok -> 
       ?NOTIFY(EventMsg),
-      User
+      {ok, User}
   end;
   
 create(NewProps) ->
@@ -95,18 +100,22 @@ is_user_token(Email, Token) ->
 % Create a new token for the user
 create_new_token_for(Email, Password) ->
   case find_by_email(Email) of
-    [] -> error;
-    User ->
+    User when is_record(User, user) ->
       case User#user.password =:= bh_md5:hex(Password) of
         false -> error;
         true ->
           create_new_token_for(User)
-      end
+      end;
+    _ -> {error, not_found}
   end.
   
 
 initialize() ->
-  add_root_user().
+  spawn(fun() -> 
+    timer:sleep(200),
+    add_root_user() 
+  end),
+  ok.
   
 % Add the initial root user
 % email: root@getbeehive.com
