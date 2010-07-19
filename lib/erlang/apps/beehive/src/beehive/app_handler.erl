@@ -32,7 +32,7 @@
 -export ([handle_vote/2]).
 
 -record(state, {
-  run_dir,
+  run_directory,
   scratch_dir,
   max_bees             % maximum number of bees on this host
 }).
@@ -50,7 +50,16 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-seed_nodes(_State) -> [node(global:whereis_name(node_manager))].
+seed_nodes(_State) -> [node(seed_pid())].
+seed_pid() -> hd(seed_pids([])).
+seed_pids(_State) ->
+  case global:whereis_name(?MODULE) of
+    undefined -> [self()]; % We are the master
+    _ ->
+      {ok, Plist} = gen_cluster:plist(?MODULE),
+      Plist
+  end.
+
 
 start_link() ->
   gen_cluster:start_link({local, ?SERVER}, ?SERVER, [], []).
@@ -104,7 +113,7 @@ init(_Args) ->
   RunDir = config:search_for_application_value(squashed_storage, ?BEEHIVE_DIR("run")),
   
   {ok, #state{
-    run_dir = RunDir,
+    run_directory = RunDir,
     scratch_dir = ScratchDisk,
     max_bees = MaxBackends
   }}.
@@ -250,10 +259,10 @@ internal_start_new_instance(App, Sha, Port, AppLauncher, From, State) ->
   end.
 
 % Run the mount action on the app
-mount_application(App, OtherPropLists, #state{scratch_dir = ScratchDisk, run_dir = RunDir} = _State) -> 
+mount_application(App, OtherPropLists, #state{scratch_dir = ScratchDisk, run_directory = RunDir} = _State) -> 
   Proplist = lists:flatten([
     {scratch_dir, ScratchDisk},
-    {run_dir, RunDir},
+    {run_directory, RunDir},
     OtherPropLists
   ]),
   babysitter_integration:command(mount, App, unused, Proplist).
@@ -268,6 +277,7 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
       AppLauncher ! {started_bee, NewBee},
       NewBee;
     Else ->
+      erlang:display({error, starting_app, Else}),
       AppLauncher ! {error, Else}
   end.
 

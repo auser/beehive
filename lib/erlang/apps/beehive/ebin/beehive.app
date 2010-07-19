@@ -35,7 +35,7 @@
                   queue_store
                 ]},
   {registered,   []},
-  {applications, [kernel, stdlib, os_mon, mnesia]},
+  {applications, [kernel, stdlib, os_mon]},
   {mod, {beehive, []}},
   {env, [
     {node_type, undefined},

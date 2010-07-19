@@ -19,3 +19,4 @@ TODO:
 * Separate application code into clean segments
 * Add application revisions
 * Branch deployments
+* Make SHA (git) more flexible and work within the directory
