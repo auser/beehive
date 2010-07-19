@@ -24,7 +24,7 @@ starting_test_() ->
 
 test_save() ->
   % Delete all
-  delete_all(),
+  bh_test_util:delete_all(apps),
   {ok, App1} = apps:save(#app{name="test_app"}),
   ?assert(App1#app.branch =:= "master"),
   {atomic,Results1} = mnesia:transaction(fun() -> mnesia:match_object(#app{_='_'}) end),
@@ -42,7 +42,7 @@ test_save() ->
 
 test_save_app_with_same_name() ->
   % Delete all
-  delete_all(),
+  bh_test_util:delete_all(apps),
   {ok, App3} = apps:create(#app{name="test_app", url="http://github.com/auser/test_app1.git"}),
   {ok, App4} = apps:create(#app{name="test_app", url="http://github.com/auser/test_app2.git"}),
   ?assert(App3#app.name == "test_app"),
@@ -50,7 +50,7 @@ test_save_app_with_same_name() ->
   passed.
 
 test_branch() ->
-  delete_all(),
+  bh_test_util:delete_all(apps),
   {ok, App1} = apps:create(#app{name="test_app", url="http://github.com/auser/test_app1.git"}),
   ?assert(App1#app.branch == "master"),
   {ok, App2} = apps:create(#app{name="test_app/other_branch", url="http://github.com/auser/test_app1.git"}),
@@ -58,7 +58,7 @@ test_branch() ->
   passed.
 
 test_delete_app() ->
-  delete_all(),
+  bh_test_util:delete_all(apps),
   {ok, App1} = apps:save(#app{name = "test_app"}),
   ?assert(apps:all() == [App1]),
   apps:delete(App1),
@@ -66,14 +66,9 @@ test_delete_app() ->
   passed.
 
 test_read_app() ->
-  delete_all(),
+  bh_test_util:delete_all(apps),
   {ok, App1} = apps:save(#app{name = "test_app"}),
   FoundApp1 = apps:find_by_name("test_app"),
-  ?assertEqual(App1, FoundApp1),
+  ?assertEqual(App1#app.name, FoundApp1#app.name),
   passed.
 
-% Utils
-delete_all() ->
-  lists:map(fun(App) ->
-    apps:delete(App#app.name)
-  end, apps:all()).

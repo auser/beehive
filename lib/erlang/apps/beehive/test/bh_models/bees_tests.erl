@@ -7,7 +7,6 @@ setup() ->
   ok.
   
 teardown(_X) ->
-  bh_test_util:teardown(),
   ok.
 
 starting_test_() ->

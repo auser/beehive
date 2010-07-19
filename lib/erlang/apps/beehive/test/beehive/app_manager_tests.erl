@@ -6,11 +6,10 @@ setup() ->
   ok.
   
 teardown(_X) ->
-  bh_test_util:teardown(),
   ok.
 
 starting_test_() ->
-  {spawn,
+  {inorder,
     {setup,
       fun setup/0,
       fun teardown/1,
@@ -26,8 +25,11 @@ instance_test()->
   passed.
 
 add_application_test() ->
-  erlang:display({add_application_test}),
-  Apps = apps:all(),
-  erlang:display({apps, Apps}),
-  app_manager:add_application([{name, "bobby-bobbie-o"}]),
+  bh_test_util:delete_all(apps),
+  OriginalApps = apps:all(),
+  User = bh_test_util:dummy_user(),
+  O = app_manager:add_application([{name, "bobby-bobbie-o"}], User),
+  erlang:display({all_apps, length(apps:all()), length(OriginalApps)}),
+  ?assert(element(1, O) =:= ok),
+  ?assert(erlang:length(apps:all()) =:= erlang:length(OriginalApps) + 1),
   passed.

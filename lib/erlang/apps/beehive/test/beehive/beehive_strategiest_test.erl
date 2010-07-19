@@ -10,7 +10,7 @@ teardown(_X) ->
   ok.
 
 starting_test_() ->
-  {spawn,
+  {inorder,
     {setup,
       fun setup/0,
       fun teardown/1,

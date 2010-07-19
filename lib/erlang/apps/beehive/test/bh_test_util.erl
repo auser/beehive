@@ -12,7 +12,9 @@ setup() ->
   application:set_env(beehive, node_type, test_type),
   
   application:start(sasl),
-  beehive:start(),
+  beehive:start([{beehive_db_srv, testing}]),
+  
+  beehive_db_srv:init_databases(),
   % We don't need any error output here
   inets:start(),
   ok.
@@ -21,7 +23,7 @@ setup(Table) ->
   % beehive_db_srv:start_link(),
   application:start(sasl),
   setup(),
-  delete_all(Table),
+  clear_table(Table),
   ok.
 
 get_url(Props) ->
@@ -45,10 +47,9 @@ get_url(Props) ->
 teardown() ->
   application:set_env(beehive, beehive_home, "/tmp/beehive/test"),
   beehive:stop(),
-  erlang:display({reminder, remove, beehive_home, "/tmp/beehive/test"}),
   ok.
   
-delete_all(Table) ->
+clear_table(Table) ->
   beehive_db_srv:delete_all(Table),
   ok.
 
@@ -92,3 +93,17 @@ dummy_app() ->
       {ok, App1}
   end,
   App.
+
+dummy_user() ->
+  {ok, User} = case users:find_by_email("test@getbeehive.com") of
+    not_found ->
+      UserC = #user{email = "test@getbeehive.com", password="test"},
+      users:create(UserC);
+    U1 -> {ok, U1}
+  end,
+  User.
+
+% Utils
+delete_all(Table) ->
+  ok.
+  % beehive_db_srv:delete_all(Table).

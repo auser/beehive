@@ -30,7 +30,7 @@ command(bundle, App, _Bee, PropLists) ->
 
 command(mount, App, _Bee, PropLists) ->
   ScratchDisk = proplists:get_value(scratch_dir, PropLists, "/tmp/beehive"),
-  RunDir      = proplists:get_value(run_dir, PropLists, "/tmp/beehive"),
+  RunDir      = proplists:get_value(run_directory, PropLists, "/tmp/beehive"),
   
   UniqueName = App#app.name,
 
@@ -43,7 +43,7 @@ command(mount, App, _Bee, PropLists) ->
     {working_directory, WorkingDir},
     {target_directory, MountedDir},
     {bee_image, BeeImage},
-    {run_dir, RunDir},
+    {run_directory, RunDir},
     {port, Port}
   ],
   

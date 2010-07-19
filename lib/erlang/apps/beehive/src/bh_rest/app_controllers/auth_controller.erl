@@ -25,10 +25,10 @@ post([], Data) ->
           Email = proplists:get_value(email, Data),
           Pass = proplists:get_value(password, Data),
           case users:create_new_token_for(Email, Pass) of
-            User when is_record(User, user) ->
+            {ok, User} when is_record(User, user) ->
               [{user, Email}, {token, User#user.token}];
-            _Else ->
-              {error, "There was a problem authenticating"}
+            Else ->
+              {error, Else}
           end
       end
   end;

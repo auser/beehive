@@ -7,7 +7,6 @@ setup() ->
   ok.
   
 teardown(_X) ->
-  bh_test_util:teardown(),
   ok.
   
 starting_test_() ->
@@ -24,6 +23,7 @@ starting_test_() ->
   }.
 
 start_new_instance_test() ->  
+  erlang:display({start_new_instance_test, self()}),
   {ok, App, Bee} = start_dummy_app(self()),
   timer:sleep(1000),
   case bh_test_util:get_url([{host, Bee#bee.host}, {port, Bee#bee.port}, {path, "/"}]) of
@@ -34,7 +34,7 @@ start_new_instance_test() ->
       passed;
     E ->
       erlang:display({error, start_new_instance_test, E}),
-      failed
+      ?assert(false)
   end.
   
 teardown_an_instance_test() ->
@@ -45,7 +45,7 @@ teardown_an_instance_test() ->
     {bee_terminated, _Bee} ->
       timer:sleep(1000),
       case catch gen_tcp:connect(Bee#bee.host, Bee#bee.port, [binary]) of
-        {ok, _Sock} -> ?assert(failed);
+        {ok, _Sock} -> ?assert(false);
         {error,econnrefused} -> ?assert(true)
       end;
     T ->
