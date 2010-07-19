@@ -42,7 +42,16 @@
 %%====================================================================
 %% API
 %%====================================================================
-seed_nodes(_State) -> global:whereis_name(node_manager).
+seed_nodes(_State) -> [node(seed_pid())].
+
+seed_pid() -> hd(seed_pids([])).
+seed_pids(_State) ->
+  case global:whereis_name(?MODULE) of
+    undefined -> [self()]; % We are the master
+    _ ->
+      {ok, Plist} = gen_cluster:plist(?MODULE),
+      Plist
+  end.
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
