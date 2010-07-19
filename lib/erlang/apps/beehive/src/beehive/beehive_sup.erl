@@ -17,7 +17,11 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
+-define(CHILD(I, Type, Args), 
+  {I, 
+    {I, start_link, lists:flatten([proplists:get_value(I, Args, [])])}, 
+    permanent, 5000, Type, [I]
+  }).
 -define (IF (Bool, A, B), if Bool -> A; true -> B end).
 
 -define(SERVER, ?MODULE).
@@ -52,9 +56,9 @@ start_link(Args) ->
 %% to find out about restart strategy, maximum restart frequency and child
 %% specifications.
 %%--------------------------------------------------------------------
-init(_Args) ->
-  RestServer    = ?CHILD(rest_server_sup, worker),
-  BeehiveRouter = ?CHILD(beehive_router_sup, supervisor),
+init(Args) ->
+  RestServer    = ?CHILD(rest_server_sup, worker, Args),
+  BeehiveRouter = ?CHILD(beehive_router_sup, supervisor, Args),
   % Setup beehive
   NodeType = config:search_for_application_value(node_type, beehive_router),
   sanity_checks:check(NodeType),
@@ -66,18 +70,18 @@ init(_Args) ->
   ShouldRunRestServer = config:search_for_application_value(run_rest_server, true),
   
   Children = lists:flatten([
-    % Manage the nodes and apps
-    ?CHILD(node_manager, worker),
-    ?CHILD(app_manager, worker),
-    % Start the event manager
-    ?CHILD(event_manager, worker),
     % For the distributed database
-    ?CHILD(beehive_db_srv, worker),
-    ?CHILD(babysitter, worker),
-    ?CHILD(app_handler, worker),
+    ?CHILD(beehive_db_srv, worker, Args),
+    % Manage the nodes and apps
+    ?CHILD(node_manager, worker, Args),
+    ?CHILD(app_manager, worker, Args),
+    % Start the event manager
+    ?CHILD(event_manager, worker, Args),
+    ?CHILD(babysitter, worker, Args),
+    ?CHILD(app_handler, worker, Args),
     % Storage stuff
-    ?CHILD(beehive_storage_srv, worker),
-    ?CHILD(beehive_git_srv, worker),
+    ?CHILD(beehive_storage_srv, worker, Args),
+    ?CHILD(beehive_git_srv, worker, Args),
     % Rest server, should we run it?
     ?IF(ShouldRunRouter, BeehiveRouter, []),    
     ?IF(ShouldRunRestServer, RestServer, [])
