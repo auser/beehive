@@ -35,7 +35,7 @@
 create(A) -> save(validate_app(new(A))).
 
 save(App) when is_record(App, app) ->
-  ok = ?DB:write(app, App#app.name, App),
+  ok = ?DB:write(app, App#app.name, validate_app(App)),
   {ok, App};
 save([]) -> invalid;
 save(Proplists) when is_list(Proplists) -> 
@@ -86,13 +86,13 @@ find_by_name(Name) ->
 find_all_by_name(Name) ->
   case ?DB:read(app, Name) of
     Apps when is_list(Apps) -> Apps;
-    _ -> not_found
+    _ -> []
   end.
   
 % APPLICATION STUFF
 update_by_name(Name) ->
   case find_by_name(Name) of
-    [] -> {error, "Cannot find app to update"};
+    not_found -> {error, "Cannot find app to update"};
     App -> 
       % Should this be synchronous or asynchronous?
       NewApp = App#app{updated_at = date_util:now_to_seconds(), latest_error = undefined},
@@ -102,7 +102,7 @@ update_by_name(Name) ->
 
 expand_by_name(Name) ->
   case find_by_name(Name) of
-    [] -> {error, "Cannot find app"};
+    not_found -> {error, "Cannot find app"};
     App ->
       ?NOTIFY({app, expand, App}),
       {ok, App}
@@ -110,7 +110,7 @@ expand_by_name(Name) ->
 
 restart_by_name(Name) ->
   case find_by_name(Name) of
-    [] -> {error, "Cannot find app"};
+    not_found -> {error, "Cannot find app"};
     App ->
       NewApp = App#app{updated_at = date_util:now_to_seconds(), latest_error = undefined},
       ?NOTIFY({app, restart, NewApp}),

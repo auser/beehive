@@ -25,7 +25,6 @@
 %% this function is called to initialize the event handler.
 %%--------------------------------------------------------------------
 init([]) ->
-  mnesia:subscribe(system),
   {ok, 500}.
 
 %%--------------------------------------------------------------------
@@ -39,7 +38,8 @@ init([]) ->
 %%--------------------------------------------------------------------
 % Quick HACK. FIX THIS SHIZ
 handle_event({db, database_not_initialized, _Table}, State) ->
-  db:init(),
+  % db:init(),
+  beehive_db_srv:init_databases(),
   {ok, State};
 handle_event(_Event, State) ->
   {ok, State}.
