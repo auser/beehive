@@ -47,23 +47,18 @@ handle_event({bee, used, Backend}, State) when is_record(Backend, bee) ->
 
 % Caught when a connection has disconnected
 handle_event({bee, ready, Bee}, State) when is_record(Bee, bee) ->
-  bees:save(fun() ->
-    case bees:find_by_id(Bee#bee.id) of
-      [] -> ok;
-      RealBee ->
-        bees:update(RealBee#bee{lastresp_time = date_util:now_to_seconds()})
-    end
-  end),
+  case bees:find_by_id(Bee#bee.id) of
+    RealBee when is_record(RealBee, bee) -> bees:save(RealBee#bee{lastresp_time = date_util:now_to_seconds()});
+    _ -> ok
+  end,
   {ok, State};
 
 % Handle generic status update
 handle_event({bee, update_status, Bee, Status}, State) when is_record(Bee, bee) ->
-  bees:save(fun() ->
-    case bees:find_by_id(Bee#bee.id) of
-      [] -> ok;
-      RealBee -> bees:update(RealBee#bee{status = Status})
-    end
-  end),
+  case bees:find_by_id(Bee#bee.id) of
+    RealBee when is_record(RealBee, bee) -> bees:save(RealBee#bee{status = Status});
+    _ -> ok
+  end,
   {ok, State};
 
 % Handle terminate bee
@@ -73,38 +68,28 @@ handle_event({bee, terminate_please, Bee}, State) when is_record(Bee, bee)  ->
 
 % Caught when a bee is marked as down
 handle_event({bee, bee_down, Bee}, State) when is_record(Bee, bee)  ->
-  bees:save(fun() ->
-    case bees:find_by_id(Bee#bee.id) of
-      [] -> ok;
-      RealBee ->
-        bees:update(RealBee#bee{status = down})
-    end
-  end),
+  case bees:find_by_id(Bee#bee.id) of
+    RealBee when is_record(RealBee, bee) -> bees:save(RealBee#bee{status = down});
+    _ -> ok
+  end,
   {ok, State};
 
 % Caught when a bee is terminated
 handle_event({bee, bee_terminated, Bee}, State) when is_record(Bee, bee) ->
-  case (catch bees:find_by_id(Bee#bee.id)) of
-    RealBee when is_record(RealBee, bee) ->
-      ?LOG(debug, "{bee, bee_terminated, ~p}", [RealBee]),
-      bees:update(RealBee#bee{status = terminated});
-    _ ->
-      bees:update(Bee#bee{status = terminated})
+  case bees:find_by_id(Bee#bee.id) of
+    RealBee when is_record(RealBee, bee) -> bees:save(RealBee#bee{status = terminated});
+    _ -> ok
   end,
   {ok, State};
 
 % Catch a cannot connect error
 handle_event({bee, cannot_connect, Id}, State) ->
-  % bees:save(fun() ->
   erlang:display({bee, cannot_connect, Id}),
   ?LOG(debug, "{bee, cannot_connect, ~p}", [Id]),
-  spawn(fun() ->
-    case bees:find_by_id(Id) of
-      [] -> ok;
-      RealBee -> bees:update(RealBee#bee{status = down})
-    end
-  end),
-  % end),
+  case bees:find_by_id(Id) of
+    RealBee when is_record(RealBee, bee) -> bees:save(RealBee#bee{status = down});
+    _ -> ok
+  end,
   {ok, State};
 
 handle_event({bee, closing_stats, #bee{id = Id} = Bee, StatsProplist}, State) when is_record(Bee, bee) ->
