@@ -24,6 +24,9 @@
 -export([init/1, handle_call/3, handle_cast/2, 
     handle_info/2, terminate/2, code_change/3]).
 
+% For testing
+-export ([init_databases/0]).
+
 -record(state, {
   adapter,
   last_trans  = 0,
@@ -46,14 +49,18 @@ all(Table) -> gen_server:call(?SERVER, {all, Table}).
 run(Fun) -> gen_server:call(?SERVER, {run, Fun}).
 match(Mod) -> gen_server:call(?SERVER, {match, Mod}).
 
+init_databases() -> gen_server:cast(?SERVER, {init_databases}).
+
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
 start_link() -> start_link(mnesia, []).
+
+start_link(DbAdapter) when is_atom(DbAdapter) -> start_link(erlang:atom_to_list(DbAdapter));
 start_link(DbAdapter) -> start_link(DbAdapter, []).
-start_link(DbAdapter, Nodes) when is_atom(DbAdapter) -> 
-  gen_server:start_link({local, ?SERVER}, ?MODULE, [erlang:atom_to_list(DbAdapter), Nodes], []);
+
+start_link(DbAdapter, Nodes) when is_atom(DbAdapter) -> start_link(erlang:atom_to_list(DbAdapter), Nodes);
 start_link(DbAdapter, Nodes) -> gen_server:start_link({local, ?SERVER}, ?MODULE, [DbAdapter, Nodes], []).
 
 stop() -> gen_server:cast(?SERVER, {stop}).
@@ -71,20 +78,11 @@ stop() -> gen_server:cast(?SERVER, {stop}).
 %%--------------------------------------------------------------------
 init([DbAdapterName, Nodes]) ->
   DbAdapter = erlang:list_to_atom(lists:flatten(["db_", DbAdapterName, "_adapter"])),
-  
-  case erlang:module_loaded(DbAdapter) of
-    true -> ok;
-    false -> code:load_file(DbAdapter)
-  end,
-  
-  TransId = next_trans(0),
-  case erlang:function_exported(DbAdapter, start, 1) of
-    true -> apply(DbAdapter, start, [Nodes]);
-    false -> ok
-  end,
+  erlang:display({?MODULE, DbAdapterName, DbAdapter}),
+  init_adapter([node()|Nodes], DbAdapter),
   
   {ok, #state{
-    last_trans = TransId,
+    last_trans = next_trans(0),
     adapter = DbAdapter
   }}.
 %%--------------------------------------------------------------------
@@ -129,6 +127,9 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
+handle_cast({init_databases}, #state{adapter = Adapter} = State) ->
+  init_adapter([node(self())], Adapter),
+  {noreply, State};
 handle_cast({stop}, State) ->
   {stop, normal, State};
 handle_cast(_Msg, State) ->
@@ -208,3 +209,19 @@ get_transaction(Q, I, OldQ) ->
     {_E, Q2} ->
       get_transaction(Q2, I, OldQ)
     end.
+
+init_adapter(Nodes, DbAdapter) ->
+  case erlang:module_loaded(DbAdapter) of
+    true -> ok;
+    false -> 
+      case code:load_file(DbAdapter) of
+        {error, not_purged} -> code:purge(DbAdapter), code:load_file(DbAdapter);
+        {error, _Error} = T -> throw(T);
+        _ -> ok
+      end
+  end,
+  case erlang:function_exported(DbAdapter, init_databases, 1) of
+    true -> apply(DbAdapter, init_databases, [Nodes]);
+    false -> ok
+  end,
+  ok.

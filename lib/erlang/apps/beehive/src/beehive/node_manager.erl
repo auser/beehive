@@ -22,7 +22,7 @@ end).
   get_servers/1, get_servers/0,
   start_link/0,
   is_a/1,
-  seed_nodes/0,
+  seed_nodes/1,
   seed_pid/0, seed_pids/1,
   stop/0,
   dump/1,
@@ -77,10 +77,9 @@ start_server(Mod, Args, Opts) -> start(?MODULE, Mod, Args, Opts).
 start_server(Name, Mod, Args, Opts) -> start(Name, Mod, Args, Opts).
 
 start(Name, Mod, Args, Opts) ->
-  Seed = config:search_for_application_value(seed, global:whereis_name(node_manager)),
   Type = config:search_for_application_value(node_type, beehive_router),
   
-  RealArgs = lists:flatten([[{seed, Seed}, {node_type, Type}], Args]),
+  RealArgs = lists:flatten([[{node_type, Type}], Args]),
   case whereis(Name) of
     undefined -> gen_cluster:start_link({local, Name}, Mod, RealArgs, Opts);
     _ -> gen_cluster:start_link(Mod, RealArgs, Opts)
@@ -107,8 +106,7 @@ get_servers(PidType) ->
   end.
 
 dump(Pid) -> gen_server:call(seed_pid(), {dump, Pid}).
-seed_nodes() -> [node(seed_pid())].
-
+seed_nodes(_State) -> [node(seed_pid())].
 seed_pid() -> hd(seed_pids([])).
 seed_pids(_State) ->
   case global:whereis_name(?MODULE) of
@@ -194,12 +192,7 @@ init(Args) ->
   read_babysitter_config(),
   
   % Start the database and application
-  case catch db:start() of
-    {error, enoent} ->
-      printer:banner("ERROR", ["The database could not start because the database directory does not exist. Create it and try again"]),
-      throw({error, db});
-    _ -> ok
-  end,
+  beehive_db_srv:init_databases(),
   timer:send_interval(timer:minutes(1), {update_node_pings}),
   
   LocalHost = bh_host:myip(),

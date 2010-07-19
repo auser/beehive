@@ -16,14 +16,11 @@
   match/1
 ]).
 
+-export ([init_databases/0, init_databases/1]).
+
 % API
 start(Nodes) ->
-  application:start(mnesia),
-  ok = ensure_dir(),
-  ok = ensure_running(),
-  ok = add_slave(Nodes),
-  ok = wait_for_tables(),
-  ok.
+  init_databases(Nodes).
 
 stop() ->
   application:stop(mnesia),
@@ -73,6 +70,18 @@ all(Table) ->
     {atomic, V} -> V
   end.
   
+
+%%% INTERNAL
+init_databases() -> init_databases([node(self())]).
+init_databases(Nodes) ->
+  ok = ensure_dir(),
+  ok = ensure_running(),
+  ok = add_slave(Nodes),
+  ok = wait_for_tables(),
+  % Add default data
+  
+  ok.
+
 dir() ->
   DefaultDatabaseDir = config:search_for_application_value(database_dir, ?BEEHIVE_DIR("db")),
   case application:get_env(mnesia, dir) of
@@ -171,6 +180,7 @@ create_tables() ->
     % Pluralize the table (to match the model module)
     Pluralized = erlang:list_to_atom(lists:append([erlang:atom_to_list(Tab), "s"])),
     code:load_file(Pluralized),
+    erlang:display({Pluralized,initialize,0, erlang:function_exported(Pluralized, initialize, 0)}),
     case erlang:function_exported(Pluralized, initialize, 0) of
       true -> Pluralized:initialize();
       false -> ok
