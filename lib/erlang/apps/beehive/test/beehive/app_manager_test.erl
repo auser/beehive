@@ -1,4 +1,4 @@
--module (app_manager_tests).
+-module (app_manager_test).
 -include_lib("eunit/include/eunit.hrl").
 
 setup() ->

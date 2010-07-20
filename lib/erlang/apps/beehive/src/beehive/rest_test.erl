@@ -1,8 +1,8 @@
--module (rest_tests).
+-module (rest_test).
 -include_lib("eunit/include/eunit.hrl").
 
 setup() ->
-  bh_test_util:setup([{node_type, beehive_router}]),
+  application:start(beehive_router),
   ok.
   
 teardown(_X) ->
@@ -20,5 +20,11 @@ starting_test_() ->
   }.
 
 test_connectable() ->
-  erlang:display({hi}),
+  gen_tcp:connect({0,0,0,0}, 8080, [binary]),
+  receive
+    X -> 
+      erlang:display({got, X})
+  after 1000 ->
+    erlang:display({hrm, no_connect})
+  end,
   passed.
