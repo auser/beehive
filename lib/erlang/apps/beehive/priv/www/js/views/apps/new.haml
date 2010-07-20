@@ -13,7 +13,9 @@
     %br
     
     %label App Template:
-    %input{ type: "text", name: "template" }
+    %select{name: "template"}
+      :each type in app_types
+        %option= type
     %br
 
     %input{ type: "submit", value: "Create App"}
