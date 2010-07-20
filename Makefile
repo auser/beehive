@@ -10,6 +10,7 @@ compile:
 
 deps:
 	@./rebar get-deps
+	@./bootstrap.sh
 
 check:
 	@echo "Dependencies"
