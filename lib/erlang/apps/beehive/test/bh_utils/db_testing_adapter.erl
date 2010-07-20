@@ -17,7 +17,7 @@
 ]).
 
 % For RPC calls
--export ([init_databases/1]).
+-export ([init_databases/1, create_tables/0]).
 
 % API
 start(Nodes) ->
@@ -30,25 +30,27 @@ stop() ->
 % read
 read(Table, Key) ->
   case ets:lookup(Table, Key) of
-    [B|_Rest] -> B;
+    [B|_Rest] -> get_bee(B);
     _ -> not_found
   end.
 
 write(Table, Key, Record) ->
-  case ets:insert(Table, {Key, Record}) of
+  case ets:insert(Table, [{Key, Record}]) of
     true -> ok;
     false -> false
   end.
 
 match(Pattern) ->
   Table = element(1, Pattern),
-  ets:match(Table, Pattern).
+  % Really kind of a hack, but it's okay for the time being, this is just a test database adapter
+  get_bee(ets:select(Table, [{{'_', Pattern}, [], ['$_']}])).
 
-save(Fun) ->
+save(Fun) when is_function(Fun) ->
   ets:fun2ms(Fun).
 
 delete_all(Table) ->
-  ets:delete_all_objects(Table).
+  % ets:delete_all_objects(Table),
+  lists:map(fun(Record) -> ets:delete(Table, Record) end, all(Table)).
 
 delete(Table, Record) ->
   ets:delete(Table, Record).
@@ -56,7 +58,8 @@ delete(Table, Record) ->
 run(Fun) ->   qlc:eval( Fun() ).
 
 all(Table) -> 
-  ets:match(Table, '$1').
+  List = lists:flatten(ets:match(Table, '$1')),
+  get_bee(List).
   
 % Thanks to RabbitMQ for the idea
 add_slave([]) -> create_tables();
@@ -78,20 +81,19 @@ create_tables() ->
     case ets:info(Tab) of
       undefined -> 
         spawn(fun() -> 
-          ets:new(Tab, [public, named_table, set]), 
+          % write_concurrency == true so we don't overlap in tests
+          ets:new(Tab, [public, named_table, ordered_set, {write_concurrency, true}]), 
           infinite_loop()
         end);
       _ -> ok
     end,
     % Pluralize the table (to match the model module)
     Pluralized = erlang:list_to_atom(lists:append([erlang:atom_to_list(Tab), "s"])),
-    case code:load_file(Pluralized) of
-      {error, _} = T -> throw(T);
-      _ ->
-        case erlang:function_exported(Pluralized, initialize, 0) of
-          true -> Pluralized:initialize();
-          false -> ok
-        end
+    code:purge(Pluralized),
+    code:load_file(Pluralized),
+    case erlang:function_exported(Pluralized, initialize, 0) of
+      true -> Pluralized:initialize();
+      false -> ok
     end
   end, Databases),
   ok.
@@ -100,3 +102,8 @@ infinite_loop() ->
   receive
     _ -> infinite_loop()
   end.
+
+get_bee({_Key, Record}) -> Record;
+get_bee(List) -> get_bee(List, []).
+get_bee([], Acc) -> lists:reverse(Acc);
+get_bee([{_Key, Record}|Rest], Acc) -> get_bee(Rest, [Record|Acc]).

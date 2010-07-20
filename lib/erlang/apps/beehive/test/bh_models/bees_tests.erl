@@ -10,7 +10,7 @@ teardown(_X) ->
   ok.
 
 starting_test_() ->
-  {"Bees test",
+  {inorder,
     [{setup,
         fun setup/0,
         fun teardown/1,
@@ -26,29 +26,30 @@ starting_test_() ->
   }.
 
 create_test() ->
-  beehive_db_srv:delete_all(bee),
   {ok, Be1} = bees:create(#bee{id={"test_app", {127,0,0,1}, 8090}, app_name = "test_app"}),
   % create via proplists
   Props = [{app_name, "another_app"}, {host, {127,0,0,1}}, {port, 8091}],
   {ok, Be2} = bees:create(Props),
   % {atomic,Results2} = mnesia:transaction(fun() -> mnesia:match_object(#bee{_='_'}) end),
   Results2 = beehive_db_srv:all(bee),
-  ?assertEqual([Be2, Be1], Results2),
+  ?assert(lists:member(Be2, Results2)),
+  ?assert(lists:member(Be1, Results2)),
   passed.
 
 find_by_name_test() ->
   beehive_db_srv:delete_all(bee),
-  bees:create(#bee{id={"test_app", {127,0,0,1}, 8090}, app_name = "test_app"}),
-  Bee = bees:find_by_name("test_app"),
-  ?assert(Bee#bee.id =:= {"test_app", {127,0,0,1}, 8090}),
+  {ok, NewBee} = bees:create(#bee{id={"test_app_at_8090_1", {127,0,0,1}, 8090}, app_name = "test_app_at_8090_1"}),
+  Bee = bees:find_by_name("test_app_at_8090_1"),
+  ?assert(lists:member(NewBee, bees:all())),
+  ?assert(Bee#bee.id =:= {"test_app_at_8090_1", {127,0,0,1}, 8090}),
   passed.
 
 find_by_id_test() ->
   beehive_db_srv:delete_all(bee),
-  bees:create(#bee{id={"test_app", {127,0,0,1}, 8090}, app_name = "test_app"}),
-  Bee = bees:find_by_id({"test_app", {127,0,0,1}, 8090}),
-  ?assert(Bee#bee.id =:= {"test_app", {127,0,0,1}, 8090}),
-  ?assert(1 =:= erlang:length(bees:find_all_by_id({"test_app", {127,0,0,1}, 8090}))),
+  bees:create(#bee{id={"test_app_at_8090_2", {127,0,0,1}, 8090}, app_name = "test_app_at_8090_2"}),
+  Bee = bees:find_by_id({"test_app_at_8090_2", {127,0,0,1}, 8090}),
+  ?assert(Bee#bee.id =:= {"test_app_at_8090_2", {127,0,0,1}, 8090}),
+  ?assert(1 =:= erlang:length(bees:find_all_by_id({"test_app_at_8090_2", {127,0,0,1}, 8090}))),
   passed.
 
 find_all_grouped_by_host_test() ->

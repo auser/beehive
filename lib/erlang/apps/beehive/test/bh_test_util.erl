@@ -15,6 +15,7 @@ setup() ->
   beehive:start([{beehive_db_srv, testing}]),
   
   beehive_db_srv:init_databases(),
+  timer:sleep(200),
   % We don't need any error output here
   inets:start(),
   ok.
@@ -105,5 +106,8 @@ dummy_user() ->
 
 % Utils
 delete_all(Table) ->
-  ok.
+  Pluralized = erlang:list_to_atom(lists:append([erlang:atom_to_list(Table), "s"])),
+  lists:map(fun(O) -> 
+    Pluralized:delete(O) 
+  end, Pluralized:all()).
   % beehive_db_srv:delete_all(Table).
