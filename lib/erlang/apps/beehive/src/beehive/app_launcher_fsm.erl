@@ -102,11 +102,11 @@ preparing({update}, #state{app = App} = State) ->
   Self = self(),
   % rpc:cast(Node, beehive_storage_srv, rebuild_bee, [App, Self]),
   % beehive_storage_srv:
-  gen_cluster:ballot_run(beehive_storage_srv, {rebuild_bee, App, Self}),
+  gen_cluster:run(beehive_storage_srv, {rebuild_bee, App, Self}),
   {next_state, updating, State};
 
 preparing({launch}, #state{from = From, app = App, bee = Bee, latest_sha = Sha} = State) ->
-  Pid = gen_cluster:ballot_run(app_handler, {start_new_instance, [App, Sha, self(), From]}),
+  Pid = gen_cluster:run(app_handler, {start_new_instance, [App, Sha, self(), From]}),
   Node = node(Pid),
   NewState = State#state{bee = Bee#bee{host_node = Node}},
   {next_state, launching, NewState};
