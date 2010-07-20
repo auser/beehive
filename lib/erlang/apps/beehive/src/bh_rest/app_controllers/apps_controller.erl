@@ -57,7 +57,7 @@ post([Name, "restart"], _Data) ->
 post([Name, "deploy"], _Data) ->
   case apps:update_by_name(Name) of
     {ok, _} -> {app, <<"updated">>};
-    _ -> {app, <<"error">>}
+    Error -> {app, Error}
   end;
     
 post([Name, "expand"], _Data) ->

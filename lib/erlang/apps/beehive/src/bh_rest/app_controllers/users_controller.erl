@@ -66,7 +66,7 @@ post(["new"], Data) ->
           true -> {error, "The user already exists"};
           false ->
             case users:create(Data) of
-              User when is_record(User, user) -> 
+              {ok, User} when is_record(User, user) -> 
                 {user, [{email, User#user.email}]};
               E -> 
                 io:format("Error: ~p~n", [E]),
