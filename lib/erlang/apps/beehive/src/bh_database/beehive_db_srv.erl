@@ -17,7 +17,8 @@
   run/1,
   save/1,
   status/0,
-  match/1
+  match/1,
+  info/1
 ]).
 
 %% gen_server callbacks
@@ -50,6 +51,7 @@ run(Fun) -> gen_server:call(?SERVER, {run, Fun}).
 match(Mod) -> gen_server:call(?SERVER, {match, Mod}).
 
 init_databases() -> gen_server:cast(?SERVER, {init_databases}).
+info(Type) -> gen_server:call(?SERVER, {info, Type}).
 
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
@@ -78,7 +80,6 @@ stop() -> gen_server:cast(?SERVER, {stop}).
 %%--------------------------------------------------------------------
 init([DbAdapterName, Nodes]) ->
   DbAdapter = erlang:list_to_atom(lists:flatten(["db_", DbAdapterName, "_adapter"])),
-  erlang:display({?MODULE, DbAdapterName, DbAdapter}),
   init_adapter([node()|Nodes], DbAdapter),
   
   {ok, #state{
@@ -117,6 +118,8 @@ handle_call({run, Fun}, From, State) ->
   % {reply, try_to_call(Adapter, run, [Fun]), State};
 handle_call({match, Mod}, From, State) ->
   handle_queued_call(match, From, [Mod], State);
+handle_call({info, Type}, From, State) ->
+  handle_queued_call(info, From, [Type], State);
 handle_call(_Request, _From, State) ->
   Reply = ok,
   {reply, Reply, State}.

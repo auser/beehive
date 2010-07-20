@@ -13,12 +13,16 @@
   run/1,
   delete/2, delete_all/1,
   all/1,
-  match/1
+  match/1,
+  info/1
 ]).
 
 -export ([init_databases/0, init_databases/1]).
 
 % API
+info(Type) ->
+  mnesia:info(Type).
+  
 start(Nodes) ->
   init_databases(Nodes).
 
