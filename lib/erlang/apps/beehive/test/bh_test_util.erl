@@ -4,25 +4,29 @@
 -include ("beehive.hrl").
 
 setup() ->
+  setup([]).
+
+setup(Proplist) when is_list(Proplist) ->
   Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
   ConfigFile = filename:join([Dir, "test", "fixtures", "beehive.cfg"]),
-  application:set_env(beehive, config_file, ConfigFile),
-  application:set_env(beehive, beehive_home, "/tmp/beehive/test"),
-  application:set_env(beehive, database_dir, "/tmp/beehive/test/test_db"),
-  application:set_env(beehive, node_type, test_type),
   
-  application:start(sasl),
+  application:set_env(beehive, node_type, proplists:get_value(node_type, Proplist, test_type)),
+  application:set_env(beehive, config_file, proplists:get_value(config_file, Proplist, ConfigFile)),
+  application:set_env(beehive, beehive_home, proplists:get_value(node_type, Proplist, "/tmp/beehive/test")),
+  application:set_env(beehive, database_dir, proplists:get_value(database_dir, Proplist, "/tmp/beehive/test/test_db")),
+  
+  % application:start(sasl),
   beehive:start([{beehive_db_srv, testing}]),
   
   beehive_db_srv:init_databases(),
   timer:sleep(200),
   % We don't need any error output here
   inets:start(),
-  ok.
+  ok;
   
 setup(Table) ->
   % beehive_db_srv:start_link(),
-  application:start(sasl),
+  % application:start(sasl),
   setup(),
   clear_table(Table),
   ok.
