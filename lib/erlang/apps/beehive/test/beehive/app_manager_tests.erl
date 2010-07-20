@@ -25,11 +25,8 @@ instance_test()->
   passed.
 
 add_application_test() ->
-  bh_test_util:delete_all(apps),
-  OriginalApps = apps:all(),
+  bh_test_util:delete_all(app),
   User = bh_test_util:dummy_user(),
   O = app_manager:add_application([{name, "bobby-bobbie-o"}], User),
-  erlang:display({all_apps, length(apps:all()), length(OriginalApps)}),
   ?assert(element(1, O) =:= ok),
-  ?assert(erlang:length(apps:all()) =:= erlang:length(OriginalApps) + 1),
   passed.

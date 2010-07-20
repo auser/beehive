@@ -10,6 +10,7 @@
 -include ("common.hrl").
 
 -export ([check/1]).
+-define (DB, beehive_db_srv).
 
 check(test_type) -> ok;
 check(beehive_node) -> check_for_all();
@@ -18,10 +19,10 @@ check(beehive_router) -> check_for_all().
 
 check_for_all() ->
   check_db_directory().
-  
+
 % Internals
 check_db_directory() ->
-  case db:info(directory) of
+  case ?DB:info(directory) of
     undefined -> ok;
     Dir ->
       case filelib:is_dir(Dir) of

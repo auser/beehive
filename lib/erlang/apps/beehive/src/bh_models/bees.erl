@@ -49,19 +49,20 @@ meta_data(FileLocation, MetaFile) ->
   lists:flatten([{bee_size, BeeSize}, OtherProps]).
 
 % Create a new bee
-create(A) -> save(validate_bee(new(A))).
+create(A) -> save(new(A)).
 
 % Save the bee
 save(Bee) when is_record(Bee, bee) ->
-  case catch ?DB:write(bee, Bee#bee.id, Bee) of
-    ok -> {ok, Bee};
+  NewBee = validate_bee(Bee),
+  case ?DB:write(bee, NewBee#bee.id, NewBee) of
+    ok -> {ok, NewBee};
     {'EXIT',{aborted,{no_exists,_}}} -> 
       ?NOTIFY({db, database_not_initialized, bee}),
       timer:sleep(100),
       {error, database_not_initialized};
-    _E ->
+    E ->
       % TODO: Investigate why this EVER happens...
-      {error, did_not_write}
+      {error, {did_not_write, E}}
   end;
 save([]) -> invalid;
 save(Proplists) when is_list(Proplists) -> 
@@ -76,9 +77,9 @@ save(Func) when is_function(Func) ->
 save(Else) -> {error, {cannot_save, Else}}.
 
 new([]) -> error;
-new(Bee) when is_record(Bee, bee) -> validate_bee(Bee);
+new(Bee) when is_record(Bee, bee) -> Bee;
 new(Proplist) when is_list(Proplist) -> 
-  validate_bee(from_proplists(Proplist));
+  from_proplists(Proplist);
 new(Else) -> {error, {cannot_make_new_bee, Else}}.
 
 read(Name) ->
@@ -111,20 +112,13 @@ find_by_id(Id) ->
     E -> E
   end.
 
-find_all_by_id(Id) ->
-  case ?DB:read(bee, Id) of
-    Bees when is_list(Bees) -> Bees;
-    _ -> not_found
-  end.
-
 % Find alls
+find_all_by_id(Id) -> ?DB:match(#bee{id = Id, _='_'}).
 find_all_by_name(Name) -> ?DB:match(#bee{app_name = Name, _='_'}).
 find_all_by_host(Host) -> ?DB:match(#bee{host = Host, _='_'}).
 find_all_grouped_by_host() ->
-  Q = qlc:keysort(#bee.host, db:table(bee)),
-  db:transaction(
-    fun() -> qlc:fold(fun find_all_grouped_by_host1/2, [], Q) end
-  ).
+  Q = qlc:keysort(#bee.host, bees:all()),
+  qlc:fold(fun find_all_grouped_by_host1/2, [], Q).
 
 find_all_grouped_by_host1(#bee{host=Host} = B, [{Host, Backends, Sum} | Acc]) ->
   [{Host, [B|Backends], Sum + 1} | Acc];
@@ -251,7 +245,9 @@ to_proplist([_H|T], Bee, Acc) -> to_proplist(T, Bee, Acc).
 %%      
 %% @end
 %%-------------------------------------------------------------------
-validate_bee(Bee) when is_record(Bee, bee) -> validate_bee(record_info(fields, bee), Bee);
+validate_bee(Bee) when is_record(Bee, bee) -> 
+  ValidatedBee = validate_bee(record_info(fields, bee), Bee),
+  ValidatedBee;
 validate_bee(Else) -> Else.
 
 validate_bee([], Bee) ->  Bee;

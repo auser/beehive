@@ -84,7 +84,6 @@ handle_event({bee, bee_terminated, Bee}, State) when is_record(Bee, bee) ->
 
 % Catch a cannot connect error
 handle_event({bee, cannot_connect, Id}, State) ->
-  erlang:display({bee, cannot_connect, Id}),
   ?LOG(debug, "{bee, cannot_connect, ~p}", [Id]),
   case bees:find_by_id(Id) of
     RealBee when is_record(RealBee, bee) -> bees:save(RealBee#bee{status = down});
@@ -143,8 +142,7 @@ handle_info(_Info, State) ->
 %% this function is called. It should be the opposite of Module:init/1 and
 %% do any necessary cleaning up.
 %%--------------------------------------------------------------------
-terminate(Reason, _State) ->
-  erlang:display({?MODULE, terminate, Reason}),
+terminate(_Reason, _State) ->
   ok.
 
 %%--------------------------------------------------------------------

@@ -59,7 +59,8 @@ create(User) when is_record(User, user) ->
     true -> {user, updated, User};
     false -> {user, created, User}
   end,
-  case db:write(User) of
+  RealUser = validate_user(User),
+  case ?DB:write(user, RealUser#user.email, RealUser) of
     {'EXIT', {aborted, {no_exists, user}}} -> 
       ?NOTIFY({db, database_not_initialized, bee}),
       {error, database_not_initialized};
@@ -75,12 +76,12 @@ create(NewProps) ->
 update(NewProps) ->
   create(new(NewProps)).
 
-delete(User) when is_record(User, user) -> db:delete_object(User);
+delete(User) when is_record(User, user) -> ?DB:delete(User);
 delete(Name) ->
-  db:delete_object(#user{email=Name, _='_'}).
+  ?DB:delete(#user{email=Name, _='_'}).
 
 all() ->
-  db:find(qlc:q([ B || B <- mnesia:table(user) ])).
+  ?DB:all(users).
 
 create_new_token_for(User) when is_record(User, user) ->
   NewToken = bh_md5:hex(lists:flatten([
@@ -127,29 +128,15 @@ add_root_user() ->
     {level, ?ADMIN_USER_LEVEL}
   ])).
 
-new(NewProps) ->
-  PropList = ?rec_info(user, #user{}),
-  FilteredProplist1 = misc_utils:filter_proplist(PropList, NewProps, []),
-  FilteredProplist2 = misc_utils:new_or_previous_value(FilteredProplist1, PropList, []),
-  FilteredProplist = validate_user_proplists(FilteredProplist2),
-  list_to_tuple([user|[proplists:get_value(X, FilteredProplist) || X <- record_info(fields, user)]]).
+from_proplists(Proplists) -> from_proplists(Proplists, #user{}).
+from_proplists([], User)  -> User;
+from_proplists([_Other|Rest], User) -> from_proplists(Rest, User).
 
-validate_user_proplists(PropList) ->
-  lists:map(fun({Key, Val}) ->
-    case Key of
-      updated_at -> {Key, date_util:now_to_seconds()};
-      password -> 
-        case Val of
-          undefined -> bh_md5:hex("test");
-          _ -> {Key, bh_md5:hex(Val)}
-        end;
-      token -> {Key, none};
-      level -> 
-        Lvl = case Val of
-          undefined -> ?REGULAR_USER_LEVEL;
-          T -> misc_utils:to_integer(T)
-        end,
-        {Key, Lvl};
-      _ -> {Key, Val}
-    end
-  end, PropList).
+to_proplist(User) -> to_proplist(record_info(fields, user), User, []).
+to_proplist([], _User, Acc) -> Acc;
+to_proplist([_Other|Rest], User) -> to_proplist(Rest, User).
+
+validate_user(User) when is_record(User, user) -> validate_user(record_info(fields, user), User).
+validate_user([], User) ->  User;
+% Validate the name
+validate_user([_|Rest], User) -> validate_user(Rest, User).

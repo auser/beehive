@@ -38,7 +38,6 @@ init([]) ->
 %%--------------------------------------------------------------------
 % Quick HACK. FIX THIS SHIZ
 handle_event({db, database_not_initialized, _Table}, State) ->
-  % db:init(),
   beehive_db_srv:init_databases(),
   {ok, State};
 handle_event(_Event, State) ->

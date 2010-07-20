@@ -32,17 +32,17 @@
 
 -export ([validate_app/1]).
 
-create(A) -> save(validate_app(new(A))).
+create(A) -> save(new(A)).
 
 save(App) when is_record(App, app) ->
-  ok = ?DB:write(app, App#app.name, validate_app(App)),
-  {ok, App};
+  NewApp = validate_app(App),
+  ok = ?DB:write(app, NewApp#app.name, NewApp),
+  {ok, NewApp};
 save([]) -> invalid;
 save(Proplists) when is_list(Proplists) -> 
   case from_proplists(Proplists) of
     {error, _} = T -> T;
-    App -> 
-      save(App)
+    App -> save(App)
   end;
 save(Func) when is_function(Func) ->
   ?DB:save(Func);
@@ -51,7 +51,7 @@ save(Else) -> {error, {cannot_save, Else}}.
 
 new([]) -> error;
 new(App) when is_record(App, app) -> App;
-new(Proplist) when is_list(Proplist) -> validate_app(from_proplists(Proplist));
+new(Proplist) when is_list(Proplist) -> from_proplists(Proplist);
 new(Else) -> {error, {cannot_make_new_app, Else}}.
 
 read(Name) ->
@@ -85,7 +85,7 @@ find_by_name(Name) ->
 
 find_all_by_name(Name) ->
   case ?DB:read(app, Name) of
-    Apps when is_list(Apps) -> Apps;
+    App when is_record(App, app) -> App;
     _ -> []
   end.
   
