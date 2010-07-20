@@ -92,7 +92,6 @@ command(start, App, _Bee, PropLists) ->
   end;
 
 command(stop, CliApp, #bee{os_pid = OsPid} = Bee, _PropLists) ->
-  erlang:display({babysitter, kill_pid, OsPid}),
   babysitter:kill_pid(OsPid),
   timer:sleep(200),
   case find_and_build_app_env(CliApp, Bee) of

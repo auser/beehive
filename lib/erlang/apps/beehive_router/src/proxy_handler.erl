@@ -64,7 +64,7 @@ proxy_init(ClientSock) ->
 % Let the packet_decoder address the forwarding of the packet to the server and start the proxy loop
 % If the bee cannot be reached, send an alert through the event handler that we could not reach
 % the bee and try to find a new bee
-engage_bee(ClientSock, RequestPid, RoutingKey, ForwardReq, Req, {ok, #bee{host = Host, port = Port} = Bee, ServerSock}) ->
+engage_bee(ClientSock, _RequestPid, RoutingKey, ForwardReq, Req, {ok, #bee{host = Host, port = Port} = Bee, ServerSock}) ->
   ?NOTIFY({bee, used, Bee}),
   % Sending raw request to bee server
   gen_tcp:send(ServerSock, ForwardReq),

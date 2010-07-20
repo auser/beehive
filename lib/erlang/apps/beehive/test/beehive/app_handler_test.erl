@@ -23,7 +23,6 @@ starting_test_() ->
   }.
 
 start_new_instance_test() ->  
-  erlang:display({start_new_instance_test, self()}),
   {ok, App, Bee} = start_dummy_app(self()),
   timer:sleep(1000),
   case bh_test_util:get_url([{host, Bee#bee.host}, {port, Bee#bee.port}, {path, "/"}]) of
@@ -33,7 +32,6 @@ start_new_instance_test() ->
       kill_app_by_bee(App, Bee),
       passed;
     E ->
-      erlang:display({error, start_new_instance_test, E}),
       ?assert(false)
   end.
   
