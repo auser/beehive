@@ -20,7 +20,7 @@
                   % Utils
                   bh_file_utils, misc_utils, reloader, sanity_checks, sha1, slugger,
                   bh_host, bh_md5, bin_utils, config,
-                  date_util, db, string_utils, yaml,
+                  date_util, string_utils, yaml,
                   event_manager, printer, port_handler, node_manager, 
                   auth_utils,bee_strategies,bh_bee_stats_srv,
                   web_utils, babysitter_integration, beehive_builder,
