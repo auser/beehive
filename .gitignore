@@ -12,3 +12,4 @@ deps
 rel/beehive
 node.log
 .eunit
+gproc_dist_beehive@127.0.0.1

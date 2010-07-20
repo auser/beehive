@@ -59,26 +59,40 @@ new(User) when is_record(User, user) -> User;
 new(Proplist) when is_list(Proplist) -> from_proplists(Proplist);
 new(Else) -> {error, {cannot_make_new_user, Else}}.
 
+% Save the user_app
+save(User) when is_record(User, user) ->
+  RealUser = validate_user(User),
+  case catch ?DB:write(user, RealUser#user.email, RealUser) of
+    ok -> {ok, RealUser};
+    {'EXIT',{aborted,{no_exists,_}}} -> 
+      ?NOTIFY({db, database_not_initialized, user_app}),
+      {error, database_not_initialized};
+    _E ->
+      % TODO: Investigate why this EVER happens...
+      {error, did_not_write}
+  end;
+save([]) -> invalid;
+save(Proplists) when is_list(Proplists) -> 
+  case from_proplists(Proplists) of
+    {error, _} = T -> T;
+    User -> save(User)
+  end;
+save(Func) when is_function(Func) -> ?DB:save(Func);
+save(Else) -> {error, {cannot_save, Else}}.
+  
 % Insert a new user
-create(User) when is_record(User, user) ->
+create(User) -> 
   EventMsg = case exist(User#user.email) of
     true -> {user, updated, User};
     false -> {user, created, User}
   end,
-  RealUser = validate_user(User),
-  case ?DB:write(user, RealUser#user.email, RealUser) of
-    {'EXIT', {aborted, {no_exists, user}}} -> 
-      ?NOTIFY({db, database_not_initialized, bee}),
-      {error, database_not_initialized};
-    {'EXIT', _} -> unknown_error;
-    ok -> 
+  case save(new(User)) of
+    {ok, _} = T ->
       ?NOTIFY(EventMsg),
-      {ok, User}
-  end;
+      T;
+    Else -> Else
+  end.
   
-create(NewProps) ->
-  create(new(NewProps)).
-
 update(NewProps) ->
   create(new(NewProps)).
 

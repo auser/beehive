@@ -151,6 +151,7 @@ run_controller(Req, Resp, Docroot, ControllerAtom, Meth, Args) ->
       respond_to(Req, Resp, Docroot, Reason);
     {'EXIT', E} -> 
       ?LOG(error, "(~p:~p) Error in rest server: ~p~n", [?MODULE, ?LINE, E]),
+      erlang:display({error, E}),
       Resp1 = Resp:status_code(503),
       Resp2 = Resp1:header("Content-Type", "text/html"),
       Resp3 = Resp2:data("Nothing to see here"),

@@ -21,7 +21,7 @@
 
 % API
 info(Type) ->
-  mnesia:info(Type).
+  mnesia:system_info(Type).
   
 start(Nodes) ->
   init_databases(Nodes).

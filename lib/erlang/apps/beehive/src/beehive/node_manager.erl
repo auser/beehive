@@ -183,7 +183,8 @@ stop() -> gen_cluster:cast(?SERVER, stop).
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init(Args) ->
-  Type = proplists:get_value(node_type, Args, beehive_router),
+  NodeType = proplists:get_value(node_type, Args, beehive_router),
+  sanity_checks:check(NodeType),
   
   timer:send_interval(timer:seconds(30), {update_node_stats}),
     
@@ -198,7 +199,7 @@ init(Args) ->
   LocalHost = bh_host:myip(),
   
   {ok, #state{
-    type = Type,
+    type = NodeType,
     host = LocalHost
   }}.
 

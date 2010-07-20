@@ -60,9 +60,7 @@ init(Args) ->
   RestServer    = ?CHILD(rest_server_sup, worker, Args),
   BeehiveRouter = ?CHILD(beehive_router_sup, supervisor, Args),
   % Setup beehive
-  NodeType = config:search_for_application_value(node_type, beehive_router),
-  sanity_checks:check(NodeType),
-  
+  NodeType = config:search_for_application_value(node_type, beehive_router),  
   ShouldRunRouter     = case NodeType of
     beehive_router -> true;
     _ -> false
