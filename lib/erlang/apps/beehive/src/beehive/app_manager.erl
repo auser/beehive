@@ -96,11 +96,11 @@ start_link(Args) -> gen_server:start_link({local, ?SERVER}, ?MODULE, Args, []).
 init([]) ->   
   % Build the launching ets tables
   Opts = [named_table, set],
-  (catch ets:new(?UPDATERS_PID_TO_APP, Opts)),
-  (catch ets:new(?UPDATERS_APP_TO_PID, Opts)),
+  spawn(fun() -> ets:new(?UPDATERS_PID_TO_APP, Opts) end),
+  spawn(fun() -> ets:new(?UPDATERS_APP_TO_PID, Opts) end),
   
-  (catch ets:new(?LAUNCHERS_PID_TO_APP, Opts)),
-  (catch ets:new(?LAUNCHERS_APP_TO_PID, Opts)),
+  spawn(fun() -> ets:new(?LAUNCHERS_PID_TO_APP, Opts) end),
+  spawn(fun() -> ets:new(?LAUNCHERS_APP_TO_PID, Opts) end),,
   
   timer:send_interval(timer:seconds(5), {flush_old_processes}),
   % Try to make sure the pending bees are taken care of by either turning them broken or ready

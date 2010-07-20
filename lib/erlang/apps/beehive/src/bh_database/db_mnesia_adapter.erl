@@ -83,7 +83,6 @@ init_databases(Nodes) ->
   ok = add_slave(Nodes),
   ok = wait_for_tables(),
   % Add default data
-  
   ok.
 
 dir() ->

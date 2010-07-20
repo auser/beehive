@@ -193,7 +193,6 @@ init(Args) ->
   read_babysitter_config(),
   
   % Start the database and application
-  beehive_db_srv:init_databases(),
   timer:send_interval(timer:minutes(1), {update_node_pings}),
   
   LocalHost = bh_host:myip(),
