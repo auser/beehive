@@ -27,5 +27,5 @@ rel: all
 rel_erlang:
 	@./rebar generate force=1
 
-test: compile
+test: deps compile
 	@./rebar skip_deps=true eunit
