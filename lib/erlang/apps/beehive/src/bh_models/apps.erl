@@ -85,8 +85,9 @@ find_by_name(Name) ->
 
 find_all_by_name(Name) ->
   case ?DB:read(app, Name) of
-    App when is_record(App, app) -> App;
-    _ -> []
+    Apps  when is_list(Apps) -> Apps;
+    App   when is_record(App, app) -> [App];
+    _ ->  []
   end.
   
 % APPLICATION STUFF

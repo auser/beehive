@@ -49,7 +49,7 @@ find_by_token(Token) ->
 % Does this user exist?
 exist(Name) ->
   case find_by_email(Name) of
-    [] -> false;
+    not_found -> false;
     _ -> true
   end.
 
@@ -81,12 +81,13 @@ save(Func) when is_function(Func) -> ?DB:save(Func);
 save(Else) -> {error, {cannot_save, Else}}.
   
 % Insert a new user
-create(User) -> 
+create(Given) -> 
+  User = new(Given),
   EventMsg = case exist(User#user.email) of
     true -> {user, updated, User};
     false -> {user, created, User}
   end,
-  case save(new(User)) of
+  case save(User) of
     {ok, _} = T ->
       ?NOTIFY(EventMsg),
       T;
@@ -101,7 +102,7 @@ delete(Name) ->
   ?DB:delete(#user{email=Name, _='_'}).
 
 all() ->
-  ?DB:all(users).
+  ?DB:all(user).
 
 create_new_token_for(User) when is_record(User, user) ->
   NewToken = bh_md5:hex(lists:flatten([
