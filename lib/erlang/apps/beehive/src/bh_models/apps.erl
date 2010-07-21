@@ -257,8 +257,7 @@ validate_app([_H|Rest], App) -> validate_app(Rest, App).
 generate_unique_name(Name, Num) -> 
   case catch find_by_name(Name) of
     A when is_record(A, app) -> misc_utils:generate_unique_name(Name, Num);
-    not_found -> Name;
-    {'EXIT', _} -> Name % simply for catching big fat errors on the cli
+    not_found -> string:to_lower(Name)
   end.
 generate_unique_name(Num) -> 
   generate_unique_name(misc_utils:generate_unique_name(Num), Num).

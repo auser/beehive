@@ -17,6 +17,7 @@ starting_test_() ->
     [
       fun test_save/0,
       fun test_save_app_with_same_name/0,
+      fun test_save_app_with_upper_case_name/0,
       fun test_delete_app/0,
       fun test_branch/0,
       fun test_read_app/0
@@ -55,6 +56,12 @@ test_save_app_with_same_name() ->
   {ok, App4} = apps:create(#app{name="test_app", url="http://github.com/auser/test_app2.git"}),
   ?assert(App3#app.name == "test_app"),
   ?assert(App4#app.name =/= "test_app"),
+  passed.
+  
+test_save_app_with_upper_case_name() ->
+  bh_test_util:delete_all(app),
+  {ok, App} = apps:create(#app{name="TestApp", url="http://github.com/auser/test_app2.git"}),
+  ?assertEqual("testapp", App#app.name),
   passed.
 
 test_branch() ->
