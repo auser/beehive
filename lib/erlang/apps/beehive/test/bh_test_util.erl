@@ -31,23 +31,58 @@ setup(Table) ->
   clear_table(Table),
   ok.
 
-get_url(Props) ->
-  Host = proplists:get_value(host, Props, "localhost"),
-  Port = proplists:get_value(port, Props, undefined),
-  Path = proplists:get_value(path, Props, "/"),
+% get_url(Props) ->
+%   Host = proplists:get_value(host, Props, "localhost"),
+%   Port = proplists:get_value(port, Props, undefined),
+%   Path = proplists:get_value(path, Props, "/"),
+%   
+%   UA = proplists:get_value(user_agent, Props, "Erlang-cli"),
+%   
+%   Url = case Port of
+%     undefined -> lists:flatten(["http://", Host, Path]);
+%     _ -> lists:flatten(["http://", Host, ":", integer_to_list(Port), Path])
+%   end,
+%   
+%   case httpc:request(get, {Url, [{"User-Agent", UA}]}, [], []) of
+%     {ok, {{_HttpVer, Code, _Msg}, _Headers, Body}} -> {ok, Code, Body};
+%     {error, E} -> E
+%   end.
+
+fetch_url(Method, Props) ->
+  Host    = proplists:get_value(host, Props, "localhost"),
+  Port    = proplists:get_value(port, Props, undefined),
+  Path    = proplists:get_value(path, Props, "/"),
+
+  Headers = proplists:get_value(headers, Props, []),
   
-  UA = proplists:get_value(user_agent, Props, "Erlang-cli"),
+  {ok, Sock} = gen_tcp:connect(Host, Port, [binary]),
   
-  Url = case Port of
-    undefined -> lists:flatten(["http://", Host, Path]);
-    _ -> lists:flatten(["http://", Host, ":", integer_to_list(Port), Path])
-  end,
-  
-  case httpc:request(get, {Url, [{"User-Agent", UA}]}, [], []) of
-    {ok, {{_HttpVer, Code, _Msg}, _Headers, Body}} -> {ok, Code, Body};
-    {error, E} -> E
+  RequestLine = lists:flatten([string:to_upper(atom_to_list(Method)), " ", Path, " HTTP/1.0\r\n", 
+                lists:map(fun({Key, Value}) ->
+                  lists:flatten([string:to_upper(atom_to_list(Key)), ": ", Value, "\n"])
+                end, Headers), "\r\n"]),
+  gen_tcp:send(Sock, RequestLine),
+  request(Sock, []).
+
+request(Sock, Acc) ->
+  receive
+	  {tcp, Sock, Data} ->
+      % Received data
+      request(Sock, [binary_to_list(Data)|Acc]);
+    {tcp_closed, Sock} ->
+      parse_http_request(lists:flatten(lists:reverse(Acc)));
+  	{tcp_error, Sock} ->
+      {error, Sock};
+  	_Else -> request(Sock, Acc)
+  % If there is no activity for a while and the socket has not already closed, 
+  % we'll assume that the connection is tired and should close, so we'll close it
+  after 3000 ->
+    {error, timeout}
   end.
-  
+
+parse_http_request(Acc) ->
+  [Headers|Body] = string:tokens(Acc, "\r\n"),
+  {ok, Headers, Body}.
 
 teardown() ->
   application:set_env(beehive, beehive_home, "/tmp/beehive/test"),

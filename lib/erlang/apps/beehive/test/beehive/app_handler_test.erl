@@ -25,15 +25,15 @@ starting_test_() ->
 start_new_instance_test() ->  
   {ok, App, Bee} = start_dummy_app(self()),
   timer:sleep(1000),
-  case bh_test_util:get_url([{host, Bee#bee.host}, {port, Bee#bee.port}, {path, "/"}]) of
-    {ok, Code, Body} ->
-      ?assert(Code =:= 200),
-      ?assert(Body =:= "you win"),
-      kill_app_by_bee(App, Bee),
+  O = case bh_test_util:fetch_url(get, [{host, Bee#bee.host}, {port, Bee#bee.port}, {path, "/"}]) of
+    {ok, _Headers, Body} ->
+      ?assertEqual("you win", hd(lists:reverse(Body))),
       passed;
-    E ->
-      ?assert(false)
-  end.
+    _E ->
+      failed
+  end,
+  kill_app_by_bee(App, Bee),
+  ?assertEqual(O, passed).
   
 teardown_an_instance_test() ->
   {ok, _App, Bee} = start_dummy_app(self()),
