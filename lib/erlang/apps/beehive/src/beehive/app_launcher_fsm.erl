@@ -106,10 +106,13 @@ preparing({update}, #state{app = App} = State) ->
   {next_state, updating, State};
 
 preparing({launch}, #state{from = From, app = App, bee = Bee, latest_sha = Sha} = State) ->
-  Pid = gen_cluster:run(app_handler, {start_new_instance, [App, Sha, self(), From]}),
-  Node = node(Pid),
-  NewState = State#state{bee = Bee#bee{host_node = Node}},
-  {next_state, launching, NewState};
+  case gen_cluster:run(app_handler, {start_new_instance, App, Sha, self(), From}) of
+    {error, Reason} -> {stop, Reason, State};
+    Pid ->
+      Node = node(Pid),
+      NewState = State#state{bee = Bee#bee{host_node = Node}},
+      {next_state, launching, NewState}
+  end;
 
 preparing({start_new}, State) ->
   self() ! {bee_built, []},
@@ -134,6 +137,7 @@ updating(Msg, State) ->
   stop_error({updating, Msg}, State).
 
 launching({started_bee, Be}, State) ->
+  erlang:display({got, started_bee, Be}),
   bees:create(Be),
   Self = self(),
   ?LOG(info, "spawn_update_bee_status: ~p for ~p, ~p", [Be, Self, 20]),

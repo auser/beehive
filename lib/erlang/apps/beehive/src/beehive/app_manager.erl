@@ -562,12 +562,15 @@ app_launcher_fsm_go(AppToPidTable, PidToAppTable, Method, App, Updating) ->
       process_flag(trap_exit, true),
       Now = date_util:now_to_seconds(),
       StartOpts = [{app, App}, {caller, self()}, {updating, Updating}],
-      {ok, P} = app_launcher_fsm:start_link(StartOpts),
-      erlang:link(P),
-      apply(app_launcher_fsm, Method, [P]),
-      ets:insert(AppToPidTable, {App, P, Now}), 
-      ets:insert(PidToAppTable, {P, App, Now}), 
-      P
+      case app_launcher_fsm:start_link(StartOpts) of
+        {ok, P} ->
+          erlang:link(P),
+          rpc:call(node(P), app_launcher_fsm, Method, [P]),
+          ets:insert(AppToPidTable, {App, P, Now}), 
+          ets:insert(PidToAppTable, {P, App, Now}), 
+          P;
+        Else -> Else
+      end
   end.
 
 try_to_clean_up_ets_tables(AppToPidTable, PidToAppTable, {App, Pid, Time}) ->

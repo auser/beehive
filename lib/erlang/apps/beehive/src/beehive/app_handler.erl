@@ -60,7 +60,6 @@ seed_pids(_State) ->
       Plist
   end.
 
-
 start_link() ->
   gen_cluster:start_link({local, ?SERVER}, ?SERVER, [], []).
 
@@ -104,8 +103,8 @@ init(_Args) ->
   process_flag(trap_exit, true),
   
   Opts = [named_table, set],
-  ets:new(?TAB_ID_TO_BEE, Opts),
-  ets:new(?TAB_NAME_TO_BEE, Opts),
+  spawn(fun() -> ets:new(?TAB_ID_TO_BEE, Opts) end),
+  spawn(fun() -> ets:new(?TAB_NAME_TO_BEE, Opts) end),
   
   MaxBackends     = ?MAX_BACKENDS_PER_HOST,
   
@@ -272,8 +271,8 @@ initialize_application(App, PropLists, AppLauncher, _From) ->
   case babysitter_integration:command(start, App, built_in_command, PropLists) of
     {ok, Pid, OsPid, Bee} ->
       NewBee = Bee#bee{pid = Pid, os_pid = OsPid},
-      ets:insert(?TAB_ID_TO_BEE, {Bee#bee.id, NewBee}),
-      ets:insert(?TAB_NAME_TO_BEE, {App#app.name, NewBee}),
+      (catch ets:insert(?TAB_ID_TO_BEE, {Bee#bee.id, NewBee})),
+      (catch ets:insert(?TAB_NAME_TO_BEE, {App#app.name, NewBee})),
       AppLauncher ! {started_bee, NewBee},
       NewBee;
     Else ->

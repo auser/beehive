@@ -58,8 +58,7 @@ get_bee(Hostname, TimeofRequest) ->
 %%-------------------------------------------------------------------
 handle_no_ready_bees(Hostname) ->
   case apps:find_by_name(Hostname) of
-    not_found ->
-      {error, unknown_app};
+    not_found -> {error, unknown_app};
     App ->
       case App#app.latest_error of
         undefined ->
