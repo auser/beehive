@@ -73,10 +73,12 @@ request(Sock, Acc) ->
       parse_http_request(lists:flatten(lists:reverse(Acc)));
   	{tcp_error, Sock} ->
       {error, Sock};
-  	_Else -> request(Sock, Acc)
+  	Else -> 
+  	  erlang:display({got, Else}),
+  	  request(Sock, Acc)
   % If there is no activity for a while and the socket has not already closed, 
   % we'll assume that the connection is tired and should close, so we'll close it
-  after 3000 ->
+  after 1000 ->
     {error, timeout}
   end.
 
