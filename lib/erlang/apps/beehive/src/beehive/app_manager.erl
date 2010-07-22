@@ -232,11 +232,13 @@ handle_info({'EXIT',_Pid, {received_unknown_message, {_FsmState, {error, {babysi
   ?LOG(info, "Got received_unknown_message: ~p", [Msg]),
   {noreply, State};
 
-handle_info({'EXIT', Pid, _Reason}, State) ->
+handle_info({'EXIT', Pid, Reason}, State) ->
   case ets:lookup(?UPDATERS_PID_TO_APP, Pid) of
     [{Pid, App, _Time}] ->
       ets:delete(?UPDATERS_PID_TO_APP, Pid),
-      ets:delete(?UPDATERS_APP_TO_PID, App);
+      ets:delete(?UPDATERS_APP_TO_PID, App),
+      % Save the error
+      apps:save(App#app{latest_error = Reason});
     _ -> 
       case ets:lookup(?LAUNCHERS_PID_TO_APP, Pid) of
         [{Pid, App, _Time}] ->

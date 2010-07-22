@@ -268,7 +268,7 @@ mount_application(App, OtherPropLists, #state{scratch_dir = ScratchDisk, run_dir
 
 % Initialize the node
 initialize_application(App, PropLists, AppLauncher, _From) ->
-  case babysitter_integration:command(start, App, built_in_command, PropLists) of
+  case babysitter_integration:command(start, App, unused, PropLists) of
     {ok, Pid, OsPid, Bee} ->
       NewBee = Bee#bee{pid = Pid, os_pid = OsPid},
       (catch ets:insert(?TAB_ID_TO_BEE, {Bee#bee.id, NewBee})),

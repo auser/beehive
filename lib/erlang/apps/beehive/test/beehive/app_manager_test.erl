@@ -15,7 +15,8 @@ starting_test_() ->
       fun teardown/1,
       [
         fun instance_test/0,
-        fun add_application_test/0
+        fun add_application_test/0,
+        fun spawn_update_bee_status_test/0
       ]
     }
   }.
@@ -29,4 +30,7 @@ add_application_test() ->
   User = bh_test_util:dummy_user(),
   O = app_manager:add_application([{name, "bobby-bobbie-o"}], User),
   ?assert(element(1, O) =:= ok),
+  passed.
+
+spawn_update_bee_status_test() ->
   passed.
