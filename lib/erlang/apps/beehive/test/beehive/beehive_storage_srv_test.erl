@@ -26,6 +26,9 @@ fetch_or_build_bee_good_test() ->
   App = bh_test_util:dummy_app(),
   {bee_built, Props} = beehive_storage_srv:fetch_or_build_bee(App),
   ?assertEqual(proplists:get_value(bee_size, Props), 12914),
+  % handle_lookup_squashed_repos
+  {ok, _Node, Path} = beehive_storage_srv:has_squashed_repos(App, sha_argument_not_used_yet),
+  ?assert(filelib:is_file(Path)),
   passed.
 
 fetch_or_build_bee_bad_test() ->
