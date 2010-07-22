@@ -248,7 +248,7 @@ internal_build_bee(App, #state{scratch_dir = ScratchDisk, squashed_disk = Squash
             exit_status = ExitCode,
             timestamp = date_util:now_to_seconds()
           },
-          {ok, NewApp} = apps:save(App#app{latest_error = Error}),
+          {ok, NewApp} = app_manager:request_to_save_app(App#app{latest_error = Error}),
           {error, {babysitter, NewApp}};
         Else ->
           erlang:display({got_something_else,babysitter_run, Else}),

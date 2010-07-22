@@ -27,6 +27,7 @@
   request_to_update_app/1,
   request_to_expand_app/1,
   request_to_terminate_bee/1,
+  request_to_save_app/1,
   garbage_collection/0
 ]).
 
@@ -60,6 +61,7 @@ garbage_collection() -> gen_server:cast(?SERVER, {garbage_collection}).
 request_to_start_new_bee_by_app(App) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_app, App}).
 request_to_start_new_bee_by_name(Name) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_name, Name}).
 request_to_update_app(App) -> gen_server:cast(?SERVER, {request_to_update_app, App}).
+request_to_save_app(App) -> gen_server:call(?SERVER, {request_to_save_app, App}).
 request_to_terminate_bee(Bee) -> gen_server:cast(?SERVER, {request_to_terminate_bee, Bee}).
 terminate_app_instances(Appname) -> gen_server:cast(?SERVER, {terminate_app_instances, Appname}).
 terminate_all() -> gen_server:cast(?SERVER, {terminate_all}).
@@ -126,6 +128,9 @@ init([]) ->
 handle_call({add_application_by_configuration, ConfigProplist, UserEmail}, From, State) ->
   % NewState = add_application_by_configuration(ConfigProplist, State),
   handle_queued_call(fun() -> add_application_by_configuration(ConfigProplist, UserEmail) end, From, State);
+
+handle_call({request_to_save_app, App}, From, State) ->
+  handle_queued_call(fun() -> apps:save(App) end, From, State);
 
 % Remove an application from this application server
 handle_call({remove_app, AppName}, _From, State) ->
