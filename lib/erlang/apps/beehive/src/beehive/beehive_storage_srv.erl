@@ -257,10 +257,10 @@ internal_build_bee(App, #state{scratch_dir = ScratchDisk, squashed_disk = Squash
     {error, _} = T -> T
   end.
   
-handle_repos_lookup(AppName) ->
+handle_repos_lookup(App) ->
   case config:search_for_application_value(git_store, offsite) of
     offsite -> 
-      {ok, handle_offsite_repos_lookup(AppName)};
+      {ok, handle_offsite_repos_lookup(App)};
     _ -> 
       io:format("Looking in local repos not yet supported~n"),
       {error, repos_not_found}
