@@ -50,8 +50,8 @@ save(Func) when is_function(Func) ->
 save(Else) -> {error, {cannot_save, Else}}.
 
 new([]) -> error;
-new(App) when is_record(App, app) -> App;
-new(Proplist) when is_list(Proplist) -> from_proplists(Proplist);
+new(App) when is_record(App, app) -> validate_app(App);
+new(Proplist) when is_list(Proplist) -> validate_app(from_proplists(Proplist));
 new(Else) -> {error, {cannot_make_new_app, Else}}.
 
 read(Name) ->

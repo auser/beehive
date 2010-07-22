@@ -131,14 +131,13 @@ dummy_app() ->
   ReposDir = filename:join([Dir, "test", "fixtures", "dummy_srv"]),
   ReposUrl = lists:concat(["file://", ReposDir]),
   
-  {ok, App} = case apps:find_by_name("test_app") of
-    not_found ->
-      AppC = #app{name = "test_app", url = ReposUrl},
-      apps:create(AppC);
-    App1 ->
-      {ok, App1}
-  end,
-  App.
+  % {ok, App} = case apps:find_by_name("test_app") of
+  %   not_found ->
+  % 
+  %   App1 ->
+  %     {ok, App1}
+  % end,
+  apps:new(#app{name = "test_app", url = ReposUrl}).
 
 dummy_user() ->
   {ok, User} = case users:find_by_email("test@getbeehive.com") of

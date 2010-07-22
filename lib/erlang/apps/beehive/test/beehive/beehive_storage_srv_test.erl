@@ -14,30 +14,28 @@ starting_test_() ->
       fun setup/0,
       fun teardown/1,
       [
-        fun fetch_or_build_bee_good_test/0,
-        fun fetch_or_build_bee_bad_test/0,
+        fun build_bee_good_test/0,
+        fun build_bee_bad_test/0,
         fun can_pull_new_app_test/0
       ]
     }
   }.
 
 % When there is a successful app
-fetch_or_build_bee_good_test() ->
+build_bee_good_test() ->
   App = bh_test_util:dummy_app(),
-  {bee_built, Props} = beehive_storage_srv:fetch_or_build_bee(App),
-  ?assertEqual(proplists:get_value(bee_size, Props), 12914),
+  {bee_built, Props} = beehive_storage_srv:build_bee(App),
+  ?assertEqual("812f9cf168719b4ff9c84a9817b05b2e6cfe7297", proplists:get_value(sha, Props)),
   % handle_lookup_squashed_repos
   {ok, _Node, Path} = beehive_storage_srv:has_squashed_repos(App, sha_argument_not_used_yet),
   ?assert(filelib:is_file(Path)),
   passed.
 
-fetch_or_build_bee_bad_test() ->
+build_bee_bad_test() ->
   App = bh_test_util:dummy_app(),
-  Out = beehive_storage_srv:fetch_or_build_bee(App#app{name="broken_app", url="svn://no_exists/here/so/fail/please/thank/you"}),
-  
-  ?assertEqual(error, element(1, Out)),
-  ?assertEqual(bee_not_found_after_creation, element(2, Out)),
-  
+  Out = beehive_storage_srv:build_bee(App#app{url="svn://no_exists/here/so/fail/please/thank/you"}),
+  {error, {babysitter, NewApp}} = Out,
+  ?assert(NewApp#app.latest_error =/= undefined),
   passed.
 
 can_pull_new_app_test() ->
