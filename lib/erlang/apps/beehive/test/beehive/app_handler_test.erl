@@ -25,15 +25,15 @@ starting_test_() ->
 start_new_instance_test() ->  
   {ok, App, Bee} = start_dummy_app(self()),
   timer:sleep(1000),
-  O = case bh_test_util:fetch_url(get, [{host, Bee#bee.host}, {port, Bee#bee.port}, {path, "/"}]) of
+  case try_to_fetch_url_or_retry(get, [{host, Bee#bee.host}, {port, Bee#bee.port}, {path, "/"}], 20) of
     {ok, _Headers, Body} ->
       ?assertEqual("you win", hd(lists:reverse(Body))),
       passed;
-    _E ->
-      failed
+    _ -> 
+      ?assertEqual(failed, connect)
   end,
   kill_app_by_bee(App, Bee),
-  ?assertEqual(O, passed).
+  passed.
   
 teardown_an_instance_test() ->
   {ok, _App, Bee} = start_dummy_app(self()),
@@ -69,4 +69,11 @@ start_dummy_app(From) ->
       {ok, App, Bee}
     after 5000 ->
       {error, timeout}
+  end.
+
+try_to_fetch_url_or_retry(_Method, _Args, 0) -> failed;
+try_to_fetch_url_or_retry(Method, Args, Times) ->
+  case bh_test_util:fetch_url(Method, Args) of
+    {ok, _Headers, _Body} = T -> T;
+    _E -> try_to_fetch_url_or_retry(Method, Args, Times - 1)
   end.
