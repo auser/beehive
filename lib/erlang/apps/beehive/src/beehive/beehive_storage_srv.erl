@@ -223,7 +223,7 @@ fetch_bee(App, #state{squashed_disk = SquashedDisk} = _State) ->
 internal_build_bee(App, #state{scratch_dir = ScratchDisk, squashed_disk = SquashedDisk} = State) ->
   case handle_repos_lookup(App) of
     {ok, ReposUrl} ->
-            
+      
       Proplist = [
         {scratch_dir, ScratchDisk},
         {squashed_disk, SquashedDisk}
@@ -248,8 +248,8 @@ internal_build_bee(App, #state{scratch_dir = ScratchDisk, squashed_disk = Squash
             exit_status = ExitCode,
             timestamp = date_util:now_to_seconds()
           },
-          {ok, NewApp} = app_manager:request_to_save_app(App#app{latest_error = Error}),
-          {error, {babysitter, NewApp}};
+          % {ok, NewApp} = app_manager:request_to_save_app(App#app{latest_error = Error}),
+          {error, {babysitter, App#app{latest_error = Error}}};
         Else ->
           erlang:display({got_something_else,babysitter_run, Else}),
           {error, Else}
