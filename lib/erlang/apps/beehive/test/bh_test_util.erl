@@ -55,14 +55,18 @@ fetch_url(Method, Props) ->
 
   Headers = proplists:get_value(headers, Props, []),
   
-  {ok, Sock} = gen_tcp:connect(Host, Port, [binary]),
+  case gen_tcp:connect(Host, Port, [binary]) of
+    {ok, Sock} ->
   
-  RequestLine = lists:flatten([string:to_upper(atom_to_list(Method)), " ", Path, " HTTP/1.0\r\n", 
-                lists:map(fun({Key, Value}) ->
-                  lists:flatten([string:to_upper(atom_to_list(Key)), ": ", Value, "\n"])
-                end, Headers), "\r\n"]),
-  gen_tcp:send(Sock, RequestLine),
-  request(Sock, []).
+      RequestLine = lists:flatten([string:to_upper(atom_to_list(Method)), " ", Path, " HTTP/1.0\r\n", 
+                    lists:map(fun({Key, Value}) ->
+                      lists:flatten([string:to_upper(atom_to_list(Key)), ": ", Value, "\n"])
+                    end, Headers), "\r\n"]),
+      gen_tcp:send(Sock, RequestLine),
+      request(Sock, []);
+    Else ->
+      {error, Else}
+  end.
 
 request(Sock, Acc) ->
   receive
