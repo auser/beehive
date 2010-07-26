@@ -123,8 +123,8 @@ is_user_token(Email, Token) ->
 create_new_token_for(Email, Password) ->
   case find_by_email(Email) of
     User when is_record(User, user) ->
-      case User#user.password =:= bh_md5:hex(Password) of
-        false -> error;
+      case bh_md5:hex(User#user.password) =:= bh_md5:hex(Password) of
+        false -> invalid_password;
         true ->
           create_new_token_for(User)
       end;
