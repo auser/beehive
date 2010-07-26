@@ -29,6 +29,7 @@ search_for_application_value_on_env(Param) ->
 search_for_application_value_from_config(Param) ->
 	case config:get(Param) of
 		{error, _} -> false;
+		{ok, undefined} -> false;
 		{ok, V} -> V
 	end.
 
