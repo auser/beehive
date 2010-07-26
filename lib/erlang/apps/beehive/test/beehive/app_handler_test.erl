@@ -16,13 +16,13 @@ starting_test_() ->
       fun setup/0,
       fun teardown/1,
       [
-        fun start_new_instance_test/0,
-        fun teardown_an_instance_test/0
+        fun start_new_instance/0,
+        fun teardown_an_instance/0
       ]
     }
   }.
 
-start_new_instance_test() ->  
+start_new_instance() ->  
   {ok, App, Bee} = start_dummy_app(self()),
   timer:sleep(1000),
   case try_to_fetch_url_or_retry(get, [{host, Bee#bee.host}, {port, Bee#bee.port}, {path, "/"}], 20) of
@@ -35,7 +35,7 @@ start_new_instance_test() ->
   kill_app_by_bee(App, Bee),
   passed.
   
-teardown_an_instance_test() ->
+teardown_an_instance() ->
   {ok, _App, Bee} = start_dummy_app(self()),
   timer:sleep(1000),
   app_handler:stop_instance(Bee, self()),

@@ -14,9 +14,9 @@ starting_test_() ->
       fun teardown/1,
       [
         fun test_generate_unique_name/0,
-        fun chop_test/0,
-        fun propmerge_test/0,
-        fun update_proplist_test/0
+        fun chop/0,
+        fun propmerge/0,
+        fun update_proplist/0
       ]
     }
   }.
@@ -27,7 +27,7 @@ test_generate_unique_name() ->
   ?assert(erlang:length(A) =/= 6),
   passed.
 
-chop_test() ->
+chop() ->
   ?assertEqual([{hi, "guys"}], misc_utils:chop(["hi guys"])),
   ?assertEqual([{hi, ""}], misc_utils:chop(["hi"])),
   ?assertEqual([{hello, "world"}, {how, "areyou"}], misc_utils:chop(["hello world\n how areyou"])),
@@ -36,7 +36,7 @@ chop_test() ->
   ?assertEqual([{omg, "what the eff"}, {call, "ghostbusters"}], misc_utils:chop(["omg what the eff\ncall ghostbusters"])),
   passed.
 
-propmerge_test() ->
+propmerge() ->
   ?assertEqual([{a, "a"}, {b, "b"}, {c, ["c", "not c"]}],
     misc_utils:proplist_merge([{a, "a"}, {b, "b"}, {c, "c"}], [{c, "not c"}])
   ),
@@ -45,6 +45,6 @@ propmerge_test() ->
   ),
   passed.
 
-update_proplist_test() ->
+update_proplist() ->
   ?assertEqual([{a, "a"}, {b, "b"}], misc_utils:update_proplist([{a, "a"}, {b, "c"}], [{b, "b"}])),
   passed.

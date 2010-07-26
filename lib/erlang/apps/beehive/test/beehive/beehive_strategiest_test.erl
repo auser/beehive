@@ -15,19 +15,19 @@ starting_test_() ->
       fun setup/0,
       fun teardown/1,
       [
-        fun random_test/0,
-        fun least_loaded_test/0
+        fun random/0,
+        fun least_loaded/0
       ]
     }
   }.
 
-random_test() ->  
+random() ->  
   List = [1,2,3,4,5,b,c,d,a],
   Out = hd(bee_strategies:random(List)),
   ?assert(lists:member(Out, List)),
   passed.
   
-least_loaded_test() ->
+least_loaded() ->
   List = [
     #bee{id={"chacha", {127,0,0,1}, 9001}},
     #bee{id={"meringue", {127,0,0,1}, 9002}},

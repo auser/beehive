@@ -14,23 +14,23 @@ starting_test_() ->
       fun setup/0,
       fun teardown/1,
       [
-        fun instance_test/0,
-        fun add_application_test/0,
-        fun spawn_update_bee_status_test/0
+        fun instance/0,
+        fun add_application/0,
+        fun spawn_update_bee_status/0
       ]
     }
   }.
 
-instance_test()->
+instance()->
   ?assert(undefined =/= app_manager:instance()),
   passed.
 
-add_application_test() ->
+add_application() ->
   bh_test_util:delete_all(app),
   User = bh_test_util:dummy_user(),
   O = app_manager:add_application([{name, "bobby-bobbie-o"}], User),
   ?assert(element(1, O) =:= ok),
   passed.
 
-spawn_update_bee_status_test() ->
+spawn_update_bee_status() ->
   passed.
