@@ -31,23 +31,13 @@ setup(Table) ->
   clear_table(Table),
   ok.
 
-% get_url(Props) ->
-%   Host = proplists:get_value(host, Props, "localhost"),
-%   Port = proplists:get_value(port, Props, undefined),
-%   Path = proplists:get_value(path, Props, "/"),
-%   
-%   UA = proplists:get_value(user_agent, Props, "Erlang-cli"),
-%   
-%   Url = case Port of
-%     undefined -> lists:flatten(["http://", Host, Path]);
-%     _ -> lists:flatten(["http://", Host, ":", integer_to_list(Port), Path])
-%   end,
-%   
-%   case httpc:request(get, {Url, [{"User-Agent", UA}]}, [], []) of
-%     {ok, {{_HttpVer, Code, _Msg}, _Headers, Body}} -> {ok, Code, Body};
-%     {error, E} -> E
-%   end.
-
+try_to_fetch_url_or_retry(_Method, _Args, 0) -> failed;
+try_to_fetch_url_or_retry(Method, Args, Times) ->
+  case bh_test_util:fetch_url(Method, Args) of
+    {ok, _Headers, _Body} = T -> T;
+    _E -> try_to_fetch_url_or_retry(Method, Args, Times - 1)
+  end.
+  
 fetch_url(Method, Props) ->
   Host    = proplists:get_value(host, Props, "localhost"),
   Port    = proplists:get_value(port, Props, undefined),

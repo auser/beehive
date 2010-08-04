@@ -245,7 +245,7 @@ handle_leave(_LeavingPid, _Info, State) ->
 internal_start_new_instance(App, Sha, Port, AppLauncher, From, State) ->
   case find_and_transfer_bee(App, Sha) of
     {ok, Node, LocalPath} ->
-      Proplists = [{sha, Sha}, {port, Port}, {bee_image, LocalPath}, {storage_node, Node}],
+      Proplists = [{revision, Sha}, {port, Port}, {bee_image, LocalPath}, {storage_node, Node}],
       
       case mount_application(App, Proplists, State) of
         {ok, _OtherPid, _Status} ->
@@ -310,8 +310,8 @@ build_and_then_fetch_into(Pid, App, Sha, LocalPath) ->
     {bee_built, Props} ->
       % Since we know that the bundle has been built somewhere,
       % we can fetch it now
-      CurrentSha = proplists:get_value(sha, Props),
-      case gen_cluster:call(Pid, {has_squashed_repos, App#app{sha = CurrentSha}, Sha}) of
+      CurrentSha = proplists:get_value(revision, Props),
+      case gen_cluster:call(Pid, {has_squashed_repos, App#app{revision = CurrentSha}, Sha}) of
         {ok, Node, RemotePath} -> 
           fetch_bee_from_into(Node, RemotePath, LocalPath), 
           {ok, Node, LocalPath};

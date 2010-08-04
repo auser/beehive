@@ -124,9 +124,9 @@ preparing(Other, State) ->
 updating({bee_built, Info}, #state{bee = Bee, app = App} = State) ->
   % Strip off the last newline... stupid bash
   BeeSize = proplists:get_value(bee_size, Info, Bee#bee.bee_size),
-  Sha = proplists:get_value(sha, Info, Bee#bee.commit_hash),
+  Sha = proplists:get_value(revision, Info, Bee#bee.commit_hash),
 
-  NewApp = App#app{sha = Sha},
+  NewApp = App#app{revision = Sha},
   NewBee = Bee#bee{bee_size = BeeSize, commit_hash = Sha},
   % Grr
   NewState0 = State#state{bee = NewBee, app = NewApp, latest_sha = Sha},
@@ -159,8 +159,8 @@ pending({updated_bee_status, BackendStatus}, #state{app = App, bee = Bee, from =
   ?LOG(info, "Application started ~p: ~p", [BackendStatus, App#app.name]),
   % App started normally
   case Updating of
-    true -> From ! {bee_updated_normally, Bee#bee{status = BackendStatus}, App#app{sha = Sha}};
-    false -> From ! {bee_started_normally, Bee#bee{status = BackendStatus}, App#app{sha = Sha}}
+    true -> From ! {bee_updated_normally, Bee#bee{status = BackendStatus}, App#app{revision = Sha}};
+    false -> From ! {bee_started_normally, Bee#bee{status = BackendStatus}, App#app{revision = Sha}}
   end,
   {stop, normal, State};
   

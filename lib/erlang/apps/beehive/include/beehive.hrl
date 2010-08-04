@@ -64,18 +64,38 @@
 -record (app, {
   name,
   url,
-  type = dynamic,                   % dynamic | static (if this is set to static, we cannot launch a new one)
+  vcs_type      = git,              % git | svn | etc.
+  dynamic       = dynamic,          % dynamic | static (if this is set to static, we cannot launch a new one)
   routing_param = 'Host',
   timeout,
   sticky        = false,            % if an app is sticky, the apps are not requested after timeout time
   min_instances = 0,
   max_instances = 1,
   branch = "master",                % The branch of the app to check out
-  sha,                              % sha of the latest working push
+  revision,                         % revision of the latest working push
   updated_at,
-  latest_error = undefined,         % last error that occured on the app
-  template = default                % default app
+  latest_error  = undefined,        % last error that occured on the app
+  type          = default           % default app
 }).
+
+-record(bee_object, {
+  name,         % name of the bee
+  branch,       % branch to checkout
+  revision,     % revision
+  vcs_type,     % git | svn
+  url,          % url
+  type,         % type of app to match conf files
+  run_dir,      % location of the unpacked bee_file
+  bundle_dir,   % location of the root of the bundle
+  bee_file,     % location of the file
+  meta_file,    % location of the metadata file
+  port,         % port to run on
+  pre,
+  post,
+  pid,          % pid of running bee_object
+  env = []      % more environment variables
+}).
+
 
 % User levels
 -define (ADMIN_USER_LEVEL, 1).

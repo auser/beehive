@@ -75,7 +75,7 @@ io:format("
   ", [Command, Phase, OsPid, ExitCode, StdOut, StdErr]);
   {error, no_command} ->
 io:format("
-  No command is described in the application template for this app~n
+  No command is described in the application type for this app~n
 ", [])
   end,
   shut_it_down().
@@ -107,7 +107,7 @@ build_app_from_args(Args) ->
   apps:new(Proplist).
   
 build_bee_from_args(undefined, _) -> [];
-build_bee_from_args(#app{name = AppName, sha = Sha} = _App, Args) -> 
+build_bee_from_args(#app{name = AppName, revision = Sha} = _App, Args) -> 
   Port = proplists:get_value(port, Args),
   Host = proplists:get_value(host, Args),
   StartedAt = date_util:now_to_seconds(),

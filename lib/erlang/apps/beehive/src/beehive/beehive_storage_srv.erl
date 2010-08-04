@@ -228,33 +228,35 @@ internal_build_bee(App, #state{scratch_dir = ScratchDisk, squashed_disk = Squash
         {scratch_dir, ScratchDisk},
         {squashed_disk, SquashedDisk}
       ],
-      
-      case babysitter_integration:command(bundle, App#app{url = ReposUrl}, unusued, Proplist) of
-        {ok, _OsPid, 0} ->
-          case fetch_bee(App, State) of
-            {bee_built, _Resp} = T -> T;
-            E -> E
-          end;
-        {error, Stage, _OsPid, ExitCode, Stdout, Stderr} ->
-          % stage,        % stage at which the app failed
-          % stderr,       % string with the stderr
-          % stdout,       % string with the stdout
-          % exit_status,  % exit status code
-          % timestamp     % time when the exit happened
-          Error = #app_error{
-            stage = Stage,
-            stderr = Stderr,
-            stdout = Stdout,
-            exit_status = ExitCode,
-            timestamp = date_util:now_to_seconds()
-          },
-          % {ok, NewApp} = app_manager:request_to_save_app(App#app{latest_error = Error}),
-          {error, {babysitter, App#app{latest_error = Error}}};
-        Else ->
-          erlang:display({got_something_else,babysitter_run, Else}),
-          {error, Else}
-      end;
+      erlang:display({app, apps:to_proplist(App#app{url = ReposUrl})}),
+      beehive_bee_object:bundle(apps:to_proplist(App#app{url = ReposUrl}));
     {error, _} = T -> T
+    %   case babysitter_integration:command(bundle, App#app{url = ReposUrl}, unusued, Proplist) of
+    %     {ok, _OsPid, 0} ->
+    %       case fetch_bee(App, State) of
+    %         {bee_built, _Resp} = T -> T;
+    %         E -> E
+    %       end;
+    %     {error, Stage, _OsPid, ExitCode, Stdout, Stderr} ->
+    %       % stage,        % stage at which the app failed
+    %       % stderr,       % string with the stderr
+    %       % stdout,       % string with the stdout
+    %       % exit_status,  % exit status code
+    %       % timestamp     % time when the exit happened
+    %       Error = #app_error{
+    %         stage = Stage,
+    %         stderr = Stderr,
+    %         stdout = Stdout,
+    %         exit_status = ExitCode,
+    %         timestamp = date_util:now_to_seconds()
+    %       },
+    %       % {ok, NewApp} = app_manager:request_to_save_app(App#app{latest_error = Error}),
+    %       {error, {babysitter, App#app{latest_error = Error}}};
+    %     Else ->
+    %       erlang:display({got_something_else,babysitter_run, Else}),
+    %       {error, Else}
+    %   end;
+    % {error, _} = T -> T
   end.
   
 handle_repos_lookup(App) ->

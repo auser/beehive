@@ -255,11 +255,11 @@ handle_info({'EXIT', Pid, Reason}, State) ->
   {noreply, State};
   
 handle_info({bee_updated_normally, #bee{commit_hash = Sha} = Bee, #app{name = AppName} = App}, State) ->
-  % StartedBee#bee{commit_hash = Sha}, App#app{sha = Sha}
+  % StartedBee#bee{commit_hash = Sha}, App#app{revision = Sha}
   ?LOG(debug, "app_event_handler got bee_started_normally: ~p, ~p", [Bee, App]),
   case apps:find_by_name(AppName) of
     RealApp when is_record(RealApp, app) ->
-      apps:save(RealApp#app{sha = Sha, latest_error = undefined});
+      apps:save(RealApp#app{revision = Sha, latest_error = undefined});
     _ -> ok
   end,
   case bees:find_by_id(Bee#bee.id) of
@@ -563,7 +563,7 @@ expand_instance_by_app(App) -> start_new_instance_by_app(App).
 
 % PRIVATE
 app_launcher_fsm_go(AppToPidTable, PidToAppTable, Method, App, Updating) ->
-  case App#app.type of
+  case App#app.dynamic of
     static -> ok;
     _T ->
       process_flag(trap_exit, true),

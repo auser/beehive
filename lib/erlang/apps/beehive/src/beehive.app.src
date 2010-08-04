@@ -30,6 +30,8 @@
                   app_handler,
                   % Storage
                   beehive_git_srv, beehive_storage_srv,
+                  % BeeObjects
+                  beehive_bee_object, beehive_bee_object_config,
                   % Stores
                   beehive_db_srv, db_mnesia_adapter,
                   queue_store
