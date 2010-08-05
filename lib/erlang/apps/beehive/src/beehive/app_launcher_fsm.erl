@@ -77,11 +77,18 @@ init([Proplist]) ->
   From = proplists:get_value(caller, Proplist),
   Updating = proplists:get_value(updating, Proplist),
   
-  case App#app.latest_error of
+  % Only start if there are no other modules registered with the name
+  case global:whereis_name(registered_name(App)) of
     undefined ->
-      {ok, preparing, #state{app = App, from = From, updating = Updating, bee = #bee{}}};
+      case App#app.latest_error of
+        undefined ->
+          global:register(registered_name(App)),
+          {ok, preparing, #state{app = App, from = From, updating = Updating, bee = #bee{}}};
+        _ ->
+          {stop, {error, pending_app_error}}
+    end;
     _ ->
-      {stop, {error, pending_app_error}}
+      {stop, already_started}
   end.
 
 %%--------------------------------------------------------------------
@@ -97,11 +104,7 @@ init([Proplist]) ->
 %% called if a timeout occurs.
 %%--------------------------------------------------------------------
 preparing({update}, #state{app = App} = State) ->
-  % Pid = node_manager:get_next_available(storage),
-  % Node = node(Pid),
   Self = self(),
-  % rpc:cast(Node, beehive_storage_srv, rebuild_bee, [App, Self]),
-  % beehive_storage_srv:
   gen_cluster:run(beehive_storage_srv, {rebuild_bee, App, Self}),
   {next_state, updating, State};
 
@@ -271,3 +274,7 @@ stop_error(Msg, #state{from = From, app = App} = State) ->
   Tuple = {?MODULE, error, Msg, App},
   From ! Tuple,
   {stop, Tuple, State}.
+
+% a name
+registered_name(#app{name = Name} = App) when is_record(App, app) ->
+  list_to_atom(lists:flatten(["app_launcher_fsm", Name])).

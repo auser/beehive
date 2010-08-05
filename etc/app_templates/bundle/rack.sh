@@ -31,11 +31,3 @@ if [ -f ".gems" ]; then
     fi
   done < ".gems"
 fi
-
-if [ ! -f "start.sh" ]; then
-  echo "#!/bin/sh -e
-  rackup -p \$PORT
-  " > start.sh
-
-  chmod u+x start.sh
-fi

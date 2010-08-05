@@ -11,7 +11,7 @@
 
 -include ("beehive.hrl").
 -include ("common.hrl").
--behaviour(gen_server).
+-behaviour(gen_cluster).
 
 %% API
 -export([start_link/0, start_link/1]).
@@ -34,10 +34,15 @@
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
+% gen_cluster callback
+-export([handle_join/2, handle_leave/3]).
 
 -record(state, {
-  queries = queue:new(),
-  last_trans = 0
+  run_directory,
+  scratch_dir,
+  max_bees,               % maximum number of bees on this host
+  queries     = queue:new(),
+  last_trans  = 0
 }).
 
 -define (LAUNCHERS_APP_TO_PID, 'launchers_app_to_pid').
@@ -75,14 +80,41 @@ add_application(ConfigProplist) ->
     V -> add_application(lists:delete(user_email, ConfigProplist), V)
   end.
 add_application(ConfigProplist, UserEmail) -> 
-  gen_server:call(?SERVER, {add_application_by_configuration, ConfigProplist, UserEmail}).
+  gen_server:call(?SERVER, {add_application, ConfigProplist, UserEmail}).
 
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-start_link() -> gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-start_link(Args) -> gen_server:start_link({local, ?SERVER}, ?MODULE, Args, []).
+start_link() ->
+  gen_cluster:start_link({local, ?SERVER}, ?SERVER, [], []).
+
+stop() ->
+  gen_cluster:call(?SERVER, {stop}).
+
+can_deploy_new_app() ->
+  gen_cluster:call(?SERVER, {can_deploy_new_app}).
+
+start_new_instance(App, Sha, AppLauncher, From) ->
+  gen_cluster:call(?SERVER, {start_new_instance, App, Sha, AppLauncher, From}, infinity).
+
+
+%%-------------------------------------------------------------------
+%% @spec () ->    Seed::list()
+%% @doc List of seed pids
+%%      
+%% @end
+%%-------------------------------------------------------------------
+seed_nodes(_State) -> [node(seed_pid())].
+seed_pid() -> hd(seed_pids([])).
+seed_pids(_State) ->
+  case global:whereis_name(?MODULE) of
+    undefined -> [self()]; % We are the master
+    _ ->
+      {ok, Plist} = gen_cluster:plist(?MODULE),
+      Plist
+  end.
+
 
 %%====================================================================
 %% gen_server callbacks
@@ -97,6 +129,8 @@ start_link(Args) -> gen_server:start_link({local, ?SERVER}, ?MODULE, Args, []).
 %%--------------------------------------------------------------------
 init([]) ->   
   % Build the launching ets tables
+  process_flag(trap_exit, true),
+  
   Opts = [named_table, set],
   (catch ets:new(?UPDATERS_PID_TO_APP, Opts)),
   (catch ets:new(?UPDATERS_APP_TO_PID, Opts)),
@@ -113,7 +147,15 @@ init([]) ->
   % timer:send_interval(timer:minutes(2), {maintain_bee_counts}),
   timer:send_interval(timer:minutes(2), {clean_up_apps}),
   
-  {ok, #state{}}.
+  ScratchDisk = config:search_for_application_value(scratch_dir, ?BEEHIVE_DIR("tmp")),
+  RunDir = config:search_for_application_value(squashed_storage, ?BEEHIVE_DIR("run")),
+  MaxBackends     = ?MAX_BACKENDS_PER_HOST,
+  
+  {ok, #state{
+    run_directory = RunDir,
+    scratch_dir = ScratchDisk,
+    max_bees = MaxBackends
+  }}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -125,9 +167,9 @@ init([]) ->
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
 % Add an application
-handle_call({add_application_by_configuration, ConfigProplist, UserEmail}, From, State) ->
-  % NewState = add_application_by_configuration(ConfigProplist, State),
-  handle_queued_call(fun() -> add_application_by_configuration(ConfigProplist, UserEmail) end, From, State);
+handle_call({add_application, ConfigProplist, UserEmail}, From, State) ->
+  % NewState = add_application(ConfigProplist, State),
+  handle_queued_call(fun() -> add_application(ConfigProplist, UserEmail) end, From, State);
 
 handle_call({request_to_save_app, App}, From, State) ->
   handle_queued_call(fun() -> apps:save(App) end, From, State);
@@ -373,7 +415,7 @@ try_to_connect_to_new_instance(Bee, Attempts) ->
   end.
   
 % Add an application based on it's proplist
-add_application_by_configuration(ConfigProplist, UserEmail) ->
+add_application(ConfigProplist, UserEmail) ->
   case apps:new(ConfigProplist) of
     NewApp when is_record(NewApp, app) ->
       {ok, _App} = apps:save(NewApp),

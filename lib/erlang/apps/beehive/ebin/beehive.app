@@ -15,7 +15,7 @@
                         db_mnesia_adapter,event_manager,events_controller,
                         git_controller,home_controller,log_event_handler,
                         misc_utils,node_event_handler,node_manager,
-                        nodes_controller,port_handler,printer,
+                        nodes_controller,printer,
                         proxy_event_handler,queue_store,reloader,rest_server,
                         rest_server_sup,sanity_checks,sha1,slugger,
                         stats_controller,string_utils,system_controller,

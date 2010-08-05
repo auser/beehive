@@ -25,7 +25,8 @@ starting_test_() ->
 build_bee_good() ->
   App = bh_test_util:dummy_app(),
   {bee_built, Props} = beehive_storage_srv:build_bee(App),
-  ?assertEqual("812f9cf168719b4ff9c84a9817b05b2e6cfe7297", proplists:get_value(sha, Props)),
+  erlang:display({build_bee_good, Props}),
+  ?assertEqual("812f9cf168719b4ff9c84a9817b05b2e6cfe7297", proplists:get_value(revision, Props)),
   % handle_lookup_squashed_repos
   {ok, _Node, Path} = beehive_storage_srv:has_squashed_repos(App, sha_argument_not_used_yet),
   ?assert(filelib:is_file(Path)),

@@ -16,10 +16,7 @@
 %% API
 -export([
   start_link/0,
-  can_pull_new_app/0,
-  fetch_or_build_bee/1,
-  build_bee/1, build_bee/2,
-  has_squashed_repos/2,
+  fetch_or_build_bee/2,
   seed_nodes/1
 ]).
 
@@ -56,17 +53,8 @@ seed_pids(_State) ->
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-build_bee(App) -> gen_cluster:call(?SERVER, {build_bee, App}, infinity).
-build_bee(App, Caller) -> gen_cluster:cast(?SERVER, {build_bee, App, Caller}).
-  
-fetch_or_build_bee(App) ->
-  gen_cluster:call(?SERVER, {fetch_or_build_bee, App}).
-
-has_squashed_repos(App, Sha) ->
-  gen_cluster:call(?SERVER, {has_squashed_repos, App, Sha}).
-
-can_pull_new_app() ->
-  gen_cluster:call(?SERVER, {can_pull_new_app}).
+fetch_or_build_bee(App, Caller) ->
+  gen_cluster:call(?SERVER, {fetch_or_build_bee, App, Caller}).
 
 start_link() ->
   gen_cluster:start_link({local, ?SERVER}, ?MODULE, [], []).
@@ -102,19 +90,11 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call({fetch_or_build_bee, App}, _From, State) ->
-  Resp = case fetch_bee(App, State) of
+handle_call({fetch_or_build_bee, App, Caller}, _From, State) ->
+  Resp = case fetch_bee(App, Caller, State) of
     {error, _} -> internal_build_bee(App, State);
     T -> T
   end,
-  {reply, Resp, State};
-handle_call({build_bee, App}, _From, State) ->
-  Resp = internal_build_bee(App, State),
-  {reply, Resp, State};
-handle_call({has_squashed_repos, App, Sha}, _From, State) ->
-  {reply, handle_lookup_squashed_repos(App, Sha, State), State};
-handle_call({can_pull_new_app}, _From, State) ->
-  {reply, true, State};
 handle_call(_Request, _From, State) ->
   Reply = ok,
   {reply, Reply, State}.
@@ -125,10 +105,6 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast({build_bee, App, Caller}, State) ->
-  Caller ! internal_build_bee(App, State),
-  {noreply, State};
-
 handle_cast(stop, State) ->
   {stop, normal, State};
 handle_cast(_Msg, State) ->
@@ -185,33 +161,27 @@ handle_leave(_LeavingPid, _Info, State) ->
 
 
 % HANDLE VOTING
-handle_vote({build_bee, _App}, State) ->
-  % For now, always try to get the vote
-  {reply, 1, State};
-handle_vote({has_squashed_repos, App, Sha}, State) ->
-  Val = case handle_lookup_squashed_repos(App, Sha, State) of
-    false -> 0;
-    _ -> 1
-  end,
-  {reply, Val, State};
 handle_vote(_Msg, State) ->
   {reply, 0, State}.
 
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-fetch_bee(App, #state{squashed_disk = SquashedDisk} = _State) ->
-  SquashedDir = lists:flatten([SquashedDisk, "/", App#app.name]),
-  BeeLocation = lists:flatten([SquashedDir, "/", App#app.name, ".bee"]),
-  EnvLocation = lists:flatten([SquashedDir, "/", App#app.name, ".env"]),
-  
-  case filelib:is_file(BeeLocation) of
+fetch_bee(#app{name = Name} = App, Caller, #state{squashed_disk = SquashedDisk} = _State) ->
+  Self = self(),
+  case lists:member(Name, beehive_bee_object:ls(SquashedDisk)) of
     true -> 
-      Resp = bees:meta_data(BeeLocation, EnvLocation),
-      ?NOTIFY({bee, bee_built, Resp}),
-      {bee_built, Resp};
-    false -> {error, bee_not_found_after_creation, App}
-  end.
+      % We need to check to make sure this is the latest bee...
+      beehive_bee_object:send_bee_object(node(Caller), Name);
+    false -> 
+      beehive_bee_object:bundle(apps:to_proplist(App), Self),
+      beehive_bee_object:send_bee_object(node(Caller), Name)
+  end,
+  
+  Info = beehive_bee_object:info(Name)
+  ?NOTIFY({bee, bee_built, Info}),
+  Caller ! {bee, bee_built, Info},
+  Info.
 
 %%-------------------------------------------------------------------
 %% @spec (App::app(), State) ->    {ok, Value}
@@ -224,11 +194,10 @@ internal_build_bee(App, #state{scratch_dir = ScratchDisk, squashed_disk = Squash
   case handle_repos_lookup(App) of
     {ok, ReposUrl} ->
       
-      Proplist = [
-        {scratch_dir, ScratchDisk},
-        {squashed_disk, SquashedDisk}
-      ],
-      erlang:display({app, apps:to_proplist(App#app{url = ReposUrl})}),
+      % Proplist = [
+      %   {scratch_dir, ScratchDisk},
+      %   {squashed_disk, SquashedDisk}
+      % ],
       beehive_bee_object:bundle(apps:to_proplist(App#app{url = ReposUrl}));
     {error, _} = T -> T
     %   case babysitter_integration:command(bundle, App#app{url = ReposUrl}, unusued, Proplist) of
@@ -277,23 +246,3 @@ handle_offsite_repos_lookup(AppName) ->
       handle_offsite_repos_lookup(App);
     _ -> false
   end.
-
-handle_lookup_squashed_repos(App, _Sha, #state{squashed_disk = SquashedDir} = _State) ->
-  case handle_find_application_location(App, SquashedDir) of
-    false -> {error, not_found};
-    FullFilePath -> {ok, node(self()), FullFilePath}
-  end.
-
-handle_find_application_location(#app{name = Name} = _App, SquashedDir) ->
-  bh_file_utils:ensure_dir_exists([SquashedDir]),
-  {ok, Folders} = file:list_dir(SquashedDir),
-  case lists:member(Name, Folders) of
-    true ->
-      Dir = filename:join([SquashedDir, Name]),
-      FullFilePath = filename:join([Dir, lists:flatten([Name, ".bee"])]),
-      case filelib:is_file(FullFilePath) of
-        true -> FullFilePath;
-        false -> false
-      end;
-    false -> false
-  end.  

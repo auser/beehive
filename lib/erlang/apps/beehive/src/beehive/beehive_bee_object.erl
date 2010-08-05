@@ -105,10 +105,11 @@ bundle(Proplists, From) when is_list(Proplists) ->
 
 % Take a url and clone/1 it and then bundle the directory
 % based on the configuration directive
-bundle(#bee_object{type = Type, bundle_dir = BundleDir} = BeeObject, From) when is_record(BeeObject, bee_object) ->  
+bundle(#bee_object{type = Type, bundle_dir=NBundleDir} = BeeObject, From) when is_record(BeeObject, bee_object) ->  
   case clone(BeeObject, From) of
     {error, _} = T -> T;
     _E ->
+      BundleDir = filename:dirname(NBundleDir),
       run_hook_action(pre, BeeObject, From),
       BeforeBundle = case beehive_bee_object_config:get_or_default(bundle, Type) of
         {error, _} = T -> throw(T);
@@ -124,6 +125,7 @@ bundle(#bee_object{type = Type, bundle_dir = BundleDir} = BeeObject, From) when 
           Proplist = to_proplist(BeeObject),
           Str = template_command_string(SquashCmd, Proplist),
           
+          erlang:display({bundle, BundleDir, Str}),
           Out = try
             c:cd(BundleDir),
             cmd(Str, Proplist, From)
@@ -276,6 +278,12 @@ have_bee(Name) ->
   end.
 
 % Send to the node
+send_bee_object(ToNode, Name) when is_list(Name) ->
+  case find_bee(Name) of
+    BeeObject when is_record(BeeObject, bee_object) ->
+      send_bee_object(ToNode, BeeObject);
+    _ -> {error, not_found}
+  end;
 send_bee_object(ToNode, #bee_object{bee_file = BeeFile} = BeeObject) when is_record(BeeObject, bee_object) ->
   case rpc:call(ToNode, code, is_loaded, [?MODULE]) of
     {file, _} -> ok;
@@ -538,17 +546,17 @@ validate_bee_object(BeeObject) when is_record(BeeObject, bee_object) ->
   validate_bee_object(record_info(fields, bee_object), BeeObject).
 validate_bee_object([name|_Rest], #bee_object{name = undefined} = _BeeObject) -> throw({error, no_name_given});
 validate_bee_object([bundle_dir|Rest], #bee_object{bundle_dir = undefined, name = Name} = BeeObject) -> 
-  RootDir = config:search_for_application_value(bundle_dir),
+  RootDir = config:search_for_application_value(squashed_dir, ?BEEHIVE_DIR("squashed")),
   RealBundleDir = filename:join([RootDir, Name]),
   validate_bee_object(Rest, BeeObject#bee_object{bundle_dir = RealBundleDir});
 validate_bee_object([run_dir|Rest], #bee_object{run_dir = undefined} = BeeObject) -> 
-  validate_bee_object(Rest, BeeObject#bee_object{run_dir = config:search_for_application_value(run_dir)});
+  RunDir = config:search_for_application_value(run_dir, ?BEEHIVE_DIR("run")),
+  validate_bee_object(Rest, BeeObject#bee_object{run_dir = RunDir});
 % Validate branch
 validate_bee_object([branch|Rest], #bee_object{branch = undefined} = BeeObject) ->
   validate_bee_object(Rest, BeeObject#bee_object{branch = "master"});
 % Validate the bee_file
-validate_bee_object([bee_file|Rest], #bee_object{bee_file=undefined, name=Name} = BeeObject) ->  
-  RootDir = config:search_for_application_value(bundle_dir),
+validate_bee_object([bee_file|Rest], #bee_object{bundle_dir=RootDir, bee_file=undefined, name=Name} = BeeObject) ->  
   BeeFile = filename:join([RootDir, lists:flatten([Name, ".bee"])]),
   validate_bee_object(Rest, BeeObject#bee_object{bee_file = BeeFile});
 validate_bee_object([meta_file|Rest], #bee_object{meta_file = undefined, bee_file = Bf} = BeeObject) ->

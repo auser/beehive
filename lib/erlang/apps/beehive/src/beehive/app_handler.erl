@@ -38,8 +38,6 @@
 }).
 -define(SERVER, ?MODULE).
 
--define (STORAGE_SRV, beehive_storage_srv).
-
 -define (TAB_ID_TO_BEE, 'id_to_bee_table').
 -define (TAB_NAME_TO_BEE, 'name_to_bee_table').
 
@@ -264,7 +262,7 @@ mount_application(App, OtherPropLists, #state{scratch_dir = ScratchDisk, run_dir
     {run_directory, RunDir},
     OtherPropLists
   ]),
-  babysitter_integration:command(mount, App, unused, Proplist).
+  beehive_bee_object:mount(apps:to_proplist(App)).
 
 % Initialize the node
 initialize_application(App, PropLists, AppLauncher, _From) ->
@@ -331,32 +329,35 @@ fetch_bee_from_into(Pid, RemotePath, LocalPath) ->
 
 % kill the instance of the application  
 internal_stop_instance(Bee, _State) ->  
-  case babysitter_integration:command(stop, unused, Bee, []) of
-    {ok, _OsPid, _ExitStatus, App} ->
-      case ets:lookup(?TAB_ID_TO_BEE, Bee#bee.id) of
-        [{Key, _B}] ->
-          catch ets:delete(?TAB_NAME_TO_BEE, App#app.name),
-          catch ets:delete(?TAB_ID_TO_BEE, Key);
-        _ -> true
-      end,      
-      {bee_terminated, Bee};
-    {error, no_command} -> {bee_terminated, Bee};
-    Else -> {error, Else}
-  end.
+  beehive_bee_object:stop(bees:to_proplist(Bee)).
+  % case babysitter_integration:command(stop, unused, Bee, []) of
+  %   {ok, _OsPid, _ExitStatus, App} ->
+  %     case ets:lookup(?TAB_ID_TO_BEE, Bee#bee.id) of
+  %       [{Key, _B}] ->
+  %         catch ets:delete(?TAB_NAME_TO_BEE, App#app.name),
+  %         catch ets:delete(?TAB_ID_TO_BEE, Key);
+  %       _ -> true
+  %     end,      
+  %     {bee_terminated, Bee};
+  %   {error, no_command} -> {bee_terminated, Bee};
+  %   Else -> {error, Else}
+  % end.
 
 internal_unmount_instance(Bee, _State) ->
-  case babysitter_integration:command(unmount, unused, Bee, []) of
-    {ok, _OsPid} -> {bee_unmounted, Bee};
-    {error, no_command} -> {bee_unmounted, Bee};
-    Else -> {error, Else}
-  end.
+  beehive_bee_object:bundle(bees:to_proplist(Bee)).
+  % case babysitter_integration:command(unmount, unused, Bee, []) of
+  %   {ok, _OsPid} -> {bee_unmounted, Bee};
+  %   {error, no_command} -> {bee_unmounted, Bee};
+  %   Else -> {error, Else}
+  % end.
 
 internal_cleanup_instance(Bee, _State) ->
-  case babysitter_integration:command(cleanup, unused, Bee, []) of
-    {ok, _OsPid} -> {bee_unmounted, Bee};
-    {error, no_command} -> {bee_unmounted, Bee};
-    Else -> {error, Else}
-  end.
+  beehive_bee_object:cleanup(bees:to_proplist(Bee)).
+  % case babysitter_integration:command(cleanup, unused, Bee, []) of
+  %   {ok, _OsPid} -> {bee_unmounted, Bee};
+  %   {error, no_command} -> {bee_unmounted, Bee};
+  %   Else -> {error, Else}
+  % end.
   
 
 handle_pid_exit(_Pid, _Reason, State) ->
