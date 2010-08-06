@@ -66,11 +66,13 @@
   type,         % type of app to match conf files
   run_dir,      % location of the unpacked bee_file
   bundle_dir,   % location of the root of the bundle
+  bee_size,     % size of the bee_file
   bee_file,     % location of the file
   meta_file,    % location of the metadata file
   port,         % port to run on
   pre,
   post,
+  os_pid,       % os pid of the running bee_object
   pid,          % pid of running bee_object
   env = []      % more environment variables
 }).

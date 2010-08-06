@@ -114,7 +114,6 @@ init([Proplist]) ->
 fetching_bee({send_bee_object, done}, State) ->
   {next_state, preparing, State};
   
-  
 fetching_bee(Other, State) ->
   {next_state, preparing, State}.
 
@@ -166,6 +165,7 @@ updating(Msg, State) ->
   stop_error({updating, Msg}, State).
 
 launching({started, BeeObject}, State) ->
+  erlang:display({launching, BeeObject}),
   Self = self(),
   BuiltBee = bees:from_bee_object(BeeObject),
   Bee = BuiltBee#bee{host = bh_host:myip()},

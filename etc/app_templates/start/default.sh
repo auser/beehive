@@ -4,8 +4,7 @@ echo "Starting $NAME:$PORT"
 
 echo $$ > $PIDFILE
 
-
-echo "Use start file? `pwd`"
+echo "Starting in directory `pwd`"
 if [ -f start.sh ]; then
   echo "Using start.sh file"
   exec /bin/sh start.sh

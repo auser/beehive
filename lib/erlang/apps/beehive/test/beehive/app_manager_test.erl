@@ -43,16 +43,17 @@ spawn_update_bee_status() ->
 % Starting and stopping
 start_new_instance() ->  
   {ok, App, Bee} = start_dummy_app(self()),
-  timer:sleep(1000),
+  timer:sleep(500),
+  erlang:display({start_new_instance, Bee#bee.host, Bee#bee.port, Bee#bee.os_pid}),
   case try_to_fetch_url_or_retry(get, [{host, Bee#bee.host}, {port, Bee#bee.port}, {path, "/"}], 20) of
     {ok, _Headers, Body} ->
-      ?assertEqual("you win", hd(lists:reverse(Body))),
+      ?assertEqual("Hello World", hd(lists:reverse(Body))),
+      erlang:display({got, good_body, Body, lists:flatten(["kill ", integer_to_list(Bee#bee.os_pid)])}),
+      os:cmd(lists:flatten(["kill ", integer_to_list(Bee#bee.os_pid)])),
       passed;
     _ -> 
       ?assertEqual(failed, connect)
-  end,
-  kill_app_by_bee(App, Bee),
-  passed.
+  end.
   
 teardown_an_instance() ->
   {ok, _App, Bee} = start_dummy_app(self()),
@@ -72,20 +73,19 @@ teardown_an_instance() ->
   passed.
 
 
-kill_app_by_bee(_App, #bee{pid = Pid} = _Bee) when Pid > 1 ->
-  % spawn(fun() -> babysitter_integration:command(stop, App, Bee, []) end),
-  Pid ! {stop};
+kill_app_by_bee(#app{type = Type, name = Name} = App, _Bee) -> 
+  beehive_bee_object:stop(Type, Name);
 kill_app_by_bee(_App, _Bee) -> ok.
 
 dummy_app() -> bh_test_util:dummy_app().
   
 start_dummy_app(From) ->
   App = dummy_app(),
-  app_manager:request_to_start_new_bee_by_app(App),
+  app_manager:request_to_start_new_bee_by_app(App, self()),
   receive
-    {started_bee, Bee} ->
-      bees:save(Bee),
-      {ok, App, Bee}
+    {bee_started_normally, Bee} ->
+          bees:save(Bee),
+          {ok, App, Bee}
     after 5000 ->
       {error, timeout}
   end.

@@ -237,10 +237,12 @@ fbo([], _Bo, Bee) ->
   B;
 fbo([name|Rest], #bee_object{name = Name} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{app_name = Name});
 fbo([revision|Rest], #bee_object{revision = Rev} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{revision = Rev});
+fbo([bee_size|Rest], #bee_object{bee_size = V} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{bee_size = V});
 fbo([type|Rest], #bee_object{type = V} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{type = V});
 fbo([bee_file|Rest], #bee_object{bee_file = V} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{bee_file = V});
 fbo([port|Rest], #bee_object{port = V} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{port = V});
 fbo([host|Rest], #bee_object{port = V} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{port = V});
+fbo([os_pid|Rest], #bee_object{os_pid = V} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{os_pid = V});
 fbo([pid|Rest], #bee_object{pid = V} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{pid = V});
 fbo([_H|Rest], Bo, Bee) -> fbo(Rest, Bo, Bee).
 

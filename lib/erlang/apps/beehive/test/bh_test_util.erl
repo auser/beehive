@@ -122,7 +122,7 @@ context_run(Count, Fun) ->
 % FIXTURE
 dummy_app() ->
   Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
-  ReposDir = filename:join([Dir, "test", "fixtures", "dummy_srv"]),
+  ReposDir = filename:join([Dir, "test", "fixtures", "dummy_git"]),
   ReposUrl = lists:concat(["file://", ReposDir]),
   
   % {ok, App} = case apps:find_by_name("test_app") of

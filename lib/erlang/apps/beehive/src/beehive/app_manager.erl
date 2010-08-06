@@ -22,8 +22,8 @@
   terminate_app_instances/1,
   add_application/1, add_application/2,
   spawn_update_bee_status/3,
-  request_to_start_new_bee_by_name/1,
-  request_to_start_new_bee_by_app/1,
+  request_to_start_new_bee_by_name/1, request_to_start_new_bee_by_name/2,
+  request_to_start_new_bee_by_app/1, request_to_start_new_bee_by_app/2,
   request_to_update_app/1,
   request_to_expand_app/1,
   request_to_terminate_bee/1,
@@ -64,8 +64,10 @@ request_to_expand_app(App) -> gen_server:cast(?SERVER, {request_to_expand_app, A
 status() -> gen_server:call(?SERVER, {status}).
 instance() -> whereis(?SERVER).
 garbage_collection() -> gen_server:cast(?SERVER, {garbage_collection}).
-request_to_start_new_bee_by_app(App) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_app, App}).
-request_to_start_new_bee_by_name(Name) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_name, Name}).
+request_to_start_new_bee_by_app(App) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_app, App, undefined}).
+request_to_start_new_bee_by_app(App, Caller) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_app, App, Caller}).
+request_to_start_new_bee_by_name(Name) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_name, Name, undefined}).
+request_to_start_new_bee_by_name(Name, Caller) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_name, Name, Caller}).
 request_to_update_app(App) -> gen_server:cast(?SERVER, {request_to_update_app, App}).
 request_to_save_app(App) -> gen_server:call(?SERVER, {request_to_save_app, App}).
 request_to_terminate_bee(Bee) -> gen_server:cast(?SERVER, {request_to_terminate_bee, Bee}).
@@ -191,14 +193,14 @@ handle_cast({request_to_expand_app, App}, State) ->
   expand_instance_by_app(App),
   {noreply, State};
 
-handle_cast({request_to_start_new_bee_by_app, App}, State) ->
-  start_new_instance_by_app(App),
+handle_cast({request_to_start_new_bee_by_app, App, Caller}, State) ->
+  start_new_instance_by_app(App, Caller),
   {noreply, State};
 
-handle_cast({request_to_start_new_bee_by_name, Name}, State) ->
+handle_cast({request_to_start_new_bee_by_name, Name, Caller}, State) ->
   case apps:find_by_name(Name) of
     [] -> error;
-    App when is_record(App, app) -> start_new_instance_by_app(App)
+    App when is_record(App, app) -> start_new_instance_by_app(App, Caller)
   end,
   {noreply, State};
 
@@ -275,14 +277,14 @@ handle_info({'EXIT',_Pid, {received_unknown_message, {_FsmState, {error, {babysi
 
 handle_info({'EXIT', Pid, Reason}, State) ->
   case ets:lookup(?UPDATERS_PID_TO_APP, Pid) of
-    [{Pid, App, _Time}] ->
+    [{Pid, App, _Caller, _Time}] ->
       ets:delete(?UPDATERS_PID_TO_APP, Pid),
       ets:delete(?UPDATERS_APP_TO_PID, App),
       % Save the error
       apps:save(App#app{latest_error = Reason});
     _ -> 
       case ets:lookup(?LAUNCHERS_PID_TO_APP, Pid) of
-        [{Pid, App, _Time}] ->
+        [{Pid, App, _Caller, _Time}] ->
           ets:delete(?LAUNCHERS_PID_TO_APP, Pid),
           ets:delete(?LAUNCHERS_APP_TO_PID, App);
         _ -> true
@@ -292,7 +294,7 @@ handle_info({'EXIT', Pid, Reason}, State) ->
   
 handle_info({bee_updated_normally, #bee{revision = Sha} = Bee, #app{name = AppName} = App}, State) ->
   % StartedBee#bee{revision = Sha}, App#app{revision = Sha}
-  ?LOG(debug, "app_event_handler got bee_started_normally: ~p, ~p", [Bee, App]),
+  ?LOG(debug, "app_event_handler got bee_updated_normally: ~p, ~p", [Bee, App]),
   case apps:find_by_name(AppName) of
     RealApp when is_record(RealApp, app) ->
       apps:save(RealApp#app{revision = Sha, latest_error = undefined});
@@ -305,7 +307,11 @@ handle_info({bee_updated_normally, #bee{revision = Sha} = Bee, #app{name = AppNa
   ok = kill_other_bees(Bee),
   {noreply, State};
 
-handle_info({bee_started_normally, _Bee, _App}, State) ->
+handle_info({bee_started_normally, Bee, App}, State) ->
+  case ets:lookup(?LAUNCHERS_APP_TO_PID, App) of
+    [{_Pid, _App, Caller, _Time}] -> Caller ! {bee_started_normally, Bee};
+    _ -> ok
+  end,
   {noreply, State};
 
 % {error, {updating, {error, {babysitter, {app,"fake-lvpae",
@@ -606,28 +612,30 @@ start_new_instance_by_name(Name) ->
     App -> start_new_instance_by_app(App)
   end.
 
-start_new_instance_by_app(App) ->
+start_new_instance_by_app(App) -> start_new_instance_by_app(App, undefined).
+start_new_instance_by_app(App, Caller) ->
   case ets:lookup(?LAUNCHERS_APP_TO_PID, App) of
     [Tuple] -> 
       try_to_clean_up_ets_tables(?LAUNCHERS_APP_TO_PID, ?LAUNCHERS_PID_TO_APP, Tuple),
       already_starting_instance;
     _ ->
-      app_launcher_fsm_go(?LAUNCHERS_APP_TO_PID, ?LAUNCHERS_PID_TO_APP, launch, App, false)
+      app_launcher_fsm_go(?LAUNCHERS_APP_TO_PID, ?LAUNCHERS_PID_TO_APP, launch, App, Caller, false)
   end.
   
-update_instance_by_app(App) ->
+update_instance_by_app(App) -> update_instance_by_app(App, undefined).
+update_instance_by_app(App, Caller) ->
   case ets:lookup(?UPDATERS_APP_TO_PID, App) of
     [Tuple] -> 
       try_to_clean_up_ets_tables(?UPDATERS_APP_TO_PID, ?UPDATERS_PID_TO_APP, Tuple),
       already_updating_instance;
     _ ->
-      app_launcher_fsm_go(?UPDATERS_APP_TO_PID, ?UPDATERS_PID_TO_APP, update, App, true)
+      app_launcher_fsm_go(?UPDATERS_APP_TO_PID, ?UPDATERS_PID_TO_APP, update, App, Caller, true)
   end.
 
 expand_instance_by_app(App) -> start_new_instance_by_app(App).
 
 % PRIVATE
-app_launcher_fsm_go(AppToPidTable, PidToAppTable, Method, App, Updating) ->
+app_launcher_fsm_go(AppToPidTable, PidToAppTable, Method, App, Caller, Updating) ->
   case App#app.dynamic of
     static -> ok;
     _T ->
@@ -638,14 +646,14 @@ app_launcher_fsm_go(AppToPidTable, PidToAppTable, Method, App, Updating) ->
         {ok, P} ->
           erlang:link(P),
           rpc:call(node(P), app_launcher_fsm, Method, [P]),
-          ets:insert(AppToPidTable, {App, P, Now}), 
-          ets:insert(PidToAppTable, {P, App, Now}), 
+          ets:insert(AppToPidTable, {App, P, Caller, Now}), 
+          ets:insert(PidToAppTable, {P, App, Caller, Now}), 
           P;
         Else -> Else
       end
   end.
 
-try_to_clean_up_ets_tables(AppToPidTable, PidToAppTable, {App, Pid, Time}) ->
+try_to_clean_up_ets_tables(AppToPidTable, PidToAppTable, {App, Pid, _Caller, Time}) ->
   case date_util:now_to_seconds() - Time > ?ACTION_TIMEOUT of
     true ->
       true = ets:delete(PidToAppTable, Pid),

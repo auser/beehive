@@ -134,24 +134,32 @@ bundle(#bee_object{type = Type, bundle_dir=NBundleDir} = BeeObject, From) when i
       end
   end.
 
-write_info_about_bee(#bee_object{
+write_info_about_bee(#bee_object{meta_file = MetaFile} = BeeObject) ->
+  case filelib:is_file(MetaFile) of
+    true -> ok;
+    false -> force_write_info_about_bee(BeeObject)
+  end.
+
+force_write_info_about_bee(#bee_object{
                         bee_file = BeeFile, 
                         meta_file = MetaFile, 
                         name = Name} = BeeObject) ->
   % Write the meta data
   {ok, Fileinfo} = file:read_file_info(BeeFile),
   {ok, CheckedRev} = get_current_sha(BeeObject),
+  OriginalProps = lists:foldl(fun(K, Acc) -> lists:delete(K, Acc) end, to_proplist(BeeObject), [revision, bee_size, created_at]),
   Info =  [
-            {revision, CheckedRev}, {size, Fileinfo#file_info.size}, 
+            {revision, CheckedRev}, {bee_size, Fileinfo#file_info.size}, 
             {created_at, calendar:datetime_to_gregorian_seconds(Fileinfo#file_info.ctime)}
-            |to_proplist(BeeObject)
+            |OriginalProps
           ],
   
+  erlang:display({force_write_info_about_bee, Info}),
   ets:insert(?BEEHIVE_BEE_OBJECT_INFO_TABLE, [{Name, Info}]),
   % Write it to a file, for sure... debatable
   {ok, Io} = file:open(MetaFile, [write]),
   file:write(Io, term_to_binary(Info)).
-
+  
 % Mount the bee
 mount(Type, Name) -> mount(Type, Name, undefined).
 mount(Type, Name, From) ->
@@ -211,6 +219,11 @@ start(Type, Name, Port, From) ->
       file:delete(PidFilename),
       file:delete(ScriptFilename),
       erlang:display({spawn_link,PidFilename,ScriptFilename,OsPid}),
+      
+      RealBeeObject = BeeObject#bee_object{pid = Pid, os_pid = OsPid},
+      ok = force_write_info_about_bee(RealBeeObject),
+      send_to(From, {started, RealBeeObject}),
+      
       cmd_receive(Pid, [], From, fun(Msg) ->
         case Msg of
           {'DOWN', Ref, process, Pid, {Tag, Data}} -> Data;
@@ -229,8 +242,6 @@ start(Type, Name, Port, From) ->
       file:delete(ScriptFilename) 
     end
   end),
-  write_info_about_bee(BeeObject#bee_object{pid = Pid}),
-  send_to(From, {started, BeeObject}),
   Pid.
 
 stop(Type, Name) -> stop(Type, Name, undefined).
@@ -408,6 +419,7 @@ run_action_in_directory(Action, #bee_object{vcs_type = VcsType, bundle_dir = Bun
 % Run a command in the directory
 run_command_in_directory(Cmd, Dir, From, BeeObject) ->
   ?DEBUG_PRINT({run_command_in_directory, Dir, Cmd, From}),
+  ensure_directory_exists(filename:join([Dir, "does_not_exist"])),
   cmd(Cmd, Dir, to_proplist(BeeObject), From).
 
 % Run file
@@ -519,11 +531,13 @@ from_proplists([{url, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee
 from_proplists([{type, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{type = V});
 from_proplists([{run_dir, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{run_dir = V});
 from_proplists([{bundle_dir, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{bundle_dir = V});
+from_proplists([{bee_size, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{bee_size = V});
 from_proplists([{bee_file, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{bee_file = V});
 from_proplists([{meta_file, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{meta_file = V});
 from_proplists([{port,V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{port = V});
 from_proplists([{pre,V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{pre = V});
 from_proplists([{post,V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{post = V});
+from_proplists([{os_pid,V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{os_pid = V});
 from_proplists([{pid,V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{pid = V});
 from_proplists([{Other,V}|Rest], BeeObject) -> 
   CurrentEnv = case BeeObject#bee_object.env of
@@ -542,11 +556,13 @@ to_proplist([url|Rest], #bee_object{url = V} = Bo, Acc) -> to_proplist(Rest, Bo,
 to_proplist([type|Rest], #bee_object{type = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{type, V}|Acc]);
 to_proplist([run_dir|Rest], #bee_object{run_dir = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{run_dir, V}|Acc]);
 to_proplist([bundle_dir|Rest], #bee_object{bundle_dir = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{bundle_dir, V}|Acc]);
+to_proplist([bee_size|Rest], #bee_object{bee_size = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{bee_size, V}|Acc]);
 to_proplist([bee_file|Rest], #bee_object{bee_file = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{bee_file, V}|Acc]);
 to_proplist([meta_file|Rest], #bee_object{meta_file = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{meta_file, V}|Acc]);
 to_proplist([port|Rest], #bee_object{port = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{port, V}|Acc]);
 to_proplist([pre|Rest], #bee_object{pre = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{pre, V}|Acc]);
 to_proplist([post|Rest], #bee_object{post = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{post, V}|Acc]);
+to_proplist([os_pid|Rest], #bee_object{os_pid = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{os_pid, V}|Acc]);
 to_proplist([pid|Rest], #bee_object{pid = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{pid, V}|Acc]);
 to_proplist([env|Rest], #bee_object{env = V} = Bo, Acc) -> to_proplist(Rest, Bo, lists:flatten([V|Acc]));
 to_proplist([_H|Rest], BeeObject, Acc) -> to_proplist(Rest, BeeObject, Acc).
