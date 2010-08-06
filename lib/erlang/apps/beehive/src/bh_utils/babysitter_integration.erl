@@ -59,7 +59,6 @@ command(start, App, _Bee, PropLists) ->
   Sha = proplists:get_value(sha, PropLists),
   Port = proplists:get_value(port, PropLists),
   ImagePath = proplists:get_value(bee_image, PropLists),
-  StorageNode = proplists:get_value(storage_node, PropLists),
     
   HostIp = bh_host:myip(),
   Id = {App#app.name, HostIp, Port},
@@ -70,11 +69,10 @@ command(start, App, _Bee, PropLists) ->
     app_name                = App#app.name,
     host                    = HostIp,
     host_node               = node(self()),
-    storage_node            = StorageNode,
     % path                    = AppRootPath,
     port                    = Port,
     status                  = pending,
-    commit_hash             = Sha,
+    revision             = Sha,
     start_time              = StartedAt
   },
   

@@ -22,6 +22,8 @@
 ]).
 % states
 -export ([
+  fetching_bee/2,
+  mounting/2,
   preparing/2,
   updating/2,
   launching/2,
@@ -40,6 +42,7 @@
   host,
   port,
   bee,
+  output = [],
   updating = false,
   from
 }).
@@ -77,13 +80,18 @@ init([Proplist]) ->
   From = proplists:get_value(caller, Proplist),
   Updating = proplists:get_value(updating, Proplist),
   
+  beehive_bee_object_config:init(), % JUST IN CASE
   % Only start if there are no other modules registered with the name
   case global:whereis_name(registered_name(App)) of
     undefined ->
       case App#app.latest_error of
         undefined ->
-          global:register(registered_name(App)),
-          {ok, preparing, #state{app = App, from = From, updating = Updating, bee = #bee{}}};
+          global:register_name(registered_name(App), self()),
+          % Up for debate, should we always do this on init?
+          % I kind of like the convenience
+          Self = self(),
+          gen_cluster:run(beehive_storage_srv, {fetch_or_build_bee, App, Self}),
+          {ok, fetching_bee, #state{app = App, from = From, updating = Updating, bee = #bee{}}};
         _ ->
           {stop, {error, pending_app_error}}
     end;
@@ -103,34 +111,52 @@ init([Proplist]) ->
 %% the current state name StateName is called to handle the event. It is also
 %% called if a timeout occurs.
 %%--------------------------------------------------------------------
+fetching_bee({send_bee_object, done}, State) ->
+  {next_state, preparing, State};
+  
+  
+fetching_bee(Other, State) ->
+  {next_state, preparing, State}.
+
+mounting(Other, State) ->
+  {next_state, mounting, State}.
+
 preparing({update}, #state{app = App} = State) ->
   Self = self(),
-  gen_cluster:run(beehive_storage_srv, {rebuild_bee, App, Self}),
+  gen_cluster:run(beehive_storage_srv, {fetch_or_build_bee, App, Self}),
   {next_state, updating, State};
 
 preparing({launch}, #state{from = From, app = App, bee = Bee, latest_sha = Sha} = State) ->
-  case gen_cluster:run(app_handler, {start_new_instance, App, Sha, self(), From}) of
-    {error, Reason} -> {stop, Reason, State};
-    Pid ->
-      Node = node(Pid),
-      NewState = State#state{bee = Bee#bee{host_node = Node}},
-      {next_state, launching, NewState}
-  end;
+  Self = self(),  
+  Port = bh_host:unused_port(),
+  beehive_bee_object:start(App#app.type, App#app.name, Port, Self),
+  {next_state, launching, State};
+  % case gen_cluster:run(app_handler, {start_new_instance, App, Sha, self(), From}) of
+  %   {error, Reason} -> {stop, Reason, State};
+  %   Pid ->
+  %     Node = node(Pid),
+  %     NewState = State#state{bee = Bee#bee{host_node = Node}},
+  %     {next_state, launching, NewState}
+  % end;
 
 preparing({start_new}, State) ->
   self() ! {bee_built, []},
   {next_state, updating, State};
 
+preparing({data, List}, #state{output = Output} = State) ->
+  {next_state, preparing, State#state{output = [List|Output]}};
+  
 preparing(Other, State) ->
-  stop_error({preparing, Other}, State).
+  erlang:display({got_other,preparing,Other}),
+  {next_state, preparing, State}.
 
 updating({bee_built, Info}, #state{bee = Bee, app = App} = State) ->
   % Strip off the last newline... stupid bash
   BeeSize = proplists:get_value(bee_size, Info, Bee#bee.bee_size),
-  Sha = proplists:get_value(revision, Info, Bee#bee.commit_hash),
+  Sha = proplists:get_value(revision, Info, Bee#bee.revision),
 
   NewApp = App#app{revision = Sha},
-  NewBee = Bee#bee{bee_size = BeeSize, commit_hash = Sha},
+  NewBee = Bee#bee{bee_size = BeeSize, revision = Sha},
   % Grr
   NewState0 = State#state{bee = NewBee, app = NewApp, latest_sha = Sha},
   NewState = start_instance(NewState0),
@@ -139,18 +165,19 @@ updating({bee_built, Info}, #state{bee = Bee, app = App} = State) ->
 updating(Msg, State) ->
   stop_error({updating, Msg}, State).
 
-launching({started_bee, Be}, State) ->
-  erlang:display({got, started_bee, Be}),
-  bees:create(Be),
+launching({started, BeeObject}, State) ->
   Self = self(),
-  ?LOG(info, "spawn_update_bee_status: ~p for ~p, ~p", [Be, Self, 20]),
-  app_manager:spawn_update_bee_status(Be, Self, 20),
-  {next_state, pending, State#state{bee = Be}};
+  BuiltBee = bees:from_bee_object(BeeObject),
+  Bee = BuiltBee#bee{host = bh_host:myip()},
+  ?LOG(info, "spawn_update_bee_status: ~p for ~p, ~p", [Bee, Self, 20]),
+  app_manager:spawn_update_bee_status(Bee, Self, 20),
+  {next_state, pending, State#state{bee = Bee}};
 
 launching({error, Reason}, State) ->
   stop_error({launching, Reason}, State);
 
 launching(Event, State) ->
+  erlang:display({caught, launching, Event}),
   ?LOG(info, "Uncaught event: ~p while in state: ~p ~n", [Event, launching]),
   {next_state, launching, State}.
 
@@ -159,6 +186,7 @@ pending({updated_bee_status, broken}, State) ->
   stop_error({error, broken_start}, State);
   
 pending({updated_bee_status, BackendStatus}, #state{app = App, bee = Bee, from = From, latest_sha = Sha, updating = Updating} = State) ->
+  erlang:display({got, updated_bee_status, BackendStatus}),
   ?LOG(info, "Application started ~p: ~p", [BackendStatus, App#app.name]),
   % App started normally
   case Updating of

@@ -14,7 +14,7 @@
 -behaviour(gen_cluster).
 
 %% API
--export([start_link/0, start_link/1]).
+-export([start_link/0, stop/0]).
 -export ([
   instance/0,
   status/0,
@@ -28,7 +28,8 @@
   request_to_expand_app/1,
   request_to_terminate_bee/1,
   request_to_save_app/1,
-  garbage_collection/0
+  garbage_collection/0,
+  seed_nodes/1
 ]).
 
 %% gen_server callbacks
@@ -92,13 +93,6 @@ start_link() ->
 stop() ->
   gen_cluster:call(?SERVER, {stop}).
 
-can_deploy_new_app() ->
-  gen_cluster:call(?SERVER, {can_deploy_new_app}).
-
-start_new_instance(App, Sha, AppLauncher, From) ->
-  gen_cluster:call(?SERVER, {start_new_instance, App, Sha, AppLauncher, From}, infinity).
-
-
 %%-------------------------------------------------------------------
 %% @spec () ->    Seed::list()
 %% @doc List of seed pids
@@ -127,7 +121,7 @@ seed_pids(_State) ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([]) ->   
+init([]) ->
   % Build the launching ets tables
   process_flag(trap_exit, true),
   
@@ -169,7 +163,7 @@ init([]) ->
 % Add an application
 handle_call({add_application, ConfigProplist, UserEmail}, From, State) ->
   % NewState = add_application(ConfigProplist, State),
-  handle_queued_call(fun() -> add_application(ConfigProplist, UserEmail) end, From, State);
+  handle_queued_call(fun() -> internal_add_application(ConfigProplist, UserEmail) end, From, State);
 
 handle_call({request_to_save_app, App}, From, State) ->
   handle_queued_call(fun() -> apps:save(App) end, From, State);
@@ -296,8 +290,8 @@ handle_info({'EXIT', Pid, Reason}, State) ->
   end,
   {noreply, State};
   
-handle_info({bee_updated_normally, #bee{commit_hash = Sha} = Bee, #app{name = AppName} = App}, State) ->
-  % StartedBee#bee{commit_hash = Sha}, App#app{revision = Sha}
+handle_info({bee_updated_normally, #bee{revision = Sha} = Bee, #app{name = AppName} = App}, State) ->
+  % StartedBee#bee{revision = Sha}, App#app{revision = Sha}
   ?LOG(debug, "app_event_handler got bee_started_normally: ~p, ~p", [Bee, App]),
   case apps:find_by_name(AppName) of
     RealApp when is_record(RealApp, app) ->
@@ -357,6 +351,7 @@ handle_info({answer, TransId, Result}, #state{queries = Queries} = State) ->
 
 
 handle_info(Info, State) ->
+  erlang:display({handle_info, Info}),
   ?LOG(info, "app_manager got: ~p", [Info]),
   {noreply, State}.
 
@@ -379,6 +374,28 @@ code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
 
 %%--------------------------------------------------------------------
+%% Function: handle_join(JoiningPid, Pidlist, State) -> {ok, State} 
+%%     JoiningPid = pid(),
+%%     Pidlist = list() of pids()
+%% Description: Called whenever a node joins the cluster via this node
+%% directly. JoiningPid is the node that joined. Note that JoiningPid may
+%% join more than once. Pidlist contains all known pids. Pidlist includes
+%% JoiningPid.
+%%--------------------------------------------------------------------
+handle_join(_JoiningPid, State) ->
+  {noreply, State}.
+
+%%--------------------------------------------------------------------
+%% Function: handle_leave(LeavingPid, Pidlist, Info, State) -> {ok, State} 
+%%     JoiningPid = pid(),
+%%     Pidlist = list() of pids()
+%% Description: Called whenever a node joins the cluster via another node and
+%%     the joining node is simply announcing its presence.
+%%--------------------------------------------------------------------
+handle_leave(_LeavingPid, _Info, State) ->
+  {ok, State}.
+
+%%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
 handle_queued_call(Fun, From, #state{queries = OldTransQ, last_trans = LastTrans} = State) ->
@@ -394,16 +411,22 @@ handle_queued_call(Fun, From, #state{queries = OldTransQ, last_trans = LastTrans
 
 % Spawn a process to try to connect to the instance
 spawn_update_bee_status(Bee, From, Nums) ->
+  erlang:display({spawning,spawn_update_bee_status, Bee#bee.host, Bee#bee.port}),
   spawn(fun() ->
     BeeStatus = try_to_connect_to_new_instance(Bee, Nums),
-    RealBee = bees:find_by_id(Bee#bee.id),
-    bees:save(RealBee#bee{status = BeeStatus}),
+    erlang:display({spawn_update_bee_status, BeeStatus}),
+    RealBee = case bees:find_by_id(Bee#bee.id) of
+      RealBee1 when is_record(RealBee1, bee) -> RealBee1;
+      _ -> Bee
+    end,
+    SavedOutput = bees:save(RealBee#bee{status = BeeStatus}),
     From ! {updated_bee_status, BeeStatus}
   end).
 
 % Try to connect to the application instance while it's booting up
 try_to_connect_to_new_instance(_Bee, 0) -> broken;
 try_to_connect_to_new_instance(Bee, Attempts) ->
+  erlang:display({try_to_connect_to_new_instance, Bee#bee.host, Bee#bee.port, Attempts}),
   ?LOG(info, "try_to_connect_to_new_instance (~p:~p) ~p", [Bee#bee.host, Bee#bee.port, Attempts]),
   case gen_tcp:connect(Bee#bee.host, Bee#bee.port, [binary, {packet, 0}], 500) of
     {ok, Sock} ->
@@ -415,7 +438,7 @@ try_to_connect_to_new_instance(Bee, Attempts) ->
   end.
   
 % Add an application based on it's proplist
-add_application(ConfigProplist, UserEmail) ->
+internal_add_application(ConfigProplist, UserEmail) ->
   case apps:new(ConfigProplist) of
     NewApp when is_record(NewApp, app) ->
       {ok, _App} = apps:save(NewApp),
@@ -631,11 +654,11 @@ try_to_clean_up_ets_tables(AppToPidTable, PidToAppTable, {App, Pid, Time}) ->
   end.
 
 % Kill off all other bees
-kill_other_bees(#bee{app_name = Name, id = StartedId, commit_hash = StartedSha} = _StartedBee) ->
+kill_other_bees(#bee{app_name = Name, id = StartedId, revision = StartedSha} = _StartedBee) ->
   case bees:find_all_by_name(Name) of
     [] -> ok;
     CurrentBees ->
-      OtherBees = lists:filter(fun(B) -> B#bee.id =/= StartedId orelse B#bee.commit_hash =/= StartedSha end, CurrentBees),
+      OtherBees = lists:filter(fun(B) -> B#bee.id =/= StartedId orelse B#bee.revision =/= StartedSha end, CurrentBees),
       lists:map(fun(B) -> ?NOTIFY({bee, terminate_please, B}) end, OtherBees),
       ok
   end.

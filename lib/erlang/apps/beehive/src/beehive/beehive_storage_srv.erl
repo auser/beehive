@@ -90,11 +90,16 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
+handle_call({fetch_or_build_bee, App, Caller}, _From, State) when Caller =:= self() ->
+  beehive_bee_object:info(App#app.name);
+  
 handle_call({fetch_or_build_bee, App, Caller}, _From, State) ->
   Resp = case fetch_bee(App, Caller, State) of
     {error, _} -> internal_build_bee(App, State);
     T -> T
   end,
+  erlang:display({fetch_or_build_bee,Resp}),
+  {reply, Resp, State};
 handle_call(_Request, _From, State) ->
   Reply = ok,
   {reply, Reply, State}.
@@ -116,7 +121,15 @@ handle_cast(_Msg, State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
-handle_info(_Info, State) ->
+
+% beehive_bee_object:send_bee_object(node(Caller), Name)
+% Info = beehive_bee_object:info(Name),
+% erlang:display({fetch_bee, Info}),
+% ?NOTIFY({bee, bee_built, Info}),
+% Caller ! {bee, bee_built, Info},
+% Info.
+handle_info(Info, State) ->
+  erlang:display({got, Info}),
   {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -168,20 +181,13 @@ handle_vote(_Msg, State) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 fetch_bee(#app{name = Name} = App, Caller, #state{squashed_disk = SquashedDisk} = _State) ->
-  Self = self(),
   case lists:member(Name, beehive_bee_object:ls(SquashedDisk)) of
     true -> 
       % We need to check to make sure this is the latest bee...
-      beehive_bee_object:send_bee_object(node(Caller), Name);
+      beehive_bee_object:send_bee_object(node(Caller), Name, Caller);
     false -> 
-      beehive_bee_object:bundle(apps:to_proplist(App), Self),
-      beehive_bee_object:send_bee_object(node(Caller), Name)
-  end,
-  
-  Info = beehive_bee_object:info(Name)
-  ?NOTIFY({bee, bee_built, Info}),
-  Caller ! {bee, bee_built, Info},
-  Info.
+      beehive_bee_object:bundle(apps:to_proplist(App), Caller)
+  end.
 
 %%-------------------------------------------------------------------
 %% @spec (App::app(), State) ->    {ok, Value}
@@ -190,7 +196,7 @@ fetch_bee(#app{name = Name} = App, Caller, #state{squashed_disk = SquashedDisk} 
 %%      
 %% @end
 %%-------------------------------------------------------------------
-internal_build_bee(App, #state{scratch_dir = ScratchDisk, squashed_disk = SquashedDisk} = State) ->
+internal_build_bee(App, State) ->
   case handle_repos_lookup(App) of
     {ok, ReposUrl} ->
       

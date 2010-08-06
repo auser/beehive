@@ -29,7 +29,8 @@
 % APPLICATION STUFF
 -export ([
   meta_data/2,
-  build_app_env/1, build_app_env/2
+  build_app_env/1, build_app_env/2,
+  from_bee_object/1
 ]).
 
 -define (DB, beehive_db_srv).
@@ -155,7 +156,7 @@ build_app_env(#bee{app_name = AppName} = Bee, no_app) ->
 build_app_env(  #bee{ port        = Port, 
                       host        = HostIp, 
                       app_name    = AppName,
-                      commit_hash = Sha,
+                      revision = Sha,
                       start_time  = StartedAt
                     } = _Bee, App) -> 
   ScratchDisk = config:search_for_application_value(scratch_dir, ?BEEHIVE_DIR("tmp")),
@@ -192,11 +193,7 @@ from_proplists([{app_name, V}|Rest], Bee) -> from_proplists(Rest, Bee#bee{app_na
 from_proplists([{host, V}|Rest], Bee) -> from_proplists(Rest, Bee#bee{host = V});
 from_proplists([{host_node, V}|Rest], Bee) -> from_proplists(Rest, Bee#bee{host_node = V});
 from_proplists([{port, V}|Rest], Bee) -> from_proplists(Rest, Bee#bee{port = V});
-from_proplists([{path, V}|Rest], Bee) -> from_proplists(Rest, Bee#bee{path = V});
-from_proplists([{meta_data, V}|Rest], Bee) -> from_proplists(Rest, Bee#bee{meta_data = V});
-% Do we need temp_name anymore?
-from_proplists([{temp_name, V}|Rest], Bee) -> from_proplists(Rest, Bee#bee{temp_name = V});
-from_proplists([{commit_hash, V}|Rest], Bee) -> from_proplists(Rest, Bee#bee{commit_hash = V});
+from_proplists([{revision, V}|Rest], Bee) -> from_proplists(Rest, Bee#bee{revision = V});
 from_proplists([{bee_size, V}|Rest], Bee) -> from_proplists(Rest, Bee#bee{bee_size = V});
 from_proplists([{start_time, V}|Rest], Bee) -> from_proplists(Rest, Bee#bee{start_time = V});
 from_proplists([{pid, V}|Rest], Bee) -> from_proplists(Rest, Bee#bee{pid = V});
@@ -209,8 +206,6 @@ from_proplists([{act_time, V}|Rest], Bee) -> from_proplists(Rest, Bee#bee{act_ti
 from_proplists([{status, V}|Rest], Bee) -> from_proplists(Rest, Bee#bee{status = V});
 from_proplists([{maxconn, V}|Rest], Bee) -> from_proplists(Rest, Bee#bee{maxconn = V});
 from_proplists([{act_count, V}|Rest], Bee) -> from_proplists(Rest, Bee#bee{act_count = V});
-% Prolly should remove this storage_node
-from_proplists([{storage_node, V}|Rest], Bee) -> from_proplists(Rest, Bee#bee{storage_node = V});
 from_proplists([_Other|Rest], Bee) -> from_proplists(Rest, Bee).
 
 to_proplist(Bee) -> to_proplist(record_info(fields, bee), Bee, []).
@@ -220,10 +215,7 @@ to_proplist([app_name|Rest], #bee{app_name = Value} = Bee, Acc) -> to_proplist(R
 to_proplist([host|Rest], #bee{host = Value} = Bee, Acc) -> to_proplist(Rest, Bee, [{host, Value}|Acc]);
 to_proplist([host_node|Rest], #bee{host_node = Value} = Bee, Acc) -> to_proplist(Rest, Bee, [{host_node, Value}|Acc]);
 to_proplist([port|Rest], #bee{port = Value} = Bee, Acc) -> to_proplist(Rest, Bee, [{port, Value}|Acc]);
-to_proplist([path|Rest], #bee{path = Value} = Bee, Acc) -> to_proplist(Rest, Bee, [{path, Value}|Acc]);
-to_proplist([meta_data|Rest], #bee{meta_data = Value} = Bee, Acc) -> to_proplist(Rest, Bee, [{meta_data, Value}|Acc]);
-to_proplist([temp_name|Rest], #bee{temp_name = Value} = Bee, Acc) -> to_proplist(Rest, Bee, [{temp_name, Value}|Acc]);
-to_proplist([commit_hash|Rest], #bee{commit_hash = Value} = Bee, Acc) -> to_proplist(Rest, Bee, [{commit_hash, Value}|Acc]);
+to_proplist([revision|Rest], #bee{revision = Value} = Bee, Acc) -> to_proplist(Rest, Bee, [{revision, Value}|Acc]);
 to_proplist([bee_size|Rest], #bee{bee_size = Value} = Bee, Acc) -> to_proplist(Rest, Bee, [{bee_size, Value}|Acc]);
 to_proplist([start_time|Rest], #bee{start_time = Value} = Bee, Acc) -> to_proplist(Rest, Bee, [{start_time, Value}|Acc]);
 to_proplist([pid|Rest], #bee{pid = Value} = Bee, Acc) -> to_proplist(Rest, Bee, [{pid, Value}|Acc]);
@@ -236,8 +228,21 @@ to_proplist([act_time|Rest], #bee{act_time = Value} = Bee, Acc) -> to_proplist(R
 to_proplist([status|Rest], #bee{status = Value} = Bee, Acc) -> to_proplist(Rest, Bee, [{status, Value}|Acc]);
 to_proplist([maxconn|Rest], #bee{maxconn = Value} = Bee, Acc) -> to_proplist(Rest, Bee, [{maxconn, Value}|Acc]);
 to_proplist([act_count|Rest], #bee{act_count = Value} = Bee, Acc) -> to_proplist(Rest, Bee, [{act_count, Value}|Acc]);
-to_proplist([storage_node|Rest], #bee{storage_node = Value} = Bee, Acc) -> to_proplist(Rest, Bee, [{storage_node, Value}|Acc]);
 to_proplist([_H|T], Bee, Acc) -> to_proplist(T, Bee, Acc).
+
+from_bee_object(Bo) when is_record(Bo, bee_object) -> fbo(record_info(fields, bee_object), Bo, #bee{}).
+fbo([], _Bo, Bee) -> 
+  B = validate_bee(Bee),
+  erlang:display({validate_bee, from_bee_object, B}),
+  B;
+fbo([name|Rest], #bee_object{name = Name} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{app_name = Name});
+fbo([revision|Rest], #bee_object{revision = Rev} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{revision = Rev});
+fbo([type|Rest], #bee_object{type = V} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{type = V});
+fbo([bee_file|Rest], #bee_object{bee_file = V} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{bee_file = V});
+fbo([port|Rest], #bee_object{port = V} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{port = V});
+fbo([host|Rest], #bee_object{port = V} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{port = V});
+fbo([pid|Rest], #bee_object{pid = V} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{pid = V});
+fbo([_H|Rest], Bo, Bee) -> fbo(Rest, Bo, Bee).
 
 %%-------------------------------------------------------------------
 %% @spec (Proplist) ->    ValidProplist
@@ -263,6 +268,8 @@ validate_bee([app_name|Rest], Bee) -> validate_bee(Rest, Bee);
 validate_bee([sticky|Rest], #bee{sticky = false} = Bee) -> validate_bee(Rest, Bee);
 validate_bee([sticky|Rest], #bee{sticky = true} = Bee) -> validate_bee(Rest, Bee);
 validate_bee([sticky|_Rest], _Bee) -> {error, invalid_sticky_value};
+% Validate the host
+validate_bee([host|Rest], #bee{host = undefined} = Bee) -> validate_bee(Rest, Bee#bee{host = bh_host:myip()});
 
 % Validate others?
 validate_bee([_H|Rest], Bee) -> validate_bee(Rest, Bee).

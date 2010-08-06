@@ -119,7 +119,7 @@ build_bee_from_args(#app{name = AppName, revision = Sha} = _App, Args) ->
     host_node               = node(self()),
     port                    = Port,
     status                  = pending,
-    commit_hash             = Sha,
+    revision             = Sha,
     start_time              = StartedAt
   }.
 

@@ -243,7 +243,7 @@ handle_leave(_LeavingPid, _Info, State) ->
 internal_start_new_instance(App, Sha, Port, AppLauncher, From, State) ->
   case find_and_transfer_bee(App, Sha) of
     {ok, Node, LocalPath} ->
-      Proplists = [{revision, Sha}, {port, Port}, {bee_image, LocalPath}, {storage_node, Node}],
+      Proplists = [{revision, Sha}, {port, Port}, {bee_image, LocalPath}],
       
       case mount_application(App, Proplists, State) of
         {ok, _OtherPid, _Status} ->

@@ -1,6 +1,6 @@
 #!/bin/bash -ex
 
-echo "listening on $PORT in $RUN_DIRECTORY/www"
-cd $RUN_DIRECTORY/www
+echo "listening on $PORT in $RUN_DIR/www"
+cd $RUN_DIR/www
 PYTHON=`which python`
 exec $PYTHON -m SimpleHTTPServer $PORT
