@@ -121,17 +121,11 @@ bundle(#bee_object{type = Type, bundle_dir=NBundleDir} = BeeObject, From) when i
       case run_in_directory_with_file(BeeObject, From, BundleDir, BeforeBundle) of
         {error, _} = T2 -> T2;
         _BeforeActionOut -> 
-          OriginalDir = file:get_cwd(),
           SquashCmd = proplists:get_value(bundle, config_props()),
           Proplist = to_proplist(BeeObject),
           Str = template_command_string(SquashCmd, Proplist),
           
-          try
-            c:cd(BundleDir),
-            cmd(Str, Proplist, From)
-          after
-            c:cd(OriginalDir)
-          end,
+          cmd(Str, BundleDir, Proplist, From),
           
           write_info_about_bee(BeeObject),
           run_hook_action(post, BeeObject, From),
@@ -211,7 +205,7 @@ start(Type, Name, Port, From) ->
       {ok, PidFilename, PidIo} = temp_file(),
       file:close(PidIo),
       
-      {Pid, Ref, Tag} = async_command("/bin/sh", [ScriptFilename], [{pidfile, PidFilename}|to_proplist(BeeObject)], From),
+      {Pid, Ref, Tag} = async_command("/bin/sh", [ScriptFilename], BeeDir, [{pidfile, PidFilename}|to_proplist(BeeObject)], From),
       timer:sleep(500),
       OsPid = read_pid_file_or_retry(PidFilename, 50),
       file:delete(PidFilename),
@@ -413,14 +407,8 @@ run_action_in_directory(Action, #bee_object{vcs_type = VcsType, bundle_dir = Bun
   
 % Run a command in the directory
 run_command_in_directory(Cmd, Dir, From, BeeObject) ->
-  {ok, OriginalDir} = file:get_cwd(),
-  try
-    ?DEBUG_PRINT({run_command_in_directory, Dir, Cmd, From, OriginalDir}),
-    ok = c:cd(Dir),
-    cmd(Cmd, to_proplist(BeeObject), From)
-  after
-    c:cd(OriginalDir)
-  end.
+  ?DEBUG_PRINT({run_command_in_directory, Dir, Cmd, From}),
+  cmd(Cmd, Dir, to_proplist(BeeObject), From).
 
 % Run file
 run_in_directory_with_file(_BeeObject, _From, _Dir, undefined) -> ok;
@@ -438,31 +426,31 @@ run_in_directory_with_file(BeeObject, From, Dir, Str) ->
   end.
 
 % Synchronus command
-cmd(Str, Envs, From) ->
+cmd(Str, Cd, Envs, From) ->
   [Exec|Rest] = string:tokens(Str, " "),
-  case catch cmd(Exec, Rest, Envs, From) of
+  case catch cmd(Exec, Rest, Cd, Envs, From) of
     {'EXIT', T} -> {error, T};
     E -> E
   end.
 
-cmd(Cmd, Args, Envs, From) ->
-  {Pid, Ref, Tag} = async_command(Cmd, Args, Envs, From),
+cmd(Cmd, Args, Cd, Envs, From) ->
+  {Pid, Ref, Tag} = async_command(Cmd, Args, Cd, Envs, From),
   receive
     {'DOWN', Ref, process, Pid, {Tag, Data}} -> Data;
     {'DOWN', Ref, process, Pid, Reason} -> exit(Reason)
   end.
 
-async_command(Cmd, Args, Envs, From) ->
+async_command(Cmd, Args, Cd, Envs, From) ->
   Tag = make_ref(), 
   {Pid, Ref} = erlang:spawn_monitor(fun() ->
-    Rv = cmd_sync(Cmd, Args, build_envs(Envs), From),
+    Rv = cmd_sync(Cmd, Args, Cd, build_envs(Envs), From),
     exit({Tag, Rv})
   end),
   {Pid, Ref, Tag}.
 
-cmd_sync(Cmd, Args, Envs, From) ->
+cmd_sync(Cmd, Args, Cd, Envs, From) ->
   P = open_port({spawn_executable, os:find_executable(Cmd)}, [
-    binary, stderr_to_stdout, use_stdio, exit_status, stream, eof, {args, Args}, {env, Envs}
+    binary, stderr_to_stdout, use_stdio, exit_status, stream, eof, {args, Args}, {env, Envs}, {cd, Cd}
     ]),
   cmd_receive(P, [], From, undefined).
 
