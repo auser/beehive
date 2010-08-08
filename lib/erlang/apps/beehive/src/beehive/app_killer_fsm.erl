@@ -65,7 +65,8 @@ start_link(Bee, From) ->
 %% initialize.
 %%--------------------------------------------------------------------
 init([Bee, From]) ->
-  {ok, preparing, #state{from = From, bee = Bee}}.
+  State = #state{from = From, bee = Bee},
+  {ok, preparing, State}.
 
 %%--------------------------------------------------------------------
 %% Function:
@@ -79,32 +80,29 @@ init([Bee, From]) ->
 %% the current state name StateName is called to handle the event. It is also
 %% called if a timeout occurs.
 %%--------------------------------------------------------------------
-preparing({kill}, #state{bee = #bee{host_node = Node} = Bee} = State) ->
-  true = rpc:cast(Node, app_handler, stop_instance, [Bee, self()]),
+preparing({kill}, #state{bee = #bee{host_node = Node, app_name = Name} = _Bee} = State) ->
+  rpc:call(Node, beehive_bee_object, stop, [default, Name, self()]),
   {next_state, killing, State};
 
 preparing(Other, State) ->
   {stop, {received_unknown_message, {preparing, Other}}, State}.
 
-killing({bee_terminated, Bee}, #state{bee = #bee{host_node = Node} = Bee} = State) ->
-  true = rpc:cast(Node, app_handler, unmount_instance, [Bee, self()]),
+killing({terminated, _BeeO}, #state{bee = #bee{host_node = Node, app_name = Name} = _Bee} = State) ->
+  rpc:call(Node, beehive_bee_object, unmount, [default, Name, self()]),
   {next_state, unmounting, State};
 
 killing(Msg, State) ->
   {stop, {received_unknown_message, {unmounting, Msg}}, State}.
 
-unmounting({bee_unmounted, #bee{host_node = Node} = Bee}, State) ->
-  Self = self(),
-  ?LOG(info, "spawn_update_bee_status: ~p for ~p, ~p", [Bee, Self, 1]),
-  app_manager:spawn_update_bee_status(Bee, Self, 1),
-  true = rpc:cast(Node, app_handler, cleanup_instance, [Bee, self()]),
-  {next_state, cleaning_up, State#state{bee = Bee}};
+unmounting({unmounted, _BeeObject}, #state{bee = #bee{host_node = Node, app_name = Name} = _Bee} = State) ->
+  rpc:call(Node, beehive_bee_object, cleanup, [Name, self()]),
+  {next_state, cleaning_up, State};
 
 unmounting({error, Msg}, State) ->
   {stop, {error, Msg}, State}.
 
-cleaning_up({bee_cleaned_up, Bee}, #state{from = From} = State) ->
-  % App started normally
+cleaning_up({cleaned_up, _BeeObject}, #state{from = From, bee = Bee} = State) ->
+  % App stopped normally
   From ! {bee_terminated, Bee#bee{status = down}},
   {stop, normal, State};
   

@@ -15,9 +15,10 @@
   mount/2, mount/3,
   start/3, start/4,
   stop/2, stop/3,
+  unmount/2, unmount/3,
   have_bee/1,
   info/1,
-  cleanup/1,
+  cleanup/1, cleanup/2,
   ls/1
 ]).
 
@@ -38,19 +39,20 @@
 end()).
 
 -define (BEEHIVE_BEE_OBJECT_INFO_TABLE, 'beehive_bee_object_info').
--define (RUNNING_BEES_TABLE, 'running_bees_table').
 
 % Initialize included bee_tpes
 init() ->
-  TableOpts = [set, named_table, public],
-  case catch ets:info(?BEEHIVE_BEE_OBJECT_INFO_TABLE) of
-    undefined -> ets:new(?BEEHIVE_BEE_OBJECT_INFO_TABLE, TableOpts);
-    _ -> ok
-  end,
-  case catch ets:info(?RUNNING_BEES_TABLE) of
-    undefined -> ets:new(?RUNNING_BEES_TABLE, TableOpts);
-    _ -> ok
-  end,
+  process_flag(trap_exit, true),
+  spawn_link(fun() ->
+    TableOpts = [set, named_table, public],
+    case catch ets:info(?BEEHIVE_BEE_OBJECT_INFO_TABLE) of
+      undefined -> ets:new(?BEEHIVE_BEE_OBJECT_INFO_TABLE, TableOpts);
+      _ -> ok
+    end,
+    receive
+      _X -> ok
+    end
+  end),
   % Ewww
   Dir =?BH_ROOT,
   beehive_bee_object_config:init(),
@@ -134,31 +136,27 @@ bundle(#bee_object{type = Type, bundle_dir=NBundleDir} = BeeObject, From) when i
       end
   end.
 
-write_info_about_bee(#bee_object{meta_file = MetaFile} = BeeObject) ->
-  case filelib:is_file(MetaFile) of
-    true -> ok;
-    false -> force_write_info_about_bee(BeeObject)
-  end.
-
-force_write_info_about_bee(#bee_object{
-                        bee_file = BeeFile, 
-                        meta_file = MetaFile, 
+write_info_about_bee(#bee_object{
+                        bee_file = BeeFile,
                         name = Name} = BeeObject) ->
-  % Write the meta data
-  {ok, Fileinfo} = file:read_file_info(BeeFile),
-  {ok, CheckedRev} = get_current_sha(BeeObject),
-  OriginalProps = lists:foldl(fun(K, Acc) -> lists:delete(K, Acc) end, to_proplist(BeeObject), [revision, bee_size, created_at]),
-  Info =  [
-            {revision, CheckedRev}, {bee_size, Fileinfo#file_info.size}, 
-            {created_at, calendar:datetime_to_gregorian_seconds(Fileinfo#file_info.ctime)}
-            |OriginalProps
-          ],
   
-  erlang:display({force_write_info_about_bee, Info}),
-  ets:insert(?BEEHIVE_BEE_OBJECT_INFO_TABLE, [{Name, Info}]),
-  % Write it to a file, for sure... debatable
-  {ok, Io} = file:open(MetaFile, [write]),
-  file:write(Io, term_to_binary(Info)).
+  Dict = case ets:lookup(Name, ?BEEHIVE_BEE_OBJECT_INFO_TABLE) of
+    [] -> dict:new();
+    [{Name, D}|_] -> D
+  end,
+  
+  Info =  [{revision, CheckedRev}, {bee_size, Fileinfo#file_info.size},  {created_at, calendar:datetime_to_gregorian_seconds(Fileinfo#file_info.ctime)}|to_proplist(BeeObject)],
+    
+  NewDict = lists:foldl(fun({K,V}, Acc) -> 
+    case V of
+      undefined -> ok;
+      _ -> dict:store(K,V, Acc)
+    end
+  end,
+  Dict, Info),
+  
+  ets:insert(?BEEHIVE_BEE_OBJECT_INFO_TABLE, [{Name, NewDict}]),
+  NewDict.
   
 % Mount the bee
 mount(Type, Name) -> mount(Type, Name, undefined).
@@ -196,7 +194,7 @@ start(Type, Name, Port, From) ->
     Str2 -> Str2
   end,
   BeeDir = case catch find_mounted_bee(Name) of
-    {error, _} = Tuple2 -> 
+    {error, _} = _Tuple2 -> 
       Tuple3 = mount(Type, Name),
       erlang:display({find_mounted_bee,mount,Tuple3, find_mounted_bee(Name)}),
       find_mounted_bee(Name);
@@ -221,7 +219,7 @@ start(Type, Name, Port, From) ->
       erlang:display({spawn_link,PidFilename,ScriptFilename,OsPid}),
       
       RealBeeObject = BeeObject#bee_object{pid = Pid, os_pid = OsPid},
-      ok = force_write_info_about_bee(RealBeeObject),
+      write_info_about_bee(RealBeeObject),
       send_to(From, {started, RealBeeObject}),
       
       cmd_receive(Pid, [], From, fun(Msg) ->
@@ -245,16 +243,48 @@ start(Type, Name, Port, From) ->
   Pid.
 
 stop(Type, Name) -> stop(Type, Name, undefined).
-stop(_Type, Name, _From) ->
+stop(_Type, Name, From) ->
   case find_bee(Name) of
     #bee_object{pid = Pid} = BeeObject when is_record(BeeObject, bee_object) ->      
       Pid ! {stop},
-      timer:sleep(500);
+      timer:sleep(500),
+      From ! {stopped, BeeObject};
     _ -> {error, not_running}
   end.
 
-% Delete the bee and the meta data
-cleanup(Name) ->
+% Unmount the bee
+unmount(Type, Name) -> unmount(Type, Name, undefined).
+unmount(Type, Name, Caller) ->
+  BeforeUnMountScript = case beehive_bee_object_config:get_or_default(unmount, Type) of
+    {error, _} = T -> throw(T);
+    Str2 -> Str2
+  end,
+  BeeFile = find_bee_file(Name),
+  MountRootDir = config:search_for_application_value(run_dir, ?BEEHIVE_DIR("run")),
+  MountDir = filename:join([MountRootDir, Name]),
+  UnMountCmd = proplists:get_value(unmount, config_props()),
+  
+  BeeObject = from_proplists([{name, Name}, {type, Type}, {bee_file, BeeFile}, 
+                              {run_dir, MountDir}, {bundle_dir, filename:dirname(BeeFile)}
+                            ]),
+  
+  run_hook_action(pre, BeeObject, Caller),
+  Str = template_command_string(UnMountCmd, to_proplist(BeeObject)),
+  ?DEBUG_PRINT({run_dir, MountDir, Str}),
+  ok = ensure_directory_exists(filename:join([MountDir, "dummy_dir"])),
+  case run_in_directory_with_file(BeeObject, Caller, MountDir, BeforeUnMountScript) of
+    {error, _Reason} = T1 -> T1;
+    T2 ->
+      run_command_in_directory(Str, MountDir, Caller, BeeObject),
+      run_hook_action(post, BeeObject, Caller),
+      
+      send_to(Caller, {unmounted, BeeObject}),
+      T2
+  end.
+
+
+cleanup(Name) -> cleanup(Name, undefined).
+cleanup(Name, Caller) ->
   case catch find_mounted_bee(Name) of
     {error, _} -> ok;
     MountDir -> rm_rf(MountDir)
@@ -263,29 +293,19 @@ cleanup(Name) ->
   case catch find_bee_file(Name) of
     {error, _} -> ok;
     Beefile ->
-      file:delete(lists:flatten([Beefile, ".meta"])),
-      file:delete(Beefile)
+      file:delete(Beefile),
+      send_to(Caller, {cleaned_up, Name})
   end.
 
 % Get information about the Beefile  
 info(Name) when is_list(Name) ->
-  case ets:lookup(?BEEHIVE_BEE_OBJECT_INFO_TABLE, Name) of
-    [{Name, Props}|_Rest] -> Props;
+  case ets:fetch(Name, ?BEEHIVE_BEE_OBJECT_INFO_TABLE) of
+    [{Name, Dict}|_Rest] -> dict:to_list(Dict);
     _ ->
       case catch find_bee_file(Name) of
         {error, not_found} -> {error, not_found};
-        Beefile -> 
-          BeeObject = from_proplists([{bee_file, Beefile}, {name, Name}]),
-          info(BeeObject)
+        _ -> {error, unknown_error}
       end
-  end;
-info(#bee_object{meta_file = MetaFile, name = Name} = BeeObject) when is_record(BeeObject, bee_object) ->
-  case file:read_file(MetaFile) of
-    {ok, Bin} ->
-      Out = binary_to_term(Bin),
-      ets:insert(?BEEHIVE_BEE_OBJECT_INFO_TABLE, [{Name, Out}]),
-      Out;
-    _FileNotPresentError -> {error, not_found}
   end.
 
 have_bee(Name) ->
@@ -533,7 +553,6 @@ from_proplists([{run_dir, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject
 from_proplists([{bundle_dir, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{bundle_dir = V});
 from_proplists([{bee_size, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{bee_size = V});
 from_proplists([{bee_file, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{bee_file = V});
-from_proplists([{meta_file, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{meta_file = V});
 from_proplists([{port,V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{port = V});
 from_proplists([{pre,V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{pre = V});
 from_proplists([{post,V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{post = V});
@@ -558,7 +577,6 @@ to_proplist([run_dir|Rest], #bee_object{run_dir = V} = Bo, Acc) -> to_proplist(R
 to_proplist([bundle_dir|Rest], #bee_object{bundle_dir = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{bundle_dir, V}|Acc]);
 to_proplist([bee_size|Rest], #bee_object{bee_size = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{bee_size, V}|Acc]);
 to_proplist([bee_file|Rest], #bee_object{bee_file = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{bee_file, V}|Acc]);
-to_proplist([meta_file|Rest], #bee_object{meta_file = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{meta_file, V}|Acc]);
 to_proplist([port|Rest], #bee_object{port = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{port, V}|Acc]);
 to_proplist([pre|Rest], #bee_object{pre = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{pre, V}|Acc]);
 to_proplist([post|Rest], #bee_object{post = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{post, V}|Acc]);
@@ -581,12 +599,11 @@ validate_bee_object([run_dir|Rest], #bee_object{run_dir = undefined} = BeeObject
 validate_bee_object([branch|Rest], #bee_object{branch = undefined} = BeeObject) ->
   validate_bee_object(Rest, BeeObject#bee_object{branch = "master"});
 % Validate the bee_file
-validate_bee_object([bee_file|Rest], #bee_object{bee_file=undefined, name=Name} = BeeObject) ->  
+validate_bee_object([bee_file|Rest], #bee_object{bee_file=undefined} = BeeObject) ->  
   RootDir = config:search_for_application_value(squashed_dir, ?BEEHIVE_DIR("squashed")),
-  BeeFile = filename:join([RootDir, lists:flatten([Name, ".bee"])]),
+  BeeFile = filename:join([RootDir, lists:flatten([unique_filename(BeeObject), ".bee"])]),
   validate_bee_object(Rest, BeeObject#bee_object{bee_file = BeeFile});
-validate_bee_object([meta_file|Rest], #bee_object{meta_file = undefined, bee_file = Bf} = BeeObject) ->
-  validate_bee_object(Rest, BeeObject#bee_object{meta_file = lists:flatten([Bf, ".meta"])});
+
 % TRy to extract the type
 validate_bee_object([vcs_type|Rest], #bee_object{vcs_type=Type, url=Url} = BeeObject) ->
   FoundType = extract_vcs_type(Type, Url),
@@ -595,6 +612,9 @@ validate_bee_object([pid|Rest], #bee_object{pid = Pid} = BeeObject) when is_list
   validate_bee_object(Rest, BeeObject#bee_object{pid = list_to_pid(Pid)});
 validate_bee_object([], BeeObject) ->  BeeObject;
 validate_bee_object([_H|Rest], BeeObject) -> validate_bee_object(Rest, BeeObject).
+
+unique_filename(#bee_object{name = Name} = _BeeObject) ->
+  Name.
 
 % Get temp_file
 temp_file() ->

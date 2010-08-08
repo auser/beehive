@@ -26,7 +26,7 @@
   request_to_start_new_bee_by_app/1, request_to_start_new_bee_by_app/2,
   request_to_update_app/1,
   request_to_expand_app/1,
-  request_to_terminate_bee/1,
+  request_to_terminate_bee/2,
   request_to_save_app/1,
   garbage_collection/0,
   seed_nodes/1
@@ -70,7 +70,8 @@ request_to_start_new_bee_by_name(Name) -> gen_server:cast(?SERVER, {request_to_s
 request_to_start_new_bee_by_name(Name, Caller) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_name, Name, Caller}).
 request_to_update_app(App) -> gen_server:cast(?SERVER, {request_to_update_app, App}).
 request_to_save_app(App) -> gen_server:call(?SERVER, {request_to_save_app, App}).
-request_to_terminate_bee(Bee) -> gen_server:cast(?SERVER, {request_to_terminate_bee, Bee}).
+request_to_terminate_bee(Bee, Caller) -> 
+  gen_server:cast(?SERVER, {request_to_terminate_bee, Bee, Caller}).
 terminate_app_instances(Appname) -> gen_server:cast(?SERVER, {terminate_app_instances, Appname}).
 terminate_all() -> gen_server:cast(?SERVER, {terminate_all}).
 
@@ -204,15 +205,13 @@ handle_cast({request_to_start_new_bee_by_name, Name, Caller}, State) ->
   end,
   {noreply, State};
 
-handle_cast({request_to_terminate_bee, #bee{status = Status} = Bee}, State) when Status =:= ready ->
+handle_cast({request_to_terminate_bee, Bee, Caller}, State) ->
   % rpc:cast(Node, app_handler, stop_instance, [Bee]),
   % app_killer_fsm
-  {ok, P} = app_killer_fsm:start_link(Bee, self()),
+  {ok, P} = app_killer_fsm:start_link(Bee, Caller),
+  % erlang:display({hi, in, request_to_terminate_bee, P}),
   erlang:link(P),
   app_killer_fsm:kill(P),  
-  {noreply, State};
-
-handle_cast({request_to_terminate_bee, _Bee}, State) ->
   {noreply, State};
 
 handle_cast({garbage_collection}, State) ->
@@ -417,10 +416,8 @@ handle_queued_call(Fun, From, #state{queries = OldTransQ, last_trans = LastTrans
 
 % Spawn a process to try to connect to the instance
 spawn_update_bee_status(Bee, From, Nums) ->
-  erlang:display({spawning,spawn_update_bee_status, Bee#bee.host, Bee#bee.port}),
   spawn(fun() ->
     BeeStatus = try_to_connect_to_new_instance(Bee, Nums),
-    erlang:display({spawn_update_bee_status, BeeStatus}),
     RealBee = case bees:find_by_id(Bee#bee.id) of
       RealBee1 when is_record(RealBee1, bee) -> RealBee1;
       _ -> Bee
@@ -432,7 +429,6 @@ spawn_update_bee_status(Bee, From, Nums) ->
 % Try to connect to the application instance while it's booting up
 try_to_connect_to_new_instance(_Bee, 0) -> broken;
 try_to_connect_to_new_instance(Bee, Attempts) ->
-  erlang:display({try_to_connect_to_new_instance, Bee#bee.host, Bee#bee.port, Attempts}),
   ?LOG(info, "try_to_connect_to_new_instance (~p:~p) ~p", [Bee#bee.host, Bee#bee.port, Attempts]),
   case gen_tcp:connect(Bee#bee.host, Bee#bee.port, [binary, {packet, 0}], 500) of
     {ok, Sock} ->
@@ -599,7 +595,7 @@ cleanup_bee(#bee{status = terminated} = B) ->
   ?QSTORE:delete_queue(?WAIT_DB, B#bee.app_name);
   % bees:delete(B);
 cleanup_bee(B) ->
-  (catch app_manager:request_to_terminate_bee(B)),
+  (catch app_manager:request_to_terminate_bee(B, self())),
   ?QSTORE:delete_queue(?WAIT_DB, B#bee.app_name).
   % bees:delete(B).
 

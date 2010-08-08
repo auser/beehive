@@ -165,7 +165,6 @@ updating(Msg, State) ->
   stop_error({updating, Msg}, State).
 
 launching({started, BeeObject}, State) ->
-  erlang:display({launching, BeeObject}),
   Self = self(),
   BuiltBee = bees:from_bee_object(BeeObject),
   Bee = BuiltBee#bee{host = bh_host:myip()},
@@ -177,16 +176,13 @@ launching({error, Reason}, State) ->
   stop_error({launching, Reason}, State);
 
 launching(Event, State) ->
-  erlang:display({caught, launching, Event}),
   ?LOG(info, "Uncaught event: ~p while in state: ~p ~n", [Event, launching]),
   {next_state, launching, State}.
 
 pending({updated_bee_status, broken}, State) ->
-  erlang:display({pending, updated_bee_status, broken}),
   stop_error({error, broken_start}, State);
   
 pending({updated_bee_status, BackendStatus}, #state{app = App, bee = Bee, from = From, latest_sha = Sha, updating = Updating} = State) ->
-  erlang:display({got, updated_bee_status, BackendStatus}),
   ?LOG(info, "Application started ~p: ~p", [BackendStatus, App#app.name]),
   % App started normally
   case Updating of

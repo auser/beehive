@@ -3,9 +3,7 @@
 -include ("beehive.hrl").
 
 setup() ->
-  erlang:display({setup, app_manager_test}),
   bh_test_util:setup(),
-  erlang:display({after_setup}),
   ok.
   
 teardown(_X) ->
@@ -20,8 +18,8 @@ starting_test_() ->
         fun instance/0,
         fun add_application/0,
         fun spawn_update_bee_status/0,
-        fun start_new_instance/0,
-        fun teardown_an_instance/0
+        fun start_new_instance_t/0,
+        fun teardown_an_instance_t/0
       ]
     }
   }.
@@ -41,24 +39,25 @@ spawn_update_bee_status() ->
   passed.
 
 % Starting and stopping
-start_new_instance() ->  
+start_new_instance_t() ->  
   {ok, App, Bee} = start_dummy_app(self()),
   timer:sleep(500),
   erlang:display({start_new_instance, Bee#bee.host, Bee#bee.port, Bee#bee.os_pid}),
   case try_to_fetch_url_or_retry(get, [{host, Bee#bee.host}, {port, Bee#bee.port}, {path, "/"}], 20) of
     {ok, _Headers, Body} ->
       ?assertEqual("Hello World", hd(lists:reverse(Body))),
-      erlang:display({got, good_body, Body, lists:flatten(["kill ", integer_to_list(Bee#bee.os_pid)])}),
-      os:cmd(lists:flatten(["kill ", integer_to_list(Bee#bee.os_pid)])),
+      % os:cmd(lists:flatten(["kill ", integer_to_list(Bee#bee.os_pid)])),
       passed;
     _ -> 
       ?assertEqual(failed, connect)
   end.
   
-teardown_an_instance() ->
-  {ok, _App, Bee} = start_dummy_app(self()),
-  timer:sleep(1000),
-  app_manager:stop_instance(Bee, self()),
+teardown_an_instance_t() ->
+  erlang:display({teardown_an_instance_t}),
+  % {ok, _App, Bee} = start_dummy_app(self()),
+  App = dummy_app(),
+  Bee = bees:find_by_name(App#app.name),
+  app_manager:request_to_terminate_bee(Bee, self()),
   receive
     {bee_terminated, _Bee} ->
       timer:sleep(1000),
@@ -72,11 +71,6 @@ teardown_an_instance() ->
   end,
   passed.
 
-
-kill_app_by_bee(#app{type = Type, name = Name} = App, _Bee) -> 
-  beehive_bee_object:stop(Type, Name);
-kill_app_by_bee(_App, _Bee) -> ok.
-
 dummy_app() -> bh_test_util:dummy_app().
   
 start_dummy_app(From) ->
@@ -84,10 +78,8 @@ start_dummy_app(From) ->
   app_manager:request_to_start_new_bee_by_app(App, self()),
   receive
     {bee_started_normally, Bee} ->
-          bees:save(Bee),
-          {ok, App, Bee}
-    after 5000 ->
-      {error, timeout}
+      bees:save(Bee),
+      {ok, App, Bee}
   end.
 
 try_to_fetch_url_or_retry(_Method, _Args, 0) -> failed;

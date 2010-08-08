@@ -68,7 +68,6 @@
   bundle_dir,   % location of the root of the bundle
   bee_size,     % size of the bee_file
   bee_file,     % location of the file
-  meta_file,    % location of the metadata file
   port,         % port to run on
   pre,
   post,
