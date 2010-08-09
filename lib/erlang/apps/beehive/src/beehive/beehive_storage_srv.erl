@@ -17,6 +17,7 @@
 -export([
   start_link/0,
   fetch_or_build_bee/2,
+  build_bee/2,
   seed_nodes/1
 ]).
 
@@ -53,6 +54,9 @@ seed_pids(_State) ->
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
+build_bee(App, Caller) ->
+  gen_cluster:call(?SERVER, {build_bee, App, Caller}).
+
 fetch_or_build_bee(App, Caller) ->
   gen_cluster:call(?SERVER, {fetch_or_build_bee, App, Caller}).
 

@@ -231,10 +231,7 @@ to_proplist([act_count|Rest], #bee{act_count = Value} = Bee, Acc) -> to_proplist
 to_proplist([_H|T], Bee, Acc) -> to_proplist(T, Bee, Acc).
 
 from_bee_object(Bo) when is_record(Bo, bee_object) -> fbo(record_info(fields, bee_object), Bo, #bee{}).
-fbo([], _Bo, Bee) -> 
-  B = validate_bee(Bee),
-  erlang:display({validate_bee, from_bee_object, B}),
-  B;
+fbo([], _Bo, Bee) -> validate_bee(Bee);
 fbo([name|Rest], #bee_object{name = Name} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{app_name = Name});
 fbo([revision|Rest], #bee_object{revision = Rev} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{revision = Rev});
 fbo([bee_size|Rest], #bee_object{bee_size = V} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{bee_size = V});

@@ -65,7 +65,11 @@ start_link(Bee, From) ->
 %% initialize.
 %%--------------------------------------------------------------------
 init([Bee, From]) ->
-  State = #state{from = From, bee = Bee},
+  RpcNode = case Bee#bee.host_node of
+    undefined -> node();
+    _ -> Bee#bee.host_node
+  end,
+  State = #state{from = From, bee = Bee, node = RpcNode},
   {ok, preparing, State}.
 
 %%--------------------------------------------------------------------
@@ -80,25 +84,28 @@ init([Bee, From]) ->
 %% the current state name StateName is called to handle the event. It is also
 %% called if a timeout occurs.
 %%--------------------------------------------------------------------
-preparing({kill}, #state{bee = #bee{host_node = Node, app_name = Name} = _Bee} = State) ->
+preparing({kill}, #state{bee = #bee{app_name = Name} = _Bee, node = Node} = State) ->
+  erlang:display({node, Node}),
+  % If there is no node, we'll assume it's on the localhost
   rpc:call(Node, beehive_bee_object, stop, [default, Name, self()]),
   {next_state, killing, State};
 
 preparing(Other, State) ->
   {stop, {received_unknown_message, {preparing, Other}}, State}.
 
-killing({terminated, _BeeO}, #state{bee = #bee{host_node = Node, app_name = Name} = _Bee} = State) ->
+killing({stopped, _BeeO}, #state{bee = #bee{app_name = Name} = _Bee, node = Node} = State) ->
   rpc:call(Node, beehive_bee_object, unmount, [default, Name, self()]),
   {next_state, unmounting, State};
 
 killing(Msg, State) ->
   {stop, {received_unknown_message, {unmounting, Msg}}, State}.
 
-unmounting({unmounted, _BeeObject}, #state{bee = #bee{host_node = Node, app_name = Name} = _Bee} = State) ->
+unmounting({unmounted, _BeeObject}, #state{bee = #bee{app_name = Name} = _Bee, node = Node} = State) ->
   rpc:call(Node, beehive_bee_object, cleanup, [Name, self()]),
   {next_state, cleaning_up, State};
 
 unmounting({error, Msg}, State) ->
+  erlang:display({error, unmounting, Msg}),
   {stop, {error, Msg}, State}.
 
 cleaning_up({cleaned_up, _BeeObject}, #state{from = From, bee = Bee} = State) ->

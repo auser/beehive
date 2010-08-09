@@ -30,7 +30,7 @@
 ]).
 
 
--define (DEBUG, false).
+-define (DEBUG, true).
 -define (DEBUG_PRINT (Args), fun() -> 
   case ?DEBUG of
     true -> erlang:display(Args);
@@ -241,6 +241,7 @@ start(Type, Name, Port, From) ->
 
 stop(Type, Name) -> stop(Type, Name, undefined).
 stop(_Type, Name, From) ->
+  erlang:display({find_bee, Name, find_bee(Name)}),
   case find_bee(Name) of
     #bee_object{pid = Pid} = BeeObject when is_record(BeeObject, bee_object) ->      
       Pid ! {stop},
@@ -697,8 +698,7 @@ ets_process_restarter() ->
     {'EXIT', Pid, shutdown} -> % manual termination, not a crash
       ok;
     {'EXIT', Pid, _} ->
-      ets_process_restarter();
-    _Else ->
+      unregister(?BEEHIVE_BEE_OBJECT_INFO_TABLE_PROCESS),
       ets_process_restarter()
   end.
 

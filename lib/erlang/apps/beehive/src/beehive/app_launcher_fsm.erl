@@ -170,6 +170,7 @@ launching({started, BeeObject}, State) ->
   Bee = BuiltBee#bee{host = bh_host:myip()},
   ?LOG(info, "spawn_update_bee_status: ~p for ~p, ~p", [Bee, Self, 20]),
   app_manager:spawn_update_bee_status(Bee, Self, 20),
+  erlang:display({built_bee, Bee#bee.host, Bee#bee.port, Bee#bee.os_pid}),
   {next_state, pending, State#state{bee = Bee}};
 
 launching({error, Reason}, State) ->
@@ -183,6 +184,7 @@ pending({updated_bee_status, broken}, State) ->
   stop_error({error, broken_start}, State);
   
 pending({updated_bee_status, BackendStatus}, #state{app = App, bee = Bee, from = From, latest_sha = Sha, updating = Updating} = State) ->
+  erlang:display({updated_bee_status, BackendStatus}),
   ?LOG(info, "Application started ~p: ~p", [BackendStatus, App#app.name]),
   % App started normally
   case Updating of
