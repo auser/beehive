@@ -85,7 +85,6 @@ init([Bee, From]) ->
 %% called if a timeout occurs.
 %%--------------------------------------------------------------------
 preparing({kill}, #state{bee = #bee{app_name = Name} = _Bee, node = Node} = State) ->
-  erlang:display({node, Node}),
   % If there is no node, we'll assume it's on the localhost
   rpc:call(Node, beehive_bee_object, stop, [default, Name, self()]),
   {next_state, killing, State};
@@ -106,11 +105,9 @@ unmounting({unmounted, _BeeObject}, #state{bee = #bee{app_name = Name} = _Bee, n
   {next_state, cleaning_up, State};
 
 unmounting({error, Msg}, State) ->
-  erlang:display({error, unmounting, Msg}),
   {stop, {error, Msg}, State}.
 
 cleaning_up({cleaned_up, _BeeObject}, #state{from = From, bee = Bee} = State) ->
-  erlang:display({cleaned_up, Bee}),
   % App stopped normally
   From ! {bee_terminated, Bee#bee{status = down}},
   {stop, normal, State};

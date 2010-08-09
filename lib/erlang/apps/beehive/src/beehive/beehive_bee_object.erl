@@ -126,7 +126,7 @@ bundle(#bee_object{type = Type, bundle_dir=NBundleDir} = BeeObject, From) when i
           write_info_about_bee(BeeObject),
           run_hook_action(post, BeeObject, From),
           
-          erlang:display({should_remove,bundle_dir,BundleDir}),
+          % erlang:display({should_remove,bundle_dir,BundleDir}),
           
           info(BeeObject)
       end
@@ -195,7 +195,6 @@ start(Type, Name, Port, From) ->
   BeeDir = case catch find_mounted_bee(Name) of
     {error, _} = _Tuple2 -> 
       Tuple3 = mount(Type, Name),
-      erlang:display({find_mounted_bee,mount,Tuple3, find_mounted_bee(Name)}),
       find_mounted_bee(Name);
     MountedBee -> MountedBee
   end,
@@ -216,7 +215,6 @@ start(Type, Name, Port, From) ->
       OsPid = read_pid_file_or_retry(PidFilename, 50),
       file:delete(PidFilename),
       file:delete(ScriptFilename),
-      erlang:display({spawn_link,PidFilename,ScriptFilename,OsPid}),
       
       RealBeeObject = BeeObject#bee_object{pid = Pid, os_pid = OsPid},
       write_info_about_bee(RealBeeObject),
@@ -244,7 +242,6 @@ start(Type, Name, Port, From) ->
 
 stop(Type, Name) -> stop(Type, Name, undefined).
 stop(_Type, Name, From) ->
-  erlang:display({find_bee, Name, find_bee(Name)}),
   case find_bee(Name) of
     #bee_object{pid = Pid} = BeeObject when is_record(BeeObject, bee_object) ->
       Pid ! {stop},
@@ -287,7 +284,6 @@ unmount(Type, Name, Caller) ->
 
 cleanup(Name) -> cleanup(Name, undefined).
 cleanup(Name, Caller) ->
-  erlang:display({cleanup, Name, Caller}),
   case catch find_mounted_bee(Name) of
     {error, _} -> ok;
     MountDir -> rm_rf(MountDir)
@@ -697,7 +693,7 @@ read_pid_file_or_retry(PidFilename, Retries) ->
 ets_process_restarter() ->
   process_flag(trap_exit, true),
   Pid = spawn_link(?MODULE, start_ets_process, []),
-  register(?BEEHIVE_BEE_OBJECT_INFO_TABLE_PROCESS, Pid),
+  catch register(?BEEHIVE_BEE_OBJECT_INFO_TABLE_PROCESS, Pid),
   receive
     {'EXIT', Pid, normal} -> % not a crash
       ok;

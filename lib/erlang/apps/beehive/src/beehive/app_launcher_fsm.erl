@@ -125,14 +125,12 @@ mounting(Other, State) ->
 preparing({update}, #state{app = App} = State) ->
   Self = self(),
   gen_cluster:run(beehive_storage_srv, {fetch_or_build_bee, App, Self}),
-  erlang:display({preparing,updating,App}),
   {next_state, updating, State};
 
 preparing({launch}, #state{from = From, app = App, bee = Bee, latest_sha = Sha} = State) ->
   Self = self(),  
   Port = bh_host:unused_port(),
   beehive_bee_object:start(App#app.type, App#app.name, Port, Self),
-  erlang:display({preparing,launch,Port}),
   {next_state, launching, State};
   % case gen_cluster:run(app_handler, {start_new_instance, App, Sha, self(), From}) of
   %   {error, Reason} -> {stop, Reason, State};
@@ -150,7 +148,6 @@ preparing(_Other, State) ->
   {next_state, preparing, State}.
 
 updating({bee_built, Info}, #state{bee = Bee, app = App} = State) ->
-  erlang:display({updating,bee_built,Info,Bee}),
   % Strip off the last newline... stupid bash
   BeeSize = proplists:get_value(bee_size, Info, Bee#bee.bee_size),
   Sha = proplists:get_value(revision, Info, Bee#bee.revision),
@@ -171,7 +168,6 @@ launching({started, BeeObject}, State) ->
   Bee = BuiltBee#bee{host = bh_host:myip()},
   ?LOG(info, "spawn_update_bee_status: ~p for ~p, ~p", [Bee, Self, 20]),
   app_manager:spawn_update_bee_status(Bee, Self, 20),
-  erlang:display({built_bee, Bee#bee.host, Bee#bee.port, Bee#bee.os_pid}),
   {next_state, pending, State#state{bee = Bee}};
 
 launching({error, Reason}, State) ->
@@ -186,7 +182,6 @@ pending({updated_bee_status, broken}, State) ->
   stop_error({error, broken_start}, State);
   
 pending({updated_bee_status, BackendStatus}, #state{app = App, bee = Bee, from = From, latest_sha = Sha, updating = Updating} = State) ->
-  erlang:display({updated_bee_status, BackendStatus}),
   ?LOG(info, "Application started ~p: ~p", [BackendStatus, App#app.name]),
   % App started normally
   case Updating of
