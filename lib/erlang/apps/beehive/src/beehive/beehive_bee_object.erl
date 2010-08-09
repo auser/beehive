@@ -39,20 +39,14 @@
 end()).
 
 -define (BEEHIVE_BEE_OBJECT_INFO_TABLE, 'beehive_bee_object_info').
+-define (BEEHIVE_BEE_OBJECT_INFO_TABLE_PROCESS, 'beehive_bee_object_info_process').
+
+% ETS functions
+-export ([ets_process_restarter/0, start_ets_process/0]).
 
 % Initialize included bee_tpes
 init() ->
-  process_flag(trap_exit, true),
-  spawn_link(fun() ->
-    TableOpts = [set, named_table, public],
-    case catch ets:info(?BEEHIVE_BEE_OBJECT_INFO_TABLE) of
-      undefined -> ets:new(?BEEHIVE_BEE_OBJECT_INFO_TABLE, TableOpts);
-      _ -> ok
-    end,
-    receive
-      _X -> ok
-    end
-  end),
+  spawn(?MODULE, ets_process_restarter, []),
   % Ewww
   Dir =?BH_ROOT,
   beehive_bee_object_config:init(),
@@ -140,23 +134,26 @@ write_info_about_bee(#bee_object{
                         bee_file = BeeFile,
                         name = Name} = BeeObject) ->
   
-  Dict = case ets:lookup(Name, ?BEEHIVE_BEE_OBJECT_INFO_TABLE) of
+  Dict = case ets:lookup(?BEEHIVE_BEE_OBJECT_INFO_TABLE, Name) of
     [] -> dict:new();
     [{Name, D}|_] -> D
   end,
+  
+  {ok, Fileinfo} = file:read_file_info(BeeFile),
+  {ok, CheckedRev} = get_current_sha(BeeObject),
   
   Info =  [{revision, CheckedRev}, {bee_size, Fileinfo#file_info.size},  {created_at, calendar:datetime_to_gregorian_seconds(Fileinfo#file_info.ctime)}|to_proplist(BeeObject)],
     
   NewDict = lists:foldl(fun({K,V}, Acc) -> 
     case V of
-      undefined -> ok;
+      undefined -> Acc;
       _ -> dict:store(K,V, Acc)
     end
   end,
   Dict, Info),
   
   ets:insert(?BEEHIVE_BEE_OBJECT_INFO_TABLE, [{Name, NewDict}]),
-  NewDict.
+  dict:to_list(NewDict).
   
 % Mount the bee
 mount(Type, Name) -> mount(Type, Name, undefined).
@@ -299,12 +296,12 @@ cleanup(Name, Caller) ->
 
 % Get information about the Beefile  
 info(Name) when is_list(Name) ->
-  case ets:fetch(Name, ?BEEHIVE_BEE_OBJECT_INFO_TABLE) of
+  case ets:lookup(?BEEHIVE_BEE_OBJECT_INFO_TABLE, Name) of
     [{Name, Dict}|_Rest] -> dict:to_list(Dict);
     _ ->
       case catch find_bee_file(Name) of
         {error, not_found} -> {error, not_found};
-        _ -> {error, unknown_error}
+        T -> write_info_about_bee(#bee_object{bee_file = T, name = Name, vcs_type = git})
       end
   end.
 
@@ -481,9 +478,12 @@ async_command(Cmd, Args, Cd, Envs, From) ->
   {Pid, Ref, Tag}.
 
 cmd_sync(Cmd, Args, Cd, Envs, From) ->
-  P = open_port({spawn_executable, os:find_executable(Cmd)}, [
-    binary, stderr_to_stdout, use_stdio, exit_status, stream, eof, {args, Args}, {env, Envs}, {cd, Cd}
-    ]),
+  StdOpts = [binary, stderr_to_stdout, use_stdio, exit_status, stream, eof, {args, Args}, {env, Envs}],
+  Opts = case Cd of
+    undefined -> StdOpts;
+    _ -> [{cd, Cd}|StdOpts]
+  end,
+  P = open_port({spawn_executable, os:find_executable(Cmd)},Opts),
   cmd_receive(P, [], From, undefined).
 
 cmd_receive(Port, Acc, From, Fun) ->
@@ -684,4 +684,31 @@ read_pid_file_or_retry(PidFilename, Retries) ->
     _ ->
       timer:sleep(100),
       read_pid_file_or_retry(PidFilename, Retries - 1)
+  end.
+
+% Ets fun
+ets_process_restarter() ->
+  process_flag(trap_exit, true),
+  Pid = spawn_link(?MODULE, start_ets_process, []),
+  register(?BEEHIVE_BEE_OBJECT_INFO_TABLE_PROCESS, Pid),
+  receive
+    {'EXIT', Pid, normal} -> % not a crash
+      ok;
+    {'EXIT', Pid, shutdown} -> % manual termination, not a crash
+      ok;
+    {'EXIT', Pid, _} ->
+      ets_process_restarter();
+    _Else ->
+      ets_process_restarter()
+  end.
+
+start_ets_process() ->
+  TableOpts = [set, named_table, public],
+  case catch ets:info(?BEEHIVE_BEE_OBJECT_INFO_TABLE) of
+    undefined -> ets:new(?BEEHIVE_BEE_OBJECT_INFO_TABLE, TableOpts);
+    _ -> ok
+  end,
+  receive
+    kill -> ok;
+    _ -> start_ets_process()
   end.
