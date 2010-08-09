@@ -208,7 +208,8 @@ start(Type, Name, Port, From) ->
       {ok, PidFilename, PidIo} = temp_file(),
       file:close(PidIo),
       
-      {Pid, Ref, Tag} = async_command("/bin/sh", [ScriptFilename], BeeDir, [{pidfile, PidFilename}|to_proplist(BeeObject)], From),
+      {_Pid, Ref, Tag} = async_command("/bin/sh", [ScriptFilename], BeeDir, [{pidfile, PidFilename}|to_proplist(BeeObject)], From),
+      Pid = self(),
       timer:sleep(500),
       OsPid = read_pid_file_or_retry(PidFilename, 50),
       file:delete(PidFilename),
@@ -243,8 +244,7 @@ stop(Type, Name) -> stop(Type, Name, undefined).
 stop(_Type, Name, From) ->
   erlang:display({find_bee, Name, find_bee(Name)}),
   case find_bee(Name) of
-    #bee_object{pid = Pid, os_pid = OsPid} = BeeObject when is_record(BeeObject, bee_object) ->      
-      erlang:display({os_pid, OsPid}),
+    #bee_object{pid = Pid, os_pid = OsPid} = BeeObject when is_record(BeeObject, bee_object) ->
       Pid ! {stop},
       timer:sleep(500),
       From ! {stopped, BeeObject};
