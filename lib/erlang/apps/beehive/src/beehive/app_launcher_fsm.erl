@@ -114,6 +114,8 @@ init([Proplist]) ->
 fetching_bee({send_bee_object, done}, State) ->
   {next_state, preparing, State};
   
+fetching_bee({port_closed,_Port}, State) ->
+  {next_state, preparing, State};
 fetching_bee(Other, State) ->
   {next_state, preparing, State}.
 
@@ -123,12 +125,14 @@ mounting(Other, State) ->
 preparing({update}, #state{app = App} = State) ->
   Self = self(),
   gen_cluster:run(beehive_storage_srv, {fetch_or_build_bee, App, Self}),
+  erlang:display({preparing,updating,App}),
   {next_state, updating, State};
 
 preparing({launch}, #state{from = From, app = App, bee = Bee, latest_sha = Sha} = State) ->
   Self = self(),  
   Port = bh_host:unused_port(),
   beehive_bee_object:start(App#app.type, App#app.name, Port, Self),
+  erlang:display({preparing,launch,Port}),
   {next_state, launching, State};
   % case gen_cluster:run(app_handler, {start_new_instance, App, Sha, self(), From}) of
   %   {error, Reason} -> {stop, Reason, State};
@@ -141,15 +145,12 @@ preparing({launch}, #state{from = From, app = App, bee = Bee, latest_sha = Sha} 
 preparing({start_new}, State) ->
   self() ! {bee_built, []},
   {next_state, updating, State};
-
-preparing({data, List}, #state{output = Output} = State) ->
-  {next_state, preparing, State#state{output = [List|Output]}};
   
-preparing(Other, State) ->
-  erlang:display({got_other,preparing,Other}),
+preparing(_Other, State) ->
   {next_state, preparing, State}.
 
 updating({bee_built, Info}, #state{bee = Bee, app = App} = State) ->
+  erlang:display({updating,bee_built,Info,Bee}),
   % Strip off the last newline... stupid bash
   BeeSize = proplists:get_value(bee_size, Info, Bee#bee.bee_size),
   Sha = proplists:get_value(revision, Info, Bee#bee.revision),
@@ -174,6 +175,7 @@ launching({started, BeeObject}, State) ->
   {next_state, pending, State#state{bee = Bee}};
 
 launching({error, Reason}, State) ->
+  erlang:display({launching,error,Reason}),
   stop_error({launching, Reason}, State);
 
 launching(Event, State) ->
@@ -265,6 +267,8 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %% other message than a synchronous or asynchronous event
 %% (or a system message).
 %%--------------------------------------------------------------------
+handle_info({data, Msg}, StateName, #state{output = CurrOut} = State) -> {next_state, StateName, State#state{output = [Msg|CurrOut]}};
+% handle_info({port_closed, _Port}, StateName, State) -> {next_state, StateName, State};
 handle_info(Info, StateName, State) ->
   apply(?MODULE, StateName, [Info, State]).
   % {next_state, StateName, State}.

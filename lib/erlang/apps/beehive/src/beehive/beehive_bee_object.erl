@@ -30,7 +30,7 @@
 ]).
 
 
--define (DEBUG, true).
+-define (DEBUG, false).
 -define (DEBUG_PRINT (Args), fun() -> 
   case ?DEBUG of
     true -> erlang:display(Args);
@@ -126,6 +126,8 @@ bundle(#bee_object{type = Type, bundle_dir=NBundleDir} = BeeObject, From) when i
           write_info_about_bee(BeeObject),
           run_hook_action(post, BeeObject, From),
           
+          erlang:display({should_remove,bundle_dir,BundleDir}),
+          
           info(BeeObject)
       end
   end.
@@ -173,7 +175,7 @@ mount(Type, Name, From) ->
   
   run_hook_action(pre, BeeObject, From),
   Str = template_command_string(MountCmd, to_proplist(BeeObject)),
-  ?DEBUG_PRINT({run_dir, MountDir, Str}),
+  ?DEBUG_PRINT({mount,run_dir,MountDir,Str}),
   ok = ensure_directory_exists(filename:join([MountDir, "dummy_dir"])),
   case run_command_in_directory(Str, MountDir, From, BeeObject) of
     {error, _Reason} = T1 -> T1;
@@ -244,7 +246,7 @@ stop(Type, Name) -> stop(Type, Name, undefined).
 stop(_Type, Name, From) ->
   erlang:display({find_bee, Name, find_bee(Name)}),
   case find_bee(Name) of
-    #bee_object{pid = Pid, os_pid = OsPid} = BeeObject when is_record(BeeObject, bee_object) ->
+    #bee_object{pid = Pid} = BeeObject when is_record(BeeObject, bee_object) ->
       Pid ! {stop},
       timer:sleep(500),
       % Possibly add ensure_stopped_os_pid... 

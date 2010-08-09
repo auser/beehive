@@ -188,9 +188,7 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %% (or a system message).
 %%--------------------------------------------------------------------
 % Handle port messages first
-handle_info({data, Msg}, StateName, State) ->
-  erlang:display({got,data,StateName, Msg}),
-  {next_state, StateName, State};
+handle_info({data, _Msg}, StateName, State) -> {next_state, StateName, State};
 handle_info({port_closed, _Port}, StateName, State) -> {next_state, StateName, State};
 handle_info(Info, StateName, State) ->
   apply(?MODULE, StateName, [Info, State]).
