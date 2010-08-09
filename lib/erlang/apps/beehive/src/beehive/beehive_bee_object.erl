@@ -247,6 +247,7 @@ stop(_Type, Name, From) ->
     #bee_object{pid = Pid, os_pid = OsPid} = BeeObject when is_record(BeeObject, bee_object) ->
       Pid ! {stop},
       timer:sleep(500),
+      % Possibly add ensure_stopped_os_pid... 
       From ! {stopped, BeeObject};
     _ -> {error, not_running}
   end.
