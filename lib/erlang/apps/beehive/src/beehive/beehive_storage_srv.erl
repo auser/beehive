@@ -94,9 +94,6 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call({fetch_or_build_bee, App, Caller}, _From, State) when Caller =:= self() ->
-  beehive_bee_object:info(App#app.name);
-  
 handle_call({fetch_or_build_bee, App, Caller}, _From, State) ->
   Resp = case fetch_bee(App, Caller, State) of
     {error, _} -> internal_build_bee(App, State);

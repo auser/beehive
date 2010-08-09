@@ -76,6 +76,7 @@ handle_event({bee, bee_down, Bee}, State) when is_record(Bee, bee)  ->
 
 % Caught when a bee is terminated
 handle_event({bee, bee_terminated, Bee}, State) when is_record(Bee, bee) ->
+  erlang:display({handle_event, bee, bee_terminated, Bee}),
   case bees:find_by_id(Bee#bee.id) of
     RealBee when is_record(RealBee, bee) -> bees:save(RealBee#bee{status = terminated});
     _ -> ok

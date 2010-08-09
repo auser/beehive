@@ -243,7 +243,8 @@ stop(Type, Name) -> stop(Type, Name, undefined).
 stop(_Type, Name, From) ->
   erlang:display({find_bee, Name, find_bee(Name)}),
   case find_bee(Name) of
-    #bee_object{pid = Pid} = BeeObject when is_record(BeeObject, bee_object) ->      
+    #bee_object{pid = Pid, os_pid = OsPid} = BeeObject when is_record(BeeObject, bee_object) ->      
+      erlang:display({os_pid, OsPid}),
       Pid ! {stop},
       timer:sleep(500),
       From ! {stopped, BeeObject};
@@ -283,6 +284,7 @@ unmount(Type, Name, Caller) ->
 
 cleanup(Name) -> cleanup(Name, undefined).
 cleanup(Name, Caller) ->
+  erlang:display({cleanup, Name, Caller}),
   case catch find_mounted_bee(Name) of
     {error, _} -> ok;
     MountDir -> rm_rf(MountDir)
@@ -296,6 +298,7 @@ cleanup(Name, Caller) ->
   end.
 
 % Get information about the Beefile  
+info(BeeObject) when is_record(BeeObject, bee_object) -> info(BeeObject#bee_object.name);
 info(Name) when is_list(Name) ->
   case ets:lookup(?BEEHIVE_BEE_OBJECT_INFO_TABLE, Name) of
     [{Name, Dict}|_Rest] -> dict:to_list(Dict);
@@ -495,7 +498,7 @@ cmd_receive(Port, Acc, From, Fun) ->
       run_function(Fun, {data, Data}),
       cmd_receive(Port, [List|Acc], From, Fun);
     {Port, {exit_status, 0}}  -> 
-      send_to(From, closed),
+      send_to(From, {port_closed, Port}),
       run_function(Fun, {exit_status, 0}),
       {ok, lists:reverse(Acc)};
     {Port, {exit_status, N}}  -> 

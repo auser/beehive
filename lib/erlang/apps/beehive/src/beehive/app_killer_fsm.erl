@@ -93,7 +93,8 @@ preparing({kill}, #state{bee = #bee{app_name = Name} = _Bee, node = Node} = Stat
 preparing(Other, State) ->
   {stop, {received_unknown_message, {preparing, Other}}, State}.
 
-killing({stopped, _BeeO}, #state{bee = #bee{app_name = Name} = _Bee, node = Node} = State) ->
+killing({stopped, _BeeO}, #state{bee = #bee{app_name = Name} = Bee, node = Node} = State) ->
+  bees:save(Bee#bee{status = stopped}),
   rpc:call(Node, beehive_bee_object, unmount, [default, Name, self()]),
   {next_state, unmounting, State};
 
@@ -109,6 +110,7 @@ unmounting({error, Msg}, State) ->
   {stop, {error, Msg}, State}.
 
 cleaning_up({cleaned_up, _BeeObject}, #state{from = From, bee = Bee} = State) ->
+  erlang:display({cleaned_up, Bee}),
   % App stopped normally
   From ! {bee_terminated, Bee#bee{status = down}},
   {stop, normal, State};
@@ -185,6 +187,11 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %% other message than a synchronous or asynchronous event
 %% (or a system message).
 %%--------------------------------------------------------------------
+% Handle port messages first
+handle_info({data, Msg}, StateName, State) ->
+  erlang:display({got,data,StateName, Msg}),
+  {next_state, StateName, State};
+handle_info({port_closed, _Port}, StateName, State) -> {next_state, StateName, State};
 handle_info(Info, StateName, State) ->
   apply(?MODULE, StateName, [Info, State]).
   % {next_state, StateName, State}.
