@@ -22,8 +22,7 @@
 ]).
 % states
 -export ([
-  fetching_bee/2,
-  mounting/2,
+  fetching/2,
   preparing/2,
   updating/2,
   launching/2,
@@ -91,7 +90,7 @@ init([Proplist]) ->
           % I kind of like the convenience
           Self = self(),
           gen_cluster:run(beehive_storage_srv, {fetch_or_build_bee, App, Self}),
-          {ok, fetching_bee, #state{app = App, from = From, updating = Updating, bee = #bee{}}};
+          {ok, fetching, #state{app = App, from = From, updating = Updating, bee = #bee{}}};
         _ ->
           {stop, {error, pending_app_error}}
     end;
@@ -111,20 +110,21 @@ init([Proplist]) ->
 %% the current state name StateName is called to handle the event. It is also
 %% called if a timeout occurs.
 %%--------------------------------------------------------------------
-fetching_bee({send_bee_object, done}, State) ->
+fetching({send_bee_object, _Bo}, State) -> 
+  erlang:display({send_bee_object}),
   {next_state, preparing, State};
+fetching({launch}, State) ->
+  % If we have not yet fetched the bee, but received a launch request
+  % we'll just resend it to ourselves in a little while
+  gen_cluster:run(beehive_storage_srv, {fetch_or_build_bee, State#state.app, self()}),
+  timer:send_after(500, {launch}),
+  {next_state, fetching, State};
+fetching(Msg, State) ->
+  {next_state, fetching, State}.
   
-fetching_bee({port_closed,_Port}, State) ->
-  {next_state, preparing, State};
-fetching_bee(Other, State) ->
-  {next_state, preparing, State}.
-
-mounting(Other, State) ->
-  {next_state, mounting, State}.
-
 preparing({update}, #state{app = App} = State) ->
   Self = self(),
-  gen_cluster:run(beehive_storage_srv, {fetch_or_build_bee, App, Self}),
+  gen_cluster:run(beehive_storage_srv, {build_bee, App, Self}),
   {next_state, updating, State};
 
 preparing({launch}, #state{from = From, app = App, bee = Bee, latest_sha = Sha} = State) ->
@@ -132,6 +132,7 @@ preparing({launch}, #state{from = From, app = App, bee = Bee, latest_sha = Sha} 
   Port = bh_host:unused_port(),
   beehive_bee_object:start(App#app.type, App#app.name, Port, Self),
   {next_state, launching, State};
+
   % case gen_cluster:run(app_handler, {start_new_instance, App, Sha, self(), From}) of
   %   {error, Reason} -> {stop, Reason, State};
   %   Pid ->
@@ -144,7 +145,8 @@ preparing({start_new}, State) ->
   self() ! {bee_built, []},
   {next_state, updating, State};
   
-preparing(_Other, State) ->
+preparing(Other, State) ->
+  erlang:display({?MODULE, preparing, Other}),
   {next_state, preparing, State}.
 
 updating({bee_built, Info}, #state{bee = Bee, app = App} = State) ->
@@ -157,11 +159,13 @@ updating({bee_built, Info}, #state{bee = Bee, app = App} = State) ->
   % Grr
   NewState0 = State#state{bee = NewBee, app = NewApp, latest_sha = Sha},
   NewState = start_instance(NewState0),
+  erlang:display({start_instance, NewState}),
   {next_state, launching, NewState};
 
 updating(Msg, State) ->
   stop_error({updating, Msg}, State).
 
+% LAUNCHING THE APPLICATION
 launching({started, BeeObject}, State) ->
   Self = self(),
   BuiltBee = bees:from_bee_object(BeeObject),
@@ -178,10 +182,13 @@ launching(Event, State) ->
   ?LOG(info, "Uncaught event: ~p while in state: ~p ~n", [Event, launching]),
   {next_state, launching, State}.
 
+% AFTER THE APPLICATION HAS BEEN 'PENDING'
 pending({updated_bee_status, broken}, State) ->
+  erlang:display({pending,updated_bee_status,broken}),
   stop_error({error, broken_start}, State);
   
 pending({updated_bee_status, BackendStatus}, #state{app = App, bee = Bee, from = From, latest_sha = Sha, updating = Updating} = State) ->
+  erlang:display({updated_bee_status,Updating,BackendStatus}),
   ?LOG(info, "Application started ~p: ~p", [BackendStatus, App#app.name]),
   % App started normally
   case Updating of
@@ -191,6 +198,7 @@ pending({updated_bee_status, BackendStatus}, #state{app = App, bee = Bee, from =
   {stop, normal, State};
   
 pending(Event, State) ->
+  erlang:display({got,pending,Event}),
   ?LOG(info, "Got uncaught event in pending state: ~p", [Event]),
   {next_state, pending, State}.
   
@@ -262,8 +270,9 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %% other message than a synchronous or asynchronous event
 %% (or a system message).
 %%--------------------------------------------------------------------
-handle_info({data, Msg}, StateName, #state{output = CurrOut} = State) -> {next_state, StateName, State#state{output = [Msg|CurrOut]}};
-% handle_info({port_closed, _Port}, StateName, State) -> {next_state, StateName, State};
+handle_info({data, Msg}, StateName, #state{output = CurrOut} = State) -> 
+  {next_state, StateName, State#state{output = [Msg|CurrOut]}};
+handle_info({port_closed, _Port}, StateName, State) -> {next_state, StateName, State};
 handle_info(Info, StateName, State) ->
   apply(?MODULE, StateName, [Info, State]).
   % {next_state, StateName, State}.

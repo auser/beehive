@@ -17,7 +17,7 @@
 -export([
   start_link/0,
   fetch_or_build_bee/2,
-  build_bee/2,
+  build_bee/1, build_bee/2,
   seed_nodes/1
 ]).
 
@@ -54,8 +54,8 @@ seed_pids(_State) ->
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-build_bee(App, Caller) ->
-  gen_cluster:call(?SERVER, {build_bee, App, Caller}).
+build_bee(App) ->         gen_cluster:cast(?SERVER, {build_bee, App}).
+build_bee(App, Caller) -> gen_cluster:cast(?SERVER, {build_bee, App, Caller}).
 
 fetch_or_build_bee(App, Caller) ->
   gen_cluster:call(?SERVER, {fetch_or_build_bee, App, Caller}).
@@ -96,10 +96,9 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({fetch_or_build_bee, App, Caller}, _From, State) ->
   Resp = case fetch_bee(App, Caller, State) of
-    {error, _} -> internal_build_bee(App, State);
+    {error, _} -> internal_build_bee(App, Caller, State);
     T -> T
   end,
-  erlang:display({fetch_or_build_bee,Resp}),
   {reply, Resp, State};
 handle_call(_Request, _From, State) ->
   Reply = ok,
@@ -197,7 +196,7 @@ fetch_bee(#app{name = Name} = App, Caller, #state{squashed_disk = SquashedDisk} 
 %%      
 %% @end
 %%-------------------------------------------------------------------
-internal_build_bee(App, State) ->
+internal_build_bee(App, Caller, _State) ->
   case handle_repos_lookup(App) of
     {ok, ReposUrl} ->
       
@@ -205,7 +204,7 @@ internal_build_bee(App, State) ->
       %   {scratch_dir, ScratchDisk},
       %   {squashed_disk, SquashedDisk}
       % ],
-      beehive_bee_object:bundle(apps:to_proplist(App#app{url = ReposUrl}));
+      beehive_bee_object:bundle(apps:to_proplist(App#app{url = ReposUrl}), Caller);
     {error, _} = T -> T
     %   case babysitter_integration:command(bundle, App#app{url = ReposUrl}, unusued, Proplist) of
     %     {ok, _OsPid, 0} ->

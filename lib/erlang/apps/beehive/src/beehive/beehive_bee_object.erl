@@ -330,9 +330,8 @@ send_bee_object(ToNode, #bee_object{bee_file = BeeFile} = BeeObject, Caller) whe
       rpc:call(ToNode, code, load_binary, [Mod, File, Bin])
   end,
   {ok, B} = prim_file:read_file(BeeFile),
-  rpc:call(ToNode, ?MODULE, save_bee_object, [B, BeeObject]),
-  
-  send_to(Caller, {send_bee_object, done}),
+  O = rpc:call(ToNode, ?MODULE, save_bee_object, [B, BeeObject]),
+  send_to(Caller, {send_bee_object, O}),
   BeeObject.
 
 % Get from a node

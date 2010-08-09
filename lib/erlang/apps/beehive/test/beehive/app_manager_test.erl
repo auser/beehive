@@ -10,7 +10,7 @@ teardown(_X) ->
   ok.
 
 starting_test_() ->
-  {inorder,
+  Tests = {inorder,
     {setup,
       fun setup/0,
       fun teardown/1,
@@ -22,7 +22,8 @@ starting_test_() ->
         fun teardown_an_instance_t/0
       ]
     }
-  }.
+  },
+  {timeout, 60, Tests}.
 
 instance()->
   ?assert(undefined =/= app_manager:instance()),
@@ -79,7 +80,13 @@ start_dummy_app(From) ->
   receive
     {bee_started_normally, Bee} ->
       bees:save(Bee),
-      {ok, App, Bee}
+      {ok, App, Bee};
+    X ->
+      erlang:display({start_dummy_app, X}),
+      ok
+    after 5000 ->
+      erlang:display({timeout}),
+      throw({start_dummy_app, timeout})
   end.
 
 try_to_fetch_url_or_retry(_Method, _Args, 0) -> failed;

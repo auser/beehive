@@ -10,10 +10,10 @@ setup(Proplist) when is_list(Proplist) ->
   Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
   ConfigFile = filename:join([Dir, "test", "fixtures", "beehive.cfg"]),
   
-  application:set_env(beehive, node_type, proplists:get_value(node_type, Proplist, test_type)),
-  application:set_env(beehive, config_file, proplists:get_value(config_file, Proplist, ConfigFile)),
-  application:set_env(beehive, beehive_home, proplists:get_value(node_type, Proplist, "/tmp/beehive/test")),
-  application:set_env(beehive, database_dir, proplists:get_value(database_dir, Proplist, "/tmp/beehive/test/test_db")),
+  application:set_env(beehive, node_type,     proplists:get_value(node_type, Proplist, test_type)),
+  application:set_env(beehive, config_file,   proplists:get_value(config_file, Proplist, ConfigFile)),
+  application:set_env(beehive, beehive_home,  proplists:get_value(beehive_home, Proplist, "/tmp/beehive/test")),
+  application:set_env(beehive, database_dir,  proplists:get_value(database_dir, Proplist, "/tmp/beehive/test/test_db")),
   
   application:start(sasl),
   beehive:start([{beehive_db_srv, testing}]),
@@ -24,8 +24,6 @@ setup(Proplist) when is_list(Proplist) ->
   timer:sleep(200),
   % We don't need any error output here
   inets:start(),
-  
-  erlang:display({setup, done}),
   ok;
   
 setup(Table) ->
