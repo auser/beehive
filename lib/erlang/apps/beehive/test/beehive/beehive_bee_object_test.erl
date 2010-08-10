@@ -3,18 +3,9 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -define (DEBUG, false).
--define (CLEANUP (BeeFile, BeeDir, Type), fun() ->
+-define (CLEANUP (Type), fun() ->
   case ?DEBUG of
-    false ->
-      case BeeFile of
-        undefined -> ok;
-        _ -> beehive_bee_object:cleanup(BeeFile)
-      end,
-      case BeeDir of
-        undefined -> ok;
-        _ ->  rm_rf(BeeDir)
-      end,
-      clean_up_dir(Type);
+    false -> clean_up_dir(Type);
     true -> ok
   end
 end()).
@@ -41,19 +32,19 @@ starting_test_() ->
       fun teardown/1,
       [
         fun git_clone/0
-        % fun git_bundle/0,
-        % fun git_bundle_with_errors/0,
-        % fun responding_from/0,
-        % fun ls_bee/0,
+        ,fun git_bundle/0
+        ,fun git_bundle_with_errors/0
+        ,fun responding_from/0
+        % ,fun ls_bee/0
         % % Type tests
-        % fun bundle_type/0,
-        % fun mount_t/0,
-        % fun start_t/0,
-        % fun stop_t/0,
-        % fun cleanup_t/0,
-        % fun send_t/0,
-        % fun have_bee_t/0
-        % fun git_clone_with_errors/0
+        % ,fun bundle_type/0
+        % ,fun mount_t/0
+        % ,fun start_t/0
+        % ,fun stop_t/0
+        % ,fun cleanup_t/0
+        % ,fun send_t/0
+        % ,fun have_bee_t/0
+        % ,fun git_clone_with_errors/0
       ]
     }
   },
@@ -66,8 +57,10 @@ git_clone() ->
   Ts = lists:flatten(io_lib:format("~w~2..0w~2..0w~2..0w~2..0w~2..0w", [Year, Month, Day, Hour, Minute, Second])),
   
   ReposDir = proplists:get_value(url, git_repos_props()),
+  ?CLEANUP(git),
+  
   os:cmd([
-    "cd ", ReposDir, " && echo '", Ts, "' > LATEST_REV && git commit -a -m 'updated time for testing purposes'"
+    "cd ", ReposDir, " && echo '", Ts, "' > LATEST_REV && git commit -a -m 'updated time for beehive_bee_object_test_app purposes'"
   ]),
   % Pull one with a specific revision
   Pid = spawn(fun() -> responding_loop([]) end),
@@ -77,7 +70,7 @@ git_clone() ->
   % Do run it with an after command
   beehive_bee_object:clone([{post, "touch NEW_FILE"}|git_repos_props()]),
   timer:sleep(200), % let it work
-  ReposBundleDir = filename:join([related_dir(), "squashed", "testing"]),
+  ReposBundleDir = filename:join([related_dir(), "squashed", "beehive_bee_object_test_app"]),
   os:cmd(["ls ", ReposBundleDir]),
   ?assert(filelib:is_file(filename:join([ReposBundleDir, "NEW_FILE"]))),
   ?DPRINT({git_clone, passed}),
@@ -86,8 +79,7 @@ git_clone() ->
 git_bundle() ->
   ?DPRINT({starting, git_bundle}),
   beehive_bee_object:bundle(git_repos_props()),
-  BeeFile = filename:join([related_dir(), "squashed", "testing.bee"]),
-  erlang:display({bee_file, BeeFile}),
+  BeeFile = filename:join([related_dir(), "squashed", "beehive_bee_object_test_app.bee"]),
   ?assert(filelib:is_file(BeeFile)),
   % Run it with a before
   beehive_bee_object:bundle([{pre, "touch DUMMY_FILE"}|git_repos_props()]),
@@ -96,7 +88,7 @@ git_bundle() ->
   file:make_dir(BeeDir),
   O = string:tokens(os:cmd(["tar -C ", BeeDir," -zxf ", BeeFile, " && ls ", BeeDir]), "\n"),
   ?assert(lists:member("DUMMY_FILE", O)),
-  ?CLEANUP("testing", BeeDir, git),
+  ?CLEANUP(git),
   ?DPRINT({git_bundle, passed}),
   passed.
 
@@ -115,7 +107,7 @@ git_bundle() ->
 
 git_bundle_with_errors() ->
   ?DPRINT({starting, git_bundle_with_errors}),
-  ?CLEANUP(undefined, undefined, git),
+  ?CLEANUP(git),
   ?assertException(
     throw,
     {hook_error, _},
@@ -125,7 +117,7 @@ git_bundle_with_errors() ->
 
 bundle_type() ->
   ?DPRINT({starting, bundle_type}),
-  BeeFile = filename:join([related_dir(), "squashed", "testing.bee"]),
+  BeeFile = filename:join([related_dir(), "squashed", "beehive_bee_object_test_app.bee"]),
   beehive_bee_object:bundle([{type, rails}|git_repos_props()]),
   % Run it with a before
   % Untar and ensure the file is there
@@ -134,9 +126,9 @@ bundle_type() ->
   O = string:tokens(os:cmd(["tar -C ", BeeDir," -zxf ", BeeFile, " && ls ", BeeDir]), "\n"),
   ?assert(lists:member("config.ru", O)),
   % Let's make sure beehive_bee_object:info/1 works
-  ?assertEqual("master", proplists:get_value(branch, beehive_bee_object:info("testing"))),
+  ?assertEqual("master", proplists:get_value(branch, beehive_bee_object:info("beehive_bee_object_test_app"))),
   ?assertEqual({error, not_found}, beehive_bee_object:info("no-app-here")),
-  ?CLEANUP("testing", BeeDir, git),
+  ?CLEANUP(git),
   ?DPRINT({bundle_type, passed}),
   passed.
   
@@ -161,16 +153,16 @@ ls_bee() ->
   T = beehive_bee_object:ls(BeeDir),
   ?assert(lists:member("crazy_name-045", T)),
   clean_up_dir(git),
-  ?CLEANUP("crazy_name-045", filename:join([BeeDir, "crazy_name-045"]), git),
+  ?CLEANUP(git),
   ?DPRINT({ls_bee, passed}),
   passed.
 
 mount_t() ->
   beehive_bee_object:bundle([{type, rack}|git_repos_props()]),
   BeeDir = filename:join([related_dir(), "run"]),
-  beehive_bee_object:mount(rack, "testing"),
+  beehive_bee_object:mount(rack, "beehive_bee_object_test_app"),
   ?assert(filelib:is_dir(BeeDir)),
-  ?CLEANUP("testing", filename:join([BeeDir, "testing"]), git),
+  ?CLEANUP(git),
   ?DPRINT({mount_t, passed}),
   passed.
 
@@ -178,9 +170,9 @@ start_t() ->
   Host = "127.0.0.1",
   Port = 9191,
   beehive_bee_object:bundle([{type, rack}|git_repos_props()]),
-  beehive_bee_object:mount(rack, "testing"),
+  beehive_bee_object:mount(rack, "beehive_bee_object_test_app"),
   Pid = spawn(fun() -> responding_loop([]) end),
-  beehive_bee_object:start(rack, "testing", Port, Pid),
+  beehive_bee_object:start(rack, "beehive_bee_object_test_app", Port, Pid),
   timer:sleep(500),
   case catch gen_tcp:connect(Host, Port, [binary]) of
     {ok, Sock} -> 
@@ -189,7 +181,7 @@ start_t() ->
     {error,econnrefused} -> 
       ?assert(false)
   end,
-  beehive_bee_object:stop(rack, "testing"),
+  beehive_bee_object:stop(rack, "beehive_bee_object_test_app"),
   ?DPRINT({start_t, passed}),
   % case bh_test_util:try_to_fetch_url_or_retry(get, [{host, "127.0.0.1"}, {port, Port}, {path, "/"}], 20) of
   %   {ok, _Headers, Body} ->
@@ -204,10 +196,10 @@ stop_t() ->
   Host = "127.0.0.1",
   Port = 9191,
   beehive_bee_object:bundle([{type, rack}|git_repos_props()]),
-  beehive_bee_object:mount(rack, "testing"),
+  beehive_bee_object:mount(rack, "beehive_bee_object_test_app"),
   Pid = spawn(fun() -> responding_loop([]) end),
-  beehive_bee_object:start(rack, "testing", Port, Pid),
-  beehive_bee_object:stop(rack, "testing"),
+  beehive_bee_object:start(rack, "beehive_bee_object_test_app", Port, Pid),
+  beehive_bee_object:stop(rack, "beehive_bee_object_test_app"),
   timer:sleep(500),
   case catch gen_tcp:connect(Host, Port, [binary]) of
     {ok, Sock} -> 
@@ -221,29 +213,29 @@ stop_t() ->
 
 cleanup_t() ->
   beehive_bee_object:bundle([{type, rack}|git_repos_props()]),
-  Bundle = filename:join([related_dir(), "squashed", "testing.bee"]),
+  Bundle = filename:join([related_dir(), "squashed", "beehive_bee_object_test_app.bee"]),
   ?assert(filelib:is_file(Bundle) =:= true),
-  beehive_bee_object:cleanup("testing"),
+  beehive_bee_object:cleanup("beehive_bee_object_test_app"),
   ?assert(filelib:is_file(Bundle) =:= false),
-  ?CLEANUP("testing", Bundle, git),
+  ?CLEANUP(git),
   passed.
   
 send_t() ->
   beehive_bee_object:bundle([{type, rack}|git_repos_props()]),
   timer:sleep(500),
-  BeeObject = beehive_bee_object:get_bee_object(node(self()), "testing"),
+  BeeObject = beehive_bee_object:get_bee_object(node(self()), "beehive_bee_object_test_app"),
   ?assertEqual(git, BeeObject#bee_object.vcs_type),
   ?assertEqual(rack, BeeObject#bee_object.type),
   BeeFile = BeeObject#bee_object.bee_file,
   ?assert(filelib:is_file(BeeFile)),
-  ?CLEANUP("testing", undefined, git),
+  ?CLEANUP(git),
   passed.
 
 have_bee_t() ->
   beehive_bee_object:bundle([{type, rack}|git_repos_props()]),
-  ?assert(beehive_bee_object:have_bee("testing") =:= true),
+  ?assert(beehive_bee_object:have_bee("beehive_bee_object_test_app") =:= true),
   ?assert(beehive_bee_object:have_bee("weird_app_name") =:= false),
-  ?CLEANUP("testing", undefined, git),
+  ?CLEANUP(git),
   passed.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -257,22 +249,22 @@ git_repos_props() ->
   ReposDir = filename:join([Dir, "test", "fixtures", "dummy_git"]),
   ReposUrl = lists:concat(["file://", ReposDir]),
   [
-    {name, "testing"}, {vcs_type, git}, {url, ReposUrl},
+    {name, "beehive_bee_object_test_app"}, {vcs_type, git}, {url, ReposUrl},
     {fixture_dir, FixtureDir}
   ].
 
 get_current_revision(git) ->
-  ReposDir = filename:join([related_dir(), "squashed", "testing"]),
+  ReposDir = filename:join([related_dir(), "squashed", "beehive_bee_object_test_app"]),
   {ok, OriginalCwd} = file:get_cwd(),
   Rev = os:cmd(lists:flatten(["cd ", ReposDir, " && ", "git rev-parse --verify HEAD^0"])),
   os:cmd(lists:flatten(["cd ", OriginalCwd])),
   string:strip(Rev, right, $\n).
 
 clean_up_dir(git) ->
-  % ReposDir = filename:join([related_dir(), "squashed", "testing"]),
+  % ReposDir = filename:join([related_dir(), "squashed", "beehive_bee_object_test_app"]),
+  rm_rf(related_dir()),
   ReposDir = filename:join([related_dir(), "squashed"]),
-  c:cd(filename:dirname(ReposDir)),
-  rm_rf(ReposDir).
+  os:cmd(lists:flatten(["rm -rf ", ReposDir])).
 
 rm_rf(Dir) -> 
   lists:foreach(fun(D) -> rm_rf(D) end, get_dirs(Dir)),
