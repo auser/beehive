@@ -169,6 +169,8 @@ mount(Type, Name, From) ->
   MountDir = filename:join([MountRootDir, Name]),
   MountCmd = proplists:get_value(mount, config_props()),
   
+  % I *think* this should happen here
+  rm_rf(MountDir),
   BeeObject = from_proplists([{name, Name}, {type, Type}, {bee_file, BeeFile}, 
                               {run_dir, MountDir}, {bundle_dir, filename:dirname(BeeFile)}
                             ]),
