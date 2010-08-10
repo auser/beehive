@@ -194,12 +194,8 @@ start(Type, Name, Port, From) ->
     {error, _} = T -> throw(T);
     Str2 -> Str2
   end,
-  BeeDir = case catch find_mounted_bee(Name) of
-    {error, _} = _Tuple2 -> 
-      Tuple3 = mount(Type, Name),
-      find_mounted_bee(Name);
-    MountedBee -> MountedBee
-  end,
+  mount(Type, Name),
+  BeeDir = find_mounted_bee(Name),
   FoundBeeObject = find_bee(Name),
   BeeObject = FoundBeeObject#bee_object{port = Port, run_dir = BeeDir},
   
