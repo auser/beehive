@@ -54,8 +54,8 @@ seed_pids(_State) ->
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-build_bee(App) ->         gen_cluster:cast(?SERVER, {build_bee, App}).
-build_bee(App, Caller) -> gen_cluster:cast(?SERVER, {build_bee, App, Caller}).
+build_bee(App) ->         build_bee(App, undefined).
+build_bee(App, Caller) -> gen_cluster:call(?SERVER, {build_bee, App, Caller}).
 
 fetch_or_build_bee(App, Caller) ->
   gen_cluster:call(?SERVER, {fetch_or_build_bee, App, Caller}).
@@ -94,6 +94,21 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
+handle_call({build_bee, App, Caller}, _From, State) ->
+  Resp = case internal_build_bee(App, Caller, State) of
+    {error, {ExitCode, Reasons}} = T -> 
+      Error = #app_error{
+        stage = build,
+        stdout = lists:reverse(Reasons),
+        exit_status = ExitCode,
+        timestamp = date_util:now_to_seconds()
+      },
+      {ok, NewApp} = app_manager:request_to_save_app(App#app{latest_error = Error}),    
+      {error, NewApp};
+    T2 -> {ok, T2}
+  end,
+  {reply, Resp, State};
+  
 handle_call({fetch_or_build_bee, App, Caller}, _From, State) ->
   Resp = case fetch_bee(App, Caller, State) of
     {error, _} -> internal_build_bee(App, Caller, State);
@@ -199,11 +214,6 @@ fetch_bee(#app{name = Name} = App, Caller, #state{squashed_disk = SquashedDisk} 
 internal_build_bee(App, Caller, _State) ->
   case handle_repos_lookup(App) of
     {ok, ReposUrl} ->
-      
-      % Proplist = [
-      %   {scratch_dir, ScratchDisk},
-      %   {squashed_disk, SquashedDisk}
-      % ],
       beehive_bee_object:bundle(apps:to_proplist(App#app{url = ReposUrl}), Caller);
     {error, _} = T -> T
     %   case babysitter_integration:command(bundle, App#app{url = ReposUrl}, unusued, Proplist) of

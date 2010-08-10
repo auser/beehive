@@ -9,7 +9,7 @@ setup() ->
 teardown(_X) ->
   ok.
 
-starting_test_() ->
+all_test_() ->
   Tests = {inorder,
     {setup,
       fun setup/0,
@@ -68,6 +68,9 @@ teardown_an_instance_t() ->
       end;
     T ->
       erlang:display({else, T}),
+      ?assert(something_went_wrong =:= true)
+    after 5000 ->
+      erlang:display({error, timeout}),
       ?assert(something_went_wrong =:= true)
   end,
   passed.

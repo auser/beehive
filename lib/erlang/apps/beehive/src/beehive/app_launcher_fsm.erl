@@ -111,12 +111,12 @@ init([Proplist]) ->
 %% called if a timeout occurs.
 %%--------------------------------------------------------------------
 fetching({send_bee_object, _Bo}, State) -> 
-  erlang:display({send_bee_object}),
   {next_state, preparing, State};
 fetching({launch}, State) ->
   % If we have not yet fetched the bee, but received a launch request
   % we'll just resend it to ourselves in a little while
   gen_cluster:run(beehive_storage_srv, {fetch_or_build_bee, State#state.app, self()}),
+  % Give it some time to try to fetch again...
   timer:send_after(500, {launch}),
   {next_state, fetching, State};
 fetching(Msg, State) ->
