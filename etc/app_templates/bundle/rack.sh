@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-mkdir .beehive_gem_home
+mkdir -p .beehive_gem_home
 export GEM_HOME=.beehive_gem_home
 export GEM_PATH=.beehive_gem_home
 

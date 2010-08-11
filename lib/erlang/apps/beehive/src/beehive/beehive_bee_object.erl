@@ -19,7 +19,7 @@
   have_bee/1,
   info/1,
   cleanup/1, cleanup/2,
-  ls/1
+  ls/1, ls/0
 ]).
 
 % Transportation
@@ -53,6 +53,7 @@ init() ->
   beehive_bee_object_config:read(filename:join([Dir, "etc", "app_templates"])).
 
 % List the bees in the directory
+ls() -> ls(config:search_for_application_value(squashed_dir, ?BEEHIVE_DIR("squashed"))).
 ls(BeeDir) ->
   lists:map(fun(Filepath) ->
     Filename = filename:basename(Filepath),
@@ -67,26 +68,27 @@ clone(GivenProplist, From) when is_list(GivenProplist) ->
   BeeObject = from_proplists(GivenProplist),
   clone(BeeObject, From);
   
-clone(#bee_object{type=Type, bundle_dir=BundleDir, revision=Rev}=BeeObject, From) when is_record(BeeObject, bee_object) ->  
-  AfterClone = case beehive_bee_object_config:get_or_default(clone, Type) of
-    {error, _} = T -> throw(T);
-    Str2 -> Str2
-  end,
-  % Run before, if it needs to run
-  run_hook_action(pre, BeeObject, From),
-  case ensure_repos_exists(BeeObject, From) of
-    {error, _Reason} = T2 -> 
-      ?DEBUG_PRINT({error, ensure_repos_exists, T2}),
-      T2;
-    Out ->
-      case Rev of
-        undefined -> ok;
-        _ -> ensure_repos_is_current_repos(BeeObject)
-      end,
-      TDude = run_in_directory_with_file(BeeObject, From, BundleDir, AfterClone),
-      ?DEBUG_PRINT({run_in_directory_with_file, TDude, Out}),
-      run_hook_action(post, BeeObject, From),
-      Out
+clone(#bee_object{type=Type, bundle_dir=BundleDir, revision=Rev}=BeeObject, From) when is_record(BeeObject, bee_object) ->
+  case beehive_bee_object_config:get_or_default(clone, Type) of
+    {error, Reason} -> {error, {clone, Reason}};
+    AfterClone -> 
+    % Run before, if it needs to run
+    run_hook_action(pre, BeeObject, From),
+    
+    case ensure_repos_exists(BeeObject, From) of
+      {error, _Reason} = T2 -> 
+        ?DEBUG_PRINT({error, ensure_repos_exists, T2}),
+        T2;
+      Out ->
+        case Rev of
+          undefined -> ok;
+          _ -> ensure_repos_is_current_repos(BeeObject)
+        end,
+        TDude = run_in_directory_with_file(BeeObject, From, BundleDir, AfterClone),
+        ?DEBUG_PRINT({run_in_directory_with_file, TDude, Out}),
+        run_hook_action(post, BeeObject, From),
+        Out
+    end
   end.
 
 % Squash the bee object
@@ -103,32 +105,34 @@ bundle(Proplists, From) when is_list(Proplists) ->
 % Take a url and clone/1 it and then bundle the directory
 % based on the configuration directive
 bundle(#bee_object{type = Type, bundle_dir=NBundleDir} = BeeObject, From) when is_record(BeeObject, bee_object) ->  
-  case clone(BeeObject, From) of
-    {error, _} = T -> T;
+  case clone(BeeObject#bee_object{pre = undefined, post = undefined}, From) of
+    {error, {_ExitStatus, _Reason}} = CloneError -> 
+      % Cleanup and send error
+      rm_rf(NBundleDir),
+      send_to(From, CloneError),
+      CloneError;
     _E ->
       BundleDir = filename:dirname(NBundleDir),
       run_hook_action(pre, BeeObject, From),
-      BeforeBundle = case beehive_bee_object_config:get_or_default(bundle, Type) of
-        {error, _} = T -> throw(T);
-        Str2 -> Str2
-      end,
-      
-      % Run the bundle pre config first, then the bundle command
-      case run_in_directory_with_file(BeeObject, From, BundleDir, BeforeBundle) of
-        {error, _} = T2 -> T2;
-        _BeforeActionOut -> 
-          SquashCmd = proplists:get_value(bundle, config_props()),
-          Proplist = to_proplist(BeeObject),
-          Str = template_command_string(SquashCmd, Proplist),
-          
-          cmd(Str, BundleDir, Proplist, From),
-          
-          write_info_about_bee(BeeObject),
-          run_hook_action(post, BeeObject, From),
-          
-          % erlang:display({should_remove,bundle_dir,BundleDir}),
-          
-          info(BeeObject)
+      case beehive_bee_object_config:get_or_default(bundle, Type) of
+        {error, Reason} -> {error, {bundle, Reason}};
+        BeforeBundle ->
+          % Run the bundle pre config first, then the bundle command
+          case run_in_directory_with_file(BeeObject, From, BundleDir, BeforeBundle) of
+            {error, _} = T2 -> T2;
+            _BeforeActionOut -> 
+              SquashCmd = proplists:get_value(bundle, config_props()),
+              Proplist = to_proplist(BeeObject),
+              Str = template_command_string(SquashCmd, Proplist),
+
+              cmd(Str, BundleDir, Proplist, From),
+              
+              write_info_about_bee(BeeObject),
+              run_hook_action(post, BeeObject, From),
+              
+              rm_rf(NBundleDir),
+              info(BeeObject)
+          end
       end
   end.
 
@@ -142,7 +146,10 @@ write_info_about_bee(#bee_object{
   end,
   
   {ok, Fileinfo} = file:read_file_info(BeeFile),
-  {ok, CheckedRev} = get_current_sha(BeeObject),
+  CheckedRev = case get_current_sha(BeeObject) of
+    {ok, Rev} -> Rev;
+    _ -> "HEAD"
+  end,
   
   Info =  [{revision, CheckedRev}, {bee_size, Fileinfo#file_info.size},  {created_at, calendar:datetime_to_gregorian_seconds(Fileinfo#file_info.ctime)}|to_proplist(BeeObject)],
     
@@ -160,83 +167,84 @@ write_info_about_bee(#bee_object{
 % Mount the bee
 mount(Type, Name) -> mount(Type, Name, undefined).
 mount(Type, Name, From) ->
-  AfterMountScript = case beehive_bee_object_config:get_or_default(mount, Type) of
-    {error, _} = T -> throw(T);
-    Str2 -> Str2
-  end,
-  BeeFile = find_bee_file(Name),
-  MountRootDir = config:search_for_application_value(run_dir, ?BEEHIVE_DIR("run")),
-  MountDir = filename:join([MountRootDir, Name]),
-  MountCmd = proplists:get_value(mount, config_props()),
-  
-  % I *think* this should happen here
-  rm_rf(MountDir),
-  BeeObject = from_proplists([{name, Name}, {type, Type}, {bee_file, BeeFile}, 
-                              {run_dir, MountDir}, {bundle_dir, filename:dirname(BeeFile)}
-                            ]),
-  
-  run_hook_action(pre, BeeObject, From),
-  Str = template_command_string(MountCmd, to_proplist(BeeObject)),
-  ?DEBUG_PRINT({mount,run_dir,MountDir,Str}),
-  ok = ensure_directory_exists(filename:join([MountDir, "dummy_dir"])),
-  case run_command_in_directory(Str, MountDir, From, BeeObject) of
-    {error, _Reason} = T1 -> T1;
-    T2 ->
-      run_in_directory_with_file(BeeObject, From, MountDir, AfterMountScript),
-      run_hook_action(post, BeeObject, From),
-      T2
+  case beehive_bee_object_config:get_or_default(mount, Type) of
+    {error, _} = T -> 
+      send_to(From, T),
+      T;
+    AfterMountScript ->
+      BeeFile = find_bee_file(Name),
+      MountRootDir = config:search_for_application_value(run_dir, ?BEEHIVE_DIR("run")),
+      MountDir = filename:join([MountRootDir, Name]),
+      MountCmd = proplists:get_value(mount, config_props()),
+
+      % I *think* this should happen here
+      rm_rf(MountDir),
+      BeeObject = from_proplists([{name, Name}, {type, Type}, {bee_file, BeeFile}, 
+                                  {run_dir, MountDir}, {bundle_dir, filename:dirname(BeeFile)}
+                                ]),
+      
+      run_hook_action(pre, BeeObject, From),
+      Str = template_command_string(MountCmd, to_proplist(BeeObject)),
+      ?DEBUG_PRINT({mount,run_dir,MountDir,Str}),
+      ok = ensure_directory_exists(filename:join([MountDir, "dummy_dir"])),
+      case run_command_in_directory(Str, MountDir, From, BeeObject) of
+        {error, _Reason} = T1 -> T1;
+        T2 ->
+          run_in_directory_with_file(BeeObject, From, MountDir, AfterMountScript),
+          run_hook_action(post, BeeObject, From),
+          T2
+    end
   end.
 
 % Start the beefile
 start(Type, Name, Port) -> start(Type, Name, Port, undefined).
 start(Type, Name, Port, From) ->
-  StartScript = case beehive_bee_object_config:get_or_default(start, Type) of
+  case beehive_bee_object_config:get_or_default(start, Type) of
     {error, _} = T -> throw(T);
-    Str2 -> Str2
-  end,
-  mount(Type, Name),
-  BeeDir = find_mounted_bee(Name),
-  FoundBeeObject = find_bee(Name),
-  BeeObject = FoundBeeObject#bee_object{port = Port, run_dir = BeeDir},
-  
-  % BeeObject = from_proplists([{name, Name}, {type, Type}, {bee_file, BeeFile}, {run_dir, BeeDir}, {port, Port}]),
-  Pid = spawn_link(fun() ->
-    {ok, ScriptFilename, ScriptIo} = temp_file(),
-    file:write(ScriptIo, StartScript),
-    try
-      {ok, PidFilename, PidIo} = temp_file(),
-      file:close(PidIo),
-      
-      {_Pid, Ref, Tag} = async_command("/bin/sh", [ScriptFilename], BeeDir, [{pidfile, PidFilename}|to_proplist(BeeObject)], From),
-      Pid = self(),
-      timer:sleep(500),
-      OsPid = read_pid_file_or_retry(PidFilename, 50),
-      file:delete(PidFilename),
-      file:delete(ScriptFilename),
-      
-      RealBeeObject = BeeObject#bee_object{pid = Pid, os_pid = OsPid},
-      write_info_about_bee(RealBeeObject),
-      send_to(From, {started, RealBeeObject}),
-      
-      cmd_receive(Pid, [], From, fun(Msg) ->
-        case Msg of
-          {'DOWN', Ref, process, Pid, {Tag, Data}} -> Data;
-          {'DOWN', Ref, process, Pid, Reason} -> send_to(From, {stopped, {Name, Reason}});
-          {stop} ->
-            case OsPid of
-              IntPid when is_integer(IntPid) andalso IntPid > 1 ->
-                os:cmd(lists:flatten(["kill ", integer_to_list(OsPid)]));
-              _ -> ok
-            end;
-          _ -> ok
+    StartScript ->
+      mount(Type, Name),
+      BeeDir = find_mounted_bee(Name),
+      FoundBeeObject = find_bee(Name),
+      BeeObject = FoundBeeObject#bee_object{port = Port, run_dir = BeeDir},
+
+      % BeeObject = from_proplists([{name, Name}, {type, Type}, {bee_file, BeeFile}, {run_dir, BeeDir}, {port, Port}]),
+      spawn(fun() ->
+        {ok, ScriptFilename, ScriptIo} = temp_file(),
+        file:write(ScriptIo, StartScript),
+        try
+          {ok, PidFilename, PidIo} = temp_file(),
+          file:close(PidIo),
+
+          {Pid, Ref, Tag} = async_command("/bin/sh", [ScriptFilename], BeeDir, [{pidfile, PidFilename}|to_proplist(BeeObject)], From),
+          timer:sleep(300),
+          OsPid = read_pid_file_or_retry(PidFilename, 50),
+          file:delete(PidFilename),
+          file:delete(ScriptFilename),
+
+          RealBeeObject = BeeObject#bee_object{pid = self(), os_pid = OsPid},
+          write_info_about_bee(RealBeeObject),
+          send_to(From, {started, RealBeeObject}),
+          
+          cmd_receive(Pid, [], From, fun(Msg) ->
+            case Msg of
+              {'DOWN', Ref, process, Pid, {Tag, Data}} -> Data;
+              {'DOWN', Ref, process, Pid, Reason} -> send_to(From, {stopped, {Name, Reason}});
+              {stop} ->
+                case OsPid of
+                  IntPid when is_integer(IntPid) andalso IntPid > 1 ->
+                    os:cmd(lists:flatten(["kill ", integer_to_list(OsPid)]));
+                  _ -> ok
+                end;
+              E -> 
+                ok
+            end
+          end)
+        after
+          % Just in case
+          file:delete(ScriptFilename) 
         end
       end)
-    after
-      % Just in case
-      file:delete(ScriptFilename) 
-    end
-  end),
-  Pid.
+  end.
 
 stop(Type, Name) -> stop(Type, Name, undefined).
 stop(_Type, Name, From) ->
@@ -353,8 +361,9 @@ save_bee_object(Contents, #bee_object{bee_file = To} = BeeObject) ->
       FullPath
   end,
   prim_file:write_file(FullFilePath, Contents),
-  write_info_about_bee(BeeObject),
-  validate_bee_object(BeeObject).
+  ValidBeeObject = validate_bee_object(BeeObject),
+  write_info_about_bee(ValidBeeObject),
+  ValidBeeObject.
 
 %%%%%%%%%%%%%%%%%
 % HELPERS
@@ -651,29 +660,23 @@ find_bee_file(Name) ->
     true -> BeeFile
   end.
 
-find_bee(Name) -> from_proplists(info(Name)).
+find_bee(Name) -> 
+  case info(Name) of
+    {error, Reason} -> {error, {not_found, Reason}};
+    _ -> from_proplists(info(Name))
+  end.
 
 find_mounted_bee(Name) ->
   MountRootDir = config:search_for_application_value(run_dir, ?BEEHIVE_DIR("run")),
   MountDir = filename:join([MountRootDir, Name]),
   case filelib:is_dir(MountDir) of
-    false -> throw({error, not_found});
+    false -> throw({error, {mounted_bee, not_found, Name}});
     true -> MountDir
   end.
 
 % Cleanup a directory
 rm_rf(Dir) -> 
-  lists:foreach(fun(D) -> rm_rf(D) end, get_dirs(Dir)),
-  lists:foreach(fun(File) ->
-    file:delete(File)
-  end, get_files(Dir)),
-  % Now we can remove the empty directory
-  file:del_dir(Dir),
-  ok.
-
-% Get directories
-get_dirs(Dir) -> lists:filter(fun(X) -> filelib:is_dir(X) end, filelib:wildcard(filename:join([Dir, "*"]))).
-get_files(Dir) -> lists:filter(fun(X) -> not filelib:is_dir(X) end, filelib:wildcard(filename:join([Dir, "*"]))).
+  bh_file_utils:rm_rf(Dir).
 
 read_pid_file_or_retry(_PidFilename, 0) -> throw({error, no_pidfile});
 read_pid_file_or_retry(PidFilename, Retries) ->

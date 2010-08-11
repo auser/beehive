@@ -43,7 +43,6 @@ spawn_update_bee_status() ->
 start_new_instance_t() ->  
   {ok, App, Bee} = start_dummy_app(self()),
   timer:sleep(500),
-  erlang:display({start_new_instance, Bee#bee.host, Bee#bee.port, Bee#bee.os_pid}),
   case try_to_fetch_url_or_retry(get, [{host, Bee#bee.host}, {port, Bee#bee.port}, {path, "/"}], 20) of
     {ok, _Headers, Body} ->
       ?assertEqual("Hello World", hd(lists:reverse(Body))),
@@ -87,7 +86,7 @@ start_dummy_app(From) ->
     X ->
       erlang:display({start_dummy_app, X}),
       ok
-    after 5000 ->
+    after 10000 ->
       erlang:display({timeout}),
       throw({start_dummy_app, timeout})
   end.

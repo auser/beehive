@@ -121,7 +121,8 @@ fetching({launch}, State) ->
   {next_state, fetching, State};
 fetching(Msg, State) ->
   {next_state, fetching, State}.
-  
+
+% Prepared to do something!
 preparing({update}, #state{app = App} = State) ->
   Self = self(),
   gen_cluster:run(beehive_storage_srv, {build_bee, App, Self}),
@@ -149,18 +150,20 @@ preparing(Other, State) ->
   erlang:display({?MODULE, preparing, Other}),
   {next_state, preparing, State}.
 
-updating({bee_built, Info}, #state{bee = Bee, app = App} = State) ->
-  % Strip off the last newline... stupid bash
-  BeeSize = proplists:get_value(bee_size, Info, Bee#bee.bee_size),
-  Sha = proplists:get_value(revision, Info, Bee#bee.revision),
-
-  NewApp = App#app{revision = Sha},
-  NewBee = Bee#bee{bee_size = BeeSize, revision = Sha},
-  % Grr
-  NewState0 = State#state{bee = NewBee, app = NewApp, latest_sha = Sha},
-  NewState = start_instance(NewState0),
-  erlang:display({start_instance, NewState}),
-  {next_state, launching, NewState};
+updating({bee_built, Info}, #state{app = App} = State) ->
+  % % Strip off the last newline... stupid bash
+  % BeeSize = proplists:get_value(bee_size, Info, Bee#bee.bee_size),
+  % Sha = proplists:get_value(revision, Info, Bee#bee.revision),
+  % 
+  % NewApp = App#app{revision = Sha},
+  % NewBee = Bee#bee{bee_size = BeeSize, revision = Sha},
+  % % Grr
+  % NewState0 = State#state{bee = NewBee, app = NewApp, latest_sha = Sha},
+  % NewState = start_instance(NewState0),
+  % erlang:display({start_instance, NewState}),
+  Port = bh_host:unused_port(),
+  beehive_bee_object:start(App#app.type, App#app.name, Port, self()),
+  {next_state, launching, State};
 
 updating(Msg, State) ->
   stop_error({updating, Msg}, State).
@@ -184,11 +187,9 @@ launching(Event, State) ->
 
 % AFTER THE APPLICATION HAS BEEN 'PENDING'
 pending({updated_bee_status, broken}, State) ->
-  erlang:display({pending,updated_bee_status,broken}),
   stop_error({error, broken_start}, State);
   
 pending({updated_bee_status, BackendStatus}, #state{app = App, bee = Bee, from = From, latest_sha = Sha, updating = Updating} = State) ->
-  erlang:display({updated_bee_status,Updating,BackendStatus}),
   ?LOG(info, "Application started ~p: ~p", [BackendStatus, App#app.name]),
   % App started normally
   case Updating of

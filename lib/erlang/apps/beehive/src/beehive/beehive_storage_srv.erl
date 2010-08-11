@@ -98,14 +98,15 @@ handle_call({build_bee, App, Caller}, _From, State) ->
   Resp = case internal_build_bee(App, Caller, State) of
     {error, {ExitCode, Reasons}} = T -> 
       Error = #app_error{
-        stage = build,
+        stage = bundle, % erm?
         stdout = lists:reverse(Reasons),
         exit_status = ExitCode,
         timestamp = date_util:now_to_seconds()
       },
       {ok, NewApp} = app_manager:request_to_save_app(App#app{latest_error = Error}),    
       {error, NewApp};
-    T2 -> {ok, T2}
+    T2 -> 
+      {ok, T2}
   end,
   {reply, Resp, State};
   
