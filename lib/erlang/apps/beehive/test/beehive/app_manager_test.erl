@@ -41,7 +41,7 @@ spawn_update_bee_status() ->
 
 % Starting and stopping
 start_new_instance_t() ->  
-  {ok, App, Bee} = start_dummy_app(self()),
+  {ok, _App, Bee} = start_dummy_app(self()),
   timer:sleep(500),
   case try_to_fetch_url_or_retry(get, [{host, Bee#bee.host}, {port, Bee#bee.port}, {path, "/"}], 20) of
     {ok, _Headers, Body} ->
@@ -53,7 +53,6 @@ start_new_instance_t() ->
   end.
   
 teardown_an_instance_t() ->
-  erlang:display({teardown_an_instance_t}),
   % {ok, _App, Bee} = start_dummy_app(self()),
   App = dummy_app(),
   Bee = bees:find_by_name(App#app.name),
@@ -76,7 +75,7 @@ teardown_an_instance_t() ->
 
 dummy_app() -> bh_test_util:dummy_app().
   
-start_dummy_app(From) ->
+start_dummy_app(_From) ->
   App = dummy_app(),
   app_manager:request_to_start_new_bee_by_app(App, self()),
   receive

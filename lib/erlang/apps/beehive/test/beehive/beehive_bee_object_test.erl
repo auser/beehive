@@ -36,8 +36,8 @@ starting_test_() ->
         ,fun git_bundle_with_errors/0
         ,fun responding_from/0
         ,fun ls_bee/0
-        % % Type tests
-        % ,fun bundle_type/0
+        % Type tests
+        ,fun bundle_type/0
         % ,fun mount_t/0
         % ,fun start_t/0
         % ,fun stop_t/0
