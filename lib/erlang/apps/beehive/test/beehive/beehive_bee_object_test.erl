@@ -25,7 +25,7 @@ setup() ->
 teardown(_X) ->
   ok.
 
-starting_test_() ->
+all_test_() ->
   Tests = {inorder,
     {setup,
       fun setup/0,
@@ -38,8 +38,8 @@ starting_test_() ->
         ,fun ls_bee/0
         % Type tests
         ,fun bundle_type/0
-        % ,fun mount_t/0
-        % ,fun start_t/0
+        ,fun mount_t/0
+        ,fun start_t/0
         % ,fun stop_t/0
         % ,fun cleanup_t/0
         % ,fun send_t/0
@@ -182,7 +182,6 @@ start_t() ->
   Host = "127.0.0.1",
   Port = 9191,
   beehive_bee_object:bundle([{type, rack}|git_repos_props()]),
-  beehive_bee_object:mount(rack, "beehive_bee_object_test_app"),
   Pid = spawn(fun() -> responding_loop([]) end),
   beehive_bee_object:start(rack, "beehive_bee_object_test_app", Port, Pid),
   timer:sleep(500),

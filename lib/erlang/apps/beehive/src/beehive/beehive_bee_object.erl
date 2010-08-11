@@ -253,7 +253,7 @@ stop(_Type, Name, From) ->
       Pid ! {stop},
       timer:sleep(500),
       % Possibly add ensure_stopped_os_pid... 
-      From ! {stopped, BeeObject};
+      send_to(From, {stopped, BeeObject});
     _ -> {error, not_running}
   end.
 
