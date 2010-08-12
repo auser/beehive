@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% File    : user_apps.erl
 %%% Author  : Ari Lerner
-%%% Description : 
+%%% Description :
 %%%
 %%% Created :  Mon Nov 30 13:29:11 PST 2009
 %%%-------------------------------------------------------------------
@@ -18,7 +18,7 @@
   all/0,
   delete/1, delete/2,
   create/1, create/2,
-  save/1, 
+  save/1,
   % add_app/2, add_user/2,
   all_users/1,
   all_apps/1
@@ -43,28 +43,36 @@ all_users(AppName) ->
     UserEmail = UserApp#user_app.user_email,
     users:find_by_email(UserEmail)
   end, UserApps).
-  
-% find_by_email
-all_apps(Username) ->
-  UserApps = find_all_by_email(Username),
-  lists:map(fun(UserApp) ->
-    Appname = UserApp#user_app.app_name,
-    apps:find_by_name(Appname)
-  end, UserApps).
-  
+
+% @doc Finds user's apps.  Ensures that apps exist. Takes email as parameter.
+all_apps(Email) ->
+  UserApps = find_all_by_email(Email),
+  TheApps = lists:map(fun(UserApp) ->
+                Appname = UserApp#user_app.app_name,
+                apps:find_by_name(Appname)
+                      end, UserApps),
+  lists:filter(fun(App) ->
+                   case App of
+                     X when is_record(X, app) ->
+                       true;
+                     _ -> false
+                   end
+               end, TheApps).
+
 find_by_app_name(Name) ->
   case find_all_by_app_name(Name) of
     [B|_] -> B;
     _ -> []
   end.
 
-find_all_by_email(Name) -> 
-  case ?DB:read(user_app, Name) of
+find_all_by_email(Email) ->
+  case ?DB:match(#user_app{user_email = Email, _='_'}) of
     Apps when is_list(Apps) -> Apps;
+    App  when is_record(App, user_app) -> [App];
     _ -> []
   end.
-  
-find_all_by_app_name(Name) -> 
+
+find_all_by_app_name(Name) ->
   ?DB:match(#user_app{app_name = Name, _='_'}).
 
 find_user_app(UserEmail, AppName) ->
@@ -78,10 +86,10 @@ get_owners(App) ->
   lists:map(fun(UserApp) -> users:find_by_email(UserApp#user_app.user_email) end, OwnerApps).
 
 % Get the users associated with the app
-get_users(App) ->  
+get_users(App) ->
   UserApps = find_all_by_app_name(App#app.name),
   lists:map(fun(UserApp) -> users:find_by_email(UserApp#user_app.user_email) end, UserApps).
-  
+
 % Insert a new user
 create(UsersApp) when is_record(UsersApp, user_app) ->
   case catch ?DB:write(user_app, UsersApp#user_app.app_name, validate_user_app(UsersApp)) of
@@ -104,7 +112,7 @@ create(Email, AppName) ->
 save(UserApp) when is_record(UserApp, user_app) ->
   case catch ?DB:write(user_app, UserApp#user_app.app_name, UserApp) of
     ok -> {ok, UserApp};
-    {'EXIT',{aborted,{no_exists,_}}} -> 
+    {'EXIT',{aborted,{no_exists,_}}} ->
       ?NOTIFY({db, database_not_initialized, user_app}),
       {error, database_not_initialized};
     _E ->
@@ -112,10 +120,10 @@ save(UserApp) when is_record(UserApp, user_app) ->
       {error, did_not_write}
   end;
 save([]) -> invalid;
-save(Proplists) when is_list(Proplists) -> 
+save(Proplists) when is_list(Proplists) ->
   case from_proplists(Proplists) of
     {error, _} = T -> T;
-    Bee -> 
+    Bee ->
       save(Bee)
   end;
 save(Func) when is_function(Func) ->
@@ -159,14 +167,14 @@ validate_user_app(Else) -> Else.
 validate_user_app([], UserApp) ->  UserApp;
 % Validate the user_email
 validate_user_app([user_email|Rest], #user_app{user_email = undefined} = _UserApp) -> {error, no_user_email_given};
-validate_user_app([user_email|Rest], #user_app{user_email = Email} = UserApp) -> 
+validate_user_app([user_email|Rest], #user_app{user_email = Email} = UserApp) ->
   case users:find_by_email(Email) of
     [] -> {error, user_not_found};
     _User -> validate_user_app(Rest, UserApp)
   end;
 % Validate the app
 validate_user_app([app_name|Rest], #user_app{app_name = undefined} = UserApp) -> {error, no_app_name_given};
-validate_user_app([app_name|Rest], #user_app{app_name = AppName} = UserApp) -> 
+validate_user_app([app_name|Rest], #user_app{app_name = AppName} = UserApp) ->
   case apps:find_by_name(AppName) of
     [] -> {error, app_not_found};
     _App -> validate_user_app(Rest, UserApp)

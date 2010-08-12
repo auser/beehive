@@ -8,6 +8,9 @@ setup() ->
   ok.
 
 teardown(_X) ->
+  beehive_db_srv:delete_all(user),
+  beehive_db_srv:delete_all(user_app),
+  beehive_db_srv:delete_all(app),
   ok.
 
 starting_test_() ->
@@ -17,23 +20,54 @@ starting_test_() ->
     fun teardown/1,
     [
      fun get_index/0,
-     fun get_index_with_email/0
+     fun get_index_with_email/0,
+     fun get_user_apps_no_apps/0,
+     fun get_user_apps_with_an_app/0
     ]
    }
   }.
 
 get_index() ->
-  {ok, Header, Response} = 
+  {ok, Header, Response} =
     bh_test_util:fetch_url(get,
                            [{path, "/users.json"}]),
   ?assertEqual("HTTP/1.0 200 OK", Header),
-  [Json|Rest] = bh_test_util:response_json(Response),
+  [Json|_] = bh_test_util:response_json(Response),
   {"users", Users} = Json,
   ?assert(is_list(Users)),
-  ?assert(lists:any(fun(E) -> 
+  ?assert(lists:any(fun(E) ->
                         proplists:get_value("email", E) =:= "test@getbeehive.com"
                     end, Users)),
   passed.
 
 get_index_with_email() ->
+  {ok, Header, Response} =
+    bh_test_util:fetch_url(get,
+                           [{path, "/users/test@getbeehive.com.json"}]),
+  ?assertEqual("HTTP/1.0 200 OK", Header),
+  [User|_] = bh_test_util:response_json(Response),
+  {"user",[{"email","test@getbeehive.com"},_]} = User,
+  passed.
+
+get_user_apps_no_apps() ->
+  {ok, Header, Response} =
+    bh_test_util:fetch_url(get,
+                           [{path, "/users/test@getbeehive.com/apps.json"}]),
+  ?assertEqual("HTTP/1.0 200 OK", Header),
+  [User|_] = bh_test_util:response_json(Response),
+  {"user",[_,_,{"apps",""}]} = User,
+  passed.
+
+get_user_apps_with_an_app() ->
+  DummyUser = bh_test_util:dummy_user(),
+  App = bh_test_util:dummy_app(),
+  {ok, SavedApp} = apps:save(App),
+  {ok, _} = user_apps:create(DummyUser, SavedApp),
+  {ok, Header, Response} =
+    bh_test_util:fetch_url(get,
+                           [{path, "/users/test@getbeehive.com/apps.json"}]),
+  ?assertEqual("HTTP/1.0 200 OK", Header),
+  [User|_] = bh_test_util:response_json(Response),
+  {"user",[_,_,FoundApp]} = User,
+  ?assertMatch({"apps", [{"name",_}]}, FoundApp),
   passed.
