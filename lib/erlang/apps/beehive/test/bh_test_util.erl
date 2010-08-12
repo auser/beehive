@@ -15,7 +15,7 @@ setup(Proplist) when is_list(Proplist) ->
   application:set_env(beehive, beehive_home,  proplists:get_value(beehive_home, Proplist, "/tmp/beehive/test")),
   application:set_env(beehive, database_dir,  proplists:get_value(database_dir, Proplist, "/tmp/beehive/test/test_db")),
   
-  application:start(sasl),
+  % application:start(sasl),
   beehive:start([{beehive_db_srv, testing}]),
   
   % erlang:display({beehive_db_srv, init_databases, start}),
