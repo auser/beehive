@@ -309,7 +309,9 @@ handle_info({bee_updated_normally, #bee{revision = Sha} = Bee, #app{name = AppNa
 
 handle_info({bee_started_normally, Bee, App}, State) ->
   case ets:lookup(?LAUNCHERS_APP_TO_PID, App) of
-    [{_Pid, _App, Caller, _Time}] -> Caller ! {bee_started_normally, Bee};
+    [{_Pid, _App, Caller, _Time}] -> 
+      bees:save(Bee),
+      Caller ! {bee_started_normally, Bee};
     _ -> ok
   end,
   {noreply, State};
