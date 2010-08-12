@@ -26,7 +26,7 @@ command(bundle, App, _Bee, PropLists) ->
   EnvOpts = apps:build_app_env(App, OtherOpts),
   CmdOpts = lists:flatten([{cd, SquashedDir}|EnvOpts]),
   
-  babysitter:run(App#app.template, bundle, CmdOpts);
+  babysitter:run(App#app.type, bundle, CmdOpts);
 
 command(mount, App, _Bee, PropLists) ->
   ScratchDisk = proplists:get_value(scratch_dir, PropLists, "/tmp/beehive"),
@@ -52,14 +52,13 @@ command(mount, App, _Bee, PropLists) ->
   EnvOpts = apps:build_app_env(App, OtherOpts),
   CmdOpts = lists:flatten([{cd, MountedDir}|EnvOpts]),
   
-  babysitter:run(App#app.template, mount, CmdOpts);
+  babysitter:run(App#app.type, mount, CmdOpts);
 
 % Run the start command
 command(start, App, _Bee, PropLists) ->
   Sha = proplists:get_value(sha, PropLists),
   Port = proplists:get_value(port, PropLists),
   ImagePath = proplists:get_value(bee_image, PropLists),
-  StorageNode = proplists:get_value(storage_node, PropLists),
     
   HostIp = bh_host:myip(),
   Id = {App#app.name, HostIp, Port},
@@ -70,11 +69,10 @@ command(start, App, _Bee, PropLists) ->
     app_name                = App#app.name,
     host                    = HostIp,
     host_node               = node(self()),
-    storage_node            = StorageNode,
     % path                    = AppRootPath,
     port                    = Port,
     status                  = pending,
-    commit_hash             = Sha,
+    revision             = Sha,
     start_time              = StartedAt
   },
   
@@ -86,7 +84,7 @@ command(start, App, _Bee, PropLists) ->
     {bee_image, ImagePath},
     CmdOpts1]),
   
-  case babysitter:run(App#app.template, start, CmdOpts) of
+  case babysitter:run(App#app.type, start, CmdOpts) of
     {ok, Pid, OsPid} -> {ok, Pid, OsPid, Bee};
     E -> E
   end;
@@ -96,7 +94,7 @@ command(stop, CliApp, #bee{os_pid = OsPid} = Bee, _PropLists) ->
   timer:sleep(200),
   case find_and_build_app_env(CliApp, Bee) of
     {ok, App, CmdOpts} ->
-      case babysitter:run(App#app.template, stop, CmdOpts) of
+      case babysitter:run(App#app.type, stop, CmdOpts) of
         {ok, _OsPid, _ExitStatus} -> {ok, _OsPid, _ExitStatus, App};
         E -> E
       end;
@@ -105,7 +103,7 @@ command(stop, CliApp, #bee{os_pid = OsPid} = Bee, _PropLists) ->
 command(unmount, CliApp, Bee, _PropLists) ->
   case find_and_build_app_env(CliApp, Bee) of
     {ok, App, CmdOpts} ->
-      case babysitter:run(App#app.template, unmount, CmdOpts) of
+      case babysitter:run(App#app.type, unmount, CmdOpts) of
         {ok, _OsPid, _ExitStatus} -> {ok, _OsPid, _ExitStatus, App};
         E -> E
       end;
@@ -114,7 +112,7 @@ command(unmount, CliApp, Bee, _PropLists) ->
 command(cleanup, CliApp, Bee, _PropLists) ->
   case find_and_build_app_env(CliApp, Bee) of
     {ok, App, CmdOpts} ->
-      case babysitter:run(App#app.template, cleanup, CmdOpts) of
+      case babysitter:run(App#app.type, cleanup, CmdOpts) of
         {ok, _OsPid, _ExitStatus} -> {ok, _OsPid, _ExitStatus, App};
         E -> E
       end;

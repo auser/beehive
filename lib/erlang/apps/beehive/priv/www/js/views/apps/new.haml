@@ -12,6 +12,11 @@
     %input{ type: "text", name: "url" }
     %br
     
+    %label VCS type
+    %select{name: "vcs_type"}
+      :each type in vcs_types
+        %option= type
+    
     %label App Template:
     %select{name: "template"}
       :each type in app_types

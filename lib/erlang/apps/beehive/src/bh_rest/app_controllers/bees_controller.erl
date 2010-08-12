@@ -21,8 +21,7 @@ get(_, _Data) ->
         {"app_name", B#bee.app_name},
         {"host", B#bee.host},
         {"port", B#bee.port},
-        {"meta data", B#bee.meta_data},
-        {"commit", B#bee.commit_hash},
+        {"commit", B#bee.revision},
         {"status", B#bee.status}
       ]
     end, All)

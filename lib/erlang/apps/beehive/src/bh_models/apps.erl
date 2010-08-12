@@ -25,6 +25,7 @@
 
 % APPLICATION STUFF
 -export ([
+  to_proplist/1,
   build_app_env/2
 ]).
 
@@ -147,7 +148,7 @@ build_app_env(App, Other) ->
   lists:flatten([
     build_env({name, App#app.name}),
     build_env({repos, App#app.url}),
-    build_env({sha, App#app.sha}),
+    build_env({revision, App#app.revision}),
     build_env({path, BeehivePath}),
     build_env({branch, App#app.branch}),
     {stdout, StdOut},
@@ -171,14 +172,14 @@ from_proplists(Proplists) -> from_proplists(Proplists, #app{}).
 from_proplists([], App)  -> App;
 from_proplists([{name, V}|Rest], App) -> from_proplists(Rest, App#app{name = V});
 from_proplists([{url, V}|Rest], App) -> from_proplists(Rest, App#app{url = V});
+from_proplists([{vcs_type, V}|Rest], App) -> from_proplists(Rest, App#app{vcs_type = V});
 from_proplists([{type, V}|Rest], App) -> from_proplists(Rest, App#app{type = V});
 from_proplists([{timeout, V}|Rest], App) -> from_proplists(Rest, App#app{timeout = V});
 from_proplists([{sticky, V}|Rest], App) -> from_proplists(Rest, App#app{sticky = V});
 from_proplists([{min_instances, V}|Rest], App) -> from_proplists(Rest, App#app{min_instances = V});
 from_proplists([{max_instances, V}|Rest], App) -> from_proplists(Rest, App#app{max_instances = V});
-from_proplists([{sha, V}|Rest], App) -> from_proplists(Rest, App#app{sha = V});
+from_proplists([{revision, V}|Rest], App) -> from_proplists(Rest, App#app{revision = V});
 from_proplists([{updated_at, V}|Rest], App) -> from_proplists(Rest, App#app{updated_at = V});
-from_proplists([{template, V}|Rest], App) -> from_proplists(Rest, App#app{template = V});
 from_proplists([{routing_param, V}|Rest], App) -> from_proplists(Rest, App#app{routing_param = V});
 from_proplists([_Other|Rest], App) -> from_proplists(Rest, App).
 
@@ -186,14 +187,14 @@ to_proplist(App) -> to_proplist(record_info(fields, app), App, []).
 to_proplist([], _App, Acc) -> Acc;
 to_proplist([name|Rest], #app{name = Name} = App, Acc) -> to_proplist(Rest, App, [{name, Name}|Acc]);
 to_proplist([url|Rest], #app{url = Value} = App, Acc) -> to_proplist(Rest, App, [{url, Value}|Acc]);
-to_proplist([type|Rest], #app{type = Value} = App, Acc) -> to_proplist(Rest, App, [{type, Value}|Acc]);
+to_proplist([vcs_type|Rest], #app{vcs_type = Value} = App, Acc) -> to_proplist(Rest, App, [{vcs_type, Value}|Acc]);
 to_proplist([timeout|Rest], #app{timeout = Value} = App, Acc) -> to_proplist(Rest, App, [{timeout, Value}|Acc]);
 to_proplist([sticky|Rest], #app{sticky = Value} = App, Acc) -> to_proplist(Rest, App, [{sticky, Value}|Acc]);
 to_proplist([min_instances|Rest], #app{min_instances = Value} = App, Acc) -> to_proplist(Rest, App, [{min_instances, Value}|Acc]);
 to_proplist([max_instances|Rest], #app{max_instances = Value} = App, Acc) -> to_proplist(Rest, App, [{max_instances, Value}|Acc]);
-to_proplist([sha|Rest], #app{sha = Value} = App, Acc) -> to_proplist(Rest, App, [{sha, Value}|Acc]);
+to_proplist([revision|Rest], #app{revision = Value} = App, Acc) -> to_proplist(Rest, App, [{revision, Value}|Acc]);
 to_proplist([updated_at|Rest], #app{updated_at = Value} = App, Acc) -> to_proplist(Rest, App, [{updated_at, Value}|Acc]);
-to_proplist([template|Rest], #app{template = Value} = App, Acc) -> to_proplist(Rest, App, [{template, Value}|Acc]);
+to_proplist([type|Rest], #app{type = Value} = App, Acc) -> to_proplist(Rest, App, [{type, Value}|Acc]);
 to_proplist([routing_param|Rest], #app{routing_param = Value} = App, Acc) -> to_proplist(Rest, App, [{routing_param, Value}|Acc]);
 to_proplist([_H|T], App, Acc) -> to_proplist(T, App, Acc).
 
@@ -221,9 +222,9 @@ validate_app([branch|Rest], App) -> validate_app(Rest, App);
 % Validate the url
 validate_app([url|Rest], #app{url = _Url} = App) -> validate_app(Rest, App);
 % Validate the type, it can only be either static or dynamic
-validate_app([type|Rest], #app{type = static} = App) -> validate_app(Rest, App);
-validate_app([type|Rest], #app{type = dynamic} = App) -> validate_app(Rest, App);
-validate_app([type|Rest], #app{type = _Else} = App) -> validate_app(Rest, App#app{type = dynamic});
+validate_app([vcs_type|Rest], #app{type = git} = App) -> validate_app(Rest, App);
+% validate_app([vcs_type|Rest], #app{type = svn} = App) -> validate_app(Rest, App);
+validate_app([vcs_type|Rest], #app{type = _Else} = App) -> validate_app(Rest, App#app{vcs_type = git});
 % Validate the timeout
 validate_app([timeout|Rest], #app{timeout = undefined} = App) -> validate_app(Rest, App#app{timeout = 10*1000});
 validate_app([timeout|Rest], #app{timeout = V} = App) -> validate_app(Rest, App#app{timeout = misc_utils:to_integer(V)*1000});
@@ -235,13 +236,13 @@ validate_app([min_instances|Rest], #app{min_instances = undefined} = App) -> val
 validate_app([min_instances|Rest], #app{min_instances = V} = App) -> validate_app(Rest, App#app{min_instances = misc_utils:to_integer(V)});
 validate_app([max_instances|Rest], #app{max_instances = undefined} = App) -> validate_app(Rest, App#app{max_instances = 1});
 validate_app([max_instances|Rest], #app{max_instances = V} = App) -> validate_app(Rest, App#app{max_instances = misc_utils:to_integer(V)});
-% Validate the sha
-validate_app([sha|Rest], App) -> validate_app(Rest, App);
+% Validate the revision
+validate_app([revision|Rest], App) -> validate_app(Rest, App);
 % Validate the updated_at
 validate_app([updated_at|Rest], App) -> validate_app(Rest, App);
 % Validate the template
-validate_app([template|Rest], #app{template = undefined} = App) -> validate_app(Rest, App#app{template = default});
-validate_app([template|Rest], #app{template = Val} = App) -> validate_app(Rest, App#app{template = misc_utils:to_atom(Val)});
+validate_app([type|Rest], #app{type = undefined} = App) -> validate_app(Rest, App#app{type = default});
+validate_app([type|Rest], #app{type = Val} = App) -> validate_app(Rest, App#app{type = misc_utils:to_atom(Val)});
 % Validate the routing parameter
 validate_app([routing_param|Rest], #app{routing_param = undefined} = App) -> validate_app(Rest, App#app{routing_param = 'Host'});
 validate_app([routing_param|Rest], #app{routing_param = V} = App) -> validate_app(Rest, App#app{routing_param = misc_utils:to_atom(V)});

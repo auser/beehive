@@ -35,18 +35,15 @@
 % Yes, the id is redundant, optimization of this might be ideal... i.e. remove the host/port/app_name
 % fields
 -record (bee, {
-  id,                       % tuple id of the app_name, host and port {app_name, host, port}
   app_name,                 % name of the app this bee supports
   host,
   host_node,
   port,
-  path,                     % path of app on hostnode
-  meta_data,                % meta data on the bee allows for more granualar abstract parameters
-                            % should be a tuple, e.g. {ports: 2}
-  temp_name,
-  commit_hash,
+  id,                       % tuple id of the app_name, host and port {app_name, host, port}
+  bee_file,                 % path of app on hostnode
+  revision,
+  type,                     % type of app (rails, rack, java, etc.)
   bee_size,
-  storage_node,
   start_time    = 0,        % starting time
   pid,                      % pid of the port process tracker
   os_pid,                   % pid of the os port process
@@ -60,22 +57,43 @@
   act_count     = 0
 }).
 
+-record(bee_object, {
+  name,         % name of the bee
+  branch,       % branch to checkout
+  revision,     % revision
+  vcs_type,     % git | svn
+  url,          % url
+  type,         % type of app to match conf files
+  run_dir,      % location of the unpacked bee_file
+  bundle_dir,   % location of the root of the bundle
+  bee_size,     % size of the bee_file
+  bee_file,     % location of the file
+  port,         % port to run on
+  pre,
+  post,
+  os_pid,       % os pid of the running bee_object
+  pid,          % pid of running bee_object
+  env = []      % more environment variables
+}).
+
 % Application configuration
 -record (app, {
   name,
   url,
-  type = dynamic,                   % dynamic | static (if this is set to static, we cannot launch a new one)
+  vcs_type      = git,              % git | svn | etc.
+  dynamic       = dynamic,          % dynamic | static (if this is set to static, we cannot launch a new one)
   routing_param = 'Host',
   timeout,
   sticky        = false,            % if an app is sticky, the apps are not requested after timeout time
   min_instances = 0,
   max_instances = 1,
   branch = "master",                % The branch of the app to check out
-  sha,                              % sha of the latest working push
+  revision,                         % revision of the latest working push
   updated_at,
-  latest_error = undefined,         % last error that occured on the app
-  template = default                % default app
+  latest_error  = undefined,        % last error that occured on the app
+  type          = default           % default app
 }).
+
 
 % User levels
 -define (ADMIN_USER_LEVEL, 1).

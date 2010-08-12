@@ -2,7 +2,14 @@
 -include ("common.hrl").
 -compile (export_all).
 
--define (ETS_CONFIG_FILE, 'in_memory_config_file').
+-define (ETS_CONFIG_TABLE, 'in_memory_config_file').
+
+% TODO: IMPLEMENT THE IN-MEMORY CONFIG
+init() ->
+  case catch ets:info(?ETS_CONFIG_TABLE) of
+    undefined -> ets:new(?ETS_CONFIG_TABLE, [set, named_table, public]);
+    _ -> ok
+  end.
 
 % Find the application config value
 search_for_application_value(Param) -> search_for_application_value(Param, undefined).

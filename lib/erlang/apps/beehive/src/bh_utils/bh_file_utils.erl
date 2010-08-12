@@ -8,6 +8,7 @@
 
 -module (bh_file_utils).
 -include ("common.hrl").
+-include_lib("kernel/include/file.hrl").
 -compile (export_all).
 
 root_dir(Path) -> 
@@ -43,3 +44,45 @@ ensure_dir_exists([]) -> ok;
 ensure_dir_exists([Dir|Rest]) ->
   filelib:ensure_dir(Dir ++ "/.nonexistant_file"),
   ensure_dir_exists(Rest).
+
+is_symlink(Path) ->
+  case file:read_link_info(Path) of
+    {ok, #file_info{type = symlink}} -> true;
+	  _ -> false
+	end.
+
+file_type(Path) ->
+	IsRegular = filelib:is_regular(Path),
+	case IsRegular of
+		true -> file;
+		false ->
+			case is_symlink(Path) of
+        true -> symlink;
+				false -> directory
+			end
+	end.
+
+walk(Path, Level, Fun) ->
+	FileType = file_type(Path),
+	case FileType of
+		file -> 
+		  Fun({file, Level, Path});
+		symlink -> Fun({symlink, Level, Path});
+		directory ->
+			Children = filelib:wildcard(filename:join([Path, "*"])),
+			case Children of
+			 [] -> ok;
+			 _ -> lists:foreach(fun(P) -> walk(P, Level + 1, Fun) end, Children)
+			end,
+			Fun({directory, Level, Path})
+	end.
+
+% DELETE ALL
+rm_rf(Dir) ->
+  bh_file_utils:walk(Dir, 0, fun({Type, _Level, Path}) ->
+    case Type of
+      directory -> file:del_dir(Path);
+      _ -> file:delete(Path)
+    end
+  end),
+  file:del_dir(Dir).

@@ -11,10 +11,10 @@
 
 -include ("beehive.hrl").
 -include ("common.hrl").
--behaviour(gen_server).
+-behaviour(gen_cluster).
 
 %% API
--export([start_link/0, start_link/1]).
+-export([start_link/0, stop/0]).
 -export ([
   instance/0,
   status/0,
@@ -22,22 +22,33 @@
   terminate_app_instances/1,
   add_application/1, add_application/2,
   spawn_update_bee_status/3,
-  request_to_start_new_bee_by_name/1,
-  request_to_start_new_bee_by_app/1,
+  request_to_start_new_bee_by_name/1, request_to_start_new_bee_by_name/2,
+  request_to_start_new_bee_by_app/1, request_to_start_new_bee_by_app/2,
   request_to_update_app/1,
   request_to_expand_app/1,
-  request_to_terminate_bee/1,
+  request_to_terminate_bee/1, request_to_terminate_bee/2,
   request_to_save_app/1,
-  garbage_collection/0
+  garbage_collection/0,
+  seed_nodes/1
 ]).
+
+-define (APP_MANAGER_TABLE_PROCESS, 'app_manager_table_process').
+
+% ETS functions
+-export ([ets_process_restarter/0, start_ets_process/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
+% gen_cluster callback
+-export([handle_join/2, handle_leave/3]).
 
 -record(state, {
-  queries = queue:new(),
-  last_trans = 0
+  run_directory,
+  scratch_dir,
+  max_bees,               % maximum number of bees on this host
+  queries     = queue:new(),
+  last_trans  = 0
 }).
 
 -define (LAUNCHERS_APP_TO_PID, 'launchers_app_to_pid').
@@ -58,11 +69,15 @@ request_to_expand_app(App) -> gen_server:cast(?SERVER, {request_to_expand_app, A
 status() -> gen_server:call(?SERVER, {status}).
 instance() -> whereis(?SERVER).
 garbage_collection() -> gen_server:cast(?SERVER, {garbage_collection}).
-request_to_start_new_bee_by_app(App) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_app, App}).
-request_to_start_new_bee_by_name(Name) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_name, Name}).
+request_to_start_new_bee_by_app(App) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_app, App, undefined}).
+request_to_start_new_bee_by_app(App, Caller) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_app, App, Caller}).
+request_to_start_new_bee_by_name(Name) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_name, Name, undefined}).
+request_to_start_new_bee_by_name(Name, Caller) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_name, Name, Caller}).
 request_to_update_app(App) -> gen_server:cast(?SERVER, {request_to_update_app, App}).
 request_to_save_app(App) -> gen_server:call(?SERVER, {request_to_save_app, App}).
-request_to_terminate_bee(Bee) -> gen_server:cast(?SERVER, {request_to_terminate_bee, Bee}).
+request_to_terminate_bee(Bee) -> gen_server:cast(?SERVER, {request_to_terminate_bee, Bee, undefined}).
+request_to_terminate_bee(Bee, Caller) -> 
+  gen_server:cast(?SERVER, {request_to_terminate_bee, Bee, Caller}).
 terminate_app_instances(Appname) -> gen_server:cast(?SERVER, {terminate_app_instances, Appname}).
 terminate_all() -> gen_server:cast(?SERVER, {terminate_all}).
 
@@ -75,14 +90,34 @@ add_application(ConfigProplist) ->
     V -> add_application(lists:delete(user_email, ConfigProplist), V)
   end.
 add_application(ConfigProplist, UserEmail) -> 
-  gen_server:call(?SERVER, {add_application_by_configuration, ConfigProplist, UserEmail}).
+  gen_server:call(?SERVER, {add_application, ConfigProplist, UserEmail}).
 
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-start_link() -> gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-start_link(Args) -> gen_server:start_link({local, ?SERVER}, ?MODULE, Args, []).
+start_link() ->
+  gen_cluster:start_link({local, ?SERVER}, ?SERVER, [], []).
+
+stop() ->
+  gen_cluster:call(?SERVER, {stop}).
+
+%%-------------------------------------------------------------------
+%% @spec () ->    Seed::list()
+%% @doc List of seed pids
+%%      
+%% @end
+%%-------------------------------------------------------------------
+seed_nodes(_State) -> [node(seed_pid())].
+seed_pid() -> hd(seed_pids([])).
+seed_pids(_State) ->
+  case global:whereis_name(?MODULE) of
+    undefined -> [self()]; % We are the master
+    _ ->
+      {ok, Plist} = gen_cluster:plist(?MODULE),
+      Plist
+  end.
+
 
 %%====================================================================
 %% gen_server callbacks
@@ -95,15 +130,12 @@ start_link(Args) -> gen_server:start_link({local, ?SERVER}, ?MODULE, Args, []).
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
-init([]) ->   
+init([]) ->
   % Build the launching ets tables
-  Opts = [named_table, set],
-  (catch ets:new(?UPDATERS_PID_TO_APP, Opts)),
-  (catch ets:new(?UPDATERS_APP_TO_PID, Opts)),
+  process_flag(trap_exit, true),
   
-  (catch ets:new(?LAUNCHERS_PID_TO_APP, Opts)),
-  (catch ets:new(?LAUNCHERS_APP_TO_PID, Opts)),
-  
+  spawn(?MODULE, ets_process_restarter, []),
+    
   timer:send_interval(timer:seconds(5), {flush_old_processes}),
   % Try to make sure the pending bees are taken care of by either turning them broken or ready
   timer:send_interval(timer:seconds(5), {manage_pending_bees}),
@@ -113,7 +145,15 @@ init([]) ->
   % timer:send_interval(timer:minutes(2), {maintain_bee_counts}),
   timer:send_interval(timer:minutes(2), {clean_up_apps}),
   
-  {ok, #state{}}.
+  ScratchDisk = config:search_for_application_value(scratch_dir, ?BEEHIVE_DIR("tmp")),
+  RunDir = config:search_for_application_value(squashed_storage, ?BEEHIVE_DIR("run")),
+  MaxBackends     = ?MAX_BACKENDS_PER_HOST,
+  
+  {ok, #state{
+    run_directory = RunDir,
+    scratch_dir = ScratchDisk,
+    max_bees = MaxBackends
+  }}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -125,9 +165,9 @@ init([]) ->
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
 % Add an application
-handle_call({add_application_by_configuration, ConfigProplist, UserEmail}, From, State) ->
-  % NewState = add_application_by_configuration(ConfigProplist, State),
-  handle_queued_call(fun() -> add_application_by_configuration(ConfigProplist, UserEmail) end, From, State);
+handle_call({add_application, ConfigProplist, UserEmail}, From, State) ->
+  % NewState = add_application(ConfigProplist, State),
+  handle_queued_call(fun() -> internal_add_application(ConfigProplist, UserEmail) end, From, State);
 
 handle_call({request_to_save_app, App}, From, State) ->
   handle_queued_call(fun() -> apps:save(App) end, From, State);
@@ -155,26 +195,24 @@ handle_cast({request_to_expand_app, App}, State) ->
   expand_instance_by_app(App),
   {noreply, State};
 
-handle_cast({request_to_start_new_bee_by_app, App}, State) ->
-  start_new_instance_by_app(App),
+handle_cast({request_to_start_new_bee_by_app, App, Caller}, State) ->
+  start_new_instance_by_app(App, Caller),
   {noreply, State};
 
-handle_cast({request_to_start_new_bee_by_name, Name}, State) ->
+handle_cast({request_to_start_new_bee_by_name, Name, Caller}, State) ->
   case apps:find_by_name(Name) of
     [] -> error;
-    App when is_record(App, app) -> start_new_instance_by_app(App)
+    App when is_record(App, app) -> start_new_instance_by_app(App, Caller)
   end,
   {noreply, State};
 
-handle_cast({request_to_terminate_bee, #bee{status = Status} = Bee}, State) when Status =:= ready ->
-  % rpc:cast(Node, app_handler, stop_instance, [Bee]),
+handle_cast({request_to_terminate_bee, Bee, Caller}, State) ->
   % app_killer_fsm
-  {ok, P} = app_killer_fsm:start_link(Bee, self()),
+  {ok, P} = app_killer_fsm:start_link(Bee, Caller),
+  % erlang:display({hi, in, request_to_terminate_bee, P}),
   erlang:link(P),
-  app_killer_fsm:kill(P),  
-  {noreply, State};
-
-handle_cast({request_to_terminate_bee, _Bee}, State) ->
+  app_killer_fsm:kill(P),
+  timer:sleep(100),
   {noreply, State};
 
 handle_cast({garbage_collection}, State) ->
@@ -239,14 +277,14 @@ handle_info({'EXIT',_Pid, {received_unknown_message, {_FsmState, {error, {babysi
 
 handle_info({'EXIT', Pid, Reason}, State) ->
   case ets:lookup(?UPDATERS_PID_TO_APP, Pid) of
-    [{Pid, App, _Time}] ->
+    [{Pid, App, _Caller, _Time}] ->
       ets:delete(?UPDATERS_PID_TO_APP, Pid),
       ets:delete(?UPDATERS_APP_TO_PID, App),
       % Save the error
       apps:save(App#app{latest_error = Reason});
     _ -> 
       case ets:lookup(?LAUNCHERS_PID_TO_APP, Pid) of
-        [{Pid, App, _Time}] ->
+        [{Pid, App, _Caller, _Time}] ->
           ets:delete(?LAUNCHERS_PID_TO_APP, Pid),
           ets:delete(?LAUNCHERS_APP_TO_PID, App);
         _ -> true
@@ -254,12 +292,12 @@ handle_info({'EXIT', Pid, Reason}, State) ->
   end,
   {noreply, State};
   
-handle_info({bee_updated_normally, #bee{commit_hash = Sha} = Bee, #app{name = AppName} = App}, State) ->
-  % StartedBee#bee{commit_hash = Sha}, App#app{sha = Sha}
-  ?LOG(debug, "app_event_handler got bee_started_normally: ~p, ~p", [Bee, App]),
+handle_info({bee_updated_normally, #bee{revision = Sha} = Bee, #app{name = AppName} = App}, State) ->
+  % StartedBee#bee{revision = Sha}, App#app{revision = Sha}
+  ?LOG(debug, "app_event_handler got bee_updated_normally: ~p, ~p", [Bee, App]),
   case apps:find_by_name(AppName) of
     RealApp when is_record(RealApp, app) ->
-      apps:save(RealApp#app{sha = Sha, latest_error = undefined});
+      apps:save(RealApp#app{revision = Sha, latest_error = undefined});
     _ -> ok
   end,
   case bees:find_by_id(Bee#bee.id) of
@@ -269,7 +307,11 @@ handle_info({bee_updated_normally, #bee{commit_hash = Sha} = Bee, #app{name = Ap
   ok = kill_other_bees(Bee),
   {noreply, State};
 
-handle_info({bee_started_normally, _Bee, _App}, State) ->
+handle_info({bee_started_normally, Bee, App}, State) ->
+  case ets:lookup(?LAUNCHERS_APP_TO_PID, App) of
+    [{_Pid, _App, Caller, _Time}] -> Caller ! {bee_started_normally, Bee};
+    _ -> ok
+  end,
   {noreply, State};
 
 % {error, {updating, {error, {babysitter, {app,"fake-lvpae",
@@ -313,8 +355,8 @@ handle_info({answer, TransId, Result}, #state{queries = Queries} = State) ->
   end,
   {noreply, State#state{queries = Q}};
 
-
 handle_info(Info, State) ->
+  erlang:display({handle_info, Info}),
   ?LOG(info, "app_manager got: ~p", [Info]),
   {noreply, State}.
 
@@ -337,6 +379,28 @@ code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
 
 %%--------------------------------------------------------------------
+%% Function: handle_join(JoiningPid, Pidlist, State) -> {ok, State} 
+%%     JoiningPid = pid(),
+%%     Pidlist = list() of pids()
+%% Description: Called whenever a node joins the cluster via this node
+%% directly. JoiningPid is the node that joined. Note that JoiningPid may
+%% join more than once. Pidlist contains all known pids. Pidlist includes
+%% JoiningPid.
+%%--------------------------------------------------------------------
+handle_join(_JoiningPid, State) ->
+  {noreply, State}.
+
+%%--------------------------------------------------------------------
+%% Function: handle_leave(LeavingPid, Pidlist, Info, State) -> {ok, State} 
+%%     JoiningPid = pid(),
+%%     Pidlist = list() of pids()
+%% Description: Called whenever a node joins the cluster via another node and
+%%     the joining node is simply announcing its presence.
+%%--------------------------------------------------------------------
+handle_leave(_LeavingPid, _Info, State) ->
+  {ok, State}.
+
+%%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
 handle_queued_call(Fun, From, #state{queries = OldTransQ, last_trans = LastTrans} = State) ->
@@ -354,7 +418,10 @@ handle_queued_call(Fun, From, #state{queries = OldTransQ, last_trans = LastTrans
 spawn_update_bee_status(Bee, From, Nums) ->
   spawn(fun() ->
     BeeStatus = try_to_connect_to_new_instance(Bee, Nums),
-    RealBee = bees:find_by_id(Bee#bee.id),
+    RealBee = case bees:find_by_id(Bee#bee.id) of
+      RealBee1 when is_record(RealBee1, bee) -> RealBee1;
+      _ -> Bee
+    end,
     bees:save(RealBee#bee{status = BeeStatus}),
     From ! {updated_bee_status, BeeStatus}
   end).
@@ -368,12 +435,12 @@ try_to_connect_to_new_instance(Bee, Attempts) ->
       gen_tcp:close(Sock),
       ready;
     _ -> 
-      timer:sleep(500),
+      timer:sleep(200),
       try_to_connect_to_new_instance(Bee, Attempts - 1)
   end.
   
 % Add an application based on it's proplist
-add_application_by_configuration(ConfigProplist, UserEmail) ->
+internal_add_application(ConfigProplist, UserEmail) ->
   case apps:new(ConfigProplist) of
     NewApp when is_record(NewApp, app) ->
       {ok, _App} = apps:save(NewApp),
@@ -497,7 +564,6 @@ maintain_bee_counts() ->
 start_number_of_bees(_, 0) -> ok;
 start_number_of_bees(Name, Count) ->
   % This entire method will only start 1 instance at a time because
-  % we track the pending instances in app_handler.
   % But keep this in here for the time being until we should address it
   start_new_instance_by_name(Name),
   start_number_of_bees(Name, Count - 1).
@@ -528,7 +594,7 @@ cleanup_bee(#bee{status = terminated} = B) ->
   ?QSTORE:delete_queue(?WAIT_DB, B#bee.app_name);
   % bees:delete(B);
 cleanup_bee(B) ->
-  (catch app_manager:request_to_terminate_bee(B)),
+  (catch app_manager:request_to_terminate_bee(B, self())),
   ?QSTORE:delete_queue(?WAIT_DB, B#bee.app_name).
   % bees:delete(B).
 
@@ -541,29 +607,31 @@ start_new_instance_by_name(Name) ->
     App -> start_new_instance_by_app(App)
   end.
 
-start_new_instance_by_app(App) ->
+start_new_instance_by_app(App) -> start_new_instance_by_app(App, undefined).
+start_new_instance_by_app(App, Caller) ->
   case ets:lookup(?LAUNCHERS_APP_TO_PID, App) of
     [Tuple] -> 
       try_to_clean_up_ets_tables(?LAUNCHERS_APP_TO_PID, ?LAUNCHERS_PID_TO_APP, Tuple),
       already_starting_instance;
     _ ->
-      app_launcher_fsm_go(?LAUNCHERS_APP_TO_PID, ?LAUNCHERS_PID_TO_APP, launch, App, false)
+      app_launcher_fsm_go(?LAUNCHERS_APP_TO_PID, ?LAUNCHERS_PID_TO_APP, launch, App, Caller, false)
   end.
   
-update_instance_by_app(App) ->
+update_instance_by_app(App) -> update_instance_by_app(App, undefined).
+update_instance_by_app(App, Caller) ->
   case ets:lookup(?UPDATERS_APP_TO_PID, App) of
     [Tuple] -> 
       try_to_clean_up_ets_tables(?UPDATERS_APP_TO_PID, ?UPDATERS_PID_TO_APP, Tuple),
       already_updating_instance;
     _ ->
-      app_launcher_fsm_go(?UPDATERS_APP_TO_PID, ?UPDATERS_PID_TO_APP, update, App, true)
+      app_launcher_fsm_go(?UPDATERS_APP_TO_PID, ?UPDATERS_PID_TO_APP, update, App, Caller, true)
   end.
 
 expand_instance_by_app(App) -> start_new_instance_by_app(App).
 
 % PRIVATE
-app_launcher_fsm_go(AppToPidTable, PidToAppTable, Method, App, Updating) ->
-  case App#app.type of
+app_launcher_fsm_go(AppToPidTable, PidToAppTable, Method, App, Caller, Updating) ->
+  case App#app.dynamic of
     static -> ok;
     _T ->
       process_flag(trap_exit, true),
@@ -573,14 +641,14 @@ app_launcher_fsm_go(AppToPidTable, PidToAppTable, Method, App, Updating) ->
         {ok, P} ->
           erlang:link(P),
           rpc:call(node(P), app_launcher_fsm, Method, [P]),
-          ets:insert(AppToPidTable, {App, P, Now}), 
-          ets:insert(PidToAppTable, {P, App, Now}), 
+          ets:insert(AppToPidTable, {App, P, Caller, Now}), 
+          ets:insert(PidToAppTable, {P, App, Caller, Now}), 
           P;
         Else -> Else
       end
   end.
 
-try_to_clean_up_ets_tables(AppToPidTable, PidToAppTable, {App, Pid, Time}) ->
+try_to_clean_up_ets_tables(AppToPidTable, PidToAppTable, {App, Pid, _Caller, Time}) ->
   case date_util:now_to_seconds() - Time > ?ACTION_TIMEOUT of
     true ->
       true = ets:delete(PidToAppTable, Pid),
@@ -589,11 +657,11 @@ try_to_clean_up_ets_tables(AppToPidTable, PidToAppTable, {App, Pid, Time}) ->
   end.
 
 % Kill off all other bees
-kill_other_bees(#bee{app_name = Name, id = StartedId, commit_hash = StartedSha} = _StartedBee) ->
+kill_other_bees(#bee{app_name = Name, id = StartedId, revision = StartedSha} = _StartedBee) ->
   case bees:find_all_by_name(Name) of
     [] -> ok;
     CurrentBees ->
-      OtherBees = lists:filter(fun(B) -> B#bee.id =/= StartedId orelse B#bee.commit_hash =/= StartedSha end, CurrentBees),
+      OtherBees = lists:filter(fun(B) -> B#bee.id =/= StartedId orelse B#bee.revision =/= StartedSha end, CurrentBees),
       lists:map(fun(B) -> ?NOTIFY({bee, terminate_please, B}) end, OtherBees),
       ok
   end.
@@ -612,3 +680,31 @@ get_transaction(Q, I, OldQ) ->
     {_E, Q2} ->
       get_transaction(Q2, I, OldQ)
     end.
+
+ets_process_restarter() ->
+  process_flag(trap_exit, true),
+  Pid = spawn_link(?MODULE, start_ets_process, []),
+  catch register(?APP_MANAGER_TABLE_PROCESS, Pid),
+  receive
+    {'EXIT', Pid, normal} -> % not a crash
+      ok;
+    {'EXIT', Pid, shutdown} -> % manual termination, not a crash
+      ok;
+    {'EXIT', Pid, _} ->
+      unregister(?APP_MANAGER_TABLE_PROCESS),
+      ets_process_restarter()
+  end.
+
+start_ets_process() ->
+  TableOpts = [set, named_table, public],
+  
+  lists:map(fun(TableName) ->
+    case catch ets:info(TableName) of
+      undefined -> ets:new(TableName, TableOpts);
+      _ -> ok
+    end
+  end, [?UPDATERS_APP_TO_PID, ?UPDATERS_PID_TO_APP, ?LAUNCHERS_APP_TO_PID, ?LAUNCHERS_PID_TO_APP]),
+  receive
+    kill -> ok;
+    _ -> start_ets_process()
+  end.

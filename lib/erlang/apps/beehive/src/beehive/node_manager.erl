@@ -28,7 +28,6 @@ end).
   dump/1,
   get_next_available/1,
   notify/1,
-  read_babysitter_config/0,
   current_load_of_node/0
 ]).
 
@@ -96,7 +95,7 @@ get_servers() ->
   Plist.
 
 get_servers(router) -> proplists:get_value(bee_store, get_servers(), []);
-get_servers(node) -> proplists:get_value(app_handler, get_servers(), []);
+get_servers(node) -> proplists:get_value(app_manager, get_servers(), []);
 get_servers(storage) -> proplists:get_value(beehive_storage_srv, get_servers(), []);
 
 get_servers(PidType) ->
@@ -188,9 +187,7 @@ init(Args) ->
   
   timer:send_interval(timer:seconds(30), {update_node_stats}),
     
-  % Get babysitter situated
-  babysitter_config:init(),  
-  read_babysitter_config(),
+  beehive_bee_object:init(),
   
   % Start the database and application
   timer:send_interval(timer:minutes(1), {update_node_pings}),
@@ -298,17 +295,17 @@ get_server_load([H|Rest], Acc) ->
   Stat = rpc:call(node(H), ?MODULE, current_load_of_node, []),
   get_server_load(Rest, [{H, Stat}|Acc]).
 
-read_babysitter_config() ->
-  DefaultConfigDir    = filename:join([?BH_ROOT, "etc", "app_templates"]),
-  babysitter_config:read(DefaultConfigDir),
-  
-  case config:search_for_application_value(app_config_dir) of
-    undefined -> ok;
-    SpecifiedConfigDir ->
-      try
-        babysitter_config:read(SpecifiedConfigDir)
-      catch X:Reason ->
-        erlang:display({error, {babysitter_config, {error, X, Reason}}}),
-        ok
-      end
-  end.
+% read_babysitter_config() ->
+%   DefaultConfigDir    = filename:join([?BH_ROOT, "etc", "app_templates"]),
+%   babysitter_config:read(DefaultConfigDir),
+%   
+%   case config:search_for_application_value(app_config_dir) of
+%     undefined -> ok;
+%     SpecifiedConfigDir ->
+%       try
+%         babysitter_config:read(SpecifiedConfigDir)
+%       catch X:Reason ->
+%         erlang:display({error, {babysitter_config, {error, X, Reason}}}),
+%         ok
+%       end
+%   end.
