@@ -65,8 +65,8 @@ git_clone() ->
   ]),
   % Pull one with a specific revision
   Pid = spawn(fun() -> responding_loop([]) end),
-  beehive_bee_object:clone([{revision, "281580bc654138df2ca0d7665bc1ac84d4677fc8"}|git_repos_props()], Pid),
-  ?assertEqual("281580bc654138df2ca0d7665bc1ac84d4677fc8", get_current_revision(git)),
+  beehive_bee_object:clone([{revision, "ab4b11e0587d8a0a70390099127ac6eac60d3768"}|git_repos_props()], Pid),
+  ?assertEqual("ab4b11e0587d8a0a70390099127ac6eac60d3768", get_current_revision(git)),
   
   % Do run it with an after command
   beehive_bee_object:clone([{post, "touch NEW_FILE"}|git_repos_props()]),
