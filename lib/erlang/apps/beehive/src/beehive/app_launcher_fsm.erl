@@ -134,14 +134,6 @@ preparing({launch}, #state{from = From, app = App, bee = Bee, latest_sha = Sha} 
   beehive_bee_object:start(App#app.type, App#app.name, Port, Self),
   {next_state, launching, State};
 
-  % case gen_cluster:run(app_handler, {start_new_instance, App, Sha, self(), From}) of
-  %   {error, Reason} -> {stop, Reason, State};
-  %   Pid ->
-  %     Node = node(Pid),
-  %     NewState = State#state{bee = Bee#bee{host_node = Node}},
-  %     {next_state, launching, NewState}
-  % end;
-
 preparing({start_new}, State) ->
   self() ! {bee_built, []},
   {next_state, updating, State};
@@ -299,12 +291,6 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-start_instance(#state{from = From, app = App, bee = Bee, latest_sha = Sha} = State) ->
-  Pid = node_manager:get_next_available(node),
-  Node = node(Pid),
-  rpc:cast(Node, app_handler, start_new_instance, [App, Sha, self(), From]),
-  State#state{bee = Bee#bee{host_node = Node}}.
-
 stop_error(Msg, #state{from = From, app = App} = State) ->
   Tuple = {?MODULE, error, Msg, App},
   From ! Tuple,

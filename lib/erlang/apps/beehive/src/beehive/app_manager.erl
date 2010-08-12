@@ -206,7 +206,6 @@ handle_cast({request_to_start_new_bee_by_name, Name, Caller}, State) ->
   {noreply, State};
 
 handle_cast({request_to_terminate_bee, Bee, Caller}, State) ->
-  % rpc:cast(Node, app_handler, stop_instance, [Bee]),
   % app_killer_fsm
   {ok, P} = app_killer_fsm:start_link(Bee, Caller),
   % erlang:display({hi, in, request_to_terminate_bee, P}),
@@ -564,7 +563,6 @@ maintain_bee_counts() ->
 start_number_of_bees(_, 0) -> ok;
 start_number_of_bees(Name, Count) ->
   % This entire method will only start 1 instance at a time because
-  % we track the pending instances in app_handler.
   % But keep this in here for the time being until we should address it
   start_new_instance_by_name(Name),
   start_number_of_bees(Name, Count - 1).
