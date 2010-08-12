@@ -76,7 +76,6 @@ init(Args) ->
     % Start the event manager
     ?CHILD(event_manager, worker, Args),
     % ?CHILD(babysitter, worker, Args),
-    ?CHILD(app_handler, worker, Args),
     % Storage stuff
     ?CHILD(beehive_storage_srv, worker, Args),
     ?CHILD(beehive_git_srv, worker, Args),

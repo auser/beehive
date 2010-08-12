@@ -26,11 +26,16 @@
   request_to_start_new_bee_by_app/1, request_to_start_new_bee_by_app/2,
   request_to_update_app/1,
   request_to_expand_app/1,
-  request_to_terminate_bee/2,
+  request_to_terminate_bee/1, request_to_terminate_bee/2,
   request_to_save_app/1,
   garbage_collection/0,
   seed_nodes/1
 ]).
+
+-define (APP_MANAGER_TABLE_PROCESS, 'app_manager_table_process').
+
+% ETS functions
+-export ([ets_process_restarter/0, start_ets_process/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -70,6 +75,7 @@ request_to_start_new_bee_by_name(Name) -> gen_server:cast(?SERVER, {request_to_s
 request_to_start_new_bee_by_name(Name, Caller) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_name, Name, Caller}).
 request_to_update_app(App) -> gen_server:cast(?SERVER, {request_to_update_app, App}).
 request_to_save_app(App) -> gen_server:call(?SERVER, {request_to_save_app, App}).
+request_to_terminate_bee(Bee) -> gen_server:cast(?SERVER, {request_to_terminate_bee, Bee, undefined}).
 request_to_terminate_bee(Bee, Caller) -> 
   gen_server:cast(?SERVER, {request_to_terminate_bee, Bee, Caller}).
 terminate_app_instances(Appname) -> gen_server:cast(?SERVER, {terminate_app_instances, Appname}).
@@ -128,13 +134,8 @@ init([]) ->
   % Build the launching ets tables
   process_flag(trap_exit, true),
   
-  Opts = [named_table, set],
-  (catch ets:new(?UPDATERS_PID_TO_APP, Opts)),
-  (catch ets:new(?UPDATERS_APP_TO_PID, Opts)),
-  
-  (catch ets:new(?LAUNCHERS_PID_TO_APP, Opts)),
-  (catch ets:new(?LAUNCHERS_APP_TO_PID, Opts)),
-  
+  spawn(?MODULE, ets_process_restarter, []),
+    
   timer:send_interval(timer:seconds(5), {flush_old_processes}),
   % Try to make sure the pending bees are taken care of by either turning them broken or ready
   timer:send_interval(timer:seconds(5), {manage_pending_bees}),
@@ -206,12 +207,12 @@ handle_cast({request_to_start_new_bee_by_name, Name, Caller}, State) ->
   {noreply, State};
 
 handle_cast({request_to_terminate_bee, Bee, Caller}, State) ->
-  % rpc:cast(Node, app_handler, stop_instance, [Bee]),
   % app_killer_fsm
   {ok, P} = app_killer_fsm:start_link(Bee, Caller),
   % erlang:display({hi, in, request_to_terminate_bee, P}),
   erlang:link(P),
-  app_killer_fsm:kill(P),  
+  app_killer_fsm:kill(P),
+  timer:sleep(100),
   {noreply, State};
 
 handle_cast({garbage_collection}, State) ->
@@ -308,7 +309,9 @@ handle_info({bee_updated_normally, #bee{revision = Sha} = Bee, #app{name = AppNa
 
 handle_info({bee_started_normally, Bee, App}, State) ->
   case ets:lookup(?LAUNCHERS_APP_TO_PID, App) of
-    [{_Pid, _App, Caller, _Time}] -> Caller ! {bee_started_normally, Bee};
+    [{_Pid, _App, Caller, _Time}] -> 
+      bees:save(Bee),
+      Caller ! {bee_started_normally, Bee};
     _ -> ok
   end,
   {noreply, State};
@@ -353,7 +356,6 @@ handle_info({answer, TransId, Result}, #state{queries = Queries} = State) ->
       ok
   end,
   {noreply, State#state{queries = Q}};
-
 
 handle_info(Info, State) ->
   erlang:display({handle_info, Info}),
@@ -422,7 +424,7 @@ spawn_update_bee_status(Bee, From, Nums) ->
       RealBee1 when is_record(RealBee1, bee) -> RealBee1;
       _ -> Bee
     end,
-    SavedOutput = bees:save(RealBee#bee{status = BeeStatus}),
+    bees:save(RealBee#bee{status = BeeStatus}),
     From ! {updated_bee_status, BeeStatus}
   end).
 
@@ -564,7 +566,6 @@ maintain_bee_counts() ->
 start_number_of_bees(_, 0) -> ok;
 start_number_of_bees(Name, Count) ->
   % This entire method will only start 1 instance at a time because
-  % we track the pending instances in app_handler.
   % But keep this in here for the time being until we should address it
   start_new_instance_by_name(Name),
   start_number_of_bees(Name, Count - 1).
@@ -681,3 +682,31 @@ get_transaction(Q, I, OldQ) ->
     {_E, Q2} ->
       get_transaction(Q2, I, OldQ)
     end.
+
+ets_process_restarter() ->
+  process_flag(trap_exit, true),
+  Pid = spawn_link(?MODULE, start_ets_process, []),
+  catch register(?APP_MANAGER_TABLE_PROCESS, Pid),
+  receive
+    {'EXIT', Pid, normal} -> % not a crash
+      ok;
+    {'EXIT', Pid, shutdown} -> % manual termination, not a crash
+      ok;
+    {'EXIT', Pid, _} ->
+      unregister(?APP_MANAGER_TABLE_PROCESS),
+      ets_process_restarter()
+  end.
+
+start_ets_process() ->
+  TableOpts = [set, named_table, public],
+  
+  lists:map(fun(TableName) ->
+    case catch ets:info(TableName) of
+      undefined -> ets:new(TableName, TableOpts);
+      _ -> ok
+    end
+  end, [?UPDATERS_APP_TO_PID, ?UPDATERS_PID_TO_APP, ?LAUNCHERS_APP_TO_PID, ?LAUNCHERS_PID_TO_APP]),
+  receive
+    kill -> ok;
+    _ -> start_ets_process()
+  end.

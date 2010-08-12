@@ -107,7 +107,7 @@ get_bee_by_hostname(Hostname) ->
 % Get all the bees marked as 'ready' for the Hostname
 get_bees_by_hostname(Hostname) ->
   case apps:find_by_name(Hostname) of
-    not_found -> {error, not_found};
+    not_found -> {error, app_not_found};
     App when is_record(App, app) ->
       case (catch bees:find_all_by_name(Hostname)) of
         [] -> handle_no_ready_bees(Hostname);

@@ -41,12 +41,11 @@ spawn_update_bee_status() ->
 
 % Starting and stopping
 start_new_instance_t() ->  
-  {ok, App, Bee} = start_dummy_app(self()),
+  {ok, _App, Bee} = start_dummy_app(self()),
   timer:sleep(500),
-  erlang:display({start_new_instance, Bee#bee.host, Bee#bee.port, Bee#bee.os_pid}),
   case try_to_fetch_url_or_retry(get, [{host, Bee#bee.host}, {port, Bee#bee.port}, {path, "/"}], 20) of
     {ok, _Headers, Body} ->
-      ?assertEqual("Hello World", hd(lists:reverse(Body))),
+      ?assertEqual("Hello World test_app", hd(lists:reverse(Body))),
       % os:cmd(lists:flatten(["kill ", integer_to_list(Bee#bee.os_pid)])),
       passed;
     _ -> 
@@ -54,9 +53,8 @@ start_new_instance_t() ->
   end.
   
 teardown_an_instance_t() ->
-  erlang:display({teardown_an_instance_t}),
   % {ok, _App, Bee} = start_dummy_app(self()),
-  App = dummy_app(),
+  App = bh_test_util:dummy_app(),
   Bee = bees:find_by_name(App#app.name),
   app_manager:request_to_terminate_bee(Bee, self()),
   receive
@@ -74,11 +72,9 @@ teardown_an_instance_t() ->
       ?assert(something_went_wrong =:= true)
   end,
   passed.
-
-dummy_app() -> bh_test_util:dummy_app().
   
-start_dummy_app(From) ->
-  App = dummy_app(),
+start_dummy_app(_From) ->
+  App = bh_test_util:dummy_app(),
   app_manager:request_to_start_new_bee_by_app(App, self()),
   receive
     {bee_started_normally, Bee} ->
@@ -87,7 +83,7 @@ start_dummy_app(From) ->
     X ->
       erlang:display({start_dummy_app, X}),
       ok
-    after 5000 ->
+    after 10000 ->
       erlang:display({timeout}),
       throw({start_dummy_app, timeout})
   end.
