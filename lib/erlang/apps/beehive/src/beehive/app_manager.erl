@@ -422,7 +422,7 @@ spawn_update_bee_status(Bee, From, Nums) ->
       RealBee1 when is_record(RealBee1, bee) -> RealBee1;
       _ -> Bee
     end,
-    SavedOutput = bees:save(RealBee#bee{status = BeeStatus}),
+    bees:save(RealBee#bee{status = BeeStatus}),
     From ! {updated_bee_status, BeeStatus}
   end).
 
