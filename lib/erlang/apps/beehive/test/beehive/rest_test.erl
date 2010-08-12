@@ -26,6 +26,6 @@ test_connectable() ->
                                [{host, "127.0.0.1"},
                                 {port, 4999},
                                 {path, "/apps.json"},
-                                {headers, [{host, "beehive"}]}]),
+                                {headers, [{"host", "beehive"}]}]),
   ?assertEqual("HTTP/1.0 200 OK", Headers),
   passed.

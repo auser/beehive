@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% File    : users.erl
 %%% Author  : Ari Lerner
-%%% Description : 
+%%% Description :
 %%%
 %%% Created :  Sat Nov 28 21:28:31 PST 2009
 %%%-------------------------------------------------------------------
@@ -19,7 +19,7 @@
   exist/1,
   create/1,
   update/1,
-  delete/1, 
+  delete/1,
   create_new_token_for/1, create_new_token_for/2,
   find_by_token/1,
   is_user_token/2,
@@ -34,9 +34,11 @@ find_by_email(Hostemail) ->
     _ -> not_found
   end.
 
-find_all_by_email(Name) -> 
+find_all_by_email(Name) ->
   case ?DB:read(user, Name) of
     Users when is_list(Users) -> Users;
+    User  when is_record(User, user) -> [User];
+
     _ -> []
   end.
 
@@ -64,7 +66,7 @@ save(User) when is_record(User, user) ->
   RealUser = validate_user(User),
   case catch ?DB:write(user, RealUser#user.email, RealUser) of
     ok -> {ok, RealUser};
-    {'EXIT',{aborted,{no_exists,_}}} -> 
+    {'EXIT',{aborted,{no_exists,_}}} ->
       ?NOTIFY({db, database_not_initialized, user_app}),
       {error, database_not_initialized};
     _E ->
@@ -72,28 +74,28 @@ save(User) when is_record(User, user) ->
       {error, did_not_write}
   end;
 save([]) -> invalid;
-save(Proplists) when is_list(Proplists) -> 
+save(Proplists) when is_list(Proplists) ->
   case from_proplists(Proplists) of
     {error, _} = T -> T;
     User -> save(User)
   end;
 save(Func) when is_function(Func) -> ?DB:save(Func);
 save(Else) -> {error, {cannot_save, Else}}.
-  
+
 % Insert a new user
-create(Given) -> 
+create(Given) ->
   User = new(Given),
   EventMsg = case exist(User#user.email) of
     true -> {user, updated, User};
     false -> {user, created, User}
   end,
-  case save(User) of
+  case save(User#user{password = bh_md5:hex(User#user.password)}) of
     {ok, _} = T ->
       ?NOTIFY(EventMsg),
       T;
     Else -> Else
   end.
-  
+
 update(NewProps) ->
   create(new(NewProps)).
 
@@ -117,28 +119,28 @@ is_user_token(Email, Token) ->
     User ->
       User#user.token =:= Token
   end.
-  
+
 
 % Create a new token for the user
 create_new_token_for(Email, Password) ->
   case find_by_email(Email) of
     User when is_record(User, user) ->
-      case bh_md5:hex(User#user.password) =:= bh_md5:hex(Password) of
+      case User#user.password =:= bh_md5:hex(Password) of
         false -> invalid_password;
         true ->
           create_new_token_for(User)
       end;
     _ -> {error, not_found}
   end.
-  
+
 
 initialize() ->
-  spawn(fun() -> 
+  spawn(fun() ->
     timer:sleep(200),
-    add_root_user() 
+    add_root_user()
   end),
   ok.
-  
+
 % Add the initial root user
 % email: root@getbeehive.com
 % password: 098f6bcd4621d373cade4e832627b4f6
