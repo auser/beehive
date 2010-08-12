@@ -27,6 +27,10 @@ test_post() ->
   {ok, Headers, Body} = post_to_auth([{email, "test@getbeehive.com"},
                                       {password, "test"}]),
   ?assertEqual("HTTP/1.0 200 OK", Headers),
+  BodyStruct = mochijson2:decode(lists:last(Body)),
+  {struct, Json} = BodyStruct,
+  Token = binary_to_list(proplists:get_value(<<"token">>, Json)),
+  ?assert(undefined =/= Token),
   passed.
 
 
@@ -44,9 +48,7 @@ test_post_wrong_password() ->
 
 post_to_auth(Params) ->
   bh_test_util:fetch_url(post,
-                         [{host, "127.0.0.1"},
-                          {port, 4999},
-                          {path, "/auth.json"},
+                         [{path, "/auth.json"},
                           {headers, [{"Content-Type",
                                       "application/x-www-form-urlencoded" }]},
                           {params, Params}

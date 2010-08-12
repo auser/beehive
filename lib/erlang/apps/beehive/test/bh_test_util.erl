@@ -42,31 +42,31 @@ try_to_fetch_url_or_retry(Method, Args, Times) ->
 
 fetch_url(Method, Props) ->
   Host    = proplists:get_value(host, Props, "localhost"),
-  Port    = proplists:get_value(port, Props, undefined),
+  Port    = proplists:get_value(port, Props, 4999),
   Path    = proplists:get_value(path, Props, "/"),
 
   Headers = proplists:get_value(headers, Props, []),
 
   Params  = lists:flatten(lists:map(fun({Key, Value}) ->
-                              lists:flatten([atom_to_list(Key),
-                                             "=", Value, "&"])
-                      end, proplists:get_value(params, Props, []))),
+                                        lists:flatten([atom_to_list(Key),
+                                                       "=", Value, "&"])
+                                    end, proplists:get_value(params, Props, []))),
   case gen_tcp:connect(Host, Port, [binary]) of
     {ok, Sock} ->
 
       RequestLine =
-              lists:flatten(
-                [string:to_upper(atom_to_list(Method)),
-                 " ",
-                 Path,
-                 " HTTP/1.0\r\n",
-                 lists:map(fun({Key, Value}) ->
-                                   lists:flatten([Key, ": ", Value, "\n"])
-                           end, Headers),
-                 lists:flatten(["Content-Length: ", integer_to_list(erlang:length(Params))]),
-                 "\r\n\r\n",
-                 Params,
-                 "\r\n"]),
+        lists:flatten(
+          [string:to_upper(atom_to_list(Method)),
+           " ",
+           Path,
+           " HTTP/1.0\r\n",
+           lists:map(fun({Key, Value}) ->
+                         lists:flatten([Key, ": ", Value, "\n"])
+                     end, Headers),
+           lists:flatten(["Content-Length: ", integer_to_list(erlang:length(Params))]),
+           "\r\n\r\n",
+           Params,
+           "\r\n"]),
       file:write_file(lists:flatten(["tmp",atom_to_list(Method)]), RequestLine),
       gen_tcp:send(Sock, RequestLine),
       request(Sock, []);
