@@ -32,6 +32,11 @@
   seed_nodes/1
 ]).
 
+-define (APP_MANAGER_TABLE_PROCESS, 'app_manager_table_process').
+
+% ETS functions
+-export ([ets_process_restarter/0, start_ets_process/0]).
+
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
@@ -128,13 +133,8 @@ init([]) ->
   % Build the launching ets tables
   process_flag(trap_exit, true),
   
-  Opts = [named_table, set],
-  (catch ets:new(?UPDATERS_PID_TO_APP, Opts)),
-  (catch ets:new(?UPDATERS_APP_TO_PID, Opts)),
-  
-  (catch ets:new(?LAUNCHERS_PID_TO_APP, Opts)),
-  (catch ets:new(?LAUNCHERS_APP_TO_PID, Opts)),
-  
+  spawn(?MODULE, ets_process_restarter, []),
+    
   timer:send_interval(timer:seconds(5), {flush_old_processes}),
   % Try to make sure the pending bees are taken care of by either turning them broken or ready
   timer:send_interval(timer:seconds(5), {manage_pending_bees}),
@@ -681,3 +681,31 @@ get_transaction(Q, I, OldQ) ->
     {_E, Q2} ->
       get_transaction(Q2, I, OldQ)
     end.
+
+ets_process_restarter() ->
+  process_flag(trap_exit, true),
+  Pid = spawn_link(?MODULE, start_ets_process, []),
+  catch register(?APP_MANAGER_TABLE_PROCESS, Pid),
+  receive
+    {'EXIT', Pid, normal} -> % not a crash
+      ok;
+    {'EXIT', Pid, shutdown} -> % manual termination, not a crash
+      ok;
+    {'EXIT', Pid, _} ->
+      unregister(?APP_MANAGER_TABLE_PROCESS),
+      ets_process_restarter()
+  end.
+
+start_ets_process() ->
+  TableOpts = [set, named_table, public],
+  
+  lists:map(fun(TableName) ->
+    case catch ets:info(TableName) of
+      undefined -> ets:new(TableName, TableOpts);
+      _ -> ok
+    end
+  end, [?UPDATERS_APP_TO_PID, ?UPDATERS_PID_TO_APP, ?LAUNCHERS_APP_TO_PID, ?LAUNCHERS_PID_TO_APP]),
+  receive
+    kill -> ok;
+    _ -> start_ets_process()
+  end.

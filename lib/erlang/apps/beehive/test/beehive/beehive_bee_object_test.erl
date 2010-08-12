@@ -3,9 +3,10 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -define (DEBUG, false).
--define (CLEANUP (Type), fun() ->
+-define (CLEANUP, fun() ->
   case ?DEBUG of
-    false -> clean_up_dir(Type);
+    false -> 
+      lists:map(fun(Dir) -> clean_up_dir(Dir) end, ["squashed", "run"]);
     true -> ok
   end
 end()).
@@ -23,6 +24,7 @@ setup() ->
   ok.
   
 teardown(_X) ->
+  ?CLEANUP,
   ok.
 
 all_test_() ->
@@ -40,7 +42,7 @@ all_test_() ->
         ,fun bundle_type/0
         ,fun mount_t/0
         ,fun start_t/0
-        % ,fun stop_t/0
+        ,fun stop_t/0
         % ,fun cleanup_t/0
         % ,fun send_t/0
         % ,fun have_bee_t/0
@@ -88,7 +90,7 @@ git_bundle() ->
   file:make_dir(BeeDir),
   O = string:tokens(os:cmd(["tar -C ", BeeDir," -zxf ", BeeFile, " && ls ", BeeDir]), "\n"),
   ?assert(lists:member("DUMMY_FILE", O)),
-  rm_rf(filename:join([related_dir(), "squashed", "testing_bee_out"])),
+  rm_rf(BeeDir),
   ?DPRINT({git_bundle, passed}),
   passed.
 
@@ -144,10 +146,7 @@ responding_from() ->
   passed.
 
 ls_bee() ->
-  Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
-  FixtureDir = filename:join([Dir, "test", "fixtures"]),
-  ReposDir = filename:join([Dir, "test", "fixtures", "dummy_srv"]),
-  ReposUrl = lists:concat(["file://", ReposDir]),
+  ReposUrl = dummy_git_repos_url(),
   
   NewProps = [{name, "crazy_name-045"},{url, ReposUrl},{vcs_type, git}],
   beehive_bee_object:bundle([{type, python}|NewProps], self()),
@@ -180,7 +179,7 @@ mount_t() ->
 
 start_t() ->
   Host = "127.0.0.1",
-  Port = 9191,
+  Port = 9192,
   beehive_bee_object:bundle([{type, rack}|git_repos_props()]),
   Pid = spawn(fun() -> responding_loop([]) end),
   beehive_bee_object:start(rack, "beehive_bee_object_test_app", Port, Pid),
@@ -192,7 +191,7 @@ start_t() ->
     {error,econnrefused} -> 
       ?assert(false)
   end,
-  beehive_bee_object:stop(rack, "beehive_bee_object_test_app"),
+  beehive_bee_object:stop("beehive_bee_object_test_app"),
   ?DPRINT({start_t, passed}),
   % case bh_test_util:try_to_fetch_url_or_retry(get, [{host, "127.0.0.1"}, {port, Port}, {path, "/"}], 20) of
   %   {ok, _Headers, Body} ->
@@ -206,11 +205,14 @@ start_t() ->
 stop_t() ->
   Host = "127.0.0.1",
   Port = 9191,
-  beehive_bee_object:bundle([{type, rack}|git_repos_props()]),
-  beehive_bee_object:mount(rack, "beehive_bee_object_test_app"),
+  ReposUrl = dummy_git_repos_url(),
+  Name = "app_intended_to_test_stopping",
+  NewProps = [{name, Name},{url, ReposUrl},{vcs_type, git},{type, rack},{fixture_dir, fixture_dir()}],
   Pid = spawn(fun() -> responding_loop([]) end),
-  beehive_bee_object:start(rack, "beehive_bee_object_test_app", Port, Pid),
-  beehive_bee_object:stop(rack, "beehive_bee_object_test_app"),
+  beehive_bee_object:bundle(NewProps, Pid),
+  beehive_bee_object:start(rack, Name, Port, Pid),
+  timer:sleep(100),
+  beehive_bee_object:stop(Name, Pid),
   timer:sleep(500),
   case catch gen_tcp:connect(Host, Port, [binary]) of
     {ok, Sock} -> 
@@ -252,13 +254,10 @@ have_bee_t() ->
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 git_repos_props() ->
-  Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
-  FixtureDir = filename:join([Dir, "test", "fixtures"]),
-  ReposDir = filename:join([Dir, "test", "fixtures", "dummy_git"]),
-  ReposUrl = lists:concat(["file://", ReposDir]),
+  ReposUrl = dummy_git_repos_url(),
   [
     {name, "beehive_bee_object_test_app"}, {vcs_type, git}, {url, ReposUrl},
-    {fixture_dir, FixtureDir}
+    {fixture_dir, fixture_dir()}
   ].
 
 get_current_revision(git) ->
@@ -268,12 +267,21 @@ get_current_revision(git) ->
   os:cmd(lists:flatten(["cd ", OriginalCwd])),
   string:strip(Rev, right, $\n).
 
-clean_up_dir(git) ->
-  rm_rf(related_dir()).
+clean_up_dir(Dir) ->
+  rm_rf(filename:join([related_dir(),Dir])).
 
 rm_rf(Dir) -> 
   bh_file_utils:rm_rf(Dir).
-  
+
+dummy_git_repos_url() ->
+  Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
+  ReposDir = filename:join([Dir, "test", "fixtures", "dummy_git"]),
+  lists:concat(["file://", ReposDir]).
+
+fixture_dir() ->
+  Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
+  filename:join([Dir, "test", "fixtures"]).
+
 responding_loop(Acc) ->
   receive
     kill -> ok;
@@ -281,7 +289,7 @@ responding_loop(Acc) ->
       From ! {ok, Acc},
       responding_loop(Acc);
     {data, Data} -> 
-      % erlang:display({got, Data}),
+      ?DPRINT({got, Data}),
       responding_loop([Data|Acc])
   end.
 

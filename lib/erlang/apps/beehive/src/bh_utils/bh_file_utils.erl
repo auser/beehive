@@ -71,21 +71,18 @@ walk(Path, Level, Fun) ->
 		directory ->
 			Children = filelib:wildcard(filename:join([Path, "*"])),
 			case Children of
-			 [] -> Fun({directory, Level, Path});
-			 _ ->
-			  lists:foreach(fun(P) -> walk(P, Level + 1, Fun) end, Children),
-			  Fun({directory, Level, Path})
-			end
+			 [] -> ok;
+			 _ -> lists:foreach(fun(P) -> walk(P, Level + 1, Fun) end, Children)
+			end,
+			Fun({directory, Level, Path})
 	end.
 
 % DELETE ALL
 rm_rf(Dir) ->
   bh_file_utils:walk(Dir, 0, fun({Type, _Level, Path}) ->
     case Type of
-      directory -> 
-        file:del_dir(Path);
-      _ -> 
-        file:delete(Path)
+      directory -> file:del_dir(Path);
+      _ -> file:delete(Path)
     end
   end),
   file:del_dir(Dir).

@@ -14,7 +14,7 @@
   bundle/1,bundle/2,
   mount/2, mount/3,
   start/3, start/4,
-  stop/2, stop/3,
+  stop/1, stop/2,
   unmount/2, unmount/3,
   have_bee/1,
   info/1,
@@ -72,6 +72,8 @@ clone(#bee_object{type=Type, bundle_dir=BundleDir, revision=Rev}=BeeObject, From
   case beehive_bee_object_config:get_or_default(clone, Type) of
     {error, Reason} -> {error, {clone, Reason}};
     AfterClone -> 
+    % Cleanup before...
+    rm_rf(BundleDir),
     % Run before, if it needs to run
     run_hook_action(pre, BeeObject, From),
     
@@ -112,20 +114,20 @@ bundle(#bee_object{type = Type, bundle_dir=NBundleDir} = BeeObject, From) when i
       send_to(From, CloneError),
       CloneError;
     _E ->
-      BundleDir = filename:dirname(NBundleDir),
+      _BundleDir = filename:dirname(NBundleDir),
       run_hook_action(pre, BeeObject, From),
       case beehive_bee_object_config:get_or_default(bundle, Type) of
         {error, Reason} -> {error, {bundle, Reason}};
         BeforeBundle ->
           % Run the bundle pre config first, then the bundle command
-          case run_in_directory_with_file(BeeObject, From, BundleDir, BeforeBundle) of
+          case run_in_directory_with_file(BeeObject, From, NBundleDir, BeforeBundle) of
             {error, _} = T2 -> T2;
             _BeforeActionOut -> 
               SquashCmd = proplists:get_value(bundle, config_props()),
               Proplist = to_proplist(BeeObject),
               Str = template_command_string(SquashCmd, Proplist),
-
-              cmd(Str, BundleDir, Proplist, From),
+              
+              cmd(Str, NBundleDir, Proplist, From),
               
               write_info_about_bee(BeeObject),
               run_hook_action(post, BeeObject, From),
@@ -152,7 +154,7 @@ write_info_about_bee(#bee_object{
   end,
   
   Info =  [{revision, CheckedRev}, {bee_size, Fileinfo#file_info.size},  {created_at, calendar:datetime_to_gregorian_seconds(Fileinfo#file_info.ctime)}|to_proplist(BeeObject)],
-    
+  
   NewDict = lists:foldl(fun({K,V}, Acc) -> 
     case V of
       undefined -> Acc;
@@ -170,7 +172,7 @@ mount(Type, Name, From) ->
   case beehive_bee_object_config:get_or_default(mount, Type) of
     {error, _} = T -> 
       send_to(From, T),
-      T;
+      throw(T);
     AfterMountScript ->
       BeeFile = find_bee_file(Name),
       MountRootDir = config:search_for_application_value(run_dir, ?BEEHIVE_DIR("run")),
@@ -207,24 +209,24 @@ start(Type, Name, Port, From) ->
       FoundBeeObject = find_bee(Name),
       BeeObject = FoundBeeObject#bee_object{port = Port, run_dir = BeeDir},
 
+      {ok, PidFilename, PidIo} = temp_file(),
+      file:close(PidIo),
       % BeeObject = from_proplists([{name, Name}, {type, Type}, {bee_file, BeeFile}, {run_dir, BeeDir}, {port, Port}]),
-      spawn(fun() ->
+      CmdProcessPid = spawn(fun() ->
         {ok, ScriptFilename, ScriptIo} = temp_file(),
         file:write(ScriptIo, StartScript),
         try
-          {ok, PidFilename, PidIo} = temp_file(),
-          file:close(PidIo),
-
           {Pid, Ref, Tag} = async_command("/bin/sh", [ScriptFilename], BeeDir, [{pidfile, PidFilename}|to_proplist(BeeObject)], From),
-          timer:sleep(300),
-          OsPid = read_pid_file_or_retry(PidFilename, 50),
-          file:delete(PidFilename),
+          % Hardcoded delays... eww
+          timer:sleep(1000),
+          OsPid = read_pid_file_or_retry(PidFilename, 100),
           file:delete(ScriptFilename),
+          file:delete(PidFilename),
 
-          RealBeeObject = BeeObject#bee_object{pid = self(), os_pid = OsPid},
+          RealBeeObject = BeeObject#bee_object{os_pid = OsPid},
           write_info_about_bee(RealBeeObject),
           send_to(From, {started, RealBeeObject}),
-          
+                    
           cmd_receive(Pid, [], From, fun(Msg) ->
             case Msg of
               {'DOWN', Ref, process, Pid, {Tag, Data}} -> Data;
@@ -235,7 +237,8 @@ start(Type, Name, Port, From) ->
                     os:cmd(lists:flatten(["kill ", integer_to_list(OsPid)]));
                   _ -> ok
                 end;
-              E -> 
+              E ->
+                erlang:display({cmd_receive,process,received,E,Msg}),
                 ok
             end
           end)
@@ -243,18 +246,22 @@ start(Type, Name, Port, From) ->
           % Just in case
           file:delete(ScriptFilename) 
         end
-      end)
+      end),
+      write_info_about_bee(BeeObject#bee_object{pid = CmdProcessPid})
   end.
 
-stop(Type, Name) -> stop(Type, Name, undefined).
-stop(_Type, Name, From) ->
+stop(Name) -> stop(Name, undefined).
+stop(Name, From) ->
   case find_bee(Name) of
-    #bee_object{pid = Pid} = BeeObject when is_record(BeeObject, bee_object) ->
-      Pid ! {stop},
+    #bee_object{pid = Pid, os_pid = OsPid} = BeeObject when is_record(BeeObject, bee_object)->
+      send_to(Pid, {stop}),
       timer:sleep(500),
-      % Possibly add ensure_stopped_os_pid... 
+      % Possibly add ensure_stopped_os_pid...
       send_to(From, {stopped, BeeObject});
-    _ -> {error, not_running}
+    _ -> 
+      ErrTuple = {error, not_running},
+      send_to(From, ErrTuple),
+      ErrTuple
   end.
 
 % Unmount the bee
@@ -663,7 +670,7 @@ find_bee_file(Name) ->
 find_bee(Name) -> 
   case info(Name) of
     {error, Reason} -> {error, {not_found, Reason}};
-    _ -> from_proplists(info(Name))
+    List -> from_proplists(List)
   end.
 
 find_mounted_bee(Name) ->
@@ -676,14 +683,20 @@ find_mounted_bee(Name) ->
 
 % Cleanup a directory
 rm_rf(Dir) -> 
-  bh_file_utils:rm_rf(Dir).
+  case filelib:is_dir(Dir) of
+    true -> bh_file_utils:rm_rf(Dir);
+    false -> ok
+  end.
 
 read_pid_file_or_retry(_PidFilename, 0) -> throw({error, no_pidfile});
 read_pid_file_or_retry(PidFilename, Retries) ->
   case file:read_file(PidFilename) of
     {ok, Bin} ->
       IntList = chop(erlang:binary_to_list(Bin)),
-      list_to_integer(IntList);
+      case IntList of
+        [] -> read_pid_file_or_retry(PidFilename, Retries - 1);
+        _Int -> erlang:list_to_integer(IntList)
+      end;
     _ ->
       timer:sleep(100),
       read_pid_file_or_retry(PidFilename, Retries - 1)

@@ -56,7 +56,9 @@ teardown_an_instance_t() ->
   % {ok, _App, Bee} = start_dummy_app(self()),
   App = dummy_app(),
   Bee = bees:find_by_name(App#app.name),
-  app_manager:request_to_terminate_bee(Bee, self()),
+  erlang:display({teardown_an_instance_t}),
+  E = app_manager:request_to_terminate_bee(Bee, self()),
+  erlang:display({request_to_terminate_bee, E}),
   receive
     {bee_terminated, _Bee} ->
       timer:sleep(1000),

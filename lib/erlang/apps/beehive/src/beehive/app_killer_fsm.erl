@@ -86,7 +86,7 @@ init([Bee, From]) ->
 %%--------------------------------------------------------------------
 preparing({kill}, #state{bee = #bee{app_name = Name} = _Bee, node = Node} = State) ->
   % If there is no node, we'll assume it's on the localhost
-  rpc:call(Node, beehive_bee_object, stop, [default, Name, self()]),
+  rpc:call(Node, beehive_bee_object, stop, [Name, self()]),
   {next_state, killing, State};
 
 preparing(Other, State) ->
