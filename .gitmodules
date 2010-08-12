@@ -7,3 +7,9 @@
 [submodule "lib/ruby/beehive/vendor/gems/mime-types"]
 	path = lib/ruby/beehive/vendor/gems/mime-types
 	url = http://github.com/halostatue/mime-types.git
+[submodule "lib/erlang/apps/beehive/test/fixtures/dummy_git"]
+	path = lib/erlang/apps/beehive/test/fixtures/dummy_git
+	url = file:///tmp/dummy_git/
+[submodule "lib/erlang/apps/beehive/test/fixtures/dummy_srv"]
+	path = lib/erlang/apps/beehive/test/fixtures/dummy_srv
+	url = file:///tmp/dummy_srv/
