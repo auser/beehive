@@ -38,6 +38,13 @@
   end
 end()).
 
+-define (DEBUG_RM (Dir), fun() ->
+  case ?DEBUG of
+    false -> rm_rf(Dir);
+    true -> ok
+  end
+end()).
+
 -define (BEEHIVE_BEE_OBJECT_INFO_TABLE, 'beehive_bee_object_info').
 -define (BEEHIVE_BEE_OBJECT_INFO_TABLE_PROCESS, 'beehive_bee_object_info_process').
 
@@ -73,7 +80,7 @@ clone(#bee_object{type=Type, bundle_dir=BundleDir, revision=Rev}=BeeObject, From
     {error, Reason} -> {error, {clone, Reason}};
     AfterClone -> 
     % Cleanup before...
-    rm_rf(BundleDir),
+    ?DEBUG_RM(BundleDir),
     % Run before, if it needs to run
     run_hook_action(pre, BeeObject, From),
     
@@ -110,7 +117,7 @@ bundle(#bee_object{type = Type, bundle_dir=NBundleDir} = BeeObject, From) when i
   case clone(BeeObject#bee_object{pre = undefined, post = undefined}, From) of
     {error, {_ExitStatus, _Reason}} = CloneError -> 
       % Cleanup and send error
-      rm_rf(NBundleDir),
+      ?DEBUG_RM(NBundleDir),
       send_to(From, CloneError),
       CloneError;
     _E ->
@@ -132,7 +139,7 @@ bundle(#bee_object{type = Type, bundle_dir=NBundleDir} = BeeObject, From) when i
               write_info_about_bee(BeeObject),
               run_hook_action(post, BeeObject, From),
               
-              rm_rf(NBundleDir),
+              ?DEBUG_RM(NBundleDir),
               info(BeeObject)
           end
       end
@@ -180,7 +187,7 @@ mount(Type, Name, From) ->
       MountCmd = proplists:get_value(mount, config_props()),
 
       % I *think* this should happen here
-      rm_rf(MountDir),
+      ?DEBUG_RM(MountDir),
       BeeObject = from_proplists([{name, Name}, {type, Type}, {bee_file, BeeFile}, 
                                   {run_dir, MountDir}, {bundle_dir, filename:dirname(BeeFile)}
                                 ]),
@@ -304,7 +311,7 @@ cleanup(Name) -> cleanup(Name, undefined).
 cleanup(Name, Caller) ->
   case catch find_mounted_bee(Name) of
     {error, _} -> ok;
-    MountDir -> rm_rf(MountDir)
+    MountDir -> ?DEBUG_RM(MountDir)
   end,
   % In this case, beefile is name
   case catch find_bee_file(Name) of

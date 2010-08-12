@@ -66,6 +66,7 @@ git_clone() ->
   % Pull one with a specific revision
   Pid = spawn(fun() -> responding_loop([]) end),
   beehive_bee_object:clone([{revision, "ab4b11e0587d8a0a70390099127ac6eac60d3768"}|git_repos_props()], Pid),
+  timer:sleep(500),
   ?assertEqual("ab4b11e0587d8a0a70390099127ac6eac60d3768", get_current_revision(git)),
   
   % Do run it with an after command
