@@ -10,10 +10,6 @@
 -include ("http.hrl").
 -export ([get/2, post/2, put/2, delete/2]).
 
-get(["config", "app_templates"], _Data) ->
-  {ok, Types} = babysitter_config:list_configs(),
-  {"types", Types};
-  
 get(_, _Data) -> 
   {"beehive", ["routes"]}.
 
