@@ -43,9 +43,9 @@ all_test_() ->
         ,fun mount_t/0
         ,fun start_t/0
         ,fun stop_t/0
-        % ,fun cleanup_t/0
-        % ,fun send_t/0
-        % ,fun have_bee_t/0
+        ,fun cleanup_t/0
+        ,fun send_t/0
+        ,fun have_bee_t/0
         % ,fun git_clone_with_errors/0
       ]
     }
@@ -95,11 +95,12 @@ git_bundle() ->
   passed.
 
 % git_clone_with_errors() ->
-%   erlang:display({git_clone_with_errors}),
 %   % Non-existing url
-%   Props = proplists:delete(url, git_repos_props()),
-%   clean_up_dir(git),
-%   case (catch beehive_bee_object:bundle([{revision, "HEAD"},{url, "http://this.does.not/exist.git"}|Props])) of
+%   ?DPRINT({git_clone_with_errors}),
+%   Props1 = proplists:delete(url, git_repos_props()),
+%   Props  = proplists:delete(name, Props1),
+%   Pid = spawn(fun() -> responding_loop([]) end),
+%   case (catch beehive_bee_object:bundle([{name, "error_clone"},{url, "http://this.does.not/exist.git"}|Props], Pid)) of
 %     {'EXIT', _} -> ok;
 %     {timeout} -> ok;
 %     Out ->
@@ -178,21 +179,24 @@ mount_t() ->
   passed.
 
 start_t() ->
-  Host = "127.0.0.1",
-  Port = 9192,
-  beehive_bee_object:bundle([{type, rack}|git_repos_props()]),
-  Pid = spawn(fun() -> responding_loop([]) end),
-  beehive_bee_object:start(rack, "beehive_bee_object_test_app", Port, Pid),
-  timer:sleep(500),
-  case catch gen_tcp:connect(Host, Port, [binary]) of
-    {ok, Sock} -> 
-      gen_tcp:close(Sock),
-      ?assert(true);
-    {error,econnrefused} -> 
-      ?assert(false)
+  try
+    Host = "127.0.0.1",
+    Port = 9192,
+    beehive_bee_object:bundle([{type, rack}|git_repos_props()]),
+    Pid = spawn(fun() -> responding_loop([]) end),
+    beehive_bee_object:start(rack, "beehive_bee_object_test_app", Port, Pid),
+    timer:sleep(600),
+    case catch gen_tcp:connect(Host, Port, [binary]) of
+      {ok, Sock} -> 
+        gen_tcp:close(Sock),
+        ?assert(true);
+      {error,econnrefused} -> 
+        ?assert(false)
+    end,
+    ?DPRINT({start_t, passed})
+  after
+    beehive_bee_object:stop("beehive_bee_object_test_app")
   end,
-  beehive_bee_object:stop("beehive_bee_object_test_app"),
-  ?DPRINT({start_t, passed}),
   % case bh_test_util:try_to_fetch_url_or_retry(get, [{host, "127.0.0.1"}, {port, Port}, {path, "/"}], 20) of
   %   {ok, _Headers, Body} ->
   %     ?assertEqual("Hello world", Body),
@@ -209,17 +213,21 @@ stop_t() ->
   Name = "app_intended_to_test_stopping",
   NewProps = [{name, Name},{url, ReposUrl},{vcs_type, git},{type, rack},{fixture_dir, fixture_dir()}],
   Pid = spawn(fun() -> responding_loop([]) end),
-  beehive_bee_object:bundle(NewProps, Pid),
-  beehive_bee_object:start(rack, Name, Port, Pid),
-  timer:sleep(100),
-  beehive_bee_object:stop(Name, Pid),
-  timer:sleep(500),
-  case catch gen_tcp:connect(Host, Port, [binary]) of
-    {ok, Sock} -> 
-      gen_tcp:close(Sock),
-      ?assert(false);
-    {error,econnrefused} -> 
-      ?assert(true)
+  try
+    beehive_bee_object:bundle(NewProps, Pid),
+    beehive_bee_object:start(rack, Name, Port, Pid),
+    timer:sleep(100),
+    beehive_bee_object:stop(Name, Pid),
+    timer:sleep(500),
+    case catch gen_tcp:connect(Host, Port, [binary]) of
+      {ok, Sock} -> 
+        gen_tcp:close(Sock),
+        ?assert(false);
+      {error,econnrefused} -> 
+        ?assert(true)
+    end
+  after
+    beehive_bee_object:stop(Name, Pid)
   end,
   ?DPRINT({stop_t, passed}),
   passed.

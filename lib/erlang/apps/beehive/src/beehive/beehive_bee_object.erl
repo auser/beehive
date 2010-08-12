@@ -122,7 +122,7 @@ bundle(#bee_object{type = Type, bundle_dir=NBundleDir} = BeeObject, From) when i
           % Run the bundle pre config first, then the bundle command
           case run_in_directory_with_file(BeeObject, From, NBundleDir, BeforeBundle) of
             {error, _} = T2 -> T2;
-            _BeforeActionOut -> 
+            _BeforeActionOut ->
               SquashCmd = proplists:get_value(bundle, config_props()),
               Proplist = to_proplist(BeeObject),
               Str = template_command_string(SquashCmd, Proplist),
@@ -253,7 +253,7 @@ start(Type, Name, Port, From) ->
 stop(Name) -> stop(Name, undefined).
 stop(Name, From) ->
   case find_bee(Name) of
-    #bee_object{pid = Pid, os_pid = OsPid} = BeeObject when is_record(BeeObject, bee_object)->
+    #bee_object{pid = Pid} = BeeObject when is_record(BeeObject, bee_object)->
       send_to(Pid, {stop}),
       timer:sleep(500),
       % Possibly add ensure_stopped_os_pid...
@@ -441,11 +441,11 @@ get_current_sha(BeeObject) ->
 % Action
 % Props
 run_action_in_directory(Action, #bee_object{vcs_type = VcsType, bundle_dir = BundleDir} = BeeObject, From) ->
-  ?DEBUG_PRINT({run_action_in_directory, action, Action}),
   case proplists:get_value(Action, config_props(VcsType)) of
     undefined -> throw({error, action_not_defined, Action});
     FoundAction -> 
       Str = template_command_string(FoundAction, to_proplist(BeeObject)),
+      ?DEBUG_PRINT({run_action_in_directory, action, Action, Str}),
       run_command_in_directory(Str, BundleDir, From, BeeObject)
   end.
   
