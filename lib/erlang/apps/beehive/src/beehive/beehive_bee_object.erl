@@ -246,7 +246,8 @@ start(Type, Name, Port, From) ->
               {stop} ->
                 case OsPid of
                   IntPid when is_integer(IntPid) andalso IntPid > 1 ->
-                    os:cmd(lists:flatten(["kill ", integer_to_list(OsPid)]));
+                    os:cmd(lists:flatten(["kill ", integer_to_list(OsPid)])),
+                    send_to(From, {stopped, RealBeeObject});
                   _ -> ok
                 end;
               E ->
