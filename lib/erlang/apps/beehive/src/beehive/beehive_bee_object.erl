@@ -219,7 +219,12 @@ start(Type, Name, Port, From) ->
           {Pid, Ref, Tag} = async_command("/bin/sh", [ScriptFilename], BeeDir, [{pidfile, PidFilename}|to_proplist(BeeObject)], From),
           % Hardcoded delays... eww
           timer:sleep(1000),
-          OsPid = read_pid_file_or_retry(PidFilename, 100),
+          OsPid = case read_pid_file_or_retry(PidFilename, 100) of
+            {error, _} ->
+              timer:sleep(100),
+              read_pid_file_or_retry(PidFilename, 100);
+            PidInt -> PidInt
+          end,
           file:delete(ScriptFilename),
           file:delete(PidFilename),
 
@@ -688,7 +693,7 @@ rm_rf(Dir) ->
     false -> ok
   end.
 
-read_pid_file_or_retry(_PidFilename, 0) -> throw({error, no_pidfile});
+read_pid_file_or_retry(_PidFilename, 0) -> {error, no_pidfile};
 read_pid_file_or_retry(PidFilename, Retries) ->
   case file:read_file(PidFilename) of
     {ok, Bin} ->
