@@ -45,7 +45,7 @@ start_new_instance_t() ->
   timer:sleep(500),
   case try_to_fetch_url_or_retry(get, [{host, Bee#bee.host}, {port, Bee#bee.port}, {path, "/"}], 20) of
     {ok, _Headers, Body} ->
-      ?assertEqual("Hello World", hd(lists:reverse(Body))),
+      ?assertEqual("Hello World test_app", hd(lists:reverse(Body))),
       % os:cmd(lists:flatten(["kill ", integer_to_list(Bee#bee.os_pid)])),
       passed;
     _ -> 
@@ -54,7 +54,7 @@ start_new_instance_t() ->
   
 teardown_an_instance_t() ->
   % {ok, _App, Bee} = start_dummy_app(self()),
-  App = dummy_app(),
+  App = bh_test_util:dummy_app(),
   Bee = bees:find_by_name(App#app.name),
   app_manager:request_to_terminate_bee(Bee, self()),
   receive
@@ -72,11 +72,9 @@ teardown_an_instance_t() ->
       ?assert(something_went_wrong =:= true)
   end,
   passed.
-
-dummy_app() -> bh_test_util:dummy_app().
   
 start_dummy_app(_From) ->
-  App = dummy_app(),
+  App = bh_test_util:dummy_app(),
   app_manager:request_to_start_new_bee_by_app(App, self()),
   receive
     {bee_started_normally, Bee} ->

@@ -26,7 +26,7 @@
   request_to_start_new_bee_by_app/1, request_to_start_new_bee_by_app/2,
   request_to_update_app/1,
   request_to_expand_app/1,
-  request_to_terminate_bee/2,
+  request_to_terminate_bee/1, request_to_terminate_bee/2,
   request_to_save_app/1,
   garbage_collection/0,
   seed_nodes/1
@@ -75,6 +75,7 @@ request_to_start_new_bee_by_name(Name) -> gen_server:cast(?SERVER, {request_to_s
 request_to_start_new_bee_by_name(Name, Caller) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_name, Name, Caller}).
 request_to_update_app(App) -> gen_server:cast(?SERVER, {request_to_update_app, App}).
 request_to_save_app(App) -> gen_server:call(?SERVER, {request_to_save_app, App}).
+request_to_terminate_bee(Bee) -> gen_server:cast(?SERVER, {request_to_terminate_bee, Bee, undefined}).
 request_to_terminate_bee(Bee, Caller) -> 
   gen_server:cast(?SERVER, {request_to_terminate_bee, Bee, Caller}).
 terminate_app_instances(Appname) -> gen_server:cast(?SERVER, {terminate_app_instances, Appname}).
@@ -210,7 +211,8 @@ handle_cast({request_to_terminate_bee, Bee, Caller}, State) ->
   {ok, P} = app_killer_fsm:start_link(Bee, Caller),
   % erlang:display({hi, in, request_to_terminate_bee, P}),
   erlang:link(P),
-  app_killer_fsm:kill(P),  
+  app_killer_fsm:kill(P),
+  timer:sleep(100),
   {noreply, State};
 
 handle_cast({garbage_collection}, State) ->
@@ -352,7 +354,6 @@ handle_info({answer, TransId, Result}, #state{queries = Queries} = State) ->
       ok
   end,
   {noreply, State#state{queries = Q}};
-
 
 handle_info(Info, State) ->
   erlang:display({handle_info, Info}),
