@@ -64,10 +64,11 @@ git_clone() ->
     "cd ", ReposDir, " && echo '", Ts, "' > LATEST_REV && git commit -a -m 'updated time for beehive_bee_object_test_app purposes'"
   ]),
   % Pull one with a specific revision
+  Rev = "7b6221ef298d26167e4ba5da13e55b9af57274e7",
   Pid = spawn(fun() -> responding_loop([]) end),
-  beehive_bee_object:clone([{revision, "ab4b11e0587d8a0a70390099127ac6eac60d3768"}|git_repos_props()], Pid),
+  beehive_bee_object:clone([{revision, Rev}|git_repos_props()], Pid),
   timer:sleep(500),
-  ?assertEqual("ab4b11e0587d8a0a70390099127ac6eac60d3768", get_current_revision(git)),
+  ?assertEqual(Rev, get_current_revision(git)),
   
   % Do run it with an after command
   beehive_bee_object:clone([{post, "touch NEW_FILE"}|git_repos_props()]),
