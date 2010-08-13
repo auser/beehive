@@ -79,7 +79,7 @@ get_user_apps_with_an_app() ->
 post_new_user() ->
   Admin = bh_test_util:admin_user(),
   {ok, Header, Response} =
-    make_post_new( [
+    perform_post_new( [
                      {email, "createduser@bhive.com"},
                      {password, "created"},
                      {token, Admin#user.token }
@@ -91,7 +91,7 @@ post_new_user() ->
 
 post_new_user_bad_auth() ->
   {ok, Header, Response} =
-    make_post_new( [
+    perform_post_new( [
                      {email, "createduser@bhive.com"},
                      {password, "created"},
                      {token, "unauthed" }
@@ -104,7 +104,7 @@ post_new_user_bad_auth() ->
 post_new_user_non_admin_auth() ->
   RegUser = bh_test_util:dummy_user(),
   {ok, Header, Response} =
-    make_post_new( [
+    perform_post_new( [
                      {email, "createduser@bhive.com"},
                      {password, "created"},
                      {token, RegUser#user.token }
@@ -114,10 +114,7 @@ post_new_user_non_admin_auth() ->
                bh_test_util:response_json(Response)),
   passed.
 
-
-
-
-make_post_new(Params) ->
+perform_post_new(Params) ->
   bh_test_util:fetch_url(post,
                          [{path, "/users/new.json"},
                           {headers, [{"Content-Type",
@@ -125,3 +122,4 @@ make_post_new(Params) ->
                           {params, Params}
                          ]).
 
+  
