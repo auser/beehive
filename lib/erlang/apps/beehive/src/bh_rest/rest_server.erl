@@ -237,15 +237,6 @@ atomize_keys(Data) ->
 decode_data_from_request(Req, get) -> atomize_keys(Req:query_params());
 decode_data_from_request(Req, _Meth) -> atomize_keys(Req:post_params()).
 
-decode_data_from_request_into_json(BinData, []) when is_binary(BinData) ->
-  decode_data_from_request_into_json(binary_to_list(BinData), []);
-decode_data_from_request_into_json(Data, []) ->
-  case mochijson2:decode(Data) of
-    {struct, Struct} -> convert_to_struct(Struct);
-    B -> convert_to_struct(B)
-  end;
-decode_data_from_request_into_json(Key, Value) -> {Key, Value}.
-
 not_found_web(Resp, Docroot, _Redirect) -> serve_file("not_found.html", Resp:status_code(404), Docroot, false).
 serve_file(Path, Resp, Docroot, Redirect) -> 
 	RealPath = filename:join([Path]),
