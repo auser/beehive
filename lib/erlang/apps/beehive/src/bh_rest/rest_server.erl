@@ -230,12 +230,12 @@ convert_to_struct(RawData) ->
     end
   end, RawData).
 
+atomize_keys(Data) ->
+  lists:map( fun({K,V}) -> {list_to_atom(K),V} end, Data).
+
 % Get the data off the request
-decode_data_from_request(Req, get) -> Req:query_params();
-decode_data_from_request(Req, _Meth) ->
-  lists:flatten([lists:map(fun({Key, Value}) ->
-    decode_data_from_request_into_json(Key, Value)
-  end, Req:post_params())]).
+decode_data_from_request(Req, get) -> atomize_keys(Req:query_params());
+decode_data_from_request(Req, _Meth) -> atomize_keys(Req:post_params()).
 
 decode_data_from_request_into_json(BinData, []) when is_binary(BinData) ->
   decode_data_from_request_into_json(binary_to_list(BinData), []);

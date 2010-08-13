@@ -153,6 +153,20 @@ dummy_user() ->
   end,
   User.
 
+admin_user() ->
+  {ok, User} =
+    case users:find_by_email("admin@getbeehive.com") of
+      not_found ->
+        UserC = #user{email    = "admin@getbeehive.com",
+                      password = "admin",
+                      token    = "token",
+                      level    = ?ADMIN_USER_LEVEL
+                     },
+        users:create(UserC);
+      U1 -> {ok, U1}
+    end,
+  User.
+
 % Utils
 delete_all(Table) ->
   Pluralized = erlang:list_to_atom(lists:append([erlang:atom_to_list(Table), "s"])),

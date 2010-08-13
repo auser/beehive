@@ -57,7 +57,6 @@ post([Name, "keys", "new"], Data) ->
   
 post(["new"], Data) ->
   auth_utils:run_if_admin(fun(_) ->
-    
     case proplists:get_value(email, Data) of
       undefined -> {error, "No email defined"};
       Email ->

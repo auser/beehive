@@ -1,5 +1,6 @@
 -module (users_controller_test).
 -include_lib("eunit/include/eunit.hrl").
+-include ("beehive.hrl").
 
 setup() ->
   bh_test_util:dummy_user(),                    % test@getbeehive.com
@@ -22,7 +23,8 @@ starting_test_() ->
      fun get_index/0,
      fun get_index_with_email/0,
      fun get_user_apps_no_apps/0,
-     fun get_user_apps_with_an_app/0
+     fun get_user_apps_with_an_app/0,
+     fun post_new_user/0
     ]
    }
   }.
@@ -70,4 +72,22 @@ get_user_apps_with_an_app() ->
   [User|_] = bh_test_util:response_json(Response),
   {"user",[_,_,FoundApp]} = User,
   ?assertMatch({"apps", [{"name",_}]}, FoundApp),
+  passed.
+
+post_new_user() ->
+  Admin = bh_test_util:admin_user(),
+  {ok, Header, Response} =
+    bh_test_util:fetch_url(post,
+                           [{path, "/users/new.json"},
+                            {headers, [{"Content-Type",
+                                        "application/x-www-form-urlencoded" }]},
+                            {params, [ 
+                                       {email, "createduser@bhive.com"},
+                                       {password, "created"},
+                                       {token, Admin#user.token }
+                                     ]}
+                           ]),
+  ?assertEqual("HTTP/1.0 200 OK", Header),
+  [{"user", User}|_] = bh_test_util:response_json(Response),
+  ?assertMatch([{"email", "createduser@bhive.com"}], User),
   passed.

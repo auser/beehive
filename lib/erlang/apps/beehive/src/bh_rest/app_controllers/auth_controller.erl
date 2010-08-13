@@ -16,14 +16,14 @@ get(_, _Data) ->
   {struct, [{"beehive", <<"app, node, bees, stats">>}]}.
 
 post([], Data) ->
-  case proplists:is_defined("email", Data) of
+  case proplists:is_defined(email, Data) of
     false -> {error, "No email in auth request"};
     true ->
-      case proplists:is_defined("password", Data) of
+      case proplists:is_defined(password, Data) of
         false -> {error, "No password in auth request"};
         true ->
-          Email = proplists:get_value("email", Data),
-          Pass = proplists:get_value("password", Data),
+          Email = proplists:get_value(email, Data),
+          Pass = proplists:get_value(password, Data),
           case users:create_new_token_for(Email, Pass) of
             {ok, User} when is_record(User, user) ->
               [{user, Email}, {token, User#user.token}];
