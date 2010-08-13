@@ -27,4 +27,5 @@ rel_erlang:
 	@./rebar generate force=1
 
 test: deps compile
+	@./test/bootstrap.sh
 	@./rebar skip_deps=true eunit
