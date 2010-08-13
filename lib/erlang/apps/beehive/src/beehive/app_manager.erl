@@ -329,8 +329,15 @@ handle_info({error, {Stage, {error, bee_not_found_after_creation, App}}}, State)
   {ok, _NewApp} = apps:save(App#app{latest_error = Error}),
   {noreply, State};
   
-handle_info({app_launcher_fsm, error, {_Stage, {error, {babysitter, App}}}}, State) ->
-  ?LOG(info, "app_manager caught babysitter error: ~p", [App]),
+handle_info({app_launcher_fsm, error, {error, broken_start}, Output, App}, State) ->
+  ?LOG(info, "app_manager caught error: ~p", [App]),
+  Error = #app_error{
+    stage = launching,
+    stdout = Output,
+    exit_status = 128, % Erp
+    timestamp = date_util:now_to_seconds()
+  },
+  {ok, _NewApp} = apps:save(App#app{latest_error = Error}),
   {noreply, State};
 
 handle_info({app_launcher_fsm, error, {_Stage, {error, ComandStage, _Ospid, ExitCode, Stderr, Stdout}}, App}, State) ->
