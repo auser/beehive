@@ -2,6 +2,7 @@
 -author("Ari Lerner <arilerner@mac.com>").
 -compile(export_all).
 -include ("beehive.hrl").
+-include ("common.hrl").
 
 setup() ->
   setup([]).
@@ -132,8 +133,8 @@ context_run(Count, Fun) ->
 
 % FIXTURE
 dummy_app() ->
-  Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
-  ReposDir = filename:join([Dir, "test", "fixtures", "dummy_git"]),
+  Dir = ?BH_ROOT,
+  ReposDir = filename:join([Dir, "test", "fixtures", "incredibly_simple_rack_app"]),
   ReposUrl = lists:concat(["file://", ReposDir]),
 
   % {ok, App} = case apps:find_by_name("test_app") of
