@@ -18,6 +18,7 @@ get_authorized_user(Data) ->
       Token = proplists:get_value(token, Data),
       case users:find_by_token(Token) of
         [] -> false;
+        not_found -> false;
         User -> User
       end
   end.
