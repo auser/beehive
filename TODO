@@ -20,3 +20,4 @@ TODO:
 * Add application revisions
 * Branch deployments
 * Make SHA (git) more flexible and work within the directory
+* bh_rest stuff in beehive isn't really restful.  Odd http statuses and inconsistent response bodies.
