@@ -149,7 +149,7 @@ responding_from() ->
   passed.
 
 ls_bee() ->
-  ReposUrl = dummy_git_repos_url(),
+  ReposUrl = bh_test_util:dummy_git_repos_url(),
   
   NewProps = [{name, "crazy_name-045"},{url, ReposUrl},{vcs_type, git}],
   beehive_bee_object:bundle([{type, python}|NewProps], self()),
@@ -211,7 +211,7 @@ start_t() ->
 stop_t() ->
   Host = "127.0.0.1",
   Port = 9191,
-  ReposUrl = dummy_git_repos_url(),
+  ReposUrl = bh_test_util:dummy_git_repos_url(),
   Name = "app_intended_to_test_stopping",
   NewProps = [{name, Name},{url, ReposUrl},{vcs_type, git},{type, rack},{fixture_dir, fixture_dir()}],
   Pid = spawn(fun() -> responding_loop([]) end),
@@ -264,7 +264,7 @@ have_bee_t() ->
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 git_repos_props() ->
-  ReposUrl = dummy_git_repos_url(),
+  ReposUrl = bh_test_util:dummy_git_repos_url(),
   [
     {name, "beehive_bee_object_test_app"}, {vcs_type, git}, {url, ReposUrl},
     {fixture_dir, fixture_dir()}
@@ -282,11 +282,6 @@ clean_up_dir(Dir) ->
 
 rm_rf(Dir) -> 
   bh_file_utils:rm_rf(Dir).
-
-dummy_git_repos_url() ->
-  Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
-  ReposDir = filename:join([Dir, "test", "fixtures", "dummy_git"]),
-  lists:concat(["file://", ReposDir]).
 
 fixture_dir() ->
   Dir = filename:dirname(filename:dirname(code:which(?MODULE))),

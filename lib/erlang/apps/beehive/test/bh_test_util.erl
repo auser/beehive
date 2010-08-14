@@ -132,18 +132,18 @@ context_run(Count, Fun) ->
   shutdown(Nodes).
 
 % FIXTURE
+dummy_git_repos_url() ->
+  ReposDir = filename:join([?BH_ROOT, "test", "fixtures", "incredibly_simple_rack_app"]),
+  lists:concat(["file://", ReposDir]).
+  
 dummy_app() ->
-  Dir = ?BH_ROOT,
-  ReposDir = filename:join([Dir, "test", "fixtures", "incredibly_simple_rack_app"]),
-  ReposUrl = lists:concat(["file://", ReposDir]),
-
   % {ok, App} = case apps:find_by_name("test_app") of
   %   not_found ->
   %
   %   App1 ->
   %     {ok, App1}
   % end,
-  apps:new(#app{name = "test_app", url = ReposUrl}).
+  apps:new(#app{name = "test_app", url = dummy_git_repos_url()}).
 
 dummy_user() ->
   {ok, User} = case users:find_by_email("test@getbeehive.com") of
