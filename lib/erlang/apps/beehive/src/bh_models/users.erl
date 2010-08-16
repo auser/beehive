@@ -111,7 +111,7 @@ create_new_token_for(User) when is_record(User, user) ->
     User#user.email,
     misc_utils:to_list(date_util:now_to_seconds())
   ])),
-  create(User#user{token = NewToken}).
+  save(User#user{token = NewToken}).
 
 is_user_token(Email, Token) ->
   case find_by_email(Email) of
