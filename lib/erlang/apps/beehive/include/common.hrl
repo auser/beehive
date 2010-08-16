@@ -3,7 +3,7 @@
         case LogLevel of
           debug -> 
             case config:search_for_application_value(debug, false) of
-              "true" -> info_msg;
+              true -> info_msg;
               false -> ok
             end;
           _ ->
