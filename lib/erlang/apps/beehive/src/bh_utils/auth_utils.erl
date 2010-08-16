@@ -13,12 +13,12 @@
 % Only run if there is a user associated with given token
 get_authorized_user(Data) ->
   case proplists:is_defined(token, Data) of
-    false -> false;
+    false -> error("No auth token provided.");
     true ->
       Token = proplists:get_value(token, Data),
       case users:find_by_token(Token) of
-        [] -> false;
-        not_found -> false;
+        [] -> error("Unauthorized.");
+        not_found -> error("Unauthorized.");
         User -> User
       end
   end.
@@ -48,10 +48,10 @@ run_if_admin(F, Data) ->
       F([]);
     true ->
       case get_authorized_user(Data) of
-        false -> error("Unauthorized");
+        {error,_,_} = Error -> Error;
         ReqUser ->
           case is_admin_user(ReqUser) of
-            false -> error("Unauthorized");
+            false -> error("Unauthorized.");
             true -> F(ReqUser)
           end
       end
