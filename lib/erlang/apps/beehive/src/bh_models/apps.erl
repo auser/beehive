@@ -8,7 +8,7 @@
   create/1,
   read/1,
   save/1,
-  update/2,
+  update/2, update/1,
   delete/1,
   find_by_name/1,
   find_all_by_name/1,
@@ -119,6 +119,10 @@ restart_by_name(Name) ->
       {ok, save(NewApp)}
   end.
 
+
+update(App) when is_record(App, app) ->
+  ok = ?DB:write(app, NewApp#app.name, NewApp),
+  {ok, NewApp};
 update([], _) -> ok;
 update(App, NewProps) when is_record(App, app) ->
   NewApp = misc_utils:update_proplist(to_proplist(App), NewProps),
