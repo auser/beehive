@@ -47,8 +47,10 @@ proxy_init(ClientSock) ->
   receive
     {start, ClientSock, RequestPid} ->
       {ok, RoutingKey, ForwardReq, Req} = ?BENCHMARK_LOG("Handling request", http_request_decoder, handle_request, [ClientSock]),
-      GetBee = ?BENCHMARK_LOG("Getting bee for routing key", bee_store, get_bee, [RoutingKey]),
-      engage_bee(ClientSock, RequestPid, RoutingKey, ForwardReq, Req, GetBee);
+      case ?BENCHMARK_LOG("Getting bee for routing key", bee_store, get_bee, [RoutingKey]) of
+        GetBee -> engage_bee(ClientSock, RequestPid, RoutingKey, ForwardReq, Req, GetBee);
+        {error, cannot_choose_bee} -> ?APP_ERROR(503, "App has an error. The application owner has been notified")
+      end;
     _E ->
       proxy_init(ClientSock)
   after ?IDLE_TIMEOUT ->

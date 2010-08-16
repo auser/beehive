@@ -296,7 +296,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 stop_error(Msg, #state{from = From, app = App, bee = Bee, output = Output} = State) ->
-  Tuple = {?MODULE, error, Msg, [{app, App}, {bee, Bee}, {output, Output}, {caller, From}]},
+  Tuple = {?MODULE, error, Msg, [{app, App}, {bee, Bee}, {output, lists:reverse(Output)}, {caller, From}]},
   From ! Tuple,
   {stop, Tuple, State}.
 
