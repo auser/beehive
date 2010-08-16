@@ -90,6 +90,7 @@ init([Proplist]) ->
           % I kind of like the convenience
           Self = self(),
           gen_cluster:run(beehive_storage_srv, {fetch_or_build_bee, App, Self}),
+          ?LOG(debug, "gen_cluster:run(beehive_storage_srv, {fetch_or_build_bee, ~p, ~p})", [App#app.name, Self]),
           {ok, fetching, #state{app = App, from = From, updating = Updating, bee = #bee{}}};
         _ ->
           {stop, {error, pending_app_error}}
@@ -134,6 +135,7 @@ preparing({update}, #state{app = App} = State) ->
 preparing({launch}, #state{from = From, app = App, bee = Bee, latest_sha = Sha} = State) ->
   Self = self(),  
   Port = bh_host:unused_port(),
+  ?LOG(debug, "beehive_bee_object:start(~p, ~s, ~p, ~p)", [App#app.type, App#app.name, Port, Self]),
   beehive_bee_object:start(App#app.type, App#app.name, Port, Self),
   {next_state, launching, State};
 
@@ -146,17 +148,6 @@ preparing(Other, State) ->
   {next_state, preparing, State}.
 
 updating({bee_built, Info}, #state{app = App} = State) ->
-  erlang:display({got_to,bee_built,Info}),
-  % % Strip off the last newline... stupid bash
-  % BeeSize = proplists:get_value(bee_size, Info, Bee#bee.bee_size),
-  % Sha = proplists:get_value(revision, Info, Bee#bee.revision),
-  % 
-  % NewApp = App#app{revision = Sha},
-  % NewBee = Bee#bee{bee_size = BeeSize, revision = Sha},
-  % % Grr
-  % NewState0 = State#state{bee = NewBee, app = NewApp, latest_sha = Sha},
-  % NewState = start_instance(NewState0),
-  % erlang:display({start_instance, NewState}),
   Port = bh_host:unused_port(),
   beehive_bee_object:start(App#app.type, App#app.name, Port, self()),
   {next_state, launching, State};
