@@ -35,7 +35,8 @@ get_bee([Hostname|_Rest] = List) ->
 %% Choose an available back-end host
 %% If a bee cannot be found within the requested time (before the CONNECTION_TIMEOUT)
 %% then we pass back a timeout
-get_bee(Hostname, TimeofRequest) -> 
+get_bee(Hostname, TimeofRequest) ->
+  ?LOG(debug, "new get_bee request: ~p : ~p", [Hostname, TimeofRequest]),
   TOTime = date_util:now_to_seconds() - TimeofRequest,
   case TOTime - TimeofRequest > ?CONNECTION_TIMEOUT of
     true -> {error, timeout};
@@ -120,6 +121,7 @@ get_bees_by_hostname(Hostname) ->
           ?MUST_WAIT_MSG;
         Bees ->
           ReadyBees = lists:filter(fun(B) -> (catch B#bee.status =:= ready) end, Bees),
+          ?LOG(debug, "ReadyBees: ~p", [ReadyBees]),
           case ReadyBees of
             [] -> handle_no_ready_bees(Hostname);
             _ -> {ok, App, ReadyBees}
