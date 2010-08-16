@@ -1,10 +1,9 @@
 -define(LOG(LogLevel, LogFormat, LogArgs), 
         % try
-        erlang:display({log_level, LogLevel}),
         MessageLevel = case LogLevel of
           info -> info_msg;
           debug -> warning_msg;
-          error -> error_msg
+          _ -> error_msg
         end,
         erlang:apply(error_logger, MessageLevel, [
           lists:concat(["[", LogLevel, "] module: ", ?MODULE, "~n	line: ", ?LINE, "~n", LogFormat, "~n"]), LogArgs
