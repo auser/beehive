@@ -338,7 +338,7 @@ handle_info({app_launcher_fsm, error, {error, broken_start}, Props}, State) ->
     timestamp = date_util:now_to_seconds()
   },
   {ok, _NewApp} = apps:save(App#app{latest_error = Error}),
-  run_app_kill_fsm(Bee, self()),
+  % run_app_kill_fsm(Bee, self()),
   
   case proplists:get_value(caller, Props) of
     undefined -> ok;
