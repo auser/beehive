@@ -16,6 +16,7 @@ get(_, _Data) ->
   {struct, [{"beehive", <<"app, node, bees, stats">>}]}.
 
 post([], Data) ->
+  erlang:display({post,data,Data}),
   case proplists:is_defined(email, Data) of
     false -> {error, "No email in auth request"};
     true ->
