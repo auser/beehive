@@ -169,8 +169,8 @@ launching({started, BeeObject}, State) ->
   Self = self(),
   BuiltBee = bees:from_bee_object(BeeObject),
   Bee = BuiltBee#bee{host = bh_host:myip()},
-  ?LOG(info, "spawn_update_bee_status: ~p for ~p, ~p", [Bee, Self, 20]),
-  app_manager:spawn_update_bee_status(Bee, Self, 20),
+  ?LOG(info, "spawn_update_bee_status: ~p for ~p, ~p", [Bee, Self, 30]),
+  app_manager:spawn_update_bee_status(Bee, Self, 30),
   {next_state, pending, State#state{bee = Bee}};
 
 launching({error, Reason}, State) ->

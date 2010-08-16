@@ -4,16 +4,23 @@
 
 all_test_app_manager_test_() ->
   bh_test_util:setup(),
-  {timeout, 600,
+  {timeout, 6000,
     [
         fun instance/0,
         fun add_application/0,
         fun spawn_update_bee_status/0,
         fun start_new_instance_t/0,
         fun start_new_instance_t_failing_app/0,
-        fun teardown_an_instance_t/0
+        fun teardown_an_instance_t/0,
+        fun cleanup/0
       ]
     }.
+
+cleanup() ->
+  lists:map(fun(Dir) ->
+    bh_file_utils:rm_rf(filename:join([related_dir(), Dir]))
+  end, ["run", "squashed"]),
+  ok.
 
 instance()->
   ?assert(undefined =/= app_manager:instance()),
@@ -94,3 +101,7 @@ try_to_fetch_url_or_retry(Method, Args, Times) ->
     {ok, _Headers, _Body} = T -> T;
     _E -> try_to_fetch_url_or_retry(Method, Args, Times - 1)
   end.
+  
+related_dir() -> 
+  {ok, Dir} = application:get_env(beehive, beehive_home),
+  Dir.
