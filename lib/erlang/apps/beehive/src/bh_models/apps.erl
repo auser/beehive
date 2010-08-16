@@ -123,7 +123,7 @@ restart_by_name(Name) ->
 
 update(App) when is_record(App, app) ->
   ok = ?DB:write(app, NewApp#app.name, NewApp),
-  {ok, NewApp};
+  {ok, NewApp}.
 update([], _) -> ok;
 update(App, NewProps) when is_record(App, app) ->
   NewApp = misc_utils:update_proplist(to_proplist(App), NewProps),
