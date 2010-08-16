@@ -215,23 +215,21 @@ generalize_request_path(Path) ->
       string:substr(Path, 1, erlang:length(Path) - 5)
   end.
 
-% Convert each of the binary data proplists into a valid proplist
-% from {<<name>>, <<value>>} to {name, value}
-convert_to_struct(RawData) ->
-  lists:map(fun({BinKey, BinVal}) ->
-    case BinVal of
-      {struct, Arr} -> 
-        Key = misc_utils:to_atom(BinKey),
-        {Key, convert_to_struct(Arr)};
-      _ ->
-        Key = misc_utils:to_atom(BinKey),
-        Val = misc_utils:to_list(BinVal),
-        {Key, Val}
-    end
-  end, RawData).
 
 atomize_keys(Data) ->
-  lists:map( fun({K,V}) -> {list_to_atom(K),V} end, Data).
+  lists:flatten(lists:map( fun({K,V}) -> atomize_kv(K,V) end, Data)).
+
+atomize_kv(Key, []) -> 
+  case mochijson2:decode(Key) of
+    {struct, List} when is_list(List) ->
+      lists:map(fun({K,V}) -> atomize_kv(misc_utils:to_atom(K),misc_utils:to_list(V)) end, List);
+    {BinKey, BinVal} ->
+      Key = misc_utils:to_atom(BinKey),
+      Val = misc_utils:to_list(BinVal),
+      {Key, Val}
+  end;
+atomize_kv(Key, Value) when is_list(Key) -> atomize_kv(list_to_atom(Key), Value);
+atomize_kv(Key, Value) when is_atom(Key) -> {Key, Value}.
 
 % Get the data off the request
 decode_data_from_request(Req, get) -> atomize_keys(Req:query_params());
