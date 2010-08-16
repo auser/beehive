@@ -219,7 +219,6 @@ generalize_request_path(Path) ->
 % from {<<name>>, <<value>>} to {name, value}
 convert_to_struct(RawData) ->
   lists:map(fun({BinKey, BinVal}) ->
-    erlang:display({convert_to_struct, BinKey, BinVal}),
     case BinVal of
       {struct, Arr} -> 
         Key = misc_utils:to_atom(BinKey),
