@@ -18,6 +18,7 @@
   all/0,
   exist/1,
   create/1,
+  save/1,
   update/1,
   delete/1,
   create_new_token_for/1, create_new_token_for/2,
