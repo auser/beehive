@@ -30,6 +30,7 @@ random_word(List, Length, Acc) ->
 random_word(List) ->
   lists:nth(random:uniform(erlang:length(List)), List).
 
+
 % Take a list of strings, separated by newlines and 
 % divy them up such that the first 
 chop(ListofStrings) ->

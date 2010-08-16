@@ -1,16 +1,17 @@
--define(LOG(LogLevel, LogFormat, LogArgs), 
+-define(LOG(LogLevel, LogFormat, LogArgs),
         % try
-        case LogLevel of
-          debug -> 
+        MessageLevel = case LogLevel of
+          info -> info_msg;
+          debug ->
             case config:search_for_application_value(debug, false) of
               true -> info_msg;
-              false -> ok
+              false -> do_not_print
             end;
-          _ ->
-            MessageLevel = case LogLevel of
-              info -> info_msg;
-              _ -> error_msg
-            end,
+          _ -> error_msg
+        end,
+        case MessageLevel of
+          do_not_print -> ok;
+          _ -> 
             erlang:apply(error_logger, MessageLevel, [
               lists:concat(["[", LogLevel, "] module: ", ?MODULE, 
                             "~n	line: ", ?LINE, "~n", LogFormat, 
@@ -21,7 +22,7 @@
         %   ok -> ok;
         %   {error, _} -> throw({error, logging_exception})
         % end
-        ).
+      ).
 
 -ifdef (debug).
 -define (BENCHMARK_LOG (Msg, Mod, Fun, Args), fun() ->
