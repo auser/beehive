@@ -70,4 +70,4 @@ is_admin_user(User) ->
   User#user.level < ?REGULAR_USER_LEVEL.
 
 error(Msg) ->
-  {error, misc_utils:to_bin(Msg)}.
+  {error, 401, misc_utils:to_bin(Msg)}.
