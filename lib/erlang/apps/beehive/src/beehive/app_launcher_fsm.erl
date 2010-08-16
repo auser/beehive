@@ -165,9 +165,9 @@ updating(Msg, State) ->
   stop_error({updating, Msg}, State).
 
 % LAUNCHING THE APPLICATION
-launching({started, BeeObject}, State) ->
+launching({started, BeeObject}, #state{app = App} = State) ->
   Self = self(),
-  BuiltBee = bees:from_bee_object(BeeObject),
+  BuiltBee = bees:from_bee_object(BeeObject, App),
   Bee = BuiltBee#bee{host = bh_host:myip()},
   ?LOG(info, "spawn_update_bee_status: ~p for ~p, ~p", [Bee, Self, 30]),
   app_manager:spawn_update_bee_status(Bee, Self, 30),

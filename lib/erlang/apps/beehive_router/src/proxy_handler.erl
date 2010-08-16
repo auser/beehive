@@ -50,7 +50,9 @@ proxy_init(ClientSock) ->
       case ?BENCHMARK_LOG("Getting bee for routing key", bee_store, get_bee, [RoutingKey]) of
         {error, cannot_choose_bee} -> 
           send_and_terminate(ClientSock, error, ?APP_ERROR(503, "App has an error. The application owner has been notified"));
-        GetBee -> engage_bee(ClientSock, RequestPid, RoutingKey, ForwardReq, Req, GetBee)
+        GetBee -> 
+          erlang:display({get_bee,proxy_init,GetBee}),
+          engage_bee(ClientSock, RequestPid, RoutingKey, ForwardReq, Req, GetBee)
       end;
     _E ->
       proxy_init(ClientSock)
