@@ -148,10 +148,26 @@ dummy_app() ->
 dummy_user() ->
   {ok, User} = case users:find_by_email("test@getbeehive.com") of
     not_found ->
-      UserC = #user{email = "test@getbeehive.com", password="test"},
+      UserC = #user{email    = "test@getbeehive.com", 
+                    password = "test",
+                    token    = "dummytoken" },
       users:create(UserC);
     U1 -> {ok, U1}
   end,
+  User.
+
+admin_user() ->
+  {ok, User} =
+    case users:find_by_email("admin@getbeehive.com") of
+      not_found ->
+        UserC = #user{email    = "admin@getbeehive.com",
+                      password = "admin",
+                      token    = "token",
+                      level    = ?ADMIN_USER_LEVEL
+                     },
+        users:create(UserC);
+      U1 -> {ok, U1}
+    end,
   User.
 
 % Utils

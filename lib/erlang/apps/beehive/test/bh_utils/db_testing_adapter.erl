@@ -49,8 +49,7 @@ save(Fun) when is_function(Fun) ->
   ets:fun2ms(Fun).
 
 delete_all(Table) ->
-  % ets:delete_all_objects(Table),
-  lists:map(fun(Record) -> ets:delete(Table, Record) end, all(Table)).
+  ets:delete_all_objects(Table).
 
 delete(Table, Record) ->
   ets:delete(Table, Record).

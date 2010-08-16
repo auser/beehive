@@ -32,9 +32,9 @@ post(_Path, Data) ->
   case bees:create(Data) of
     {ok, Be} -> 
       Message = misc_utils:to_bin(lists:append(["Added bee ", Be#bee.app_name])),
-      {struct, [{"message", Message}]};
+      {"message", Message};
     {error, M} -> 
-      {struct, [{"error", misc_utils:to_bin(misc_utils:to_list(M))}]}
+      {"error", misc_utils:to_bin(misc_utils:to_list(M))}
   end.
   
 % post(_Path, _Data) -> "unhandled".

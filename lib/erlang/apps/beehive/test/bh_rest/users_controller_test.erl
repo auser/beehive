@@ -1,5 +1,6 @@
 -module (users_controller_test).
 -include_lib("eunit/include/eunit.hrl").
+-include ("beehive.hrl").
 
 setup() ->
   bh_test_util:dummy_user(),                    % test@getbeehive.com
@@ -22,7 +23,10 @@ starting_test_() ->
      fun get_index/0,
      fun get_index_with_email/0,
      fun get_user_apps_no_apps/0,
-     fun get_user_apps_with_an_app/0
+     fun get_user_apps_with_an_app/0,
+     fun post_new_user/0,
+     fun post_new_user_bad_auth/0,
+     fun post_new_user_non_admin_auth/0
     ]
    }
   }.
@@ -71,3 +75,51 @@ get_user_apps_with_an_app() ->
   {"user",[_,_,FoundApp]} = User,
   ?assertMatch({"apps", [{"name",_}]}, FoundApp),
   passed.
+
+post_new_user() ->
+  Admin = bh_test_util:admin_user(),
+  {ok, Header, Response} =
+    perform_post_new( [
+                     {email, "createduser@bhive.com"},
+                     {password, "created"},
+                     {token, Admin#user.token }
+                   ]),
+  ?assertEqual("HTTP/1.0 200 OK", Header),
+  [{"user", User}|_] = bh_test_util:response_json(Response),
+  ?assertMatch([{"email", "createduser@bhive.com"}], User),
+  passed.
+
+post_new_user_bad_auth() ->
+  {ok, Header, Response} =
+    perform_post_new( [
+                     {email, "createduser@bhive.com"},
+                     {password, "created"},
+                     {token, "unauthed" }
+                   ]),
+  ?assertEqual("HTTP/1.0 404 Object Not Found", Header),
+  ?assertMatch([{"error","Unauthorized"}],
+               bh_test_util:response_json(Response)),
+  passed.
+
+post_new_user_non_admin_auth() ->
+  RegUser = bh_test_util:dummy_user(),
+  {ok, Header, Response} =
+    perform_post_new( [
+                     {email, "createduser@bhive.com"},
+                     {password, "created"},
+                     {token, RegUser#user.token }
+                   ]),
+  ?assertEqual("HTTP/1.0 404 Object Not Found", Header),
+  ?assertMatch([{"error","Unauthorized"}],
+               bh_test_util:response_json(Response)),
+  passed.
+
+perform_post_new(Params) ->
+  bh_test_util:fetch_url(post,
+                         [{path, "/users/new.json"},
+                          {headers, [{"Content-Type",
+                                      "application/x-www-form-urlencoded" }]},
+                          {params, Params}
+                         ]).
+
+  

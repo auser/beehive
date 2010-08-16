@@ -230,23 +230,12 @@ convert_to_struct(RawData) ->
     end
   end, RawData).
 
-% Get the data off the request
-decode_data_from_request(Req, get) -> Req:query_params();
-decode_data_from_request(Req, _Meth) ->
-  lists:flatten([lists:map(fun({Key, Value}) ->
-    decode_data_from_request_into_json(Key, Value)
-  end, Req:post_params())]).
+atomize_keys(Data) ->
+  lists:map( fun({K,V}) -> {list_to_atom(K),V} end, Data).
 
-decode_data_from_request_into_json(BinData, []) when is_binary(BinData) ->
-  decode_data_from_request_into_json(binary_to_list(BinData), []);
-decode_data_from_request_into_json(Data, []) ->
-  case mochijson2:decode(Data) of
-    {struct, Struct} -> convert_to_struct(Struct);
-    B -> convert_to_struct(B)
-  end;
-decode_data_from_request_into_json(Key, Value) when is_list(Key) ->
-  decode_data_from_request_into_json(misc_utils:to_atom(Key), Value);
-decode_data_from_request_into_json(Key, Value) -> {Key, Value}.
+% Get the data off the request
+decode_data_from_request(Req, get) -> atomize_keys(Req:query_params());
+decode_data_from_request(Req, _Meth) -> atomize_keys(Req:post_params()).
 
 not_found_web(Resp, Docroot, _Redirect) -> serve_file("not_found.html", Resp:status_code(404), Docroot, false).
 serve_file(Path, Resp, Docroot, Redirect) -> 
