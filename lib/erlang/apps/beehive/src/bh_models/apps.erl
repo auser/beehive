@@ -8,7 +8,7 @@
   create/1,
   read/1,
   save/1,
-  update/2, update/1,
+  update/2,
   delete/1,
   find_by_name/1,
   find_all_by_name/1,
@@ -33,12 +33,13 @@
 
 -export ([validate_app/1]).
 
-create(A) -> save(new(A)).
+create(A) -> 
+  NewApp = validate_app(new(App)),
+  save(NewApp).
 
 save(App) when is_record(App, app) ->
-  NewApp = validate_app(App),
-  ok = ?DB:write(app, NewApp#app.name, NewApp),
-  {ok, NewApp};
+  ok = ?DB:write(app, App#app.name, App),
+  {ok, App};
 save([]) -> invalid;
 save(Proplists) when is_list(Proplists) -> 
   case from_proplists(Proplists) of
