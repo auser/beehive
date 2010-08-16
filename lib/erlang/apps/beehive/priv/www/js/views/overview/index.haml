@@ -1,2 +1,7 @@
 %h3
   Overview
+
+%div
+  :if Sammy.current_user != undefined
+    You're logged in as:
+    %span= Sammy.current_user.user
