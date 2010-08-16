@@ -219,6 +219,7 @@ generalize_request_path(Path) ->
 % from {<<name>>, <<value>>} to {name, value}
 convert_to_struct(RawData) ->
   lists:map(fun({BinKey, BinVal}) ->
+    erlang:display({convert_to_struct, BinKey, BinVal}),
     case BinVal of
       {struct, Arr} -> 
         Key = misc_utils:to_atom(BinKey),
@@ -244,6 +245,8 @@ decode_data_from_request_into_json(Data, []) ->
     {struct, Struct} -> convert_to_struct(Struct);
     B -> convert_to_struct(B)
   end;
+decode_data_from_request_into_json(Key, Value) when is_list(Key) ->
+  decode_data_from_request_into_json(misc_utils:to_atom(Key), Value);
 decode_data_from_request_into_json(Key, Value) -> {Key, Value}.
 
 not_found_web(Resp, Docroot, _Redirect) -> serve_file("not_found.html", Resp:status_code(404), Docroot, false).
