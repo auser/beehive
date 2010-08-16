@@ -220,13 +220,19 @@ atomize_keys(Data) ->
   lists:flatten(lists:map( fun({K,V}) -> atomize_kv(K,V) end, Data)).
 
 atomize_kv(Key, []) -> 
-  case mochijson2:decode(Key) of
-    {struct, List} when is_list(List) ->
-      lists:map(fun({K,V}) -> atomize_kv(misc_utils:to_atom(K),misc_utils:to_list(V)) end, List);
-    {BinKey, BinVal} ->
-      Key = misc_utils:to_atom(BinKey),
-      Val = misc_utils:to_list(BinVal),
-      {Key, Val}
+  try
+    case mochijson2:decode(Key) of
+      {struct, List} when is_list(List) ->
+        lists:map(fun({K,V}) -> 
+                      atomize_kv(misc_utils:to_atom(K),
+                                 misc_utils:to_list(V)) end, List);
+      {BinKey, BinVal} ->
+        K = misc_utils:to_atom(BinKey),
+        Val = misc_utils:to_list(BinVal),
+        {K, Val}
+    end
+  catch
+    error:_Why -> {Key, []}
   end;
 atomize_kv(Key, Value) when is_list(Key) -> atomize_kv(list_to_atom(Key), Value);
 atomize_kv(Key, Value) when is_atom(Key) -> {Key, Value}.
