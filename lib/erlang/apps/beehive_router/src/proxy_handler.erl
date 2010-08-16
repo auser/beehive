@@ -51,7 +51,7 @@ proxy_init(ClientSock) ->
         {error, cannot_choose_bee} -> 
           send_and_terminate(ClientSock, error, ?APP_ERROR(503, "App has an error. The application owner has been notified"));
         GetBee -> 
-          erlang:display({get_bee,proxy_init,GetBee}),
+          erlang:display({get_bee,proxy_init,RoutingKey,GetBee}),
           engage_bee(ClientSock, RequestPid, RoutingKey, ForwardReq, Req, GetBee)
       end;
     _E ->
