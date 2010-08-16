@@ -238,7 +238,7 @@ handle_info({manage_pending_bees}, State) ->
         Status = try_to_connect_to_new_instance(B, 10),
         ?NOTIFY({bee, update_status, B, Status})
       % lists:map(fun(B) ->
-        % ?LOG(info, "Garbage cleaning up on: ~p", [Bees#bee.app_name])
+        % ?LOG(debug, "Garbage cleaning up on: ~p", [Bees#bee.app_name])
       % end, Bees)
     end, PendingBees)
   end),
@@ -268,7 +268,7 @@ handle_info({'EXIT',_Pid,normal}, State) ->
   {noreply, State};
 
 handle_info({'EXIT',_Pid, {received_unknown_message, {_FsmState, {error, {babysitter, Msg}}}}}, State) ->
-  ?LOG(info, "Got received_unknown_message: ~p", [Msg]),
+  ?LOG(debug, "Got received_unknown_message: ~p", [Msg]),
   {noreply, State};
 
 handle_info({'EXIT', Pid, Reason}, State) ->
@@ -314,7 +314,7 @@ handle_info({bee_started_normally, Bee, App}, State) ->
 
 % {error, {updating, {error, {babysitter, {app,"fake-lvpae",
 handle_info({error, {Stage, {error, bee_not_found_after_creation, App}}}, State) ->
-  ?LOG(info, "could not find the bee after creation: ~p", [App#app.name]),
+  ?LOG(debug, "could not find the bee after creation: ~p", [App#app.name]),
   Error = #app_error{
     stage = Stage,
     stderr = "",
@@ -330,13 +330,14 @@ handle_info({app_launcher_fsm, error, {error, broken_start}, Props}, State) ->
   Output = proplists:get_value(output, Props),
   Bee = proplists:get_value(bee, Props),
   
-  ?LOG(info, "app_manager caught error: ~p", [App]),
   Error = #app_error{
     stage = launching,
     stdout = Output,
     exit_status = 128, % Erp
     timestamp = date_util:now_to_seconds()
   },
+  ?LOG(debug, "app_manager caught error: ~p: ~p", [App, Error]),
+  
   {ok, _NewApp} = apps:save(App#app{latest_error = Error}),
   % run_app_kill_fsm(Bee, self()),
   
@@ -352,13 +353,13 @@ handle_info({app_launcher_fsm, error, {StateName, Code}, Props}, State) ->
   Output = proplists:get_value(output, Props),
   Bee = proplists:get_value(bee, Props),
   
-  ?LOG(info, "app_manager caught error: ~p", [App]),
   Error = #app_error{
     stage = StateName,
     stdout = Output,
     exit_status = Code, % Erp
     timestamp = date_util:now_to_seconds()
   },
+  ?LOG(debug, "app_manager caught error: ~p", [App, StateName, Code]),
   {ok, _NewApp} = apps:save(App#app{latest_error = Error}),
   
   % Cleanup will take care of the cleanup
@@ -372,7 +373,7 @@ handle_info({app_launcher_fsm, error, {StateName, Code}, Props}, State) ->
 
 handle_info({error, AState, Error}, State) ->
   erlang:display({handle_info,error,AState,Error}),
-  ?LOG(info, "something died: ~p", [Error]),
+  ?LOG(debug, "something died: ~p", [Error]),
   {noreply, State};
 
 handle_info({answer, TransId, Result}, #state{queries = Queries} = State) ->
@@ -458,7 +459,7 @@ spawn_update_bee_status(Bee, From, Nums) ->
 % Try to connect to the application instance while it's booting up
 try_to_connect_to_new_instance(_Bee, 0) -> broken;
 try_to_connect_to_new_instance(Bee, Attempts) ->
-  ?LOG(info, "try_to_connect_to_new_instance (~p:~p) ~p", [Bee#bee.host, Bee#bee.port, Attempts]),
+  ?LOG(debug, "try_to_connect_to_new_instance (~p:~p) ~p", [Bee#bee.host, Bee#bee.port, Attempts]),
   case gen_tcp:connect(Bee#bee.host, Bee#bee.port, [binary, {packet, 0}], 500) of
     {ok, Sock} ->
       gen_tcp:close(Sock),
