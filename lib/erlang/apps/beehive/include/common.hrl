@@ -1,13 +1,22 @@
 -define(LOG(LogLevel, LogFormat, LogArgs), 
         % try
-        MessageLevel = case LogLevel of
-          info -> info_msg;
-          debug -> warning_msg;
-          _ -> error_msg
-        end,
-        erlang:apply(error_logger, MessageLevel, [
-          lists:concat(["[", LogLevel, "] module: ", ?MODULE, "~n	line: ", ?LINE, "~n", LogFormat, "~n"]), LogArgs
-        ])
+        case LogLevel of
+          debug -> 
+            case config:search_for_application_value(debug, false) of
+              true -> info_msg;
+              false -> ok
+            end;
+          _ ->
+            MessageLevel = case LogLevel of
+              info -> info_msg;
+              _ -> error_msg
+            end,
+            erlang:apply(error_logger, MessageLevel, [
+              lists:concat(["[", LogLevel, "] module: ", ?MODULE, 
+                            "~n	line: ", ?LINE, "~n", LogFormat, 
+                            "~n"]), LogArgs]
+            )
+        end
         % case node_manager:notify({log, LogLevel, LogFormat, LogArgs, ?FILE, ?LINE}) of
         %   ok -> ok;
         %   {error, _} -> throw({error, logging_exception})
