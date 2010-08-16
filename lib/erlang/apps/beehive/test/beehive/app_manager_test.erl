@@ -2,28 +2,18 @@
 -include_lib("eunit/include/eunit.hrl").
 -include ("beehive.hrl").
 
-setup() ->
+all_test_app_manager_test_() ->
   bh_test_util:setup(),
-  ok.
-  
-teardown(_X) ->
-  ok.
-
-all_test_() ->
-  Tests = {inorder,
-    {setup,
-      fun setup/0,
-      fun teardown/1,
-      [
+  {timeout, 600,
+    [
         fun instance/0,
         fun add_application/0,
         fun spawn_update_bee_status/0,
         fun start_new_instance_t/0,
+        fun start_new_instance_t_failing_app/0,
         fun teardown_an_instance_t/0
       ]
-    }
-  },
-  {timeout, 60, Tests}.
+    }.
 
 instance()->
   ?assert(undefined =/= app_manager:instance()),
@@ -40,9 +30,8 @@ spawn_update_bee_status() ->
   passed.
 
 % Starting and stopping
-start_new_instance_t() ->  
-  {ok, _App, Bee} = start_dummy_app(self()),
-  timer:sleep(500),
+start_new_instance_t() ->
+  {ok, App, Bee} = start_dummy_app(self()),
   case try_to_fetch_url_or_retry(get, [{host, Bee#bee.host}, {port, Bee#bee.port}, {path, "/"}], 20) of
     {ok, _Headers, Body} ->
       ?assertEqual("Hello World test_app", hd(lists:reverse(Body))),
@@ -51,6 +40,17 @@ start_new_instance_t() ->
     _ -> 
       ?assertEqual(failed, connect)
   end.
+  
+start_new_instance_t_failing_app() ->
+  bh_test_util:delete_all(app),
+  DummyApp = bh_test_util:dummy_app(),
+  {error, ErrorObj} = start_dummy_app(
+    DummyApp#app{url = "http://this.does/not/exist", name = "doesnt_exist"}, 
+  self()),
+  % It should fail when fetching
+  ?assertEqual(ErrorObj#app_error.stage, fetching),
+  ?assertEqual(ErrorObj#app_error.exit_status, 128),
+  passed.
   
 teardown_an_instance_t() ->
   % {ok, _App, Bee} = start_dummy_app(self()),
@@ -72,20 +72,20 @@ teardown_an_instance_t() ->
       ?assert(something_went_wrong =:= true)
   end,
   passed.
-  
-start_dummy_app(_From) ->
-  App = bh_test_util:dummy_app(),
+
+start_dummy_app(From) -> start_dummy_app(bh_test_util:dummy_app(), From).
+start_dummy_app(App, _From) -> 
   app_manager:request_to_start_new_bee_by_app(App, self()),
   receive
     {bee_started_normally, Bee} ->
       bees:save(Bee),
       {ok, App, Bee};
+    {error, ErrorObj} -> {error, ErrorObj};
     X ->
       erlang:display({start_dummy_app, X}),
-      ok
+      X
     after 10000 ->
-      erlang:display({timeout}),
-      throw({start_dummy_app, timeout})
+      erlang:display({timeout})
   end.
 
 try_to_fetch_url_or_retry(_Method, _Args, 0) -> failed;

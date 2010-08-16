@@ -119,6 +119,9 @@ fetching({launch}, State) ->
   % Give it some time to try to fetch again...
   timer:send_after(500, {launch}),
   {next_state, fetching, State};
+fetching({error, Msg}, State) ->
+  stop_error({fetching, Msg}, State);
+  
 fetching(Msg, State) ->
   {next_state, fetching, State}.
 
@@ -143,6 +146,7 @@ preparing(Other, State) ->
   {next_state, preparing, State}.
 
 updating({bee_built, Info}, #state{app = App} = State) ->
+  erlang:display({got_to,bee_built,Info}),
   % % Strip off the last newline... stupid bash
   % BeeSize = proplists:get_value(bee_size, Info, Bee#bee.bee_size),
   % Sha = proplists:get_value(revision, Info, Bee#bee.revision),
@@ -291,8 +295,8 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-stop_error(Msg, #state{from = From, app = App, output = Output} = State) ->
-  Tuple = {?MODULE, error, Msg, Output, App},
+stop_error(Msg, #state{from = From, app = App, bee = Bee, output = Output} = State) ->
+  Tuple = {?MODULE, error, Msg, [{app, App}, {bee, Bee}, {output, Output}, {caller, From}]},
   From ! Tuple,
   {stop, Tuple, State}.
 

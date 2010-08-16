@@ -208,11 +208,7 @@ handle_cast({request_to_start_new_bee_by_name, Name, Caller}, State) ->
 
 handle_cast({request_to_terminate_bee, Bee, Caller}, State) ->
   % app_killer_fsm
-  {ok, P} = app_killer_fsm:start_link(Bee, Caller),
-  % erlang:display({hi, in, request_to_terminate_bee, P}),
-  erlang:link(P),
-  app_killer_fsm:kill(P),
-  timer:sleep(100),
+  run_app_kill_fsm(Bee, Caller),
   {noreply, State};
 
 handle_cast({garbage_collection}, State) ->
@@ -329,7 +325,11 @@ handle_info({error, {Stage, {error, bee_not_found_after_creation, App}}}, State)
   {ok, _NewApp} = apps:save(App#app{latest_error = Error}),
   {noreply, State};
   
-handle_info({app_launcher_fsm, error, {error, broken_start}, Output, App}, State) ->
+handle_info({app_launcher_fsm, error, {error, broken_start}, Props}, State) ->
+  App = proplists:get_value(app, Props),
+  Output = proplists:get_value(output, Props),
+  Bee = proplists:get_value(bee, Props),
+  
   ?LOG(info, "app_manager caught error: ~p", [App]),
   Error = #app_error{
     stage = launching,
@@ -338,20 +338,40 @@ handle_info({app_launcher_fsm, error, {error, broken_start}, Output, App}, State
     timestamp = date_util:now_to_seconds()
   },
   {ok, _NewApp} = apps:save(App#app{latest_error = Error}),
+  run_app_kill_fsm(Bee, self()),
+  
+  case proplists:get_value(caller, Props) of
+    undefined -> ok;
+    Pid when is_pid(Pid) -> Pid ! {error, broken_start}
+  end,
+  
   {noreply, State};
 
-handle_info({app_launcher_fsm, error, {_Stage, {error, ComandStage, _Ospid, ExitCode, Stderr, Stdout}}, App}, State) ->
+handle_info({app_launcher_fsm, error, {StateName, Code}, Props}, State) ->
+  App = proplists:get_value(app, Props),
+  Output = proplists:get_value(output, Props),
+  Bee = proplists:get_value(bee, Props),
+  
+  ?LOG(info, "app_manager caught error: ~p", [App]),
   Error = #app_error{
-    stage = ComandStage,
-    stderr = Stderr,
-    stdout = Stdout,
-    exit_status = ExitCode,
+    stage = StateName,
+    stdout = Output,
+    exit_status = Code, % Erp
     timestamp = date_util:now_to_seconds()
   },
   {ok, _NewApp} = apps:save(App#app{latest_error = Error}),
+  
+  % Cleanup will take care of the cleanup
+  case ets:lookup(?LAUNCHERS_APP_TO_PID, App) of
+    [{_Pid, _App, Caller, _Time}] -> Caller ! {error, Error};
+    _ -> ok
+  end,
+  
+  run_app_kill_fsm(Bee, self()),
   {noreply, State};
 
-handle_info({error, State, Error}, State) ->
+handle_info({error, AState, Error}, State) ->
+  erlang:display({handle_info,error,AState,Error}),
   ?LOG(info, "something died: ~p", [Error]),
   {noreply, State};
 
@@ -717,3 +737,10 @@ start_ets_process() ->
     kill -> ok;
     _ -> start_ets_process()
   end.
+
+run_app_kill_fsm(Bee, Caller) ->
+  {ok, P} = app_killer_fsm:start_link(Bee, Caller),
+  % erlang:display({hi, in, request_to_terminate_bee, P}),
+  erlang:link(P),
+  app_killer_fsm:kill(P),
+  P.
