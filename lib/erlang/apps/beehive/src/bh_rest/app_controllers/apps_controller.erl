@@ -30,8 +30,7 @@ get(_, _Data) ->
 
 post([], Data) ->
   case auth_utils:get_authorized_user(Data) of
-    false -> 
-      {error, 401, "No user defined or invalid token"};
+    {error, _,_} = Error -> Error;
     ReqUser ->
       case app_manager:add_application(Data, ReqUser) of
         {ok, App} when is_record(App, app) -> 

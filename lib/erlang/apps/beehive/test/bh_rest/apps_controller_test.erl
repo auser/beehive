@@ -22,7 +22,8 @@ starting_test_() ->
      fun get_index_with_name/0,
      fun get_index_with_wrong_name/0,
      fun post_create_new_app/0,
-     fun post_create_new_app_bad_token/0
+     fun post_create_new_app_bad_token/0,
+     fun post_create_new_app_no_token/0
     ]
    }
   }.
@@ -66,6 +67,12 @@ post_create_new_app() ->
   ?assertEqual("HTTP/1.0 200 OK", Header),
   ?assertMatch([{"ok","created"}],
                 bh_test_util:response_json(Response)),
+  passed.
+
+post_create_new_app_no_token() ->
+  {ok, Header, Response} =
+    perform_post_create([{app_name, "creationtest"}]),
+  ?assertEqual("HTTP/1.0 401 Unauthorized", Header),
   passed.
 
 post_create_new_app_bad_token() ->

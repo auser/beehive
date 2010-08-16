@@ -97,7 +97,7 @@ post_new_user_bad_auth() ->
                      {token, "unauthed" }
                    ]),
   ?assertEqual("HTTP/1.0 401 Unauthorized", Header),
-  ?assertMatch("Unauthorized",
+  ?assertMatch("Unauthorized.",
                bh_test_util:response_json(Response)),
   passed.
 
@@ -110,7 +110,7 @@ post_new_user_non_admin_auth() ->
                      {token, RegUser#user.token }
                    ]),
   ?assertEqual("HTTP/1.0 401 Unauthorized", Header),
-  ?assertMatch("Unauthorized",
+  ?assertMatch("Unauthorized.",
                bh_test_util:response_json(Response)),
   passed.
 
