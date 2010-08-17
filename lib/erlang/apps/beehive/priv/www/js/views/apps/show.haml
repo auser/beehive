@@ -25,7 +25,7 @@
       %td= application.owners
       %td= application.updated_at
       %td= application.type
-      %td= link_to("delete?", "#/apps/delete/"+ application.name, {class: "delete"})
+      %td= link_to("delete?", "#/apps/delete/"+ application.name)
 
 :if application.latest_error != "undefined"
   %h4 Latest Error

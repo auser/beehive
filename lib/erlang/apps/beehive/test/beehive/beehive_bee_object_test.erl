@@ -247,7 +247,7 @@ send_t() ->
   timer:sleep(500),
   BeeObject = beehive_bee_object:get_bee_object(node(self()), "beehive_bee_object_test_app"),
   ?assertEqual(git, BeeObject#bee_object.vcs_type),
-  ?assertEqual(rack, BeeObject#bee_object.type),
+  ?assertEqual(rack, BeeObject#bee_object.template),
   BeeFile = BeeObject#bee_object.bee_file,
   ?assert(filelib:is_file(BeeFile)),
   passed.

@@ -48,6 +48,11 @@ proxy_init(ClientSock) ->
     {start, ClientSock, RequestPid} ->
       {ok, RoutingKey, ForwardReq, Req} = ?BENCHMARK_LOG("Handling request", http_request_decoder, handle_request, [ClientSock]),
       GetBee = ?BENCHMARK_LOG("Getting bee for routing key", bee_store, get_bee, [RoutingKey]),
+      case RoutingKey of
+        default -> ok;
+        _ ->
+          ?LOG(debug, "bee_store:get_bee(~s): ~p", [RoutingKey, GetBee])
+      end,
       engage_bee(ClientSock, RequestPid, RoutingKey, ForwardReq, Req, GetBee);
     _E ->
       proxy_init(ClientSock)
@@ -90,6 +95,7 @@ engage_bee(ClientSock, _RequestPid, RoutingKey, ForwardReq, Req, {ok, #bee{host 
       
   proxy_loop(NewState);
 engage_bee(ClientSock, _RequestPid, Hostname, _ForwardReq, _Req, {error, Reason}) ->
+  erlang:display({engage_bee,error,Reason}),
   send_and_terminate(
     ClientSock, Reason, 
     ?APP_ERROR(404, io_lib:format("Error on ~p: ~p", [Hostname, Reason]))

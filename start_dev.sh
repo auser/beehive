@@ -6,10 +6,14 @@ make compile
 
 # Make root directory
 if [ -z "$BEEHIVE_HOME" ]; then
-  mkdir -p /tmp/beehive
-else
-  echo "mkdir -p $BEEHIVE_HOME"
+  export BEEHIVE_HOME=/tmp/beehive
 fi
+
+if [ -z "$BEEHIVE_DOMAIN" ]; then
+  export BEEHIVE_DOMAIN=`hostname -f`
+fi
+
+mkdir -p $BEEHIVE_HOME
 
 # Start Beehive
 echo "Starting beehive"

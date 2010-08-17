@@ -47,7 +47,12 @@ search_for_application_value_from_environment(Param) ->
   EnvParam = string:to_upper(lists:flatten(["beehive_", erlang:atom_to_list(Param)])),
   case os:getenv(EnvParam) of
     false -> false;
-    E -> E
+    E -> 
+      case E of
+        "true" -> true;
+        "false" -> false;
+        Otherwise -> Otherwise
+      end
   end.
   
 %%--------------------------------------------------------------------

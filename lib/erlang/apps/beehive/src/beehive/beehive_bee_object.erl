@@ -75,7 +75,7 @@ clone(GivenProplist, From) when is_list(GivenProplist) ->
   BeeObject = from_proplists(GivenProplist),
   clone(BeeObject, From);
   
-clone(#bee_object{type=Type, bundle_dir=BundleDir, revision=Rev}=BeeObject, From) when is_record(BeeObject, bee_object) ->
+clone(#bee_object{template=Type, bundle_dir=BundleDir, revision=Rev}=BeeObject, From) when is_record(BeeObject, bee_object) ->
   case beehive_bee_object_config:get_or_default(clone, Type) of
     {error, Reason} -> {error, {clone, Reason}};
     AfterClone -> 
@@ -113,7 +113,7 @@ bundle(Proplists, From) when is_list(Proplists) ->
 
 % Take a url and clone/1 it and then bundle the directory
 % based on the configuration directive
-bundle(#bee_object{type = Type, bundle_dir=NBundleDir} = BeeObject, From) when is_record(BeeObject, bee_object) ->  
+bundle(#bee_object{template=Type, bundle_dir=NBundleDir} = BeeObject, From) when is_record(BeeObject, bee_object) ->  
   case clone(BeeObject#bee_object{pre = undefined, post = undefined}, From) of
     {error, {_ExitStatus, _Reason}} = CloneError -> 
       % Cleanup and send error
@@ -188,7 +188,7 @@ mount(Type, Name, From) ->
 
       % I *think* this should happen here
       ?DEBUG_RM(MountDir),
-      BeeObject = from_proplists([{name, Name}, {type, Type}, {bee_file, BeeFile}, 
+      BeeObject = from_proplists([{name, Name}, {template, Type}, {bee_file, BeeFile}, 
                                   {run_dir, MountDir}, {bundle_dir, filename:dirname(BeeFile)}
                                 ]),
       
@@ -218,7 +218,7 @@ start(Type, Name, Port, From) ->
 
       {ok, PidFilename, PidIo} = temp_file(),
       file:close(PidIo),
-      % BeeObject = from_proplists([{name, Name}, {type, Type}, {bee_file, BeeFile}, {run_dir, BeeDir}, {port, Port}]),
+      % BeeObject = from_proplists([{name, Name}, {template, Type}, {bee_file, BeeFile}, {run_dir, BeeDir}, {port, Port}]),
       CmdProcessPid = spawn(fun() ->
         {ok, ScriptFilename, ScriptIo} = temp_file(),
         file:write(ScriptIo, StartScript),
@@ -235,7 +235,7 @@ start(Type, Name, Port, From) ->
           file:delete(ScriptFilename),
           file:delete(PidFilename),
 
-          RealBeeObject = BeeObject#bee_object{os_pid = OsPid},
+          RealBeeObject = BeeObject#bee_object{os_pid = OsPid, template = Type},
           write_info_about_bee(RealBeeObject),
           send_to(From, {started, RealBeeObject}),
                     
@@ -289,7 +289,7 @@ unmount(Type, Name, Caller) ->
   MountDir = filename:join([MountRootDir, Name]),
   UnMountCmd = proplists:get_value(unmount, config_props()),
   
-  BeeObject = from_proplists([{name, Name}, {type, Type}, {bee_file, BeeFile}, 
+  BeeObject = from_proplists([{name, Name}, {template, Type}, {bee_file, BeeFile}, 
                               {run_dir, MountDir}, {bundle_dir, filename:dirname(BeeFile)}
                             ]),
   
@@ -534,7 +534,7 @@ cmd_receive(Port, Acc, From, Fun) ->
     E ->
       run_function(Fun, E),
       cmd_receive(Port, Acc, From, Fun)
-    after 5000 ->
+    after 5000000 ->
       % We don't want it to hang infinitely, so if it does, we'll close it off
       ok
   end.
@@ -577,7 +577,7 @@ from_proplists([{branch, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#
 from_proplists([{revision, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{revision = V});
 from_proplists([{vcs_type, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{vcs_type = V});
 from_proplists([{url, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{url = V});
-from_proplists([{type, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{type = V});
+from_proplists([{template, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{template = V});
 from_proplists([{run_dir, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{run_dir = V});
 from_proplists([{bundle_dir, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{bundle_dir = V});
 from_proplists([{bee_size, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{bee_size = V});
@@ -601,7 +601,7 @@ to_proplist([branch|Rest], #bee_object{branch = V} = Bo, Acc) -> to_proplist(Res
 to_proplist([revision|Rest], #bee_object{revision = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{revision, V}|Acc]);
 to_proplist([vcs_type|Rest], #bee_object{vcs_type = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{vcs_type, V}|Acc]);
 to_proplist([url|Rest], #bee_object{url = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{url, V}|Acc]);
-to_proplist([type|Rest], #bee_object{type = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{type, V}|Acc]);
+to_proplist([template|Rest], #bee_object{template = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{template, V}|Acc]);
 to_proplist([run_dir|Rest], #bee_object{run_dir = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{run_dir, V}|Acc]);
 to_proplist([bundle_dir|Rest], #bee_object{bundle_dir = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{bundle_dir, V}|Acc]);
 to_proplist([bee_size|Rest], #bee_object{bee_size = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{bee_size, V}|Acc]);

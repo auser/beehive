@@ -25,7 +25,7 @@ init(LocalPort) ->
   {ok, Pid}.
 
 % accept responses on the port given by the application configuration
-init_accept(LPort, 0) -> ?LOG(error, "Could not listen on the git port: ~p", [LPort]);
+init_accept(LPort, 0) -> ?LOG(debug, "Could not listen on the git port: ~p", [LPort]);
 init_accept(LPort, Count) ->
   SockOpts = [list, {packet, 0}, {active, false}],
 	case gen_tcp:listen(LPort, SockOpts) of

@@ -102,8 +102,8 @@ compile_app_details(App) ->
     {"routing_param", App#app.routing_param}, 
     {"owners", lists:map(fun(Owner) -> Owner#user.email end, user_apps:get_owners(App))}, 
     {"updated_at", App#app.updated_at},
-    {"type", misc_utils:to_list(App#app.dynamic)},
-    {"type", misc_utils:to_list(App#app.type)},
+    {"dynamic", misc_utils:to_list(App#app.dynamic)},
+    {"template", misc_utils:to_list(App#app.template)},
     {"latest_error", case App#app.latest_error of
       undefined -> undefined;
       AppError ->

@@ -30,7 +30,7 @@
 -export ([
   meta_data/2,
   build_app_env/1, build_app_env/2,
-  from_bee_object/1
+  from_bee_object/2
 ]).
 
 -define (DB, beehive_db_srv).
@@ -230,18 +230,20 @@ to_proplist([maxconn|Rest], #bee{maxconn = Value} = Bee, Acc) -> to_proplist(Res
 to_proplist([act_count|Rest], #bee{act_count = Value} = Bee, Acc) -> to_proplist(Rest, Bee, [{act_count, Value}|Acc]);
 to_proplist([_H|T], Bee, Acc) -> to_proplist(T, Bee, Acc).
 
-from_bee_object(Bo) when is_record(Bo, bee_object) -> fbo(record_info(fields, bee_object), Bo, #bee{}).
-fbo([], _Bo, Bee) -> validate_bee(Bee);
-fbo([name|Rest], #bee_object{name = Name} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{app_name = Name});
-fbo([revision|Rest], #bee_object{revision = Rev} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{revision = Rev});
-fbo([bee_size|Rest], #bee_object{bee_size = V} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{bee_size = V});
-fbo([type|Rest], #bee_object{type = V} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{type = V});
-fbo([bee_file|Rest], #bee_object{bee_file = V} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{bee_file = V});
-fbo([port|Rest], #bee_object{port = V} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{port = V});
-fbo([host|Rest], #bee_object{port = V} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{port = V});
-fbo([os_pid|Rest], #bee_object{os_pid = V} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{os_pid = V});
-fbo([pid|Rest], #bee_object{pid = V} = Bo, Bee) -> fbo(Rest, Bo, Bee#bee{pid = V});
-fbo([_H|Rest], Bo, Bee) -> fbo(Rest, Bo, Bee).
+from_bee_object(Bo, App) when is_record(Bo, bee_object) -> fbo(record_info(fields, bee_object), Bo, App, #bee{}).
+fbo([], _Bo, _App, Bee) -> validate_bee(Bee);
+fbo([name|Rest], #bee_object{name = Name} = Bo, App, Bee) -> fbo(Rest, Bo, App, Bee#bee{app_name = Name});
+fbo([revision|Rest], #bee_object{revision = Rev} = Bo, App, Bee) -> fbo(Rest, Bo, App, Bee#bee{revision = Rev});
+fbo([bee_size|Rest], #bee_object{bee_size = V} = Bo, App, Bee) -> fbo(Rest, Bo, App, Bee#bee{bee_size = V});
+fbo([template|Rest], #bee_object{template = undefined} = Bo, #app{template = Type} = App, Bee) -> 
+  fbo(Rest, Bo, App, Bee#bee{template = Type});
+fbo([template|Rest], #bee_object{template = V} = Bo, App, Bee) -> fbo(Rest, Bo, App, Bee#bee{template = V});
+fbo([bee_file|Rest], #bee_object{bee_file = V} = Bo, App, Bee) -> fbo(Rest, Bo, App, Bee#bee{bee_file = V});
+fbo([port|Rest], #bee_object{port = V} = Bo, App, Bee) -> fbo(Rest, Bo, App, Bee#bee{port = V});
+fbo([host|Rest], #bee_object{port = V} = Bo, App, Bee) -> fbo(Rest, Bo, App, Bee#bee{port = V});
+fbo([os_pid|Rest], #bee_object{os_pid = V} = Bo, App, Bee) -> fbo(Rest, Bo, App, Bee#bee{os_pid = V});
+fbo([pid|Rest], #bee_object{pid = V} = Bo, App, Bee) -> fbo(Rest, Bo, App, Bee#bee{pid = V});
+fbo([_H|Rest], Bo, App, Bee) -> fbo(Rest, Bo, App, Bee).
 
 %%-------------------------------------------------------------------
 %% @spec (Proplist) ->    ValidProplist
