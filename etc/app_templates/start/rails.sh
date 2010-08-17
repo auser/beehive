@@ -8,6 +8,9 @@ export GEM_PATH=.beehive_gem_home
 
 
 echo $$ > $PIDFILE
-if [ -f config.ru ]; then
+if [ -f start.sh ]; then
+  echo "Using start.sh file"
+  exec /bin/sh start.sh
+else
   exec ./script/server -p $PORT
 fi
