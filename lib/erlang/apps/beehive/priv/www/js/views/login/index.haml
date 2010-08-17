@@ -1,1 +1,15 @@
-login please
+%h3
+  Please login
+
+#login
+  %form{ action: "#/login", method: "post" }
+
+    %label Email:
+    %input{ type: "text", name: "email" }
+    %br
+
+    %label Password:
+    %input{ type: "password", name: "password" }
+    %br
+
+    %input{ type: "submit", value: "Login"}

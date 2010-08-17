@@ -17,6 +17,7 @@ starting_test_() ->
     fun teardown/1,
     [
      fun test_post/0,
+     fun test_post_missing_email_and_pass/0,
      fun test_post_wrong_email/0,
      fun test_post_wrong_password/0
     ]
@@ -31,6 +32,12 @@ test_post() ->
   {struct, Json} = BodyStruct,
   Token = binary_to_list(proplists:get_value(<<"token">>, Json)),
   ?assert(undefined =/= Token),
+  passed.
+
+test_post_missing_email_and_pass() ->
+  {ok, Headers, Body} = post_to_auth([{email, ""},
+                                      {password, ""}]),
+  ?assertEqual("HTTP/1.0 404 Object Not Found", Headers),
   passed.
 
 

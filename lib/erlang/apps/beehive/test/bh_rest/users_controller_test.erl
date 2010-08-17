@@ -96,8 +96,8 @@ post_new_user_bad_auth() ->
                      {password, "created"},
                      {token, "unauthed" }
                    ]),
-  ?assertEqual("HTTP/1.0 404 Object Not Found", Header),
-  ?assertMatch([{"error","Unauthorized"}],
+  ?assertEqual("HTTP/1.0 401 Unauthorized", Header),
+  ?assertMatch("Unauthorized.",
                bh_test_util:response_json(Response)),
   passed.
 
@@ -109,8 +109,8 @@ post_new_user_non_admin_auth() ->
                      {password, "created"},
                      {token, RegUser#user.token }
                    ]),
-  ?assertEqual("HTTP/1.0 404 Object Not Found", Header),
-  ?assertMatch([{"error","Unauthorized"}],
+  ?assertEqual("HTTP/1.0 401 Unauthorized", Header),
+  ?assertMatch("Unauthorized.",
                bh_test_util:response_json(Response)),
   passed.
 
