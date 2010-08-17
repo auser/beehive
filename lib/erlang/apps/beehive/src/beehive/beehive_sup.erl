@@ -87,7 +87,7 @@ init(Args) ->
   % AFTER
   beehive_db_srv:init_databases(),
   
-  {ok,{{one_for_one,5,10}, Children}}.
+  {ok,{{one_for_one,10,10}, Children}}.
   
 %%====================================================================
 %% Internal functions

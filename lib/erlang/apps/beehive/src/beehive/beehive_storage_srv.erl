@@ -30,7 +30,6 @@
 
 
 -record(state, {
-  scratch_dir,
   squashed_disk
 }).
 
@@ -55,10 +54,10 @@ seed_pids(_State) ->
 %% Description: Starts the server
 %%--------------------------------------------------------------------
 build_bee(App) ->         build_bee(App, undefined).
-build_bee(App, Caller) -> gen_cluster:call(?SERVER, {build_bee, App, Caller}).
+build_bee(App, Caller) -> gen_cluster:call(?SERVER, {build_bee, App, Caller}, infinity).
 
 fetch_or_build_bee(App, Caller) ->
-  gen_cluster:call(?SERVER, {fetch_or_build_bee, App, Caller}).
+  gen_cluster:call(?SERVER, {fetch_or_build_bee, App, Caller}, infinity).
 
 start_link() ->
   gen_cluster:start_link({local, ?SERVER}, ?MODULE, [], []).
@@ -75,13 +74,11 @@ start_link() ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
-  ScratchDisk = config:search_for_application_value(scratch_dir, ?BEEHIVE_DIR("tmp")),
   SquashedDir = config:search_for_application_value(squashed_storage, ?BEEHIVE_DIR("squashed")),
   
-  bh_file_utils:ensure_dir_exists([ScratchDisk, SquashedDir]),
+  bh_file_utils:ensure_dir_exists([SquashedDir]),
   
   {ok, #state{
-    scratch_dir = ScratchDisk,
     squashed_disk = SquashedDir
   }}.
 
@@ -96,7 +93,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({build_bee, App, Caller}, _From, State) ->
   Resp = case internal_build_bee(App, Caller, State) of
-    {error, {ExitCode, Reasons}} = T -> 
+    {error, {ExitCode, Reasons}} -> 
       Error = #app_error{
         stage = bundle, % erm?
         stdout = lists:reverse(Reasons),
