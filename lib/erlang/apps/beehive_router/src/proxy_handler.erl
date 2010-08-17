@@ -48,7 +48,11 @@ proxy_init(ClientSock) ->
     {start, ClientSock, RequestPid} ->
       {ok, RoutingKey, ForwardReq, Req} = ?BENCHMARK_LOG("Handling request", http_request_decoder, handle_request, [ClientSock]),
       GetBee = ?BENCHMARK_LOG("Getting bee for routing key", bee_store, get_bee, [RoutingKey]),
-      ?LOG(debug, "bee_store:get_bee(~s): ~p : ~p", [RoutingKey, GetBee, Req]),
+      case RoutingKey of
+        default -> ok;
+        _ ->
+          ?LOG(debug, "bee_store:get_bee(~s): ~p", [RoutingKey, GetBee])
+      end,
       engage_bee(ClientSock, RequestPid, RoutingKey, ForwardReq, Req, GetBee);
     _E ->
       proxy_init(ClientSock)
