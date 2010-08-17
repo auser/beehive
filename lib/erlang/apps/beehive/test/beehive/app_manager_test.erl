@@ -10,7 +10,7 @@ all_test_app_manager_test_() ->
         fun add_application/0,
         fun spawn_update_bee_status/0,
         fun start_new_instance_t/0,
-        fun start_new_instance_t_failing_app/0,
+        % fun start_new_instance_t_failing_app/0,
         fun teardown_an_instance_t/0,
         fun cleanup/0
       ]
