@@ -233,7 +233,13 @@ handle_info({clean_up}, State) ->
 
 handle_info({manage_pending_bees}, State) ->
   spawn(fun() ->
-    PendingBees = lists:filter(fun(B) -> B#bee.status == pending end, bees:all()),
+    PendingBees = lists:filter(fun(B) -> 
+        case is_record(B, bee) of
+          true -> B#bee.status == pending;
+          false -> false 
+        end
+      end, 
+    bees:all()),
     lists:map(fun(B) ->
         Status = try_to_connect_to_new_instance(B, 10),
         ?NOTIFY({bee, update_status, B, Status})
