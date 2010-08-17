@@ -76,7 +76,7 @@ start_link() ->
 init([]) ->
   SquashedDir = config:search_for_application_value(squashed_storage, ?BEEHIVE_DIR("squashed")),
   
-  bh_file_utils:ensure_dir_exists([ScratchDisk, SquashedDir]),
+  bh_file_utils:ensure_dir_exists([SquashedDir]),
   
   {ok, #state{
     squashed_disk = SquashedDir
@@ -93,7 +93,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({build_bee, App, Caller}, _From, State) ->
   Resp = case internal_build_bee(App, Caller, State) of
-    {error, {ExitCode, Reasons}} = T -> 
+    {error, {ExitCode, Reasons}} -> 
       Error = #app_error{
         stage = bundle, % erm?
         stdout = lists:reverse(Reasons),
