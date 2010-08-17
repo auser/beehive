@@ -36,17 +36,20 @@ get_bee([Hostname|_Rest] = List) ->
 %% If a bee cannot be found within the requested time (before the CONNECTION_TIMEOUT)
 %% then we pass back a timeout
 get_bee(Hostname, TimeofRequest) ->
-  ?LOG(debug, "new get_bee request: ~p : ~p", [Hostname, TimeofRequest]),
   TOTime = date_util:now_to_seconds() - TimeofRequest,
   case TOTime - TimeofRequest > ?CONNECTION_TIMEOUT of
     true -> {error, timeout};
     false ->
       case get_bee_by_hostname(Hostname) of
-        {ok, _Bee, _Socket} = Tuple -> Tuple;
+        {ok, _Bee, _Socket} = Tuple -> 
+          ?LOG(debug, "get_bee_by_hostname returned: ~p", [Tuple]),
+          Tuple;
         ?MUST_WAIT_MSG ->
           timer:sleep(500),
           get_bee(Hostname);
-        {error, Reason} -> {error, Reason}
+        {error, Reason} -> 
+          ?LOG(debug, "get_bee_by_hostname error: ~p", [Reason]),
+          {error, Reason}
       end
   end.
 
