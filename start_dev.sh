@@ -9,7 +9,7 @@ GEM_BIN=`which gem`
 
 if [ ! -z "$GEM_BIN" ]; then
   if [ -z `ps aux | grep gem | grep server` ]; then
-    gem server 2>&1 > /dev/null &
+    gem server >/dev/null 2>&1 &
   fi
 fi
 
