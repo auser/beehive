@@ -5,12 +5,6 @@ mkdir -p .beehive_gem_home
 export GEM_HOME=.beehive_gem_home
 export GEM_PATH=.beehive_gem_home
 
-echo "Checking for a config.ru (`pwd`)"
-if [ ! -f "config.ru" ]; then
-  echo "Invalid rack app - NO config.ru"
-  exit 127
-fi
-
 # If there is an isolate file, run Isolate.now!
 if [ -f "Isolate" ]; then
   ruby -rubygems -e "require 'isolate'; Isolate.now!"
