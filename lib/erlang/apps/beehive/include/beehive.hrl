@@ -42,7 +42,7 @@
   id,                       % tuple id of the app_name, host and port {app_name, host, port}
   bee_file,                 % path of app on hostnode
   revision,
-  type,                     % type of app (rails, rack, java, etc.)
+  template,                 % type of app (rails, rack, java, etc.)
   bee_size,
   start_time    = 0,        % starting time
   pid,                      % pid of the port process tracker
@@ -63,7 +63,7 @@
   revision,     % revision
   vcs_type,     % git | svn
   url,          % url
-  type,         % type of app to match conf files
+  template,     % type of app to match conf files
   run_dir,      % location of the unpacked bee_file
   bundle_dir,   % location of the root of the bundle
   bee_size,     % size of the bee_file
@@ -91,7 +91,7 @@
   revision,                         % revision of the latest working push
   updated_at,
   latest_error  = undefined,        % last error that occured on the app
-  type          = default           % default app
+  template      = default           % default app
 }).
 
 

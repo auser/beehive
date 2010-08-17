@@ -235,9 +235,9 @@ fbo([], _Bo, _App, Bee) -> validate_bee(Bee);
 fbo([name|Rest], #bee_object{name = Name} = Bo, App, Bee) -> fbo(Rest, Bo, App, Bee#bee{app_name = Name});
 fbo([revision|Rest], #bee_object{revision = Rev} = Bo, App, Bee) -> fbo(Rest, Bo, App, Bee#bee{revision = Rev});
 fbo([bee_size|Rest], #bee_object{bee_size = V} = Bo, App, Bee) -> fbo(Rest, Bo, App, Bee#bee{bee_size = V});
-fbo([type|Rest], #bee_object{type = undefined} = Bo, #app{type = Type} = App, Bee) -> 
-  fbo(Rest, Bo, App, Bee#bee{type = Type});
-fbo([type|Rest], #bee_object{type = V} = Bo, App, Bee) -> fbo(Rest, Bo, App, Bee#bee{type = V});
+fbo([template|Rest], #bee_object{template = undefined} = Bo, #app{template = Type} = App, Bee) -> 
+  fbo(Rest, Bo, App, Bee#bee{template = Type});
+fbo([template|Rest], #bee_object{template = V} = Bo, App, Bee) -> fbo(Rest, Bo, App, Bee#bee{template = V});
 fbo([bee_file|Rest], #bee_object{bee_file = V} = Bo, App, Bee) -> fbo(Rest, Bo, App, Bee#bee{bee_file = V});
 fbo([port|Rest], #bee_object{port = V} = Bo, App, Bee) -> fbo(Rest, Bo, App, Bee#bee{port = V});
 fbo([host|Rest], #bee_object{port = V} = Bo, App, Bee) -> fbo(Rest, Bo, App, Bee#bee{port = V});

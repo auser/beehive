@@ -179,7 +179,7 @@ from_proplists([], App)  -> App;
 from_proplists([{name, V}|Rest], App) -> from_proplists(Rest, App#app{name = V});
 from_proplists([{url, V}|Rest], App) -> from_proplists(Rest, App#app{url = V});
 from_proplists([{vcs_type, V}|Rest], App) -> from_proplists(Rest, App#app{vcs_type = V});
-from_proplists([{type, V}|Rest], App) -> from_proplists(Rest, App#app{type = V});
+from_proplists([{template, V}|Rest], App) -> from_proplists(Rest, App#app{template = V});
 from_proplists([{timeout, V}|Rest], App) -> from_proplists(Rest, App#app{timeout = V});
 from_proplists([{sticky, V}|Rest], App) -> from_proplists(Rest, App#app{sticky = V});
 from_proplists([{min_instances, V}|Rest], App) -> from_proplists(Rest, App#app{min_instances = V});
@@ -200,7 +200,7 @@ to_proplist([min_instances|Rest], #app{min_instances = Value} = App, Acc) -> to_
 to_proplist([max_instances|Rest], #app{max_instances = Value} = App, Acc) -> to_proplist(Rest, App, [{max_instances, Value}|Acc]);
 to_proplist([revision|Rest], #app{revision = Value} = App, Acc) -> to_proplist(Rest, App, [{revision, Value}|Acc]);
 to_proplist([updated_at|Rest], #app{updated_at = Value} = App, Acc) -> to_proplist(Rest, App, [{updated_at, Value}|Acc]);
-to_proplist([type|Rest], #app{type = Value} = App, Acc) -> to_proplist(Rest, App, [{type, Value}|Acc]);
+to_proplist([template|Rest], #app{template = Value} = App, Acc) -> to_proplist(Rest, App, [{template, Value}|Acc]);
 to_proplist([routing_param|Rest], #app{routing_param = Value} = App, Acc) -> to_proplist(Rest, App, [{routing_param, Value}|Acc]);
 to_proplist([_H|T], App, Acc) -> to_proplist(T, App, Acc).
 
@@ -228,9 +228,9 @@ validate_app([branch|Rest], App) -> validate_app(Rest, App);
 % Validate the url
 validate_app([url|Rest], #app{url = _Url} = App) -> validate_app(Rest, App);
 % Validate the type, it can only be either static or dynamic
-validate_app([vcs_type|Rest], #app{type = git} = App) -> validate_app(Rest, App);
+validate_app([vcs_type|Rest], #app{vcs_type = git} = App) -> validate_app(Rest, App);
 % validate_app([vcs_type|Rest], #app{type = svn} = App) -> validate_app(Rest, App);
-validate_app([vcs_type|Rest], #app{type = _Else} = App) -> validate_app(Rest, App#app{vcs_type = git});
+validate_app([vcs_type|Rest], #app{vcs_type = _Else} = App) -> validate_app(Rest, App#app{vcs_type = git});
 % Validate the timeout
 validate_app([timeout|Rest], #app{timeout = undefined} = App) -> validate_app(Rest, App#app{timeout = 10*1000});
 validate_app([timeout|Rest], #app{timeout = V} = App) -> validate_app(Rest, App#app{timeout = misc_utils:to_integer(V)*1000});
@@ -247,8 +247,8 @@ validate_app([revision|Rest], App) -> validate_app(Rest, App);
 % Validate the updated_at
 validate_app([updated_at|Rest], App) -> validate_app(Rest, App);
 % Validate the template
-validate_app([type|Rest], #app{type = undefined} = App) -> validate_app(Rest, App#app{type = default});
-validate_app([type|Rest], #app{type = Val} = App) -> validate_app(Rest, App#app{type = misc_utils:to_atom(Val)});
+validate_app([template|Rest], #app{template = undefined} = App) -> validate_app(Rest, App#app{template = default});
+validate_app([template|Rest], #app{template = Val} = App) -> validate_app(Rest, App#app{template = misc_utils:to_atom(Val)});
 % Validate the routing parameter
 validate_app([routing_param|Rest], #app{routing_param = undefined} = App) -> validate_app(Rest, App#app{routing_param = 'Host'});
 validate_app([routing_param|Rest], #app{routing_param = V} = App) -> validate_app(Rest, App#app{routing_param = misc_utils:to_atom(V)});
