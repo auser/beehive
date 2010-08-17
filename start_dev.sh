@@ -4,6 +4,15 @@
 # Compile
 make compile
 
+# We'll start a dummy gem server, if `gem` is present
+GEM_BIN=`which gem`
+
+if [ ! -z "$GEM_BIN" ]; then
+  if [ -z `ps aux | grep gem | grep server` ]; then
+    gem server 2>&1 > /dev/null &
+  fi
+fi
+
 # Make root directory
 if [ -z "$BEEHIVE_HOME" ]; then
   export BEEHIVE_HOME=/tmp/beehive
