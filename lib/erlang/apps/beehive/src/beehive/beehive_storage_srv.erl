@@ -30,7 +30,6 @@
 
 
 -record(state, {
-  scratch_dir,
   squashed_disk
 }).
 
@@ -55,10 +54,10 @@ seed_pids(_State) ->
 %% Description: Starts the server
 %%--------------------------------------------------------------------
 build_bee(App) ->         build_bee(App, undefined).
-build_bee(App, Caller) -> gen_cluster:call(?SERVER, {build_bee, App, Caller}).
+build_bee(App, Caller) -> gen_cluster:call(?SERVER, {build_bee, App, Caller}, infinity).
 
 fetch_or_build_bee(App, Caller) ->
-  gen_cluster:call(?SERVER, {fetch_or_build_bee, App, Caller}).
+  gen_cluster:call(?SERVER, {fetch_or_build_bee, App, Caller}, infinity).
 
 start_link() ->
   gen_cluster:start_link({local, ?SERVER}, ?MODULE, [], []).
@@ -75,13 +74,11 @@ start_link() ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
-  ScratchDisk = config:search_for_application_value(scratch_dir, ?BEEHIVE_DIR("tmp")),
   SquashedDir = config:search_for_application_value(squashed_storage, ?BEEHIVE_DIR("squashed")),
   
   bh_file_utils:ensure_dir_exists([ScratchDisk, SquashedDir]),
   
   {ok, #state{
-    scratch_dir = ScratchDisk,
     squashed_disk = SquashedDir
   }}.
 
