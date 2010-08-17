@@ -135,7 +135,7 @@ preparing({update}, #state{app = App} = State) ->
 preparing({launch}, #state{from = From, app = App, bee = Bee, latest_sha = Sha} = State) ->
   Self = self(),  
   Port = bh_host:unused_port(),
-  ?LOG(debug, "beehive_bee_object:start(~p, ~s, ~p, ~p)", [App#app.template, App#app.name, Port, Self]),
+  ?LOG(debug, "beehive_bee_object:start(~p, ~p, ~p, ~p)", [App#app.template, App#app.name, Port, Self]),
   beehive_bee_object:start(App#app.template, App#app.name, Port, Self),
   {next_state, launching, State};
 
@@ -160,8 +160,8 @@ launching({started, BeeObject}, #state{app = App} = State) ->
   Self = self(),
   BuiltBee = bees:from_bee_object(BeeObject, App),
   Bee = BuiltBee#bee{host = bh_host:myip()},
-  ?LOG(debug, "spawn_update_bee_status: ~p for ~p, ~p", [Bee, Self, 30]),
-  app_manager:spawn_update_bee_status(Bee, Self, 30),
+  ?LOG(debug, "spawn_update_bee_status: ~p for ~p, ~p", [Bee, Self, 20]),
+  app_manager:spawn_update_bee_status(Bee, Self, 20),
   {next_state, pending, State#state{bee = Bee}};
 
 launching({error, Reason}, State) ->

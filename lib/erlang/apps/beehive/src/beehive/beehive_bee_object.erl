@@ -534,7 +534,7 @@ cmd_receive(Port, Acc, From, Fun) ->
     E ->
       run_function(Fun, E),
       cmd_receive(Port, Acc, From, Fun)
-    after 5000 ->
+    after 5000000 ->
       % We don't want it to hang infinitely, so if it does, we'll close it off
       ok
   end.

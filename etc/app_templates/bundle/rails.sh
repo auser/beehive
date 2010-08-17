@@ -19,6 +19,7 @@ fi
 if [ -f ".gems" ]; then
   while read line; do
     if [ ! -z "$line" ]; then
+      echo "gem install --no-rdoc --no-ri $line"
       eval "gem install --no-rdoc --no-ri $line"
     fi
   done < ".gems"
