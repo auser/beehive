@@ -69,15 +69,21 @@ request_to_expand_app(App) -> gen_server:cast(?SERVER, {request_to_expand_app, A
 status() -> gen_server:call(?SERVER, {status}).
 instance() -> whereis(?SERVER).
 garbage_collection() -> gen_server:cast(?SERVER, {garbage_collection}).
-request_to_start_new_bee_by_app(App) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_app, App, undefined}).
-request_to_start_new_bee_by_app(App, Caller) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_app, App, Caller}).
-request_to_start_new_bee_by_name(Name) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_name, Name, undefined}).
-request_to_start_new_bee_by_name(Name, Caller) -> gen_server:cast(?SERVER, {request_to_start_new_bee_by_name, Name, Caller}).
-request_to_update_app(App) -> gen_server:cast(?SERVER, {request_to_update_app, App}).
-request_to_save_app(App) -> gen_server:call(?SERVER, {request_to_save_app, App}).
-request_to_terminate_bee(Bee) -> gen_server:cast(?SERVER, {request_to_terminate_bee, Bee, undefined}).
+% Starting
+request_to_start_new_bee_by_app(App) ->  request_to_start_new_bee_by_app(App, undefined).
+request_to_start_new_bee_by_app(App, Caller) -> 
+  gen_server:cast(?SERVER, {request_to_start_new_bee_by_app, App, Caller}).
+request_to_start_new_bee_by_name(Name) -> request_to_start_new_bee_by_name(Name, undefined).
+request_to_start_new_bee_by_name(Name, Caller) -> 
+  gen_server:cast(?SERVER, {request_to_start_new_bee_by_name, Name, Caller}).
+  
+request_to_terminate_bee(Bee) -> 
+  gen_server:cast(?SERVER, {request_to_terminate_bee, Bee, undefined}).
 request_to_terminate_bee(Bee, Caller) -> 
   gen_server:cast(?SERVER, {request_to_terminate_bee, Bee, Caller}).
+  
+request_to_update_app(App) -> gen_server:cast(?SERVER, {request_to_update_app, App}).
+request_to_save_app(App) -> gen_server:call(?SERVER, {request_to_save_app, App}).
 terminate_app_instances(Appname) -> gen_server:cast(?SERVER, {terminate_app_instances, Appname}).
 terminate_all() -> gen_server:cast(?SERVER, {terminate_all}).
 
@@ -195,14 +201,15 @@ handle_cast({request_to_expand_app, App}, State) ->
   expand_instance_by_app(App),
   {noreply, State};
 
+% STARTING
 handle_cast({request_to_start_new_bee_by_app, App, Caller}, State) ->
   start_new_instance_by_app(App, Caller),
   {noreply, State};
 
 handle_cast({request_to_start_new_bee_by_name, Name, Caller}, State) ->
   case apps:find_by_name(Name) of
-    [] -> error;
-    App when is_record(App, app) -> start_new_instance_by_app(App, Caller)
+    App when is_record(App, app) -> start_new_instance_by_app(App, Caller);
+    _ -> ok
   end,
   {noreply, State};
 
@@ -679,7 +686,7 @@ app_launcher_fsm_go(AppToPidTable, PidToAppTable, Method, App, Caller, Updating)
           rpc:call(node(P), app_launcher_fsm, Method, [P]),
           ets:insert(AppToPidTable, {App, P, Caller, Now}), 
           ets:insert(PidToAppTable, {P, App, Caller, Now}), 
-          P;
+          {ok, P};
         Else -> Else
       end
   end.

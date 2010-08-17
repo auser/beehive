@@ -11,7 +11,7 @@
   end
 end()).
 
--define (DPRINT (Str), fun() ->
+-define (DEBUG_PRINT (Str), fun() ->
   case ?DEBUG of
     true -> erlang:display(Str);
     false -> ok
@@ -53,7 +53,7 @@ all_test_() ->
   {timeout, 90, Tests}.
 
 git_clone() ->
-  ?DPRINT({starting, git_clone}),
+  ?DEBUG_PRINT({starting, git_clone}),
   % Update the repos
   {{Year, Month, Day}, {Hour, Minute, Second}} = erlang:universaltime(),
   Ts = lists:flatten(io_lib:format("~w~2..0w~2..0w~2..0w~2..0w~2..0w", [Year, Month, Day, Hour, Minute, Second])),
@@ -76,12 +76,12 @@ git_clone() ->
   ReposBundleDir = filename:join([related_dir(), "squashed", "beehive_bee_object_test_app"]),
   os:cmd(["ls ", ReposBundleDir]),
   ?assert(filelib:is_file(filename:join([ReposBundleDir, "NEW_FILE"]))),
-  ?DPRINT({git_clone, passed}),
+  ?DEBUG_PRINT({git_clone, passed}),
   passed.
 
 git_bundle() ->
   rm_rf(filename:join([related_dir(), "squashed", "testing_bee_out"])),
-  ?DPRINT({starting, git_bundle}),
+  ?DEBUG_PRINT({starting, git_bundle}),
   beehive_bee_object:bundle(git_repos_props()),
   BeeFile = filename:join([related_dir(), "squashed", "beehive_bee_object_test_app.bee"]),
   ?assert(filelib:is_file(BeeFile)),
@@ -93,12 +93,12 @@ git_bundle() ->
   O = string:tokens(os:cmd(["tar -C ", BeeDir," -zxf ", BeeFile, " && ls ", BeeDir]), "\n"),
   ?assert(lists:member("DUMMY_FILE", O)),
   rm_rf(BeeDir),
-  ?DPRINT({git_bundle, passed}),
+  ?DEBUG_PRINT({git_bundle, passed}),
   passed.
 
 % git_clone_with_errors() ->
 %   % Non-existing url
-%   ?DPRINT({git_clone_with_errors}),
+%   ?DEBUG_PRINT({git_clone_with_errors}),
 %   Props1 = proplists:delete(url, git_repos_props()),
 %   Props  = proplists:delete(name, Props1),
 %   Pid = spawn(fun() -> responding_loop([]) end),
@@ -111,16 +111,16 @@ git_bundle() ->
 %   passed.
 
 git_bundle_with_errors() ->
-  ?DPRINT({starting, git_bundle_with_errors}),
+  ?DEBUG_PRINT({starting, git_bundle_with_errors}),
   ?assertException(
     throw,
     {hook_error, _},
     beehive_bee_object:bundle([{pre, "echo 'ducks'\nexit 1"}|git_repos_props()])),
-  ?DPRINT({git_bundle_with_errors, passed}),
+  ?DEBUG_PRINT({git_bundle_with_errors, passed}),
   passed.
 
 bundle_type() ->
-  ?DPRINT({starting, bundle_type}),
+  ?DEBUG_PRINT({starting, bundle_type}),
   BeeFile = filename:join([related_dir(), "squashed", "beehive_bee_object_test_app.bee"]),
   beehive_bee_object:bundle([{type, rails}|git_repos_props()]),
   % Run it with a before
@@ -132,7 +132,7 @@ bundle_type() ->
   % Let's make sure beehive_bee_object:info/1 works
   ?assertEqual("master", proplists:get_value(branch, beehive_bee_object:info("beehive_bee_object_test_app"))),
   ?assertEqual({error, not_found}, beehive_bee_object:info("no-app-here")),
-  ?DPRINT({bundle_type, passed}),
+  ?DEBUG_PRINT({bundle_type, passed}),
   passed.
   
 responding_from() ->
@@ -156,7 +156,7 @@ ls_bee() ->
   F = fun(This) ->    
     receive
       {data, Data} -> 
-        ?DPRINT({got, data, Data}),
+        ?DEBUG_PRINT({got, data, Data}),
         This(This);
       {port_closed, _} -> This(This);
       {error, Reason} -> 
@@ -169,7 +169,7 @@ ls_bee() ->
   F(F),
   T = beehive_bee_object:ls(),
   ?assert(lists:member("crazy_name-045", T)),
-  ?DPRINT({ls_bee, passed}),
+  ?DEBUG_PRINT({ls_bee, passed}),
   passed.
 
 mount_t() ->
@@ -177,7 +177,7 @@ mount_t() ->
   BeeDir = filename:join([related_dir(), "run"]),
   beehive_bee_object:mount(rack, "beehive_bee_object_test_app"),
   ?assert(filelib:is_dir(BeeDir)),
-  ?DPRINT({mount_t, passed}),
+  ?DEBUG_PRINT({mount_t, passed}),
   passed.
 
 start_t() ->
@@ -195,7 +195,7 @@ start_t() ->
       {error,econnrefused} -> 
         ?assert(false)
     end,
-    ?DPRINT({start_t, passed})
+    ?DEBUG_PRINT({start_t, passed})
   after
     beehive_bee_object:stop("beehive_bee_object_test_app")
   end,
@@ -219,7 +219,8 @@ stop_t() ->
     beehive_bee_object:bundle(NewProps, Pid),
     beehive_bee_object:start(rack, Name, Port, Pid),
     timer:sleep(100),
-    beehive_bee_object:stop(Name, Pid),
+    Q = beehive_bee_object:stop(Name, Pid),
+    ?DEBUG_PRINT({beehive_bee_object,stop,Q,Name,Pid}),
     timer:sleep(500),
     case catch gen_tcp:connect(Host, Port, [binary]) of
       {ok, Sock} -> 
@@ -231,7 +232,7 @@ stop_t() ->
   after
     beehive_bee_object:stop(Name, Pid)
   end,
-  ?DPRINT({stop_t, passed}),
+  ?DEBUG_PRINT({stop_t, passed}),
   passed.
 
 cleanup_t() ->
@@ -294,7 +295,7 @@ responding_loop(Acc) ->
       From ! {ok, Acc},
       responding_loop(Acc);
     {data, Data} -> 
-      ?DPRINT({got, Data}),
+      ?DEBUG_PRINT({got, Data}),
       responding_loop([Data|Acc])
   end.
 

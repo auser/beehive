@@ -244,14 +244,15 @@ start(Type, Name, Port, From) ->
               {'DOWN', Ref, process, Pid, {Tag, Data}} -> Data;
               {'DOWN', Ref, process, Pid, Reason} -> send_to(From, {stopped, {Name, Reason}});
               {stop} ->
+                ?DEBUG_PRINT({cmd_received,{stop}, OsPid}),
                 case OsPid of
                   IntPid when is_integer(IntPid) andalso IntPid > 1 ->
-                    os:cmd(lists:flatten(["kill ", integer_to_list(OsPid)])),
+                    run_kill_on_pid(OsPid, BeeDir, RealBeeObject),
                     send_to(From, {stopped, RealBeeObject});
                   _ -> ok
                 end;
-              E ->
-                erlang:display({cmd_receive,process,received,E,Msg}),
+              _E ->
+                run_kill_on_pid(OsPid, BeeDir, RealBeeObject),
                 ok
             end
           end)
@@ -463,6 +464,8 @@ run_action_in_directory(Action, #bee_object{vcs_type = VcsType, bundle_dir = Bun
   end.
   
 % Run a command in the directory
+% [] would happen if there is an empty command
+run_command_in_directory([], _Dir, _From, _BeeObject) -> ok;
 run_command_in_directory(Cmd, Dir, From, BeeObject) ->
   ?DEBUG_PRINT({run_command_in_directory, Dir, Cmd, From}),
   ensure_directory_exists(filename:join([Dir, "does_not_exist"])),
@@ -739,4 +742,14 @@ start_ets_process() ->
   receive
     kill -> ok;
     _ -> start_ets_process()
+  end.
+
+run_kill_on_pid(OsPid, BeeDir, RealBeeObject) ->
+  KillStr = lists:flatten(["kill ", integer_to_list(OsPid)]),
+  ?DEBUG_PRINT({killing_with_string, KillStr}),
+  cmd(KillStr, BeeDir, to_proplist(RealBeeObject), self()),
+  receive
+    X -> X
+    after 5000 ->
+      ok
   end.
