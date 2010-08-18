@@ -244,6 +244,11 @@ atomize_kv(Key, Value) when is_atom(Key) -> {Key, Value}.
 
 % Get the data off the request
 decode_data_from_request(Req, get) -> atomize_keys(Req:query_params());
+decode_data_from_request(Req, delete) ->
+  case atomize_keys(Req:query_params()) of
+    [] -> atomize_keys(Req:post_params());
+    Params -> Params
+  end;
 decode_data_from_request(Req, _Meth) -> atomize_keys(Req:post_params()).
 
 not_found_web(Resp, Docroot, _Redirect) -> serve_file("not_found.html", Resp:status_code(404), Docroot, false).

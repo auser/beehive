@@ -67,7 +67,6 @@ fetch_url(Method, Props) ->
            "\r\n\r\n",
            Params,
            "\r\n"]),
-      file:write_file(lists:flatten(["tmp",atom_to_list(Method)]), RequestLine),
       gen_tcp:send(Sock, RequestLine),
       request(Sock, []);
     Else ->

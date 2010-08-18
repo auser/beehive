@@ -70,8 +70,7 @@ post(_Path, _Data) -> <<"unhandled">>.
 
 put([Name], Data) ->
   case auth_utils:get_authorized_user(Data) of
-    false -> 
-      {"error", misc_utils:to_bin("No user defined or invalid token")};
+    {error, _, _} = Error -> Error;
     _ReqUser ->
       case apps:update(Name, Data) of
         {updated, App} when is_record(App, app) -> 
@@ -84,10 +83,10 @@ put(_Path, _Data) -> "unhandled".
 
 delete([Name], Data) ->
   case auth_utils:get_authorized_user(Data) of
-    false -> {error, "No user defined or invalid token"};
+    {error, _,_} = Error -> Error;
     _ReqUser ->
       case apps:delete(Name) of
-        ok -> {app, "deleted"};
+        true -> {app, "deleted"};
         _ -> {error, "There was an error deleting app"}
       end
   end;

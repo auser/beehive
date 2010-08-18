@@ -23,7 +23,11 @@ starting_test_() ->
      fun get_index_with_wrong_name/0,
      fun post_create_new_app/0,
      fun post_create_new_app_bad_token/0,
-     fun post_create_new_app_no_token/0
+     fun post_create_new_app_no_token/0,
+     fun put_app/0,
+     fun put_app_bad_token/0,
+     fun delete_app/0,
+     fun delete_app_no_token/0
     ]
    }
   }.
@@ -70,17 +74,64 @@ post_create_new_app() ->
   passed.
 
 post_create_new_app_no_token() ->
-  {ok, Header, Response} =
+  {ok, Header, _Response} =
     perform_post_create([{app_name, "creationtest"}]),
   ?assertEqual("HTTP/1.0 401 Unauthorized", Header),
   passed.
 
 post_create_new_app_bad_token() ->
-  {ok, Header, Response} =
+  {ok, Header, _Response} =
     perform_post_create([{app_name, "creationtest"},
                         {token, "badtoken"}]),
   ?assertEqual("HTTP/1.0 401 Unauthorized", Header),
   passed.
+
+put_app() ->
+  passed.
+
+put_app_bad_token() ->
+  App = bh_test_util:dummy_app(),
+  {ok, Header, _Resp} =
+    perform_put(App#app.name, [{token, ""},
+                               {url, "newurl"}]),
+  ?assertEqual("HTTP/1.0 401 Unauthorized", Header),
+  passed.
+
+
+delete_app() ->
+  App = bh_test_util:dummy_app(),
+  User = bh_test_util:dummy_user(),
+  {ok, Header, Response} =
+    bh_test_util:fetch_url(delete,
+                           [{path, lists:flatten(["/apps/",
+                                                 App#app.name,
+                                                 ".json?token=",
+                                                 User#user.token])}]),
+  ?assertEqual("HTTP/1.0 200 OK", Header),
+  ?assertMatch(not_found, apps:find_by_name(App#app.name)),
+  passed.
+
+delete_app_no_token() ->
+  App = bh_test_util:dummy_app(),
+  User = bh_test_util:dummy_user(),
+  {ok, Header, _Response} =
+    bh_test_util:fetch_url(delete,
+                           [{path, lists:flatten(["/apps/",
+                                                 App#app.name,
+                                                 ".json?token="])}]),
+  ?assertEqual("HTTP/1.0 401 Unauthorized", Header),
+  passed.
+
+perform_put(Name, Params) ->
+  bh_test_util:fetch_url(put,
+                         [{path, lists:flatten(["/apps/",
+                                                Name,
+                                                ".json"])},
+                          {headers, [{"Content-Type",
+                                      "application/x-www-form-urlencoded" }]},
+                          {params, Params}
+                         ]).
+
 
 perform_post_create(Params) ->
   bh_test_util:fetch_url(post,
