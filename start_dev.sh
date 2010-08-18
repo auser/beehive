@@ -8,7 +8,7 @@ make compile
 GEM_BIN=`which gem`
 
 if [ ! -z "$GEM_BIN" ]; then
-  if [ -z `ps aux | grep gem | grep server` ]; then
+  if [ -z "`ps aux | grep gem | grep server`" ]; then
     gem server >/dev/null 2>&1 &
   fi
 fi
