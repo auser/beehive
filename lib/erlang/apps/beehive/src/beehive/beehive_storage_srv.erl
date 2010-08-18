@@ -100,10 +100,12 @@ handle_call({build_bee, App, Caller}, _From, State) ->
         exit_status = ExitCode,
         timestamp = date_util:now_to_seconds()
       },
-      {ok, NewApp} = app_manager:request_to_save_app(App#app{latest_error = Error}),    
+      {ok, NewApp} = app_manager:request_to_save_app(App#app{latest_error = Error}),
       {error, NewApp};
-    T2 -> 
-      {ok, T2}
+    Props when is_list(Props) ->
+      {updated, NewApp} = apps:update(App#app{latest_error = undefined}, Props),
+      Bee = bees:new(Props),
+      {ok, NewApp, Bee}
   end,
   {reply, Resp, State};
   
