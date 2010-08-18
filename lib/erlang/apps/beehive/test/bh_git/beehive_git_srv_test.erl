@@ -2,7 +2,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 setup() ->
-  beehive_git_srv:start_link(),
+  % beehive_git_srv:start_link(),
   ok.
   
 teardown(_X) ->

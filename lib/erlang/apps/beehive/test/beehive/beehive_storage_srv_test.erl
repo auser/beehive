@@ -23,8 +23,8 @@ starting_test_() ->
 % When there is a successful app
 build_bee_good() ->
   App = bh_test_util:dummy_app(),
-  {ok, Props} = beehive_storage_srv:build_bee(App#app{revision = "812f9cf168719b4ff9c84a9817b05b2e6cfe7297"}),
-  ?assertEqual("812f9cf168719b4ff9c84a9817b05b2e6cfe7297", proplists:get_value(revision, Props)),
+  {ok, _NewApp, Bee} = beehive_storage_srv:build_bee(App#app{revision = "812f9cf168719b4ff9c84a9817b05b2e6cfe7297"}),
+  ?assertEqual("812f9cf168719b4ff9c84a9817b05b2e6cfe7297", Bee#bee.revision),
   passed.
 
 build_bee_bad() ->

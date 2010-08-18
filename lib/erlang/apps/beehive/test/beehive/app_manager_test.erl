@@ -91,7 +91,7 @@ start_dummy_app(App, _From) ->
     X ->
       erlang:display({start_dummy_app, X}),
       X
-    after 10000 ->
+    after 9000 ->
       erlang:display({timeout})
   end.
 

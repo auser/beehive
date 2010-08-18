@@ -81,6 +81,7 @@ init([Proplist]) ->
   
   beehive_bee_object_config:init(), % JUST IN CASE
   % Only start if there are no other modules registered with the name
+  State = #state{app = App, from = From, updating = Updating, bee = #bee{}},
   case global:whereis_name(registered_name(App)) of
     undefined ->
       case App#app.latest_error of
@@ -91,12 +92,12 @@ init([Proplist]) ->
           Self = self(),
           gen_cluster:run(beehive_storage_srv, {fetch_or_build_bee, App, Self}),
           ?LOG(debug, "gen_cluster:run(beehive_storage_srv, {fetch_or_build_bee, ~p, ~p})", [App#app.name, Self]),
-          {ok, fetching, #state{app = App, from = From, updating = Updating, bee = #bee{}}};
+          {ok, fetching, State};
         _ ->
-          {stop, {error, pending_app_error}}
+          stop_error({error, pending_app_error}, State)
     end;
     _ ->
-      {stop, already_started}
+      stop_error({already_started}, State)
   end.
 
 %%--------------------------------------------------------------------
@@ -123,7 +124,7 @@ fetching({launch}, State) ->
 fetching({error, Msg}, State) ->
   stop_error({fetching, Msg}, State);
   
-fetching(Msg, State) ->
+fetching(_Msg, State) ->
   {next_state, fetching, State}.
 
 % Prepared to do something!
@@ -132,7 +133,7 @@ preparing({update}, #state{app = App} = State) ->
   gen_cluster:run(beehive_storage_srv, {build_bee, App, Self}),
   {next_state, updating, State};
 
-preparing({launch}, #state{from = From, app = App, bee = Bee, latest_sha = Sha} = State) ->
+preparing({launch}, #state{app = App} = State) ->
   Self = self(),  
   Port = bh_host:unused_port(),
   ?LOG(debug, "beehive_bee_object:start(~p, ~p, ~p, ~p)", [App#app.template, App#app.name, Port, Self]),
@@ -144,7 +145,6 @@ preparing({start_new}, State) ->
   {next_state, updating, State};
   
 preparing(Other, State) ->
-  erlang:display({?MODULE, preparing, Other}),
   {next_state, preparing, State}.
 
 updating({bee_built, Info}, #state{app = App} = State) ->
@@ -165,7 +165,6 @@ launching({started, BeeObject}, #state{app = App} = State) ->
   {next_state, pending, State#state{bee = Bee}};
 
 launching({error, Reason}, State) ->
-  erlang:display({launching,error,Reason}),
   stop_error({launching, Reason}, State);
 
 launching(Event, State) ->
@@ -186,7 +185,6 @@ pending({updated_bee_status, BackendStatus}, #state{app = App, bee = Bee, from =
   {stop, normal, State};
   
 pending(Event, State) ->
-  erlang:display({got,pending,Event}),
   ?LOG(debug, "Got uncaught event in pending state: ~p", [Event]),
   {next_state, pending, State}.
   
@@ -262,6 +260,7 @@ handle_info({data, Msg}, StateName, #state{output = CurrOut} = State) ->
   {next_state, StateName, State#state{output = [Msg|CurrOut]}};
 handle_info({port_closed, _Port}, StateName, State) -> {next_state, StateName, State};
 handle_info(Info, StateName, State) ->
+  ?LOG(debug, "~p received handle_info: ~p in state ~p", [?MODULE, Info, StateName]),
   apply(?MODULE, StateName, [Info, State]).
   % {next_state, StateName, State}.
 
@@ -289,6 +288,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 stop_error(Msg, #state{from = From, app = App, bee = Bee, output = Output} = State) ->
   Tuple = {?MODULE, error, Msg, [{app, App}, {bee, Bee}, {output, lists:reverse(Output)}, {caller, From}]},
   From ! Tuple,
+  global:unregister_name(registered_name(App)),
   {stop, Tuple, State}.
 
 % a name
