@@ -33,7 +33,7 @@
 
 -export ([validate_app/1]).
 
-create(App) -> 
+create(App) ->
   NewApp = validate_app(new(App)),
   save(NewApp).
 
@@ -41,14 +41,14 @@ save(App) when is_record(App, app) ->
   ok = ?DB:write(app, App#app.name, App),
   {ok, App};
 save([]) -> invalid;
-save(Proplists) when is_list(Proplists) -> 
+save(Proplists) when is_list(Proplists) ->
   case from_proplists(Proplists) of
     {error, _} = T -> T;
     App -> save(App)
   end;
 save(Func) when is_function(Func) ->
   ?DB:save(Func);
-  
+
 save(Else) -> {error, {cannot_save, Else}}.
 
 new([]) -> error;
@@ -91,12 +91,12 @@ find_all_by_name(Name) ->
     App   when is_record(App, app) -> [App];
     _ ->  []
   end.
-  
+
 % APPLICATION STUFF
 update_by_name(Name) ->
   case find_by_name(Name) of
     not_found -> {error, "Cannot find app to update"};
-    App -> 
+    App ->
       % Should this be synchronous or asynchronous?
       NewApp = App#app{updated_at = date_util:now_to_seconds(), latest_error = undefined},
       ?NOTIFY({app, updated, NewApp}),
@@ -124,20 +124,22 @@ restart_by_name(Name) ->
 update([], _) -> ok;
 update(App, NewProps) when is_record(App, app) ->
   NewApp = misc_utils:update_proplist(to_proplist(App), NewProps),
-  case App#app.revision =/= NewProps#app.revision of
+  case App#app.revision =/= proplists:get_value(revision, NewProps) of
     true -> ?NOTIFY({app, updated_revision, NewApp});
     false -> ok
   end,
   {ok, NewApp1} = save(NewApp),
   {updated, NewApp1};
 update(Name, NewProps) ->
-  App = find_by_name(Name),
-  update(App, NewProps).
+  case find_by_name(Name) of
+    not_found -> false;
+    App -> update(App, NewProps)
+  end.
 
 %%-------------------------------------------------------------------
 %% @spec (App:app()) ->    {ok, Value}
 %% @doc Build environment variables for the application
-%%      
+%%
 %% @end
 %%-------------------------------------------------------------------
 build_app_env(App, Other) ->
@@ -145,12 +147,12 @@ build_app_env(App, Other) ->
   BeehivePath = config:search_for_application_value(path, "/usr/bin:/usr/local/bin:/bin"),
   LogDisk     = config:search_for_application_value(log_path, ?BEEHIVE_DIR("application_logs")),
   LogDir      = filename:join([LogDisk, App#app.name]),
-  
+
   bh_file_utils:ensure_dir_exists([LogDir, LogDisk]),
-  
+
   StdOut     = filename:join([LogDir, "beehive.out"]),
   StdErr     = filename:join([LogDir, "beehive.err"]),
-  
+
   lists:flatten([
     build_env({name, App#app.name}),
     build_env({repos, App#app.url}),
@@ -178,44 +180,70 @@ from_proplists(Proplists) -> from_proplists(Proplists, #app{}).
 from_proplists([], App)  -> App;
 from_proplists([{name, V}|Rest], App) -> from_proplists(Rest, App#app{name = V});
 from_proplists([{url, V}|Rest], App) -> from_proplists(Rest, App#app{url = V});
-from_proplists([{vcs_type, V}|Rest], App) -> from_proplists(Rest, App#app{vcs_type = V});
-from_proplists([{template, V}|Rest], App) -> from_proplists(Rest, App#app{template = V});
-from_proplists([{timeout, V}|Rest], App) -> from_proplists(Rest, App#app{timeout = V});
-from_proplists([{sticky, V}|Rest], App) -> from_proplists(Rest, App#app{sticky = V});
-from_proplists([{min_instances, V}|Rest], App) -> from_proplists(Rest, App#app{min_instances = V});
-from_proplists([{max_instances, V}|Rest], App) -> from_proplists(Rest, App#app{max_instances = V});
-from_proplists([{revision, V}|Rest], App) -> from_proplists(Rest, App#app{revision = V});
-from_proplists([{updated_at, V}|Rest], App) -> from_proplists(Rest, App#app{updated_at = V});
-from_proplists([{routing_param, V}|Rest], App) -> from_proplists(Rest, App#app{routing_param = V});
+from_proplists([{vcs_type, V}|Rest], App) ->
+  from_proplists(Rest, App#app{vcs_type = V});
+from_proplists([{template, V}|Rest], App) ->
+  from_proplists(Rest, App#app{template = V});
+from_proplists([{timeout, V}|Rest], App) ->
+  from_proplists(Rest, App#app{timeout = V});
+from_proplists([{sticky, V}|Rest], App) ->
+  from_proplists(Rest, App#app{sticky = V});
+from_proplists([{min_instances, V}|Rest], App) ->
+  from_proplists(Rest, App#app{min_instances = V});
+from_proplists([{max_instances, V}|Rest], App) ->
+  from_proplists(Rest, App#app{max_instances = V});
+from_proplists([{revision, V}|Rest], App) ->
+  from_proplists(Rest, App#app{revision = V});
+from_proplists([{updated_at, V}|Rest], App) ->
+  from_proplists(Rest, App#app{updated_at = V});
+from_proplists([{routing_param, V}|Rest], App) ->
+  from_proplists(Rest, App#app{routing_param = V});
+from_proplists([{branch, V}|Rest], App) ->
+  from_proplists(Rest, App#app{branch = V});
 from_proplists([_Other|Rest], App) -> from_proplists(Rest, App).
 
+
 to_proplist(App) -> to_proplist(record_info(fields, app), App, []).
+
 to_proplist([], _App, Acc) -> Acc;
-to_proplist([name|Rest], #app{name = Name} = App, Acc) -> to_proplist(Rest, App, [{name, Name}|Acc]);
-to_proplist([url|Rest], #app{url = Value} = App, Acc) -> to_proplist(Rest, App, [{url, Value}|Acc]);
-to_proplist([vcs_type|Rest], #app{vcs_type = Value} = App, Acc) -> to_proplist(Rest, App, [{vcs_type, Value}|Acc]);
-to_proplist([timeout|Rest], #app{timeout = Value} = App, Acc) -> to_proplist(Rest, App, [{timeout, Value}|Acc]);
-to_proplist([sticky|Rest], #app{sticky = Value} = App, Acc) -> to_proplist(Rest, App, [{sticky, Value}|Acc]);
-to_proplist([min_instances|Rest], #app{min_instances = Value} = App, Acc) -> to_proplist(Rest, App, [{min_instances, Value}|Acc]);
-to_proplist([max_instances|Rest], #app{max_instances = Value} = App, Acc) -> to_proplist(Rest, App, [{max_instances, Value}|Acc]);
-to_proplist([revision|Rest], #app{revision = Value} = App, Acc) -> to_proplist(Rest, App, [{revision, Value}|Acc]);
-to_proplist([updated_at|Rest], #app{updated_at = Value} = App, Acc) -> to_proplist(Rest, App, [{updated_at, Value}|Acc]);
-to_proplist([template|Rest], #app{template = Value} = App, Acc) -> to_proplist(Rest, App, [{template, Value}|Acc]);
-to_proplist([routing_param|Rest], #app{routing_param = Value} = App, Acc) -> to_proplist(Rest, App, [{routing_param, Value}|Acc]);
+to_proplist([name|Rest], #app{name = Name} = App, Acc) ->
+  to_proplist(Rest, App, [{name, Name}|Acc]);
+to_proplist([url|Rest], #app{url = Value} = App, Acc) ->
+  to_proplist(Rest, App, [{url, Value}|Acc]);
+to_proplist([vcs_type|Rest], #app{vcs_type = Value} = App, Acc) ->
+  to_proplist(Rest, App, [{vcs_type, Value}|Acc]);
+to_proplist([timeout|Rest], #app{timeout = Value} = App, Acc) ->
+  to_proplist(Rest, App, [{timeout, Value}|Acc]);
+to_proplist([sticky|Rest], #app{sticky = Value} = App, Acc) ->
+  to_proplist(Rest, App, [{sticky, Value}|Acc]);
+to_proplist([min_instances|Rest], #app{min_instances = Value} = App, Acc) ->
+  to_proplist(Rest, App, [{min_instances, Value}|Acc]);
+to_proplist([max_instances|Rest], #app{max_instances = Value} = App, Acc) ->
+  to_proplist(Rest, App, [{max_instances, Value}|Acc]);
+to_proplist([revision|Rest], #app{revision = Value} = App, Acc) ->
+  to_proplist(Rest, App, [{revision, Value}|Acc]);
+to_proplist([updated_at|Rest], #app{updated_at = Value} = App, Acc) ->
+  to_proplist(Rest, App, [{updated_at, Value}|Acc]);
+to_proplist([template|Rest], #app{template = Value} = App, Acc) ->
+  to_proplist(Rest, App, [{template, Value}|Acc]);
+to_proplist([routing_param|Rest], #app{routing_param = Value} = App, Acc) ->
+  to_proplist(Rest, App, [{routing_param, Value}|Acc]);
+to_proplist([branch|Rest], #app{branch = Value} = App, Acc) ->
+  to_proplist(Rest, App, [{branch, Value}|Acc]);
 to_proplist([_H|T], App, Acc) -> to_proplist(T, App, Acc).
 
 %%-------------------------------------------------------------------
 %% @spec (Proplist) ->    ValidProplist
 %% @doc Validate the proplist to create a new app record
-%%      
+%%
 %% @end
 %%-------------------------------------------------------------------
 validate_app(App) when is_record(App, app) -> validate_app(record_info(fields, app), App).
 validate_app([], App) ->  App;
 % Validate the name
-validate_app([name|Rest], #app{name = undefined} = App) -> 
+validate_app([name|Rest], #app{name = undefined} = App) ->
   validate_app(Rest, App#app{name = generate_unique_name(5)});
-validate_app([name|Rest], #app{name = Name} = App) -> 
+validate_app([name|Rest], #app{name = Name} = App) ->
   % beehive/prod
   case string:tokens(Name, "/") of
     [N] -> validate_app(Rest, App#app{name = generate_unique_name(N, 5)});
@@ -258,13 +286,13 @@ validate_app([_H|Rest], App) -> validate_app(Rest, App).
 %%-------------------------------------------------------------------
 %% @spec (Name) ->    {ok, Value}
 %% @doc Generate a unique name based on a given name
-%%      
+%%
 %% @end
 %%-------------------------------------------------------------------
-generate_unique_name(Name, Num) -> 
+generate_unique_name(Name, Num) ->
   case catch find_by_name(Name) of
     A when is_record(A, app) -> misc_utils:generate_unique_name(Name, Num);
     not_found -> string:to_lower(Name)
   end.
-generate_unique_name(Num) -> 
+generate_unique_name(Num) ->
   generate_unique_name(misc_utils:generate_unique_name(Num), Num).

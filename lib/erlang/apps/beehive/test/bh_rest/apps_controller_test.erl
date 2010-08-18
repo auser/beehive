@@ -25,6 +25,7 @@ starting_test_() ->
      fun post_create_new_app_bad_token/0,
      fun post_create_new_app_no_token/0,
      fun put_app/0,
+     fun put_app_wrong_name/0,
      fun put_app_bad_token/0,
      fun delete_app/0,
      fun delete_app_no_token/0
@@ -87,6 +88,23 @@ post_create_new_app_bad_token() ->
   passed.
 
 put_app() ->
+  {ok, App} = apps:save(bh_test_util:dummy_app()),
+  User = bh_test_util:dummy_user(),
+  {ok, Header, _Resp} =
+    perform_put(App#app.name, [{token, User#user.token},
+                               {branch, "release"}]),
+  ?assertEqual("HTTP/1.0 200 OK", Header),
+  Updated = apps:find_by_name(App#app.name),
+  ?assertEqual("release", Updated#app.branch),
+  passed.
+
+put_app_wrong_name() ->
+  App = bh_test_util:dummy_app(),
+  User = bh_test_util:dummy_user(),
+  {ok, Header, _Resp} =
+    perform_put("wrongname", [{token, User#user.token},
+                              {branch, "release"}]),
+  ?assertEqual("HTTP/1.0 404 Object Not Found", Header),
   passed.
 
 put_app_bad_token() ->
