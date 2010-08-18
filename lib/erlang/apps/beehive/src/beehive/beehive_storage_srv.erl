@@ -53,8 +53,18 @@ seed_pids(_State) ->
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-build_bee(App) ->         build_bee(App, undefined).
-build_bee(App, Caller) -> gen_cluster:call(?SERVER, {build_bee, App, Caller}, infinity).
+build_bee(App) when is_record(App, app) ->         build_bee(App, undefined).
+build_bee(Name) ->
+  case apps:find_by_name(Name) of
+    App when is_record(App, app) -> build_bee(App, undefined);
+    _ -> {error, app_not_found}
+  end;
+build_bee(App, Caller) when is_record(App, app) -> gen_cluster:call(?SERVER, {build_bee, App, Caller}, infinity);
+build_bee(Name, Caller) ->
+  case apps:find_by_name(Name) of
+    App when is_record(App, app) -> build_bee(App, Caller);
+    _ -> {error, app_not_found}
+  end.
 
 fetch_or_build_bee(App, Caller) ->
   gen_cluster:call(?SERVER, {fetch_or_build_bee, App, Caller}, infinity).
@@ -195,8 +205,8 @@ handle_vote(_Msg, State) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-fetch_bee(#app{name = Name} = App, Caller, #state{squashed_disk = SquashedDisk} = _State) ->
-  case lists:member(Name, beehive_bee_object:ls(SquashedDisk)) of
+fetch_bee(#app{name = Name} = App, Caller, _State) ->
+  case lists:member(Name, beehive_bee_object:ls()) of
     true -> 
       % We need to check to make sure this is the latest bee...
       beehive_bee_object:send_bee_object(node(Caller), Name, Caller);
