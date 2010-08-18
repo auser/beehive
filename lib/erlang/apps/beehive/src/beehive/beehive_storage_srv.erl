@@ -58,7 +58,7 @@ build_bee(Name) ->
   case apps:find_by_name(Name) of
     App when is_record(App, app) -> build_bee(App, undefined);
     _ -> {error, app_not_found}
-  end;
+  end.
 build_bee(App, Caller) when is_record(App, app) -> gen_cluster:call(?SERVER, {build_bee, App, Caller}, infinity);
 build_bee(Name, Caller) ->
   case apps:find_by_name(Name) of
