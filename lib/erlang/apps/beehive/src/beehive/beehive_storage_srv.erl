@@ -53,7 +53,7 @@ seed_pids(_State) ->
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-build_bee(App) when is_record(App, app) ->         build_bee(App, undefined).
+build_bee(App) when is_record(App, app) ->         build_bee(App, undefined);
 build_bee(Name) ->
   case apps:find_by_name(Name) of
     App when is_record(App, app) -> build_bee(App, undefined);
