@@ -81,11 +81,11 @@ request_to_start_new_bee_by_name(Name, Caller) ->
 
 start_new_bee_by_name(Name) -> start_new_bee_by_name(Name, undefined).
 start_new_bee_by_name(Name, Caller) ->
-  gen_server:call(?SERVER, {start_new_bee_by_name, Name, Caller}).
+  gen_server:call(?SERVER, {start_new_bee_by_name, Name, Caller}, infinity).
 
 start_new_bee_by_app(App) -> start_new_bee_by_app(App, undefined).
 start_new_bee_by_app(App, Caller) ->
-  gen_server:call(?SERVER, {start_new_bee_by_app, App, Caller}).
+  gen_server:call(?SERVER, {start_new_bee_by_app, App, Caller}, infinity).
 
 request_to_terminate_bee(Bee) -> 
   gen_server:cast(?SERVER, {request_to_terminate_bee, Bee, undefined}).
