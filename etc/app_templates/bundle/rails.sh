@@ -8,6 +8,7 @@ export GEM_PATH=.beehive_gem_home
 GEM=`which gem`
 # If there is an isolate file, run Isolate.now!
 if [ -f "Isolate" ]; then
+  gem install isolate --no-rdoc --no-ri
   ruby -rubygems -e "require 'isolate'; Isolate.now!"
 fi
 
