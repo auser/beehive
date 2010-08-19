@@ -21,9 +21,12 @@
   terminate_all/0,
   terminate_app_instances/1,
   add_application/1, add_application/2,
+  update_application/2,
   spawn_update_bee_status/3,
   request_to_start_new_bee_by_name/1, request_to_start_new_bee_by_name/2,
+  start_new_bee_by_name/1, start_new_bee_by_name/2,
   request_to_start_new_bee_by_app/1, request_to_start_new_bee_by_app/2,
+  start_new_bee_by_app/1, start_new_bee_by_app/2,
   request_to_update_app/1,
   request_to_expand_app/1,
   request_to_terminate_bee/1, request_to_terminate_bee/2,
@@ -76,7 +79,15 @@ request_to_start_new_bee_by_app(App, Caller) ->
 request_to_start_new_bee_by_name(Name) -> request_to_start_new_bee_by_name(Name, undefined).
 request_to_start_new_bee_by_name(Name, Caller) -> 
   gen_server:cast(?SERVER, {request_to_start_new_bee_by_name, Name, Caller}).
-  
+
+start_new_bee_by_name(Name) -> start_new_bee_by_name(Name, undefined).
+start_new_bee_by_name(Name, Caller) ->
+  gen_server:call(?SERVER, {start_new_bee_by_name, Name, Caller}, infinity).
+
+start_new_bee_by_app(App) -> start_new_bee_by_app(App, undefined).
+start_new_bee_by_app(App, Caller) ->
+  gen_server:call(?SERVER, {start_new_bee_by_app, App, Caller}, infinity).
+
 request_to_terminate_bee(Bee) -> 
   gen_server:cast(?SERVER, {request_to_terminate_bee, Bee, undefined}).
 request_to_terminate_bee(Bee, Caller) -> 
@@ -98,6 +109,9 @@ add_application(ConfigProplist) ->
 add_application(ConfigProplist, UserEmail) -> 
   gen_server:call(?SERVER, {add_application, ConfigProplist, UserEmail}).
 
+update_application(Name, ConfigProplist) -> 
+  gen_server:call(?SERVER, {update_application, Name, ConfigProplist}).
+  
 %%--------------------------------------------------------------------
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
@@ -175,8 +189,25 @@ handle_call({add_application, ConfigProplist, UserEmail}, From, State) ->
   % NewState = add_application(ConfigProplist, State),
   handle_queued_call(fun() -> internal_add_application(ConfigProplist, UserEmail) end, From, State);
 
+handle_call({update_application, Name, ConfigProplist}, From, State) ->
+  handle_queued_call(fun() -> internal_update_application(Name, ConfigProplist) end, From, State);
+
 handle_call({request_to_save_app, App}, From, State) ->
   handle_queued_call(fun() -> apps:save(App) end, From, State);
+
+handle_call({start_new_bee_by_name, Name, Caller}, From, State) ->
+  case apps:find_by_name(Name) of
+    App when is_record(App, app) -> 
+      handle_queued_call(fun() -> 
+        start_new_instance_by_app(App#app{latest_error=undefined}, Caller)
+      end, From, State);
+    _ -> {error, app_not_found}
+  end;
+
+handle_call({start_new_bee_by_app, App, Caller}, From, State) ->
+  handle_queued_call(fun() -> 
+    start_new_instance_by_app(App#app{latest_error=undefined}, Caller)
+  end, From, State);
 
 % Remove an application from this application server
 handle_call({remove_app, AppName}, _From, State) ->
@@ -341,7 +372,6 @@ handle_info({error, {Stage, {error, bee_not_found_after_creation, App}}}, State)
 handle_info({app_launcher_fsm, error, {error, broken_start}, Props}, State) ->
   App = proplists:get_value(app, Props),
   Output = proplists:get_value(output, Props),
-  Bee = proplists:get_value(bee, Props),
   
   Error = #app_error{
     stage = launching,
@@ -493,6 +523,22 @@ internal_add_application(ConfigProplist, UserEmail) ->
       {error, E}
   end.
 
+internal_update_application(App, ConfigProplist) when is_record(App, app) ->
+  case apps:update(App, ConfigProplist) of
+    {updated, NewApp} when is_record(NewApp, app) ->
+      ValidatedApp = apps:validate_app(NewApp),
+      apps:save(ValidatedApp), 
+      {ok, ValidatedApp};
+    E -> 
+      erlang:display({else,E}),
+      {error, E}
+  end;
+internal_update_application(Name, ConfigProplist) ->
+  case apps:find_by_name(Name) of
+    App when is_record(App, app) -> internal_update_application(App, ConfigProplist);
+    _ -> {error, app_not_found}
+  end.
+
 % Clean up applications
 clean_up() ->
   Apps = apps:all(),
@@ -629,7 +675,7 @@ try_to_reconnect_to_bee(B, Num) ->
       try_to_reconnect_to_bee(B, Num - 1);
     NewStatus ->
       RealBee = bees:find_by_id(B#bee.id),
-      bees:update(RealBee#bee{status = NewStatus})
+      bees:update(RealBee#bee.app_name, RealBee#bee{status = NewStatus})
   end.
 
 % Cleanup the bee. Remove traces of the bee from the system

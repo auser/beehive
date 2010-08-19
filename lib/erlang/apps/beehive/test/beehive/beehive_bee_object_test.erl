@@ -240,7 +240,7 @@ cleanup_t() ->
   Bundle = filename:join([related_dir(), "squashed", "beehive_bee_object_test_app.bee"]),
   ?assert(filelib:is_file(Bundle) =:= true),
   beehive_bee_object:cleanup("beehive_bee_object_test_app"),
-  ?assert(filelib:is_file(Bundle) =:= false),
+  ?assert(filelib:is_file(filename:join([related_dir(), "run", "beehive_bee_object_test_app"])) =:= false),
   passed.
   
 send_t() ->

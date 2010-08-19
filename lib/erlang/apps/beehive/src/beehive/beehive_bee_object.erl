@@ -226,10 +226,10 @@ start(Type, Name, Port, From) ->
           {Pid, Ref, Tag} = async_command("/bin/sh", [ScriptFilename], BeeDir, [{pidfile, PidFilename}|to_proplist(BeeObject)], From),
           % Hardcoded delays... eww
           timer:sleep(1000),
-          OsPid = case read_pid_file_or_retry(PidFilename, 100) of
+          OsPid = case read_pid_file_or_retry(PidFilename, 500) of
             {error, _} ->
               timer:sleep(100),
-              read_pid_file_or_retry(PidFilename, 100);
+              read_pid_file_or_retry(PidFilename, 500);
             PidInt -> PidInt
           end,
           file:delete(ScriptFilename),
@@ -316,12 +316,13 @@ cleanup(Name, Caller) ->
     MountDir -> ?DEBUG_RM(MountDir)
   end,
   % In this case, beefile is name
-  case catch find_bee_file(Name) of
-    {error, _} -> ok;
-    Beefile ->
-      file:delete(Beefile),
-      send_to(Caller, {cleaned_up, Name})
-  end.
+  % case catch find_bee_file(Name) of
+  %   {error, _} -> ok;
+  %   Beefile ->
+  %     file:delete(Beefile),
+  %     send_to(Caller, {cleaned_up, Name})
+  % end.
+  send_to(Caller, {cleaned_up, Name}).
 
 % Get information about the Beefile  
 info(BeeObject) when is_record(BeeObject, bee_object) -> info(BeeObject#bee_object.name);
@@ -714,7 +715,7 @@ read_pid_file_or_retry(PidFilename, Retries) ->
         _Int -> erlang:list_to_integer(IntList)
       end;
     _ ->
-      timer:sleep(100),
+      timer:sleep(200),
       read_pid_file_or_retry(PidFilename, Retries - 1)
   end.
 
