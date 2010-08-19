@@ -64,9 +64,8 @@ read(Name) ->
 
 delete(App) when is_record(App, app) ->
   ?DB:delete(app, App#app.name);
-delete(Proplist) when is_list(Proplist) -> ?DB:delete(app, Proplist);
-delete(Name) when is_list(Name) -> ?DB:delete(app, Name);
 delete([]) -> invalid;
+delete(Name) when is_list(Name) -> ?DB:delete(app, Name);
 delete(Else) -> {error, {cannot_delete, Else}}.
 
 all() -> ?DB:all(app).

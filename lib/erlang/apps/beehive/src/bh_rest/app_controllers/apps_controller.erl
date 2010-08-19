@@ -15,7 +15,6 @@
 
 get([Name], _Data) ->
   case apps:find_by_name(Name) of
-    [] -> {error, "App not found"};
     not_found -> {error, "App not found"};
     App ->
       AppDetails = compile_app_details(App),

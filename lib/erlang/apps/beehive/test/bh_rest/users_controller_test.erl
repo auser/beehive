@@ -22,7 +22,9 @@ starting_test_() ->
     [
      fun get_index/0,
      fun get_index_with_email/0,
+     fun get_index_with_bad_email/0,
      fun get_user_apps_no_apps/0,
+     fun get_user_apps_with_bad_email/0,
      fun get_user_apps_with_an_app/0,
      fun post_new_user/0,
      fun post_new_user_bad_auth/0,
@@ -53,6 +55,13 @@ get_index_with_email() ->
   {"user",[{"email","test@getbeehive.com"},_]} = User,
   passed.
 
+get_index_with_bad_email() ->
+  {ok, Header, Response} =
+    bh_test_util:fetch_url(get,
+                           [{path, "/users/noexist@nope.com.json"}]),
+  ?assertEqual("HTTP/1.0 404 Object Not Found", Header),
+  passed.
+
 get_user_apps_no_apps() ->
   {ok, Header, Response} =
     bh_test_util:fetch_url(get,
@@ -60,6 +69,13 @@ get_user_apps_no_apps() ->
   ?assertEqual("HTTP/1.0 200 OK", Header),
   [User|_] = bh_test_util:response_json(Response),
   {"user",[_,_,{"apps",""}]} = User,
+  passed.
+
+get_user_apps_with_bad_email() ->
+  {ok, Header, Response} =
+    bh_test_util:fetch_url(get,
+                           [{path, "/users/noexist@nope.com/apps.json"}]),
+  ?assertEqual("HTTP/1.0 404 Object Not Found", Header),
   passed.
 
 get_user_apps_with_an_app() ->

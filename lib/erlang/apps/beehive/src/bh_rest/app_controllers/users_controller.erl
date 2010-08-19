@@ -14,7 +14,7 @@
 
 get([Email, "apps"], _Data) ->
   case users:find_by_email(Email) of
-    [] -> {Email, "does_not_exist"};
+    not_found -> {error, 404, {Email, "does_not_exist"}};
     User ->
       Apps = user_apps:all_apps(User#user.email),
       {
@@ -24,7 +24,7 @@ get([Email, "apps"], _Data) ->
   end;
 get([Email], _Data) ->
   case users:find_by_email(Email) of
-    [] -> {Email, "does_not_exist"};
+    not_found -> {error, 404, {Email, "does_not_exist"}};
     User -> {
       "user", [{"email", User#user.email}, {"level", User#user.level}]
      }

@@ -46,5 +46,6 @@ propmerge() ->
   passed.
 
 update_proplist() ->
-  ?assertEqual([{a, "a"}, {b, "b"}], misc_utils:update_proplist([{a, "a"}, {b, "c"}], [{b, "b"}])),
+  ?assertEqual([{a, "a"}, {b, "b"}],
+               misc_utils:update_proplist([{a, "a"}, {b, "c"}], [{b, "b"}])),
   passed.

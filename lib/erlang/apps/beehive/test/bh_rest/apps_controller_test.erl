@@ -28,7 +28,8 @@ starting_test_() ->
      fun put_app_wrong_name/0,
      fun put_app_bad_token/0,
      fun delete_app/0,
-     fun delete_app_no_token/0
+     fun delete_app_no_token/0,
+     fun delete_app_wrong_name/0
     ]
    }
   }.
@@ -139,6 +140,16 @@ delete_app_no_token() ->
                                                  ".json?token="])}]),
   ?assertEqual("HTTP/1.0 401 Unauthorized", Header),
   passed.
+
+delete_app_wrong_name() ->
+  User = bh_test_util:dummy_user(),
+  {ok, Header, _Response} =
+    bh_test_util:fetch_url(delete,
+                           [{path, lists:flatten(["/apps/wrongname.json?token=",
+                                                  User#user.token])}]),
+  ?assertEqual("HTTP/1.0 200 OK", Header),
+  passed.
+
 
 perform_put(Name, Params) ->
   bh_test_util:fetch_url(put,
