@@ -34,8 +34,13 @@
 -export ([validate_app/1]).
 
 create(App) ->
-  NewApp = validate_app(new(App)),
-  save(NewApp).
+  case new(App) of
+    NewApp when is_record(NewApp, app) -> 
+      ValidAppWithName = validate_unique_name(NewApp),
+      NewApp1 = validate_app(ValidAppWithName),
+      save(NewApp1);
+    E -> {error, E}
+  end.
 
 save(App) when is_record(App, app) ->
   ok = ?DB:write(app, App#app.name, App),
@@ -130,7 +135,7 @@ update(App, NewProps) when is_record(App, app) ->
     true -> ?NOTIFY({app, updated_revision, NewApp});
     false -> ok
   end,
-  {ok, NewApp1} = save(NewApp),
+  {ok, NewApp1} = save(validate_app(NewApp)),
   {updated, NewApp1};
 update(Name, NewProps) ->
   case find_by_name(Name) of
@@ -243,18 +248,17 @@ to_proplist([_H|T], App, Acc) -> to_proplist(T, App, Acc).
 validate_app(App) when is_record(App, app) -> validate_app(record_info(fields, app), App).
 validate_app([], App) ->  App;
 % Validate the name
-validate_app([name|Rest], #app{name = undefined} = App) ->
-  validate_app(Rest, App#app{name = generate_unique_name(5)});
-validate_app([name|Rest], #app{name = Name} = App) ->
-  % beehive/prod
-  case string:tokens(Name, "/") of
-    [N] -> validate_app(Rest, App#app{name = generate_unique_name(N, 5)});
-    [A,B] -> validate_app(Rest, App#app{name = generate_unique_name(A, 5), branch = B})
-  end;
+% validate_app([name|Rest], #app{name = undefined} = App) ->
+%   validate_app(Rest, App#app{name = generate_unique_name(5)});
+% validate_app([name|Rest], #app{name = Name} = App) ->
+%   % beehive/prod
+%   case string:tokens(Name, "/") of
+%     [N] -> validate_app(Rest, App#app{name = generate_unique_name(N, 5)});
+%     [A,B] -> validate_app(Rest, App#app{name = generate_unique_name(A, 5), branch = B})
+%   end;
 % Validate the branch
 validate_app([branch|Rest], #app{branch = undefined} = App) -> validate_app(Rest, App#app{branch = "master"});
-validate_app([branch|Rest], #app{branch = "master"} = App) -> validate_app(Rest, App#app{branch = "master"});
-validate_app([branch|Rest], App) -> validate_app(Rest, App);
+validate_app([branch|Rest], #app{branch = V} = App) -> validate_app(Rest, App);
 % Validate the url
 validate_app([url|Rest], #app{url = _Url} = App) -> validate_app(Rest, App);
 % Validate the type, it can only be either static or dynamic
@@ -285,6 +289,15 @@ validate_app([routing_param|Rest], #app{routing_param = V} = App) -> validate_ap
 % Validate others?
 validate_app([_H|Rest], App) -> validate_app(Rest, App).
 
+
+validate_unique_name(#app{name = undefined} = App) ->
+  App#app{name = generate_unique_name(5)};
+validate_unique_name(#app{name = Name} = App) ->
+  case string:tokens(Name, "/") of
+    [N] -> App#app{name = generate_unique_name(N, 5)};
+    [A,B] -> App#app{name = generate_unique_name(A, 5), branch = B}
+  end.
+  
 %%-------------------------------------------------------------------
 %% @spec (Name) ->    {ok, Value}
 %% @doc Generate a unique name based on a given name

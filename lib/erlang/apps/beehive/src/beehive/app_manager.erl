@@ -511,12 +511,12 @@ try_to_connect_to_new_instance(Bee, Attempts) ->
   
 % Add an application based on it's proplist
 internal_add_application(ConfigProplist, UserEmail) ->
-  case apps:new(ConfigProplist) of
-    NewApp when is_record(NewApp, app) ->
-      {ok, _App} = apps:save(NewApp),
+  case apps:create(ConfigProplist) of
+    {ok, NewApp} when is_record(NewApp, app) ->
       {ok, _UserApp} = user_apps:create(UserEmail, NewApp),
       {ok, NewApp};
     E ->
+      erlang:display({apps,create,failed,E}),
       {error, E}
   end.
 
@@ -527,7 +527,6 @@ internal_update_application(App, ConfigProplist) when is_record(App, app) ->
       apps:save(ValidatedApp), 
       {ok, ValidatedApp};
     E -> 
-      erlang:display({else,E}),
       {error, E}
   end;
 internal_update_application(Name, ConfigProplist) ->
