@@ -123,7 +123,7 @@ restart_by_name(Name) ->
 
 update([], _) -> ok;
 update(App, NewProps) when is_record(App, app) ->
-  NewAppProps = misc_utils:update_proplist(to_proplist(App), NewProps),
+  NewAppProps = misc_utils:update_proplist(to_proplist(App), lists:flatten(NewProps)),
   NewApp = from_proplists(NewAppProps),
   case App#app.revision =/= NewApp#app.revision of
     true -> ?NOTIFY({app, updated_revision, NewApp});
