@@ -281,9 +281,6 @@ handle_info({manage_pending_bees}, State) ->
     lists:map(fun(B) ->
         Status = try_to_connect_to_new_instance(B, 10),
         ?NOTIFY({bee, update_status, B, Status})
-      % lists:map(fun(B) ->
-        % ?LOG(debug, "Garbage cleaning up on: ~p", [Bees#bee.app_name])
-      % end, Bees)
     end, PendingBees)
   end),
   {noreply, State};
@@ -297,7 +294,7 @@ handle_info({flush_old_processes}, State) ->
   {noreply, State};
 
 handle_info({ping_bees}, State) ->
-  ping_bees(),
+  spawn(fun() -> ping_bees() end),
   {noreply, State};
 
 handle_info({garbage_collection}, State) ->
@@ -305,7 +302,7 @@ handle_info({garbage_collection}, State) ->
   {noreply, State};
     
 handle_info({clean_up_apps}, State) ->
-  clean_up(),
+  spawn(fun() -> clean_up() end),
   {noreply, State};    
 
 handle_info({'EXIT',_Pid,normal}, State) ->

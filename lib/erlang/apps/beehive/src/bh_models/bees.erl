@@ -127,8 +127,10 @@ find_all_grouped_by_host1(#bee{host=Host} = B, Acc) ->
   [{Host, [B], 1}|Acc].
   
 update([], _) -> ok;
+update(Bee, OtherBee) when is_record(Bee, bee) andalso is_record(OtherBee, bee) ->
+  update(Bee, lists:flatten(to_proplist(OtherBee)));
 update(Bee, NewProps) when is_record(Bee, bee) ->
-  NewBee = misc_utils:update_proplist(to_proplist(Bee), lists:flatten(NewProps)),
+  NewBee = misc_utils:update_proplist(to_proplist(Bee), NewProps),
   {ok, NewBee1} = save(NewBee),
   {updated, NewBee1};
 update(Name, NewProps) ->
