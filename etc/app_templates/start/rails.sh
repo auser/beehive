@@ -6,6 +6,10 @@ export GEM_HOME=.beehive_gem_home
 export GEM_PATH=.beehive_gem_home:`gem env path`
 export PATH=$RUN_DIR/.beehive_gem_home/bin:$PATH
 
+if [ -f "Isolate" ]; then
+  ruby -rubygems -e "require 'isolate'; Isolate.now!"
+fi
+
 echo $$ > $PIDFILE
 if [ -f start.sh ]; then
   echo "Using start.sh file"

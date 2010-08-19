@@ -9,7 +9,7 @@ GEM=`which gem`
 # If there is an isolate file, run Isolate.now!
 if [ -f "Isolate" ]; then
   gem install isolate --no-rdoc --no-ri
-  ruby -rubygems -e "require 'isolate'; Isolate.now!"
+  # ruby -rubygems -e "require 'isolate'; Isolate.now!"
 fi
 
 # If bundler is used

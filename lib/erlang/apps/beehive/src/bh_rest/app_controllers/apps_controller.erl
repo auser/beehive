@@ -72,8 +72,8 @@ put([Name], Data) ->
   case auth_utils:get_authorized_user(Data) of
     {error, _, _} = Error -> Error;
     _ReqUser ->
-      case apps:update(Name, Data) of
-        {updated, App} when is_record(App, app) -> 
+      case app_manager:update_application(Name, Data) of
+        {ok, App} when is_record(App, app) -> 
           % rebuild_bee(App),
           {updated, App#app.name};
         _ -> {error, "There was an error adding bee"}
