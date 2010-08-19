@@ -122,8 +122,10 @@ restart_by_name(Name) ->
 
 
 update([], _) -> ok;
+update(App, OtherApp) when is_record(App, app) andalso is_record(OtherApp, app) ->
+  update(App, to_proplist(OtherApp));
 update(App, NewProps) when is_record(App, app) ->
-  NewAppProps = misc_utils:update_proplist(to_proplist(App), lists:flatten(NewProps)),
+  NewAppProps = misc_utils:update_proplist(to_proplist(App), NewProps),
   NewApp = from_proplists(NewAppProps),
   case App#app.revision =/= NewApp#app.revision of
     true -> ?NOTIFY({app, updated_revision, NewApp});
