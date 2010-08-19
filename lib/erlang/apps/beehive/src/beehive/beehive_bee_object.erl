@@ -316,12 +316,13 @@ cleanup(Name, Caller) ->
     MountDir -> ?DEBUG_RM(MountDir)
   end,
   % In this case, beefile is name
-  case catch find_bee_file(Name) of
-    {error, _} -> ok;
-    Beefile ->
-      file:delete(Beefile),
-      send_to(Caller, {cleaned_up, Name})
-  end.
+  % case catch find_bee_file(Name) of
+  %   {error, _} -> ok;
+  %   Beefile ->
+  %     file:delete(Beefile),
+  %     send_to(Caller, {cleaned_up, Name})
+  % end.
+  send_to(Caller, {cleaned_up, Name}).
 
 % Get information about the Beefile  
 info(BeeObject) when is_record(BeeObject, bee_object) -> info(BeeObject#bee_object.name);
