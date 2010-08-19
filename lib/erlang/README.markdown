@@ -62,9 +62,9 @@ All of the available variables that can be overridden can be overridden on the c
 
 The proxy can be hot-loaded with new routes simply with a RESTful interface. The name (the routing key), the endpoint host and the port of the bee need to be included. For instance:
 
-    curl -i -XPOST -d"{\"app_name\":\"test\", \"host\":\"google.com\", \"port\":\"80\"}" beehive.com:8080/bee/new
+    curl -i -XPOST -d"{\"app_name\":\"test\", \"host\":\"google.com\", \"port\":\"80\"}" beehive.com:8080/bees/new.json
 
-The parameters that must be included are the app_name (the routing key), the host and the port. You can check to make sure that they were added by visiting the page: http://beehive.com:8080/bee/all
+The parameters that must be included are the app_name (the routing key), the host and the port. You can check to make sure that they were added by calling: http://beehive.com:8080/bees.json
 
 These can also be added at the erlang command-line by:
 
@@ -75,18 +75,18 @@ These can also be added at the erlang command-line by:
 ## Apps
 Adding an application can also be added via the RESTful interface. For example:
 
-    curl -i -XPOST -d"{\"name\":\"beehive\", \"host\":\"ec2-75-121-34-215-amazon.com\", \"port\":\"8080\"}" beehive.com:8080/app/new
-    curl -i -XPOST -d"{\"name\":\"test\", \"host\":\"ec2-75-121-34-210-amazon.com\", \"port\":\"8081\"}" beehive.com:8080/app/new
+    curl -i -XPOST -d"{\"name\":\"beehive\", \"host\":\"ec2-75-121-34-215-amazon.com\", \"port\":\"8080\"}" beehive.com:8080/apps/new.json
+    curl -i -XPOST -d"{\"name\":\"test\", \"host\":\"ec2-75-121-34-210-amazon.com\", \"port\":\"8081\"}" beehive.com:8080/apps/new.json
 
 Viewing the list of supported apps:
 
-    curl -i beehive.com:8080/app
+    curl -i beehive.com:8080/apps.json
 
 All operations can be handled in a RESTful interface.
 
 For instance, to terminate and restart the application in the beehive, issue a request such as:
 
-    curl -i -XPOST http://beehive.com:8080/apps/[app_name]/restart
+    curl -i -XPOST http://beehive.com:8080/apps/[app_name]/restart.json
 
 ## Storage nodes
 To store the distributable bees, you must start a storage backend. Beehive makes this easy again by using the start script:
@@ -121,7 +121,7 @@ It is strongly recommended that you delete this user as soon as you create your 
 
 Certain requests require an authenticated user. To remove the root@getbeehive.com user, we must authenticate. To authenticate, you must first get a token. This is achieved by submitting a request, such as:
 
-    curl -i -XPOST -d"{\"email\":\"root@getbeehive.com\", \"password\": \"test\"}" http://beehive.com:8080/auth
+    curl -i -XPOST -d"{\"email\":\"root@getbeehive.com\", \"password\": \"test\"}" http://beehive.com:8080/auth.json
 
 This will return a tuple that will look like:
   
@@ -131,11 +131,11 @@ Subsequent requests that require authentication should attach this token onto th
     
 Of course, it would be wise to add another admin user first. To add an admin level user, use the level 1 and ass, such as below
 
-    curl -i -XPOST -d"{\"email\":\"arilerner@mac.com\", \"password\":\"myuniquepassword\", \"level\":\"1\", \"token\":\"f24e53e38dfb380066ea166f1844cf19\"}" beehive.com:8080/users/new
+    curl -i -XPOST -d"{\"email\":\"arilerner@mac.com\", \"password\":\"myuniquepassword\", \"level\":\"1\", \"token\":\"f24e53e38dfb380066ea166f1844cf19\"}" beehive.com:8080/users/new.json
 
 So, to remove the root@getbeehive.com user, we can then issue a request like:
 
-    curl -i -XDELETE -d"{\"email\":\"root@getbeehive.com\", \"token\":\"f24e53e38dfb380066ea166f1844cf19\"}" beehive.com:8080/users    
+    curl -i -XDELETE -d"{\"email\":\"root@getbeehive.com\", \"token\":\"f24e53e38dfb380066ea166f1844cf19\"}" beehive.com:8080/users.json
 
 And there you go, you have a custom authenticat-able user at your disposal.
 
@@ -199,7 +199,7 @@ This is clearly a dummy handler as it will choose the top of the bees, but it il
     
 Now, any application that has the routing_param set to channel_chooser will use the custom_chooser module.
 
-    curl -i -XPOST -d"{\"token\":\"tokenofauthorizeduser\", \"name\":\"picky_app\", \"routing_param\":\"custom_chooser\", \"bee_picker\":\"custom_bee_picker\"}" beehive.com:8080/apps/new
+    curl -i -XPOST -d"{\"token\":\"tokenofauthorizeduser\", \"name\":\"picky_app\", \"routing_param\":\"custom_chooser\", \"bee_picker\":\"custom_bee_picker\"}" beehive.com:8080/apps/new.json
 
 
 DEVELOPER DATA

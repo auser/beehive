@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% File    : bh_file_utils.erl
 %%% Author  : Ari Lerner
-%%% Description : 
+%%% Description :
 %%%
 %%% Created :  Mon Nov 16 14:09:53 PST 2009
 %%%-------------------------------------------------------------------
@@ -11,7 +11,7 @@
 -include_lib("kernel/include/file.hrl").
 -compile (export_all).
 
-root_dir(Path) -> 
+root_dir(Path) ->
   filename:join([?BEEHIVE_HOME, Path]).
 
 relative_or_abs_path(List) ->
@@ -20,11 +20,11 @@ relative_or_abs_path(List) ->
     _ ->
       case filelib:is_file(F = filename:join([?BEEHIVE_HOME, List])) of
         true  -> F;
-        false -> 
+        false ->
           lists:flatten([?BH_ROOT, "/", List])
       end
   end.
-  
+
 % Find a file either absolute or relative
 abs_or_relative_filepath(P) ->
   case filelib:is_file(P) of
@@ -39,7 +39,7 @@ abs_or_relative_filepath(P) ->
 % Get the relative path joined with the filename
 relative_path(P) ->
   filename:join([filename:absname(""), P]).
-  
+
 ensure_dir_exists([]) -> ok;
 ensure_dir_exists([Dir|Rest]) ->
   filelib:ensure_dir(Dir ++ "/.nonexistant_file"),
@@ -48,41 +48,41 @@ ensure_dir_exists([Dir|Rest]) ->
 is_symlink(Path) ->
   case file:read_link_info(Path) of
     {ok, #file_info{type = symlink}} -> true;
-	  _ -> false
-	end.
+    _ -> false
+  end.
 
 file_type(Path) ->
-	IsRegular = filelib:is_regular(Path),
-	case IsRegular of
-		true -> file;
-		false ->
-			case is_symlink(Path) of
+  IsRegular = filelib:is_regular(Path),
+  case IsRegular of
+    true -> file;
+    false ->
+      case is_symlink(Path) of
         true -> symlink;
-				false -> directory
-			end
-	end.
+        false -> directory
+      end
+  end.
 
 walk(Path, Level, Fun) ->
-	FileType = file_type(Path),
-	case FileType of
-		file -> 
-		  Fun({file, Level, Path});
-		symlink -> Fun({symlink, Level, Path});
-		directory ->
-			Children = filelib:wildcard(filename:join([Path, "*"])),
-			case Children of
-			 [] -> ok;
-			 _ -> lists:foreach(fun(P) -> walk(P, Level + 1, Fun) end, Children)
-			end,
-			Fun({directory, Level, Path})
-	end.
+  FileType = file_type(Path),
+  case FileType of
+    file ->
+      Fun({file, Level, Path});
+    symlink -> Fun({symlink, Level, Path});
+    directory ->
+      Children = filelib:wildcard(filename:join([Path, "*"])),
+      case Children of
+        [] -> ok;
+        _ -> lists:foreach(fun(P) -> walk(P, Level + 1, Fun) end, Children)
+      end,
+      Fun({directory, Level, Path})
+  end.
 
 % DELETE ALL
 rm_rf(Dir) ->
   bh_file_utils:walk(Dir, 0, fun({Type, _Level, Path}) ->
-    case Type of
-      directory -> file:del_dir(Path);
-      _ -> file:delete(Path)
-    end
-  end),
+                                 case Type of
+                                   directory -> file:del_dir(Path);
+                                   _ -> file:delete(Path)
+                                 end
+                             end),
   file:del_dir(Dir).
