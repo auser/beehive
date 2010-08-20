@@ -53,7 +53,7 @@ end()).
 
 % Initialize included bee_tpes
 init() ->
-  spawn(?MODULE, ets_process_restarter, []),
+  beehive_ets_helper:spawn_and_monitor(?BEEHIVE_BEE_OBJECT_INFO_TABLE_PROCESS, [?BEEHIVE_BEE_OBJECT_INFO_TABLE]),
   % Ewww
   Dir =?BH_ROOT,
   beehive_bee_object_config:init(),
@@ -225,7 +225,7 @@ start(Type, Name, Port, From) ->
         try
           {Pid, Ref, Tag} = async_command("/bin/sh", [ScriptFilename], BeeDir, [{pidfile, PidFilename}|to_proplist(BeeObject)], From),
           % Hardcoded delays... eww
-          timer:sleep(1000),
+          timer:sleep(500),
           OsPid = case read_pid_file_or_retry(PidFilename, 500) of
             {error, _} ->
               timer:sleep(100),
@@ -243,12 +243,12 @@ start(Type, Name, Port, From) ->
             case Msg of
               {'DOWN', Ref, process, Pid, {Tag, Data}} -> Data;
               {'DOWN', Ref, process, Pid, Reason} -> send_to(From, {stopped, {Name, Reason}});
-              {stop} ->
-                ?DEBUG_PRINT({cmd_received,{stop}, OsPid}),
+              {stop, Caller} ->
+                ?DEBUG_PRINT({cmd_received,{stop, Caller}, OsPid}),
                 case OsPid of
                   IntPid when is_integer(IntPid) andalso IntPid > 1 ->
                     run_kill_on_pid(OsPid, BeeDir, RealBeeObject),
-                    send_to(From, {stopped, RealBeeObject});
+                    send_to(Caller, {stopped, RealBeeObject});
                   _ -> ok
                 end;
               _E ->
@@ -268,10 +268,14 @@ stop(Name) -> stop(Name, undefined).
 stop(Name, From) ->
   case find_bee(Name) of
     #bee_object{pid = Pid} = BeeObject when is_record(BeeObject, bee_object)->
-      send_to(Pid, {stop}),
-      timer:sleep(500),
+      send_to(Pid, {stop, self()}),
+      TheBeeObject = receive
+        {stopped, RealBeeObject} -> RealBeeObject
+      after 10000 ->
+        BeeObject
+      end,
       % Possibly add ensure_stopped_os_pid...
-      send_to(From, {stopped, BeeObject});
+      send_to(From, {stopped, TheBeeObject});
     _ -> 
       ErrTuple = {error, not_running},
       send_to(From, ErrTuple),

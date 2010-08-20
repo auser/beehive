@@ -30,15 +30,11 @@
   request_to_update_app/1,
   request_to_expand_app/1,
   request_to_terminate_bee/1, request_to_terminate_bee/2,
+  terminate_bee/1, terminate_bee/2,
   request_to_save_app/1,
   garbage_collection/0,
   seed_nodes/1
 ]).
-
--define (APP_MANAGER_TABLE_PROCESS, 'app_manager_table_process').
-
-% ETS functions
--export ([ets_process_restarter/0, start_ets_process/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -53,11 +49,6 @@
   queries     = queue:new(),
   last_trans  = 0
 }).
-
--define (LAUNCHERS_APP_TO_PID, 'launchers_app_to_pid').
--define (LAUNCHERS_PID_TO_APP, 'launchers_pid_to_app').
--define (UPDATERS_PID_TO_APP, 'updaters_pid_to_app').
--define (UPDATERS_APP_TO_PID, 'updaters_app_to_pid').
 
 -define (ACTION_TIMEOUT, 10).
 -define (SERVER, ?MODULE).
@@ -88,10 +79,12 @@ start_new_bee_by_app(App) -> start_new_bee_by_app(App, undefined).
 start_new_bee_by_app(App, Caller) ->
   gen_server:call(?SERVER, {start_new_bee_by_app, App, Caller}, infinity).
 
-request_to_terminate_bee(Bee) -> 
-  gen_server:cast(?SERVER, {request_to_terminate_bee, Bee, undefined}).
+request_to_terminate_bee(Bee) -> request_to_terminate_bee(Bee, undefined).
 request_to_terminate_bee(Bee, Caller) -> 
   gen_server:cast(?SERVER, {request_to_terminate_bee, Bee, Caller}).
+  
+terminate_bee(Bee) -> terminate_bee(Bee, undefined).
+terminate_bee(Bee, Caller) -> gen_server:call(?SERVER, {terminate_bee, Bee, Caller}, infinity).
   
 request_to_update_app(App) -> gen_server:cast(?SERVER, {request_to_update_app, App}).
 request_to_save_app(App) -> gen_server:call(?SERVER, {request_to_save_app, App}).
@@ -151,12 +144,8 @@ seed_pids(_State) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
-  % Build the launching ets tables
   process_flag(trap_exit, true),
-  
-  spawn(?MODULE, ets_process_restarter, []),
     
-  timer:send_interval(timer:seconds(5), {flush_old_processes}),
   % Try to make sure the pending bees are taken care of by either turning them broken or ready
   timer:send_interval(timer:seconds(5), {manage_pending_bees}),
   % Run maintenance
@@ -207,6 +196,17 @@ handle_call({start_new_bee_by_name, Name, Caller}, From, State) ->
 handle_call({start_new_bee_by_app, App, Caller}, From, State) ->
   handle_queued_call(fun() -> 
     start_new_instance_by_app(App#app{latest_error=undefined}, Caller)
+  end, From, State);
+
+handle_call({terminate_bee, Bee, _Caller}, From, State) ->
+  handle_queued_call(fun() -> 
+    run_app_kill_fsm(Bee, self()),
+    receive
+      {bee_terminated, NewBee} -> 
+        {ok, {bee_terminated, NewBee}};
+      X ->
+        erlang:display({handle_call, terminate_bee, got, X})
+    end
   end, From, State);
 
 % Remove an application from this application server
@@ -289,10 +289,6 @@ handle_info({maintain_bee_counts}, State) ->
   spawn(fun() -> maintain_bee_counts() end),
   {noreply, State};
 
-handle_info({flush_old_processes}, State) ->
-  spawn(fun() -> flush_old_processes() end),
-  {noreply, State};
-
 handle_info({ping_bees}, State) ->
   spawn(fun() -> ping_bees() end),
   {noreply, State};
@@ -313,23 +309,10 @@ handle_info({'EXIT',_Pid, {received_unknown_message, {_FsmState, {error, {babysi
   {noreply, State};
 
 handle_info({'EXIT', Pid, Reason}, State) ->
-  case ets:lookup(?UPDATERS_PID_TO_APP, Pid) of
-    [{Pid, App, _Caller, _Time}] ->
-      ets:delete(?UPDATERS_PID_TO_APP, Pid),
-      ets:delete(?UPDATERS_APP_TO_PID, App),
-      % Save the error
-      apps:save(App#app{latest_error = Reason});
-    _ -> 
-      case ets:lookup(?LAUNCHERS_PID_TO_APP, Pid) of
-        [{Pid, App, _Caller, _Time}] ->
-          ets:delete(?LAUNCHERS_PID_TO_APP, Pid),
-          ets:delete(?LAUNCHERS_APP_TO_PID, App);
-        _ -> true
-      end
-  end,
+  ?LOG(debug, "Pid: ~p exited because: ~p", [Pid, Reason]),
   {noreply, State};
   
-handle_info({bee_updated_normally, #bee{revision = Sha} = Bee, #app{name = AppName} = App}, State) ->
+handle_info({bee_updated_normally, #bee{revision = Sha} = Bee, #app{name = AppName} = App, Caller}, State) ->
   % StartedBee#bee{revision = Sha}, App#app{revision = Sha}
   ?LOG(debug, "app_event_handler got bee_updated_normally: ~p, ~p", [Bee, App]),
   case apps:find_by_name(AppName) of
@@ -341,16 +324,13 @@ handle_info({bee_updated_normally, #bee{revision = Sha} = Bee, #app{name = AppNa
     RealBee when is_record(RealBee, bee) -> bees:save(RealBee#bee{lastresp_time = date_util:now_to_seconds()});
     _ -> ok
   end,
+  Caller ! {bee_updated_normally, Bee, App},
   ok = kill_other_bees(Bee),
   {noreply, State};
 
-handle_info({bee_started_normally, Bee, App}, State) ->
-  case ets:lookup(?LAUNCHERS_APP_TO_PID, App) of
-    [{_Pid, _App, Caller, _Time}] -> 
-      bees:save(Bee),
-      Caller ! {bee_started_normally, Bee};
-    _ -> ok
-  end,
+handle_info({bee_started_normally, Bee, App, Caller}, State) ->
+  ?LOG(debug, "Bee started normally: ~p", [Bee]),
+  Caller ! {bee_started_normally, Bee, App},
   {noreply, State};
 
 % {error, {updating, {error, {babysitter, {app,"fake-lvpae",
@@ -392,6 +372,7 @@ handle_info({app_launcher_fsm, error, {StateName, Code}, Props}, State) ->
   App = proplists:get_value(app, Props),
   Output = proplists:get_value(output, Props),
   Bee = proplists:get_value(bee, Props),
+  From = proplists:get_value(from, Props),
   
   Error = #app_error{
     stage = StateName,
@@ -402,11 +383,8 @@ handle_info({app_launcher_fsm, error, {StateName, Code}, Props}, State) ->
   ?LOG(debug, "app_manager caught error: ~p", [App, StateName, Code]),
   {ok, _NewApp} = apps:save(App#app{latest_error = Error}),
   
-  % Cleanup will take care of the cleanup
-  case ets:lookup(?LAUNCHERS_APP_TO_PID, App) of
-    [{_Pid, _App, Caller, _Time}] -> Caller ! {error, Error};
-    _ -> ok
-  end,
+  % Send to the caller
+  From ! {error, Error},
   
   run_app_kill_fsm(Bee, self()),
   {noreply, State};
@@ -600,16 +578,6 @@ ping_bees() ->
   end, ReadyBees),
   ok.
   
-% MAINTAIN THE ETS TABLES
-flush_old_processes() ->
-  lists:map(fun(Tuple) ->
-    try_to_clean_up_ets_tables(?UPDATERS_APP_TO_PID, ?UPDATERS_PID_TO_APP, Tuple)
-  end, ets:tab2list(?UPDATERS_APP_TO_PID)),
-  lists:map(fun(Tuple) ->
-    try_to_clean_up_ets_tables(?LAUNCHERS_APP_TO_PID, ?LAUNCHERS_PID_TO_APP, Tuple)
-  end, ets:tab2list(?LAUNCHERS_APP_TO_PID)),
-  ok.
-
 % GARBAGE COLLECTION
 handle_non_ready_bees() ->
   TerminatedBees = lists:filter(fun(B) -> B#bee.status =:= terminated end, bees:all()),
@@ -694,51 +662,29 @@ start_new_instance_by_name(Name) ->
 
 start_new_instance_by_app(App) -> start_new_instance_by_app(App, undefined).
 start_new_instance_by_app(App, Caller) ->
-  case ets:lookup(?LAUNCHERS_APP_TO_PID, App) of
-    [Tuple] -> 
-      try_to_clean_up_ets_tables(?LAUNCHERS_APP_TO_PID, ?LAUNCHERS_PID_TO_APP, Tuple),
-      already_starting_instance;
-    _ ->
-      app_launcher_fsm_go(?LAUNCHERS_APP_TO_PID, ?LAUNCHERS_PID_TO_APP, launch, App, Caller, false)
-  end.
+  app_launcher_fsm_go(launch, App, Caller, false).
   
 update_instance_by_app(App) -> update_instance_by_app(App, undefined).
 update_instance_by_app(App, Caller) ->
-  case ets:lookup(?UPDATERS_APP_TO_PID, App) of
-    [Tuple] -> 
-      try_to_clean_up_ets_tables(?UPDATERS_APP_TO_PID, ?UPDATERS_PID_TO_APP, Tuple),
-      already_updating_instance;
-    _ ->
-      app_launcher_fsm_go(?UPDATERS_APP_TO_PID, ?UPDATERS_PID_TO_APP, update, App, Caller, true)
-  end.
+  app_launcher_fsm_go(update, App, Caller, true).
 
 expand_instance_by_app(App) -> start_new_instance_by_app(App).
 
 % PRIVATE
-app_launcher_fsm_go(AppToPidTable, PidToAppTable, Method, App, Caller, Updating) ->
+app_launcher_fsm_go(Method, App, Caller, Updating) ->
   case App#app.dynamic of
     static -> ok;
     _T ->
       process_flag(trap_exit, true),
-      Now = date_util:now_to_seconds(),
-      StartOpts = [{app, App}, {caller, self()}, {updating, Updating}],
+      % Now = date_util:now_to_seconds(),
+      StartOpts = [{app, App}, {caller, Caller}, {from, self()}, {updating, Updating}],
       case app_launcher_fsm:start_link(StartOpts) of
         {ok, P} ->
           erlang:link(P),
           rpc:call(node(P), app_launcher_fsm, Method, [P]),
-          ets:insert(AppToPidTable, {App, P, Caller, Now}), 
-          ets:insert(PidToAppTable, {P, App, Caller, Now}), 
           {ok, P};
         Else -> Else
       end
-  end.
-
-try_to_clean_up_ets_tables(AppToPidTable, PidToAppTable, {App, Pid, _Caller, Time}) ->
-  case date_util:now_to_seconds() - Time > ?ACTION_TIMEOUT of
-    true ->
-      true = ets:delete(PidToAppTable, Pid),
-      true = ets:delete(AppToPidTable, App);
-    false -> ok
   end.
 
 % Kill off all other bees
@@ -765,34 +711,6 @@ get_transaction(Q, I, OldQ) ->
     {_E, Q2} ->
       get_transaction(Q2, I, OldQ)
     end.
-
-ets_process_restarter() ->
-  process_flag(trap_exit, true),
-  Pid = spawn_link(?MODULE, start_ets_process, []),
-  catch register(?APP_MANAGER_TABLE_PROCESS, Pid),
-  receive
-    {'EXIT', Pid, normal} -> % not a crash
-      ok;
-    {'EXIT', Pid, shutdown} -> % manual termination, not a crash
-      ok;
-    {'EXIT', Pid, _} ->
-      unregister(?APP_MANAGER_TABLE_PROCESS),
-      ets_process_restarter()
-  end.
-
-start_ets_process() ->
-  TableOpts = [set, named_table, public],
-  
-  lists:map(fun(TableName) ->
-    case catch ets:info(TableName) of
-      undefined -> ets:new(TableName, TableOpts);
-      _ -> ok
-    end
-  end, [?UPDATERS_APP_TO_PID, ?UPDATERS_PID_TO_APP, ?LAUNCHERS_APP_TO_PID, ?LAUNCHERS_PID_TO_APP]),
-  receive
-    kill -> ok;
-    _ -> start_ets_process()
-  end.
 
 run_app_kill_fsm(Bee, Caller) ->
   {ok, P} = app_killer_fsm:start_link(Bee, Caller),

@@ -50,7 +50,12 @@ meta_data(FileLocation, MetaFile) ->
   lists:flatten([{bee_size, BeeSize}, OtherProps]).
 
 % Create a new bee
-create(A) -> save(new(A)).
+create(Bee) ->
+  case new(Bee) of
+    NewBee when is_record(NewBee, bee) -> 
+      save(validate_bee(NewBee));
+    E -> {error, E}
+  end.
 
 % Save the bee
 save(Bee) when is_record(Bee, bee) ->

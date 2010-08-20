@@ -43,6 +43,7 @@
   bee,
   output = [],
   updating = false,
+  caller,
   from
 }).
 
@@ -76,12 +77,13 @@ start_link(Opts) ->
 %%--------------------------------------------------------------------
 init([Proplist]) ->
   App = proplists:get_value(app, Proplist),
-  From = proplists:get_value(caller, Proplist),
+  Caller = proplists:get_value(caller, Proplist),
+  From     = proplists:get_value(from, Proplist),
   Updating = proplists:get_value(updating, Proplist),
   
   beehive_bee_object_config:init(), % JUST IN CASE
   % Only start if there are no other modules registered with the name
-  State = #state{app = App, from = From, updating = Updating, bee = #bee{}},
+  State = #state{app = App, from = From, caller = Caller, updating = Updating, bee = #bee{}},
   case global:whereis_name(registered_name(App)) of
     undefined ->
       case App#app.latest_error of
@@ -94,10 +96,10 @@ init([Proplist]) ->
           ?LOG(debug, "gen_cluster:run(beehive_storage_srv, {fetch_or_build_bee, ~p, ~p})", [App#app.name, Self]),
           {ok, fetching, State};
         _ ->
-          stop_error({error, pending_app_error}, State)
+          {stop, {error, pending_app_error}}
     end;
     _ ->
-      stop_error({already_started}, State)
+      {stop, {error, already_started, registered_name(App)}}
   end.
 
 %%--------------------------------------------------------------------
@@ -144,10 +146,10 @@ preparing({start_new}, State) ->
   self() ! {bee_built, []},
   {next_state, updating, State};
   
-preparing(Other, State) ->
+preparing(_Other, State) ->
   {next_state, preparing, State}.
 
-updating({bee_built, Info}, #state{app = App} = State) ->
+updating({bee_built, _Info}, #state{app = App} = State) ->
   Port = bh_host:unused_port(),
   beehive_bee_object:start(App#app.template, App#app.name, Port, self()),
   {next_state, launching, State};
@@ -175,13 +177,15 @@ launching(Event, State) ->
 pending({updated_bee_status, broken}, State) ->
   stop_error({error, broken_start}, State);
   
-pending({updated_bee_status, BackendStatus}, #state{app = App, bee = Bee, from = From, latest_sha = Sha, updating = Updating} = State) ->
+pending({updated_bee_status, BackendStatus}, #state{app = App, bee = Bee, from = From, caller = Caller, latest_sha = Sha, updating = Updating} = State) ->
   ?LOG(debug, "Application started ~p: ~p", [BackendStatus, App#app.name]),
   % App started normally
+  bees:save(Bee),
   case Updating of
-    true -> From ! {bee_updated_normally, Bee#bee{status = BackendStatus}, App#app{revision = Sha}};
-    false -> From ! {bee_started_normally, Bee#bee{status = BackendStatus}, App#app{revision = Sha}}
+    true -> From ! {bee_updated_normally, Bee#bee{status = BackendStatus}, App#app{revision = Sha}, Caller};
+    false -> From ! {bee_started_normally, Bee#bee{status = BackendStatus}, App#app{revision = Sha}, Caller}
   end,
+  ok = global:unregister_name(registered_name(App)),
   {stop, normal, State};
   
 pending(Event, State) ->
@@ -271,7 +275,9 @@ handle_info(Info, StateName, State) ->
 %% necessary cleaning up. When it returns, the gen_fsm terminates with
 %% Reason. The return value is ignored.
 %%--------------------------------------------------------------------
-terminate(_Reason, _StateName, _State) ->
+terminate(_Reason, _StateName, #state{app = App} = _State) ->
+  ?LOG(debug, "unregister_name for app: ~p", [registered_name(App)]),
+  ok = global:unregister_name(registered_name(App)),
   ok.
 
 %%--------------------------------------------------------------------
@@ -285,10 +291,9 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-stop_error(Msg, #state{from = From, app = App, bee = Bee, output = Output} = State) ->
-  Tuple = {?MODULE, error, Msg, [{app, App}, {bee, Bee}, {output, lists:reverse(Output)}, {caller, From}]},
+stop_error(Msg, #state{from = From, caller = Caller, app = App, bee = Bee, output = Output} = State) ->
+  Tuple = {?MODULE, error, Msg, [{app, App}, {bee, Bee}, {output, lists:reverse(Output)}, {caller, Caller}]},
   From ! Tuple,
-  global:unregister_name(registered_name(App)),
   {stop, Tuple, State}.
 
 % a name

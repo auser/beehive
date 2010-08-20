@@ -107,9 +107,10 @@ unmounting({unmounted, _BeeObject}, #state{bee = #bee{app_name = Name} = _Bee, n
 unmounting({error, Msg}, State) ->
   {stop, {error, Msg}, State}.
 
-cleaning_up({cleaned_up, BeeObject}, #state{from = From, bee = Bee} = State) ->
-  % App stopped normally
-  From ! {bee_terminated, Bee#bee{status = down}},
+cleaning_up({cleaned_up, _BeeObject}, #state{from = From, bee = Bee} = State) ->
+  % Bee cleaned up
+  bees:save(Bee),
+  From ! {bee_terminated, Bee},
   {stop, normal, State};
   
 cleaning_up(Event, State) ->
