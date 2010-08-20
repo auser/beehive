@@ -203,6 +203,7 @@ handle_call({terminate_bee, Bee, _Caller}, From, State) ->
     run_app_kill_fsm(Bee, self()),
     receive
       {bee_terminated, NewBee} -> 
+        bees:save(NewBee),
         {ok, {bee_terminated, NewBee}};
       X ->
         erlang:display({handle_call, terminate_bee, got, X})
@@ -262,10 +263,6 @@ handle_cast(_Msg, State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------  
-handle_info({bee_terminated, Bee}, State) when is_record(Bee, bee) ->
-  ?NOTIFY({bee, bee_terminated, Bee}),
-  {noreply, State};
-
 handle_info({clean_up}, State) ->
   {noreply, State};
 
@@ -712,9 +709,17 @@ get_transaction(Q, I, OldQ) ->
       get_transaction(Q2, I, OldQ)
     end.
 
-run_app_kill_fsm(Bee, Caller) ->
-  {ok, P} = app_killer_fsm:start_link(Bee, Caller),
-  % erlang:display({hi, in, request_to_terminate_bee, P}),
-  erlang:link(P),
-  app_killer_fsm:kill(P),
-  P.
+run_app_kill_fsm(SentBee, Caller) ->
+  case bees:find_by_id(SentBee#bee.id) of
+    #bee{pid = Pid} = Bee when is_record(Bee, bee) -> 
+      case is_pid(Pid) andalso Bee#bee.os_pid =/= undefined of
+        true ->
+          {ok, P} = app_killer_fsm:start_link(Bee, Caller),
+          % erlang:display({hi, in, request_to_terminate_bee, P}),
+          erlang:link(P),
+          app_killer_fsm:kill(P),
+          P;
+        _ -> ok
+      end;
+    _ -> ok
+  end.

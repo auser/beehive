@@ -40,13 +40,14 @@ start_multiple_bees_for_an_app() ->
   Name = lists:flatten(["multiple_bees_app"]),
   App = bh_test_util:dummy_app(),
   RealApp = App#app{name = Name},
+  Num = 3,
   apps:save(RealApp),
   % Start new bees
   Bees = lists:map(fun(_N) ->
     start_new_bee_by_app(RealApp)
-  end, lists:seq(1,1)),
+  end, lists:seq(1,Num)),
   
-  ?assertEqual(1, length(bees:find_all_by_name(Name))),
+  ?assertEqual(Num, length(bees:find_all_by_name(Name))),
   
   terminate_bees(Bees),
   timer:sleep(100),
@@ -56,7 +57,9 @@ start_multiple_bees_for_an_app() ->
 start_new_bee_by_app(App) ->
   app_manager:request_to_start_new_bee_by_app(App, self()),
   receive
-    {bee_started_normally, Bee, App} -> {App, Bee};
+    {bee_started_normally, Bee, App} -> 
+      erlang:display({bee_started_normally,Bee}),
+      {App, Bee};
     X -> erlang:display({app_manager,request_to_start_new_bee_by_app,X})
   end.
   

@@ -214,6 +214,7 @@ start(Type, Name, Port, From) ->
       mount(Type, Name),
       BeeDir = find_mounted_bee(Name),
       FoundBeeObject = find_bee(Name),
+      Self = self(),
       BeeObject = FoundBeeObject#bee_object{port = Port, run_dir = BeeDir},
 
       {ok, PidFilename, PidIo} = temp_file(),
@@ -237,7 +238,7 @@ start(Type, Name, Port, From) ->
 
           RealBeeObject = BeeObject#bee_object{os_pid = OsPid, template = Type},
           write_info_about_bee(RealBeeObject),
-          send_to(From, {started, RealBeeObject}),
+          send_to(Self, {started_bee_object, RealBeeObject}),
                     
           cmd_receive(Pid, [], From, fun(Msg) ->
             case Msg of
@@ -261,27 +262,44 @@ start(Type, Name, Port, From) ->
           file:delete(ScriptFilename) 
         end
       end),
-      write_info_about_bee(BeeObject#bee_object{pid = CmdProcessPid})
+      F = fun(This) ->
+        receive
+          {started_bee_object, SentRealBeeObject} -> 
+            Props = write_info_about_bee(SentRealBeeObject#bee_object{pid = CmdProcessPid}),
+            From ! {started, from_proplists(Props)};
+          _X -> This(This)
+        end
+      end,
+      F(F)
   end.
 
 stop(Name) -> stop(Name, undefined).
+stop(#bee{pid = Pid} = Bee, From) when is_record(Bee, bee) ->
+  stop(Pid, From);
+stop(#bee_object{pid = Pid} = BeeObject, From) when is_record(BeeObject, bee_object) ->
+  stop(Pid, From);
+stop(Pid, From) when is_pid(Pid) ->
+  send_to(Pid, {stop, self()}),
+  receive
+    {stopped, #bee_object{name = Name} = RealBeeObject} -> 
+      case ets:lookup(?BEEHIVE_BEE_OBJECT_INFO_TABLE, Name) of
+        [] -> ok;
+        [{Name, _D} = T|_] -> ets:delete(?BEEHIVE_BEE_OBJECT_INFO_TABLE, T)
+      end,
+      send_to(From, {stopped, RealBeeObject})
+  after 20000 -> 
+      send_to(From, {error, timeout})
+  end;
 stop(Name, From) ->
   case find_bee(Name) of
-    #bee_object{pid = Pid} = BeeObject when is_record(BeeObject, bee_object)->
-      send_to(Pid, {stop, self()}),
-      TheBeeObject = receive
-        {stopped, RealBeeObject} -> RealBeeObject
-      after 10000 ->
-        BeeObject
-      end,
-      % Possibly add ensure_stopped_os_pid...
-      send_to(From, {stopped, TheBeeObject});
+    BeeObject when is_record(BeeObject, bee_object)->
+      stop(BeeObject#bee_object.pid, From);
     _ -> 
       ErrTuple = {error, not_running},
       send_to(From, ErrTuple),
       ErrTuple
   end.
-
+  
 % Unmount the bee
 unmount(Type, Name) -> unmount(Type, Name, undefined).
 unmount(Type, Name, Caller) ->
@@ -754,7 +772,8 @@ run_kill_on_pid(OsPid, BeeDir, RealBeeObject) ->
   ?DEBUG_PRINT({killing_with_string, KillStr}),
   cmd(KillStr, BeeDir, to_proplist(RealBeeObject), self()),
   receive
-    X -> X
+    {error, _} = Tuple -> Tuple;
+    _X -> ok
     after 5000 ->
       ok
   end.

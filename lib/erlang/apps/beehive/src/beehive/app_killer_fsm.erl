@@ -84,9 +84,9 @@ init([Bee, From]) ->
 %% the current state name StateName is called to handle the event. It is also
 %% called if a timeout occurs.
 %%--------------------------------------------------------------------
-preparing({kill}, #state{bee = #bee{app_name = Name} = _Bee, node = Node} = State) ->
+preparing({kill}, #state{bee = Bee, node = Node} = State) ->
   % If there is no node, we'll assume it's on the localhost
-  rpc:call(Node, beehive_bee_object, stop, [Name, self()]),
+  rpc:call(Node, beehive_bee_object, stop, [Bee, self()]),
   {next_state, killing, State};
 
 preparing(Other, State) ->
@@ -109,7 +109,7 @@ unmounting({error, Msg}, State) ->
 
 cleaning_up({cleaned_up, _BeeObject}, #state{from = From, bee = Bee} = State) ->
   % Bee cleaned up
-  bees:save(Bee),
+  bees:save(Bee#bee{pid = undefined, os_pid = undefined}),
   From ! {bee_terminated, Bee},
   {stop, normal, State};
   
