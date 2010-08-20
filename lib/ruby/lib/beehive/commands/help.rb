@@ -1,8 +1,8 @@
 module Beehive
   module Command
-    
+
     class Help < Base
-      
+
       def run(o={})
         commands = build_help.map do |klass|
           "#{klass.to_s.top_class}          #{klass.description}"
@@ -17,7 +17,7 @@ Commands
 Help            Display this screen
 "
       end
-    
+
       def build_help
         Dir["#{File.dirname(__FILE__)}/*"].each do |lib|
           require lib

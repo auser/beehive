@@ -1,24 +1,24 @@
 module Beehive
   module Command
-    
+
     class CreateBee < Base
-      
+
       attr_reader :app_name
-      
+
       def self.description
         "Create a new bee"
       end
-            
+
       def run
         parse_args do |opts|
           opts.on('-n name', '--name name') {|n| @app_name = n}
           opts.on('-s host', '--host host') {|h| @app_host = h}
           opts.on('-P port', '--port port') {|p| @default_app_port = p}
         end
-        
+
         get_token unless @token
         n = new_bee
-        
+
         # puts <<-EOE
         #   host: #{host}
         #   user: #{user}
@@ -28,16 +28,17 @@ module Beehive
         #   #{@default_app_port}
         # EOE
       end
-      
+
       def new_bee
-        r = post("bees/new", {  "app_name" => @app_name,
-                                "host" => @app_host,
-                                "port" => @default_app_port,
-                                "token" => @token })
+        r = post("bees/new.json",
+                 { "app_name" => @app_name,
+                   "host" => @app_host,
+                   "port" => @default_app_port,
+                   "token" => @token })
       end
-            
+
     end
-    
+
   end
 end
 

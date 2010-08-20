@@ -2,13 +2,13 @@ require "open3"
 
 module Beehive
   module Connection
-    
+
     attr_reader :host, :user
-    
+
     def run(commands, o={})
       ssh(commands)
     end
-    
+
     # Simply shell out and call ssh, simple, reliable and fewest dependencies, but slow
     def ssh( commands=[], extra_ssh_ops={})
       commands = commands.compact.join(' && ') if commands.is_a?(Array)
@@ -19,11 +19,11 @@ module Beehive
         system_run(ssh_string(extra_ssh_ops)+"'#{commands}'")
       end
     end
-    
+
     def ssh_string(extra_ssh_ops={})
       "ssh #{user}@#{host} #{ssh_options(extra_ssh_ops)} "
     end
-    
+
     # Take a hash of options and join them into a string, combined with default options.
     # Default options are -o StrictHostKeyChecking=no -i keypair.full_filepath -l user
     # {'-i'=>'keyfile, '-l' => 'fred' } would become
@@ -34,7 +34,7 @@ module Beehive
            }.merge(opts)
       o.collect{ |k,v| "#{k} #{v}"}.join(' ')
     end
-    
+
     def rsync( opts={} )
       raise StandardError.new("You must pass a :source=>uri option to rsync") unless opts[:source]
       destination_path = opts[:destination] || opts[:source]
@@ -44,7 +44,7 @@ module Beehive
       out = system_run(cmd_string)
       out
     end
-    
+
     def scp(opts={})
       source = opts[:source]
       destination_path = opts[:destination] || opts[:source]
@@ -54,7 +54,7 @@ module Beehive
       out = system_run(cmd_string)
       out
     end
-    
+
     # Determine the os
     # Default to ubuntu
     # Send the determine_os.sh script to the node and run it remotely
@@ -62,9 +62,9 @@ module Beehive
       o = ssh("/bin/sh #{@prefix}/determine_os.sh").chomp
       o.empty? ? :ubuntu : o
     end
-    
+
     private
-    
+
     # Execute command locally.
     # This method is mainly broken out to ease testing in the other methods
     # It opens the 3 IO outputs (stdin, stdout, stderr) and print the output out
@@ -91,6 +91,6 @@ module Beehive
       end
       buf
     end
-    
+
   end
 end

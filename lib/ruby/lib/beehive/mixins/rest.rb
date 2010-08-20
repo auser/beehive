@@ -1,6 +1,3 @@
-Dir.glob(File.join(File.dirname(__FILE__), "..", "vendor", "gems", "*", "lib")).each do |lib|
-  $LOAD_PATH.unshift(File.expand_path(lib))
-end
 require "rubygems"
 require 'rest_client'
 require "yaml"
@@ -9,7 +6,7 @@ require "pp"
 
 module Beehive
   module Rest
-     
+
      # REST Methods
      def get(path)
        r = RestClient.get("http://#{host}/#{path}")
@@ -30,10 +27,10 @@ module Beehive
        j = RestClient.delete("http://#{host}/#{path}")
        handle_response(j)
      end
-     
-     
+
+
      private
-     
+
      def handle_response(resp)
        r = JSON.parse(resp)
         if r["error"]
@@ -47,7 +44,7 @@ module Beehive
           end
         else
           return r
-        end      
+        end
      end
   end
 end
