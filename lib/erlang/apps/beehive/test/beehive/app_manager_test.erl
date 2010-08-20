@@ -84,7 +84,7 @@ start_dummy_app(From) -> start_dummy_app(bh_test_util:dummy_app(), From).
 start_dummy_app(App, _From) -> 
   app_manager:request_to_start_new_bee_by_app(App, self()),
   receive
-    {bee_started_normally, Bee} ->
+    {bee_started_normally, Bee, _App} ->
       bees:save(Bee),
       {ok, App, Bee};
     {error, ErrorObj} -> {error, ErrorObj};
