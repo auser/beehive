@@ -3,7 +3,7 @@ module Askable
     def ask(msg="", opts={}, &block)
       begin
         answer = Question.new(msg, STDIN).answer
-        
+
         unless opts[:no_value]
           if answer.nil? || answer == ""
             colored_say("You must enter a value\nTry again\n")
@@ -23,7 +23,7 @@ module Askable
 
       colored_say("#{message} (h for help)")
       o = ask("? ")
-      
+
       if %w(h H).include?(o)
         colored_say help_str
         ask_with_help(opts, &block)
@@ -32,11 +32,11 @@ module Askable
       end
       o
     end
-    
+
     def colored_ask(str, o={})
       ask(substitute_color_tags(str), o)
     end
-  
+
     def rescued_ask(m, r)
       begin
         t = colored_ask m
@@ -44,38 +44,38 @@ module Askable
         say r
       end
     end
-    
+
     def colored_say(str, o={})
       out = substitute_color_tags(str)
       o[:no_newline] ? print(out) : puts(out)
       Colors.reset!
     end
-    
+
     def colored_print(str)
       print substitute_color_tags(str)
     end
-    
+
     def choose(str, choices={}, opts={}, &block)
       colored_say(str)
       answer = ask(choices)
       yield answer if block
       answer
     end
-    
+
     def wait
-      begin        
+      begin
         STDIN.readline unless auto_install # -y passed
       rescue Interrupt
         exit 2
       end
   	end
-  	
+
   	def substitute_color_tags(data)
       Colors.process(data)
     end
-    
+
   end
-  
+
   module InstanceMethods
     def ask(msg, &block)
       self.class.ask(msg, &block)
@@ -94,34 +94,34 @@ module Askable
     def colored_print(str)
       self.class.colored_print(str)
     end
-    
+
     def choose(str, choices={}, opts={}, &block); self.class.choose(str, choices, opts, &block); end
   end
-  
+
   def self.included(receiver)
     receiver.extend         ClassMethods
     receiver.send :include, InstanceMethods
   end
-  
+
   class Question
     attr_reader :answer
     include Askable
-    
+
     def initialize(question, input=STDIN, opts={})
       @question = question
       @input = input
-      
+
       defaults = {
         :wrap => 60
       }
-      
+
       @opts = defaults.merge(opts)
-      
+
       ask
     end
-    
+
     private
-    
+
     # get the answer, chomp it, etc.
     def ask
       case @question
@@ -133,13 +133,13 @@ module Askable
         ask_array
       end
     end
-    
+
     def ask_string
       colored_say @question, :no_newline => true
       @answer = @input.gets
       answer.chomp!
     end
-    
+
     def ask_array
       @question.each_with_index do |q, i|
         colored_say "#{i+1}> #{q}"
@@ -149,7 +149,7 @@ module Askable
       num = (@input.gets).to_i rescue colored_say("<red>Invalid input, must be a number between 1 and #{@question.size + 1}")
       @answer = @question[num-1]
     end
-    
+
     def ask_hash
       @question.sort.each do |k,v|
         colored_say("#{k}) #{v}")
@@ -158,6 +158,6 @@ module Askable
       pick = @input.gets.to_i
       @answer = @question[pick]
     end
-    
+
   end
 end
