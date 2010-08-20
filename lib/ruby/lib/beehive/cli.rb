@@ -29,7 +29,7 @@ module Beehive
     def self.run_command(command, argv)
       require "commands/#{command}"
       command_klass = Beehive::Command.const_get(command.camelcase).new(argv)
-      command_klass.send(:run)
+      command_klass.run
     end
 
     def self.error(msg)
