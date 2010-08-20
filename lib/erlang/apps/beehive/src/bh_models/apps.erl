@@ -258,7 +258,7 @@ validate_app([], App) ->  App;
 %   end;
 % Validate the branch
 validate_app([branch|Rest], #app{branch = undefined} = App) -> validate_app(Rest, App#app{branch = "master"});
-validate_app([branch|Rest], #app{branch = V} = App) -> validate_app(Rest, App);
+validate_app([branch|Rest], #app{branch = _V} = App) -> validate_app(Rest, App);
 % Validate the url
 validate_app([url|Rest], #app{url = _Url} = App) -> validate_app(Rest, App);
 % Validate the type, it can only be either static or dynamic
