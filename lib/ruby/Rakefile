@@ -13,7 +13,7 @@ begin
     gem.test_files = Dir.glob('test/**/*.rb')
     gem.executables = ["beehive"]
     gem.bindir = 'bin'
-    gem.add_dependency('json-pure')
+    gem.add_dependency('json_pure')
     gem.add_dependency('mime-types')
     gem.add_dependency('rest-client')
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
