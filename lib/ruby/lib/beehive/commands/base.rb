@@ -3,7 +3,6 @@ module Beehive
 
     class Base
 
-      include Askable
       include Beehive::Connection
       include Beehive::Rest
 
