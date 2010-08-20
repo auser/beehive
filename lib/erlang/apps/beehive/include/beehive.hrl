@@ -58,6 +58,7 @@
 }).
 
 -record(bee_object, {
+  id,           % phashed id
   name,         % name of the bee
   branch,       % branch to checkout
   revision,     % revision
