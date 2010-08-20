@@ -9,7 +9,8 @@ module Beehive
       ssh(commands)
     end
 
-    # Simply shell out and call ssh, simple, reliable and fewest dependencies, but slow
+    # Simply shell out and call ssh, simple, reliable and fewest
+    # dependencies, but slow
     def ssh( commands=[], extra_ssh_ops={})
       commands = commands.compact.join(' && ') if commands.is_a?(Array)
       if commands.empty?
@@ -24,8 +25,11 @@ module Beehive
       "ssh #{user}@#{host} #{ssh_options(extra_ssh_ops)} "
     end
 
-    # Take a hash of options and join them into a string, combined with default options.
-    # Default options are -o StrictHostKeyChecking=no -i keypair.full_filepath -l user
+    # Take a hash of options and join them into a string, combined
+    # with default options.  Default options are
+    # -o StrictHostKeyChecking=no
+    # -i keypair.full_filepath
+    # -l user
     # {'-i'=>'keyfile, '-l' => 'fred' } would become
     # "-i keyfile -o StrictHostKeyChecking=no -i keypair.to_s -l fred"
     def ssh_options(opts={})
@@ -36,7 +40,8 @@ module Beehive
     end
 
     def rsync( opts={} )
-      raise StandardError.new("You must pass a :source=>uri option to rsync") unless opts[:source]
+      raise StandardError.
+        new("You must pass a :source=>uri option to rsync") unless opts[:source]
       destination_path = opts[:destination] || opts[:source]
       rsync_opts = opts[:rsync_opts] || '-va'
       cmd_string =  "rsync -L -e 'ssh #{ssh_options}' #{rsync_opts} #{opts[:source]}  #{user}@#{host}:#{destination_path}"

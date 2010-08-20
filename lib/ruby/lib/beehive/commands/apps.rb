@@ -10,8 +10,7 @@ module Beehive
       end
 
       def run
-        parse_args do |opts|
-        end
+        parse_args
 
         pp apps_list
       end

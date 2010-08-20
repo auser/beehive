@@ -1,7 +1,7 @@
 =begin rdoc
   Abstracts out the searchable path for a resource such as a
   template file, key, or clouds.rb
-  
+
   NOTE: this is currently _only_ implemented on templates
   (PoolParty::Resources::File) and not yet working on clouds.rb or key files.
   These will eventually be refactored to use this class.
@@ -14,7 +14,7 @@ module SearchablePaths
 
   module ClassMethods
     # Specify that a particular class has methods for searchable paths.
-    # 
+    #
     # Options:
     # * <tt>:dirs</tt>: array of directories to look in *under* the search paths. (default: <tt>["/"]</tt>)
     # * <tt>:dir</tt>: set the directory to look in *under* the search paths. Use either dir or dirs, not both. (default: +/+)
@@ -29,17 +29,16 @@ module SearchablePaths
         @paths_prepend         = opts[:prepend_paths] || []
         @paths_append          = opts[:append_paths]  || []
       end
-      extend SearchablePaths::SingletonMethods
       include SearchablePaths::InstanceMethods
     end
-    
+
     def searchable_paths_dir;  @searchable_paths_dirs.first; end
     def searchable_paths_dirs
       @searchable_paths_dirs && @searchable_paths_dirs.size > 0 ? @searchable_paths_dirs : ["/"]
     end
-   
+
     # These are the default search paths in order:
-    # 
+    #
     # * current working directory (Dir.pwd)
     def default_paths
       [
@@ -54,19 +53,17 @@ module SearchablePaths
     end
   end
 
-  module SingletonMethods
-  end
-
   module InstanceMethods
 
     # Searches for +filepath+ in the <tt>searchable_paths</tt> iff +filepath+
     # doesn't exist. e.g. +filepath+ is interpreted *first* as an absolute
     # path, if +filepath+ doesn't exist verbatim then it looks for the file
     # in the searchable_paths.
-    # 
+    #
     # Returns +nil+ if the file cannot be found.
     def search_in_known_locations(filepath, additional_search_paths=[])
-      return filepath if File.exists?(filepath) # return the file if its an absolute path
+      # return the file if its an absolute path
+      return filepath if File.exists?(filepath)
       additional_search_paths.each do |path|
         full_path = File.expand_path(path / filepath)
         return full_path if File.exists?(full_path)
