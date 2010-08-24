@@ -19,5 +19,4 @@ starting_test_() ->
   }.
 
 test_startup() ->
-  erlang:display({bee_store_tests, test_startup}),
   passed.

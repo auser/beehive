@@ -99,7 +99,8 @@ init([Proplist]) ->
           {stop, {error, pending_app_error}}
     end;
     _ ->
-      {stop, {error, already_started, registered_name(App)}}
+      From ! {error, already_started, registered_name(App)},
+      {stop, normal}
   end.
 
 %%--------------------------------------------------------------------
