@@ -715,9 +715,9 @@ run_app_kill_fsm(SentBee, Caller) ->
       case is_pid(Pid) andalso Bee#bee.os_pid =/= undefined of
         true ->
           {ok, P} = app_killer_fsm:start_link(Bee, Caller),
-          % erlang:display({hi, in, request_to_terminate_bee, P}),
           erlang:link(P),
           app_killer_fsm:kill(P),
+          ?LOG(debug, "Started app_killer_fsm for ~p: ~p", [Bee#bee.app_name, P]),
           P;
         _ -> ok
       end;
