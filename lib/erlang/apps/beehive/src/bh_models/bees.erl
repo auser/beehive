@@ -259,7 +259,7 @@ fbo([_H|Rest], Bo, App, Bee) -> fbo(Rest, Bo, App, Bee).
 %% @end
 %%-------------------------------------------------------------------
 validate_bee(Bee) when is_record(Bee, bee) -> 
-  ValidatedBee = validate_bee(record_info(fields, bee), Bee),
+  ValidatedBee = validate_bee(lists:reverse(record_info(fields, bee)), Bee),
   ValidatedBee;
 validate_bee(Else) -> Else.
 

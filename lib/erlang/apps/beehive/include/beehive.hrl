@@ -35,11 +35,11 @@
 % Yes, the id is redundant, optimization of this might be ideal... i.e. remove the host/port/app_name
 % fields
 -record (bee, {
+  id,                       % tuple id of the app_name, host and port {app_name, host, port}
   app_name,                 % name of the app this bee supports
   host,
   host_node,
   port,
-  id,                       % tuple id of the app_name, host and port {app_name, host, port}
   bee_file,                 % path of app on hostnode
   revision,
   template,                 % type of app (rails, rack, java, etc.)
