@@ -96,8 +96,11 @@ read(Name) ->
 
 delete(Bee) when is_record(Bee, bee) ->
   ?DB:delete(bee, Bee#bee.id);
-delete(Proplist) when is_list(Proplist) -> ?DB:delete(bee, Proplist);
-delete(Name) when is_list(Name) -> ?DB:delete(bee, Name);
+delete(Name) when is_list(Name) ->
+  case bees:find_by_name(Name) of
+    not_found -> invalid;
+    Bee -> delete(Bee)
+  end;
 delete([]) -> invalid;
 delete(Else) -> {error, {cannot_delete, Else}}.
 
