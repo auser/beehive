@@ -132,7 +132,7 @@ post_new_user_non_admin_auth() ->
 
 perform_post_new(Params) ->
   bh_test_util:fetch_url(post,
-                         [{path, "/users/new.json"},
+                         [{path, "/users.json"},
                           {headers, [{"Content-Type",
                                       "application/x-www-form-urlencoded" }]},
                           {params, Params}
