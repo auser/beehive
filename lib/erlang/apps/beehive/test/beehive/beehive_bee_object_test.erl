@@ -222,13 +222,9 @@ stop_t() ->
     Q = beehive_bee_object:stop(Name, Pid),
     ?DEBUG_PRINT({beehive_bee_object,stop,Q,Name,Pid}),
     timer:sleep(500),
-    case catch gen_tcp:connect(Host, Port, [binary]) of
-      {ok, Sock} -> 
-        gen_tcp:close(Sock),
-        ?assert(false);
-      {error,econnrefused} -> 
-        ?assert(true)
-    end
+    GenTcpOut = gen_tcp:connect(Host, Port, [binary]),
+    ?assertMatch({ok, _},  GenTcpOut),
+    gen_tcp:close(element(2, GenTcpOut))
   after
     beehive_bee_object:stop(Name, Pid)
   end,

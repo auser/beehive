@@ -136,10 +136,9 @@ bundle(#bee_object{template=Type, bundle_dir=NBundleDir} = BeeObject, From) when
               
               cmd(Str, NBundleDir, Proplist, From),
               
-              write_info_about_bee(BeeObject),
               run_hook_action(post, BeeObject, From),
-              
               ?DEBUG_RM(NBundleDir),
+              write_info_about_bee(BeeObject),
               info(BeeObject)
           end
       end
@@ -253,7 +252,7 @@ start(Type, Name, Port, From) ->
                   _ -> ok
                 end;
               _E ->
-                run_kill_on_pid(OsPid, BeeDir, RealBeeObject),
+                % run_kill_on_pid(OsPid, BeeDir, RealBeeObject),
                 ok
             end
           end)
@@ -265,8 +264,7 @@ start(Type, Name, Port, From) ->
       F = fun(This) ->
         receive
           {started_bee_object, SentRealBeeObject} -> 
-            Props = write_info_about_bee(SentRealBeeObject#bee_object{pid = CmdProcessPid}),
-            From ! {started, from_proplists(Props)};
+            From ! {started, SentRealBeeObject#bee_object{pid = CmdProcessPid}};
           _X -> This(This)
         end
       end,
@@ -347,7 +345,24 @@ cleanup(Name, Caller) ->
   send_to(Caller, {cleaned_up, Name}).
 
 % Get information about the Beefile  
-info(BeeObject) when is_record(BeeObject, bee_object) -> info(BeeObject#bee_object.name);
+info(BeeObject) when is_record(BeeObject, bee_object) -> 
+  case ets:lookup(?BEEHIVE_BEE_OBJECT_INFO_TABLE, BeeObject#bee_object.name) of
+    [] -> 
+      write_info_about_bee(BeeObject),
+      to_list(BeeObject);
+    ReturnedBeeObjects ->
+      case lists:filter(fun({_Name, Dict}) ->
+          case dict:is_key(port, Dict) of
+            true -> dict:fetch(port, Dict) =:= BeeObject#bee_object.port;
+            false -> true
+          end
+        end, ReturnedBeeObjects) of
+      [{_AName, ReturnedDict}|_Rest] -> dict:to_list(ReturnedDict);
+      _ -> 
+        TheReturnedDict = element(2, hd(ReturnedBeeObjects)),
+        dict:to_list(TheReturnedDict)
+    end
+  end;
 info(Name) when is_list(Name) ->
   case ets:lookup(?BEEHIVE_BEE_OBJECT_INFO_TABLE, Name) of
     [{Name, Dict}|_Rest] -> dict:to_list(Dict);
@@ -356,7 +371,9 @@ info(Name) when is_list(Name) ->
         {error, not_found} -> {error, not_found};
         T -> write_info_about_bee(#bee_object{bee_file = T, name = Name, vcs_type = git})
       end
-  end.
+  end;
+info(_Else) ->
+  {error, not_found}.
 
 have_bee(Name) ->
   case catch find_bee_file(Name) of
@@ -767,13 +784,33 @@ start_ets_process() ->
     _ -> start_ets_process()
   end.
 
-run_kill_on_pid(OsPid, BeeDir, RealBeeObject) ->
-  KillStr = lists:flatten(["kill ", integer_to_list(OsPid)]),
-  ?DEBUG_PRINT({killing_with_string, KillStr}),
-  cmd(KillStr, BeeDir, to_proplist(RealBeeObject), self()),
-  receive
-    {error, _} = Tuple -> Tuple;
-    _X -> ok
-    after 5000 ->
-      ok
+run_kill_on_pid(_OsPid, BeeDir, RealBeeObject) ->
+  % KillStr = lists:flatten(["kill ", integer_to_list(OsPid)]),
+  From = self(),
+  case beehive_bee_object_config:get_or_default(stop, RealBeeObject#bee_object.template) of
+    {error, _} = T -> 
+      send_to(From, T),
+      throw(T);
+    StopScript ->
+      % Run before, if it needs to run
+      run_hook_action(pre, RealBeeObject, From),
+      case run_in_directory_with_file(RealBeeObject, From, BeeDir, StopScript) of
+        {error, _} = T2 -> send_to(From, T2);
+        {ok, Out} ->
+          ?DEBUG_PRINT({run_in_directory_with_file, Out}),
+          run_hook_action(post, RealBeeObject, From)
+      end
   end.
+      
+  % ?DEBUG_PRINT({killing_with_string, KillStr}),
+  % cmd(KillStr, BeeDir, to_proplist(RealBeeObject), self()),
+  % receive
+  %   {error, _} = Tuple -> 
+  %     erlang:display({run_kill_on_pid,error,KillStr,Tuple}),
+  %     Tuple;
+  %   X -> 
+  %     erlang:display({run_kill_on_pid,KillStr,X}),
+  %     ok
+  %   after 5000 ->
+  %     ok
+  % end.
