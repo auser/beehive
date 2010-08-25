@@ -6,10 +6,16 @@ begin
   Jeweler::Tasks.new do |gem|
     gem.name = "beehive"
     gem.summary = %Q{Beehive app}
-    gem.description = %Q{TODO: longer description of your gem}
+    gem.description = %Q{ruby command line client library for beehive}
     gem.email = "arilerner@mac.com"
     gem.homepage = "http://github.com/auser/beehive"
     gem.authors = ["Ari Lerner"]
+    gem.test_files = Dir.glob('test/**/*.rb')
+    gem.executables = ["beehive"]
+    gem.bindir = 'bin'
+    gem.add_dependency('json_pure')
+    gem.add_dependency('mime-types')
+    gem.add_dependency('rest-client')
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end
 

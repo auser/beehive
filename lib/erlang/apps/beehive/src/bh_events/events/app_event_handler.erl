@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% File    : app_event_handler.erl
 %%% Author  : Ari Lerner
-%%% Description : 
+%%% Description :
 %%%
 %%% Created :  Mon Nov  2 12:13:56 PST 2009
 %%%-------------------------------------------------------------------
@@ -27,7 +27,7 @@
 %%--------------------------------------------------------------------
 init([]) ->
   ?QSTORE:start_link(?WAIT_DB),
-  process_flag(trap_exit, true),  
+  process_flag(trap_exit, true),
   {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -61,7 +61,7 @@ handle_event({app, updated_revision, App}, State) ->
   handle_update_app(App),
   {ok, State};
 
-% THIS NEEDS TO BE FEDERATED... 
+% THIS NEEDS TO BE FEDERATED...
 handle_event({app, request_to_start_new_bee, App}, State) when is_record(App, app) ->
   app_manager:request_to_start_new_bee_by_app(App),
   {ok, State};
@@ -96,7 +96,7 @@ handle_call(_Request, State) ->
 %% request (or a system message).
 %%--------------------------------------------------------------------
 handle_info({bee_terminated, _Bee}, State) ->
-  {ok, State};  
+  {ok, State};
 
 handle_info(Info, State) ->
   ?LOG(debug, "app_event_handler info: ~p", [Info]),
@@ -119,9 +119,12 @@ terminate(_Reason, _State) ->
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
-  
+
 % INTERNAL METHODS
-handle_restart_app(App) when is_record(App, app) -> app_manager:request_to_terminate_all_bees(App#app.name);
-handle_restart_app(Name) -> app_manager:request_to_terminate_all_bees(Name).
+handle_restart_app(App) when is_record(App, app) ->
+  app_manager:terminate_app_instances(App#app.name);
+handle_restart_app(Name) -> app_manager:terminate_app_instances(Name).
+
 handle_expand_app(App) -> app_manager:request_to_expand_app(App).
+
 handle_update_app(App) -> app_manager:request_to_update_app(App).

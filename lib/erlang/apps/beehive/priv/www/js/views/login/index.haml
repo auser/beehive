@@ -1,6 +1,9 @@
 %h3
   Please login
 
+:if error
+  #error Invalid username/password. Try again.
+
 #login
   %form{ action: "#/login", method: "post" }
 

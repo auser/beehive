@@ -1,4 +1,19 @@
-Beehive Ruby
+beehive gem
 ===
 
-The ruby-side of Beehive handles the command structure for Beehive.
+A ruby command line client library for beehive.
+
+
+
+README todos:
+===
+
+* Outline commands
+* Dependencies
+* .beehive config file explanation
+
+Gem todos:
+===
+
+* tests
+* more detailed help related to flags, etc.
