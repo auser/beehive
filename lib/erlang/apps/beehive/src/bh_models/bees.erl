@@ -52,7 +52,7 @@ meta_data(FileLocation, MetaFile) ->
 % Create a new bee
 create(Bee) ->
   case new(Bee) of
-    NewBee when is_record(NewBee, bee) -> 
+    NewBee when is_record(NewBee, bee) ->
       save(validate_bee(NewBee));
     E -> {error, E}
   end.
@@ -62,7 +62,7 @@ save(Bee) when is_record(Bee, bee) ->
   NewBee = validate_bee(Bee),
   case ?DB:write(bee, NewBee#bee.id, NewBee) of
     ok -> {ok, NewBee};
-    {'EXIT',{aborted,{no_exists,_}}} -> 
+    {'EXIT',{aborted,{no_exists,_}}} ->
       ?NOTIFY({db, database_not_initialized, bee}),
       timer:sleep(100),
       {error, database_not_initialized};
@@ -71,20 +71,20 @@ save(Bee) when is_record(Bee, bee) ->
       {error, {did_not_write, E}}
   end;
 save([]) -> invalid;
-save(Proplists) when is_list(Proplists) -> 
+save(Proplists) when is_list(Proplists) ->
   case from_proplists(Proplists) of
     {error, _} = T -> T;
-    Bee -> 
+    Bee ->
       save(Bee)
   end;
 save(Func) when is_function(Func) ->
   ?DB:save(Func);
-  
+
 save(Else) -> {error, {cannot_save, Else}}.
 
 new([]) -> error;
 new(Bee) when is_record(Bee, bee) -> Bee;
-new(Proplist) when is_list(Proplist) -> 
+new(Proplist) when is_list(Proplist) ->
   from_proplists(Proplist);
 new(Else) -> {error, {cannot_make_new_bee, Else}}.
 
@@ -130,7 +130,7 @@ find_all_grouped_by_host1(#bee{host=Host} = B, [{Host, Backends, Sum} | Acc]) ->
   [{Host, [B|Backends], Sum + 1} | Acc];
 find_all_grouped_by_host1(#bee{host=Host} = B, Acc) ->
   [{Host, [B], 1}|Acc].
-  
+
 update([], _) -> ok;
 update(Bee, OtherBee) when is_record(Bee, bee) andalso is_record(OtherBee, bee) ->
   update(Bee, lists:flatten(to_proplist(OtherBee)));
@@ -149,7 +149,7 @@ is_same_as(Bee, Otherbee) ->
 %%-------------------------------------------------------------------
 %% @spec (Bee:app()) ->    {ok, Value}
 %% @doc Build environment variables for the application
-%%      
+%%
 %% @end
 %%-------------------------------------------------------------------
 build_app_env(Bee) ->
@@ -159,13 +159,13 @@ build_app_env(Bee) ->
   end.
 build_app_env(#bee{app_name = AppName} = Bee, no_app) ->
   build_app_env(Bee, #app{name = AppName});
-                
-build_app_env(  #bee{ port        = Port, 
-                      host        = HostIp, 
+
+build_app_env(  #bee{ port        = Port,
+                      host        = HostIp,
                       app_name    = AppName,
                       revision = Sha,
                       start_time  = StartedAt
-                    } = _Bee, App) -> 
+                    } = _Bee, App) ->
   ScratchDisk = config:search_for_application_value(scratch_dir, ?BEEHIVE_DIR("tmp")),
   RunningDisk = config:search_for_application_value(scratch_dir, ?BEEHIVE_DIR("run")),
   LogDisk     = config:search_for_application_value(log_path, ?BEEHIVE_DIR("application_logs")),
@@ -173,7 +173,7 @@ build_app_env(  #bee{ port        = Port,
   WorkingDir = filename:join([ScratchDisk, AppName]),
   RunningDir = filename:join([RunningDisk, AppName]),
   LogDir     = filename:join([LogDisk, AppName]),
-  
+
   OtherOpts = [
     {name, AppName},
     {host_ip, HostIp},
@@ -184,10 +184,10 @@ build_app_env(  #bee{ port        = Port,
     {working_directory, WorkingDir},
     {run_directory, RunningDir}
   ],
-  
+
   EnvOpts = apps:build_app_env(App, OtherOpts),
-  lists:map(fun(Dir) -> 
-    file:make_dir(Dir) 
+  lists:map(fun(Dir) ->
+    file:make_dir(Dir)
   end, [ScratchDisk, WorkingDir, RunningDisk, RunningDir, LogDisk, LogDir]),
   Opts = lists:flatten([{cd, RunningDir}, EnvOpts]),
   {ok, App, Opts}.
@@ -242,7 +242,7 @@ fbo([], _Bo, _App, Bee) -> validate_bee(Bee);
 fbo([name|Rest], #bee_object{name = Name} = Bo, App, Bee) -> fbo(Rest, Bo, App, Bee#bee{app_name = Name});
 fbo([revision|Rest], #bee_object{revision = Rev} = Bo, App, Bee) -> fbo(Rest, Bo, App, Bee#bee{revision = Rev});
 fbo([bee_size|Rest], #bee_object{bee_size = V} = Bo, App, Bee) -> fbo(Rest, Bo, App, Bee#bee{bee_size = V});
-fbo([template|Rest], #bee_object{template = undefined} = Bo, #app{template = Type} = App, Bee) -> 
+fbo([template|Rest], #bee_object{template = undefined} = Bo, #app{template = Type} = App, Bee) ->
   fbo(Rest, Bo, App, Bee#bee{template = Type});
 fbo([template|Rest], #bee_object{template = V} = Bo, App, Bee) -> fbo(Rest, Bo, App, Bee#bee{template = V});
 fbo([bee_file|Rest], #bee_object{bee_file = V} = Bo, App, Bee) -> fbo(Rest, Bo, App, Bee#bee{bee_file = V});
@@ -255,29 +255,35 @@ fbo([_H|Rest], Bo, App, Bee) -> fbo(Rest, Bo, App, Bee).
 %%-------------------------------------------------------------------
 %% @spec (Proplist) ->    ValidProplist
 %% @doc Validate the proplist to create a new bee record
-%%      
+%%
 %% @end
 %%-------------------------------------------------------------------
-validate_bee(Bee) when is_record(Bee, bee) -> 
+validate_bee(Bee) when is_record(Bee, bee) ->
   ValidatedBee = validate_bee(lists:reverse(record_info(fields, bee)), Bee),
   ValidatedBee;
 validate_bee(Else) -> Else.
 
 validate_bee([], Bee) ->  Bee;
 % Validate the id
-validate_bee([id|Rest], #bee{id = undefined, app_name = AppName, host = Host, port = Port} = Bee) -> 
+validate_bee([id|Rest],
+             #bee{id = undefined, app_name = AppName,
+                  host = Host, port = Port} = Bee) ->
   validate_bee(Rest, Bee#bee{id = {AppName, Host, Port}});
-validate_bee([id|Rest], Bee) -> 
+validate_bee([id|Rest], Bee) ->
   validate_bee(Rest, Bee);
-% Validate the app_name
-validate_bee([app_name|_Rest], #bee{app_name = undefined} = _Bee) -> {error, bee_not_associated_with_an_application};
+%% Validate the app_name
+validate_bee([app_name|_Rest], #bee{app_name = undefined} = _Bee) ->
+  {error, bee_not_associated_with_an_application};
 validate_bee([app_name|Rest], Bee) -> validate_bee(Rest, Bee);
-% Validate sticky-ness
-validate_bee([sticky|Rest], #bee{sticky = false} = Bee) -> validate_bee(Rest, Bee);
-validate_bee([sticky|Rest], #bee{sticky = true} = Bee) -> validate_bee(Rest, Bee);
-validate_bee([sticky|_Rest], _Bee) -> {error, invalid_sticky_value};
-% Validate the host
-validate_bee([host|Rest], #bee{host = undefined} = Bee) -> validate_bee(Rest, Bee#bee{host = bh_host:myip()});
-
-% Validate others?
+%% Validate sticky-ness
+validate_bee([sticky|Rest], #bee{sticky = false} = Bee) ->
+  validate_bee(Rest, Bee);
+validate_bee([sticky|Rest], #bee{sticky = true} = Bee) ->
+  validate_bee(Rest, Bee);
+validate_bee([sticky|_Rest], _Bee) ->
+  {error, invalid_sticky_value};
+%% Validate the host
+validate_bee([host|Rest], #bee{host = undefined} = Bee) ->
+  validate_bee(Rest, Bee#bee{host = bh_host:myip()});
+%% Validate others?
 validate_bee([_H|Rest], Bee) -> validate_bee(Rest, Bee).
