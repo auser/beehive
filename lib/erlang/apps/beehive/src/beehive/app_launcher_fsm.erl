@@ -99,8 +99,8 @@ init([Proplist]) ->
           {stop, {error, pending_app_error}}
     end;
     _ ->
-      From ! {error, already_started, registered_name(App)},
-      {stop, normal}
+      Tuple = {already_started, registered_name(App)},
+      {stop, Tuple}
   end.
 
 %%--------------------------------------------------------------------

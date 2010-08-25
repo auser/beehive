@@ -56,12 +56,18 @@ start_multiple_bees_for_an_app() ->
 % HELPERS
 start_new_bee_by_app(App) ->
   app_manager:request_to_start_new_bee_by_app(App, self()),
-  receive
-    {bee_started_normally, Bee, App} -> 
-      erlang:display({bee_started_normally,Bee}),
-      {App, Bee};
-    X -> erlang:display({app_manager,request_to_start_new_bee_by_app,X})
-  end.
+  F = fun(This) ->
+    receive
+      {bee_started_normally, Bee, App} -> 
+        {App, Bee};
+      {already_started, _} ->
+        ok;
+      X -> 
+        erlang:display({app_manager,request_to_start_new_bee_by_app,X}),
+        This(This)
+    end
+  end,
+  F(F).
   
 terminate_bees([]) -> ok;
 terminate_bees([Bee|Rest]) ->
@@ -74,4 +80,4 @@ terminate_bees([Bee|Rest]) ->
   terminate_bees(Rest).
 
 terminate_bee(Bee) when is_record(Bee, bee) ->
-  app_manager:terminate_bee(Bee, self()).
+  {ok, {bee_terminated, _}} = app_manager:terminate_bee(Bee, self()).
