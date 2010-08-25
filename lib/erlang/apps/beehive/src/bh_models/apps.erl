@@ -102,7 +102,7 @@ update_by_name(Name) ->
     not_found -> {error, "Cannot find app to update"};
     App ->
       % Should this be synchronous or asynchronous?
-      NewApp = App#app{updated_at = date_util:now_to_seconds(), latest_error = undefined},
+      NewApp = App#app{updated_at = date_util:now_to_seconds(), latest_error = undefined, revision = undefined},
       ?NOTIFY({app, updated, NewApp}),
       {ok, save(NewApp)}
   end.

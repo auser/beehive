@@ -681,7 +681,10 @@ app_launcher_fsm_go(Method, App, Caller, Updating) ->
           rpc:call(node(P), app_launcher_fsm, Method, [P]),
           {ok, P};
         {error, _} = ErrTuple -> 
-          Caller ! ErrTuple,
+          case Caller of
+            undefined -> ok;
+            _ -> Caller ! ErrTuple
+          end,
           ErrTuple;
         Else -> 
           erlang:display({got_else,app_launcher_fsm_go,Else}),
