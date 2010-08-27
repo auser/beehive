@@ -3,31 +3,31 @@
 -include ("beehive.hrl").
 -include ("common.hrl").
 
-% DATABASE STUFF
+%% DATABASE STUFF
 -export ([
-  create/1,
-  read/1,
-  save/1,
-  update/2,
-  delete/1,
-  find_by_name/1,
-  find_all_by_name/1,
-  exist/1,
-  all/0
-]).
+          create/1,
+          read/1,
+          save/1,
+          update/2,
+          delete/1,
+          find_by_name/1,
+          find_all_by_name/1,
+          exist/1,
+          all/0
+         ]).
 
 -export ([
-  new/1,
-  update_by_name/1,
-  restart_by_name/1,
-  expand_by_name/1
-]).
+          new/1,
+          update_by_name/1,
+          restart_by_name/1,
+          expand_by_name/1
+         ]).
 
-% APPLICATION STUFF
+%% APPLICATION STUFF
 -export ([
-  to_proplist/1,
-  build_app_env/2
-]).
+          to_proplist/1,
+          build_app_env/2
+         ]).
 
 -define (DB, beehive_db_srv).
 
@@ -35,7 +35,7 @@
 
 create(App) ->
   case new(App) of
-    NewApp when is_record(NewApp, app) -> 
+    NewApp when is_record(NewApp, app) ->
       ValidAppWithName = validate_unique_name(NewApp),
       NewApp1 = validate_app(ValidAppWithName),
       save(NewApp1);
@@ -85,7 +85,7 @@ find_by_name(Name) ->
   case find_all_by_name(Name) of
     [H|_Rest] -> H;
     [] -> not_found;
-    % This should ALWAYS be not_found, but just to be safe
+    %% This should ALWAYS be not_found, but just to be safe
     E -> E
   end.
 
@@ -96,12 +96,12 @@ find_all_by_name(Name) ->
     _ ->  []
   end.
 
-% APPLICATION STUFF
+%% APPLICATION STUFF
 update_by_name(Name) ->
   case find_by_name(Name) of
     not_found -> {error, "Cannot find app to update"};
     App ->
-      % Should this be synchronous or asynchronous?
+      %% Should this be synchronous or asynchronous?
       NewApp = App#app{updated_at = date_util:now_to_seconds(), latest_error = undefined, revision = undefined},
       ?NOTIFY({app, updated, NewApp}),
       {ok, save(NewApp)}
@@ -161,28 +161,28 @@ build_app_env(App, Other) ->
   StdErr     = filename:join([LogDir, "beehive.err"]),
 
   lists:flatten([
-    build_env({name, App#app.name}),
-    build_env({repos, App#app.url}),
-    build_env({revision, App#app.revision}),
-    build_env({path, BeehivePath}),
-    build_env({branch, App#app.branch}),
-    {stdout, StdOut},
-    {stderr, StdErr},
-    OtherEnvs
-  ]).
+                 build_env({name, App#app.name}),
+                 build_env({repos, App#app.url}),
+                 build_env({revision, App#app.revision}),
+                 build_env({path, BeehivePath}),
+                 build_env({branch, App#app.branch}),
+                 {stdout, StdOut},
+                 {stderr, StdErr},
+                 OtherEnvs
+                ]).
 
 build_env({Key, Value}) ->
   RealValue = case Value of
-    undefined -> "undefined";
-    _ -> Value
-  end,
+                undefined -> "undefined";
+                _ -> Value
+              end,
   T = lists:flatten([
-    string:to_upper(erlang:atom_to_list(Key)),
-    "=",RealValue,""
-  ]),
+                     string:to_upper(erlang:atom_to_list(Key)),
+                     "=",RealValue,""
+                    ]),
   {env, T}.
 
-% If erlang had 'meta-programming,' we wouldn't have to do all this work to validate the proplists
+%% If erlang had 'meta-programming,' we wouldn't have to do all this work to validate the proplists
 from_proplists(Proplists) -> from_proplists(Proplists, #app{}).
 from_proplists([], App)  -> App;
 from_proplists([{name, V}|Rest], App) -> from_proplists(Rest, App#app{name = V});
@@ -248,32 +248,49 @@ to_proplist([_H|T], App, Acc) -> to_proplist(T, App, Acc).
 validate_app(App) when is_record(App, app) -> validate_app(record_info(fields, app), App).
 validate_app([], App) ->  App;
 
-% Validate the branch
-validate_app([branch|Rest], #app{branch = undefined} = App) -> validate_app(Rest, App#app{branch = "master"});
-validate_app([branch|Rest], #app{branch = _V} = App) -> validate_app(Rest, App);
-% Validate the url
-validate_app([url|Rest], #app{url = _Url} = App) -> validate_app(Rest, App);
-% Validate the type, it can only be either static or dynamic
-validate_app([vcs_type|Rest], #app{vcs_type = git} = App) -> validate_app(Rest, App);
-validate_app([vcs_type|Rest], #app{vcs_type = _Else} = App) -> validate_app(Rest, App#app{vcs_type = git});
-% Validate the timeout
-validate_app([timeout|Rest], #app{timeout = undefined} = App) -> validate_app(Rest, App#app{timeout = 10*1000});
-validate_app([timeout|Rest], #app{timeout = V} = App) -> validate_app(Rest, App#app{timeout = misc_utils:to_integer(V)*1000});
-% Validate the sticky parameter
-validate_app([sticky|Rest], #app{sticky = "true"} = App) -> validate_app(Rest, App#app{sticky = true});
-validate_app([sticky|Rest], #app{sticky = _Else} = App) -> validate_app(Rest, App#app{sticky = false});
-% Validate min/max instances
-validate_app([min_instances|Rest], #app{min_instances = undefined} = App) -> validate_app(Rest, App#app{min_instances = 1});
-validate_app([min_instances|Rest], #app{min_instances = V} = App) -> validate_app(Rest, App#app{min_instances = misc_utils:to_integer(V)});
-validate_app([max_instances|Rest], #app{max_instances = undefined} = App) -> validate_app(Rest, App#app{max_instances = 1});
-validate_app([max_instances|Rest], #app{max_instances = V} = App) -> validate_app(Rest, App#app{max_instances = misc_utils:to_integer(V)});
-% Validate the template
-validate_app([template|Rest], #app{template = undefined} = App) -> validate_app(Rest, App#app{template = default});
-validate_app([template|Rest], #app{template = Val} = App) -> validate_app(Rest, App#app{template = misc_utils:to_atom(Val)});
-% Validate the routing parameter
-validate_app([routing_param|Rest], #app{routing_param = undefined} = App) -> validate_app(Rest, App#app{routing_param = 'Host'});
-validate_app([routing_param|Rest], #app{routing_param = V} = App) -> validate_app(Rest, App#app{routing_param = misc_utils:to_atom(V)});
-% Validate others?
+%% Validate the branch
+validate_app([branch|Rest], #app{branch = undefined} = App) ->
+  validate_app(Rest, App#app{branch = "master"});
+validate_app([branch|Rest], #app{branch = _V} = App) ->
+  validate_app(Rest, App);
+%% Validate the url
+validate_app([url|Rest], #app{url = _Url} = App) ->
+  validate_app(Rest, App);
+%% Validate the type, it can only be either static or dynamic
+validate_app([vcs_type|Rest], #app{vcs_type = git} = App) ->
+  validate_app(Rest, App);
+validate_app([vcs_type|Rest], #app{vcs_type = _Else} = App) ->
+  validate_app(Rest, App#app{vcs_type = git});
+%% Validate the timeout
+validate_app([timeout|Rest], #app{timeout = undefined} = App) ->
+  validate_app(Rest, App#app{timeout = 10*1000});
+validate_app([timeout|Rest], #app{timeout = V} = App) ->
+  validate_app(Rest, App#app{timeout = misc_utils:to_integer(V)*1000});
+%% Validate the sticky parameter
+validate_app([sticky|Rest], #app{sticky = "true"} = App) ->
+  validate_app(Rest, App#app{sticky = true});
+validate_app([sticky|Rest], #app{sticky = _Else} = App) ->
+  validate_app(Rest, App#app{sticky = false});
+%% Validate min/max instances
+validate_app([min_instances|Rest], #app{min_instances = undefined} = App) ->
+  validate_app(Rest, App#app{min_instances = 1});
+validate_app([min_instances|Rest], #app{min_instances = V} = App) ->
+  validate_app(Rest, App#app{min_instances = misc_utils:to_integer(V)});
+validate_app([max_instances|Rest], #app{max_instances = undefined} = App) ->
+  validate_app(Rest, App#app{max_instances = 1});
+validate_app([max_instances|Rest], #app{max_instances = V} = App) ->
+  validate_app(Rest, App#app{max_instances = misc_utils:to_integer(V)});
+%% Validate the template
+validate_app([template|Rest], #app{template = undefined} = App) ->
+  validate_app(Rest, App#app{template = default});
+validate_app([template|Rest], #app{template = Val} = App) ->
+  validate_app(Rest, App#app{template = misc_utils:to_atom(Val)});
+%% Validate the routing parameter
+validate_app([routing_param|Rest], #app{routing_param = undefined} = App) ->
+  validate_app(Rest, App#app{routing_param = 'Host'});
+validate_app([routing_param|Rest], #app{routing_param = V} = App) ->
+  validate_app(Rest, App#app{routing_param = misc_utils:to_atom(V)});
+%% Validate others?
 validate_app([_H|Rest], App) -> validate_app(Rest, App).
 
 
@@ -284,7 +301,7 @@ validate_unique_name(#app{name = Name} = App) ->
     [N] -> App#app{name = generate_unique_name(N, 5)};
     [A,B] -> App#app{name = generate_unique_name(A, 5), branch = B}
   end.
-  
+
 %%-------------------------------------------------------------------
 %% @spec (Name) ->    {ok, Value}
 %% @doc Generate a unique name based on a given name
