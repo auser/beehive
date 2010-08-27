@@ -154,34 +154,46 @@ add_root_user() ->
 
 from_proplists(Proplists) -> from_proplists(Proplists, #user{}).
 from_proplists([], User)  -> User;
-from_proplists([{email, V}|Rest], User) -> from_proplists(Rest, User#user{email = V});
-from_proplists([{password, V}|Rest], User) -> from_proplists(Rest, User#user{password = V});
-from_proplists([{key, V}|Rest], User) -> from_proplists(Rest, User#user{key = V});
-from_proplists([{token, V}|Rest], User) -> from_proplists(Rest, User#user{token = V});
-from_proplists([{level, V}|Rest], User) -> from_proplists(Rest, User#user{level = V});
-from_proplists([_Other|Rest], User) -> from_proplists(Rest, User).
+from_proplists([{email, V}|Rest], User) ->
+  from_proplists(Rest, User#user{email = V});
+from_proplists([{password, V}|Rest], User) ->
+  from_proplists(Rest, User#user{password = V});
+from_proplists([{key, V}|Rest], User) ->
+  from_proplists(Rest, User#user{key = V});
+from_proplists([{token, V}|Rest], User) ->
+  from_proplists(Rest, User#user{token = V});
+from_proplists([{level, V}|Rest], User) ->
+  from_proplists(Rest, User#user{level = V});
+from_proplists([_Other|Rest], User) ->
+  from_proplists(Rest, User).
 
 % to_proplist(User) -> to_proplist(record_info(fields, user), User, []).
 % to_proplist([], _User, Acc) -> Acc;
 % to_proplist([_Other|Rest], User, Acc) -> to_proplist(Rest, User, Acc).
 
-validate_user(User) when is_record(User, user) -> validate_user(record_info(fields, user), User).
+validate_user(User) when is_record(User, user) ->
+  validate_user(record_info(fields, user), User).
 validate_user([], User) ->  User;
 % Validate the name
-validate_user([email|_Rest], #user{email = undefined} = _User) -> throw({error, {invalid_user, no_email_given}});
+validate_user([email|_Rest], #user{email = undefined} = _User) ->
+  throw({error, {invalid_user, no_email_given}});
 validate_user([email|Rest], #user{email = Email} = User) ->
   case validate_email(Email) of
     ok -> validate_user(Rest, User);
     Error -> throw({error, {invalid_user, invalid_email, Error}})
   end;
 
-validate_user([password|Rest], #user{password = undefined} = User) -> validate_user(Rest, User#user{password = date_util:now_to_seconds()});
+validate_user([password|Rest], #user{password = undefined} = User) ->
+  validate_user(Rest, User#user{password = date_util:now_to_seconds()});
 validate_user([key|Rest], User) -> validate_user(Rest, User);
 validate_user([token|Rest], User) -> validate_user(Rest, User);
 % Validate level
-validate_user([level|Rest], #user{level = undefined} = User) -> validate_user(Rest, User#user{level = ?REGULAR_USER_LEVEL});
-validate_user([level|Rest], #user{level = Level} = User) when is_integer(Level) -> validate_user(Rest, User#user{level = Level});
-validate_user([level|Rest], #user{level = Level} = User) when is_list(Level) -> validate_user(Rest, User#user{level = list_to_integer(Level)});
+validate_user([level|Rest], #user{level = undefined} = User) ->
+  validate_user(Rest, User#user{level = ?REGULAR_USER_LEVEL});
+validate_user([level|Rest], #user{level = Level} = User) when is_integer(Level) ->
+  validate_user(Rest, User#user{level = Level});
+validate_user([level|Rest], #user{level = Level} = User) when is_list(Level) ->
+  validate_user(Rest, User#user{level = list_to_integer(Level)});
 validate_user([_|Rest], User) -> validate_user(Rest, User).
 
 % Validate the email (STUB FOR NOW)
