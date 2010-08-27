@@ -263,7 +263,6 @@ validate_app([branch|Rest], #app{branch = _V} = App) -> validate_app(Rest, App);
 validate_app([url|Rest], #app{url = _Url} = App) -> validate_app(Rest, App);
 % Validate the type, it can only be either static or dynamic
 validate_app([vcs_type|Rest], #app{vcs_type = git} = App) -> validate_app(Rest, App);
-% validate_app([vcs_type|Rest], #app{type = svn} = App) -> validate_app(Rest, App);
 validate_app([vcs_type|Rest], #app{vcs_type = _Else} = App) -> validate_app(Rest, App#app{vcs_type = git});
 % Validate the timeout
 validate_app([timeout|Rest], #app{timeout = undefined} = App) -> validate_app(Rest, App#app{timeout = 10*1000});
@@ -276,10 +275,6 @@ validate_app([min_instances|Rest], #app{min_instances = undefined} = App) -> val
 validate_app([min_instances|Rest], #app{min_instances = V} = App) -> validate_app(Rest, App#app{min_instances = misc_utils:to_integer(V)});
 validate_app([max_instances|Rest], #app{max_instances = undefined} = App) -> validate_app(Rest, App#app{max_instances = 1});
 validate_app([max_instances|Rest], #app{max_instances = V} = App) -> validate_app(Rest, App#app{max_instances = misc_utils:to_integer(V)});
-% Validate the revision
-validate_app([revision|Rest], App) -> validate_app(Rest, App);
-% Validate the updated_at
-validate_app([updated_at|Rest], App) -> validate_app(Rest, App);
 % Validate the template
 validate_app([template|Rest], #app{template = undefined} = App) -> validate_app(Rest, App#app{template = default});
 validate_app([template|Rest], #app{template = Val} = App) -> validate_app(Rest, App#app{template = misc_utils:to_atom(Val)});
