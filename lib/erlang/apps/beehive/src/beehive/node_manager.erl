@@ -270,6 +270,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 handle_join(JoiningPid, State) ->
   ?TRACE("~p:~p handle join called: ~p~n", [?MODULE, ?LINE, JoiningPid]),
+  ?NOTIFY({node_joined, JoiningPid}),
   {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -281,6 +282,7 @@ handle_join(JoiningPid, State) ->
 %%--------------------------------------------------------------------
 handle_leave(LeavingPid, Info, State) ->
   ?TRACE("~p:~p handle leave called: ~p, Info: ~p~n", [?MODULE, ?LINE, LeavingPid, Info]),
+  ?NOTIFY({node_left, LeavingPid, Info}),
   {ok, State}.
 
 

@@ -51,6 +51,14 @@ handle_event({update_node_stats, Time}, State) ->
   bh_node_stats_srv:node_stat({node_stat, mem, Total, Time}),
   
   {ok, State};
+
+handle_event({node_joined, JoiningPid}, State) ->
+  ?LOG(debug, "node_joined: ~p", [JoiningPid]),
+  {ok, State};
+
+handle_event({node_left, LeavingPid, Reason}, State) ->
+  ?LOG(debug, "node_left: ~p because ~p", [LeavingPid, Reason]),
+  {ok, State};
   
 handle_event(_Event, State) ->
   {ok, State}.
