@@ -119,9 +119,16 @@ seed_pids(_State) ->
 is_a(Type) -> 
   gen_cluster:call(seed_pid(), {is_a, Type}).
 
+%%-------------------------------------------------------------------
+%% @spec (Msg) ->    [Ret values]
+%% @doc Send a message across all the event_manager pids
+%%      In the system
+%% @end
+%%-------------------------------------------------------------------
 notify(Msg) ->
-  rpc:call(node(seed_pid()), event_manager, notify, [Msg]),    
-  ok.
+  lists:map(fun(P) ->
+    rpc:call(node(P), event_manager, notify, [Msg])
+  end, seed_pids({})).
 
 %%-------------------------------------------------------------------
 %% @spec () ->    Float
@@ -130,9 +137,9 @@ notify(Msg) ->
 %% @end
 %%-------------------------------------------------------------------
 current_load_of_node() ->
-  Cpu = cpu_sup:avg1(),
-  CurrentMemProplist = memsup:get_system_memory_data(),
-  SystemMem = proplist:get_value(system_total_memory, CurrentMemProplist),
+  % Cpu = cpu_sup:avg1(),
+  % CurrentMemProplist = memsup:get_system_memory_data(),
+  % SystemMem = proplist:get_value(system_total_memory, CurrentMemProplist),
   % Put an algorithm here
   % and return the float
   0.5.

@@ -19,4 +19,5 @@ starting_test_() ->
   }.
 
 startup_t() ->
+  erlang:display({running,startup_t,test}),
   passed.
