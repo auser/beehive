@@ -120,15 +120,16 @@ is_a(Type) ->
   gen_cluster:call(seed_pid(), {is_a, Type}).
 
 %%-------------------------------------------------------------------
-%% @spec (Msg) ->    [Ret values]
+%% @spec (Msg) ->    ok
 %% @doc Send a message across all the event_manager pids
 %%      In the system
 %% @end
 %%-------------------------------------------------------------------
 notify(Msg) ->
   lists:map(fun(P) ->
-    rpc:call(node(P), event_manager, notify, [Msg])
-  end, seed_pids({})).
+    rpc:cast(node(P), event_manager, notify, [Msg])
+  end, seed_pids({})),
+  ok.
 
 %%-------------------------------------------------------------------
 %% @spec () ->    Float
