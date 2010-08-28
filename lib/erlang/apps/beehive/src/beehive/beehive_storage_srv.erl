@@ -18,7 +18,7 @@
   start_link/0,
   fetch_or_build_bee/2,
   build_bee/1, build_bee/2,
-  seed_nodes/1
+  seed_nodes/1, has_bee_named/1
 ]).
 
 %% gen_cluster callbacks
@@ -68,6 +68,14 @@ build_bee(Name, Caller) ->
 
 fetch_or_build_bee(App, Caller) ->
   gen_cluster:call(?SERVER, {fetch_or_build_bee, App, Caller}, infinity).
+
+%%-------------------------------------------------------------------
+%% @spec (Name) ->    true | false
+%% @doc Report if the bee has been bundled on this beehive_storage_srv
+%%      
+%% @end
+%%-------------------------------------------------------------------
+has_bee_named(Name) -> lists:member(Name, beehive_bee_object:ls()).
 
 start_link() ->
   gen_cluster:start_link({local, ?SERVER}, ?MODULE, [], []).
@@ -206,14 +214,15 @@ handle_vote(_Msg, State) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 fetch_bee(#app{name = Name} = App, Caller, _State) ->
-  case lists:member(Name, beehive_bee_object:ls()) of
-    true -> 
-      % We need to check to make sure this is the latest bee...
-      beehive_bee_object:send_bee_object(node(Caller), Name, Caller);
-    false -> 
-      beehive_bee_object:bundle(apps:to_proplist(App), Caller)
+  case lists:filter(fun(Pid) -> rpc:call(node(Pid), ?MODULE, has_bee_named, [Name]) end, seed_pids({})) of
+    [] -> beehive_bee_object:bundle(apps:to_proplist(App), Caller);
+    [H|_ServerPids] ->
+      % For now we won't verify the receipt of the bee
+      % we'll assume that it will be sent across the wire for simplicity
+      % TODO: Add error checking to fetch_bee
+      rpc:call(node(H), beehive_bee_object, send_bee_object, [node(Caller), Name, Caller])
   end.
-
+  
 %%-------------------------------------------------------------------
 %% @spec (App::app(), State) ->    {ok, Value}
 %% @doc This will call the bundle task on the application template
