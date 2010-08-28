@@ -28,7 +28,8 @@ end).
   dump/1,
   get_next_available/1,
   notify/1,
-  current_load_of_node/0
+  current_load_of_node/0,
+  read_bee_configs/0
 ]).
 
 %% gen_server callbacks
@@ -295,17 +296,18 @@ get_server_load([H|Rest], Acc) ->
   Stat = rpc:call(node(H), ?MODULE, current_load_of_node, []),
   get_server_load(Rest, [{H, Stat}|Acc]).
 
-% read_babysitter_config() ->
-%   DefaultConfigDir    = filename:join([?BH_ROOT, "etc", "app_templates"]),
-%   babysitter_config:read(DefaultConfigDir),
-%   
-%   case config:search_for_application_value(app_config_dir) of
-%     undefined -> ok;
-%     SpecifiedConfigDir ->
-%       try
-%         babysitter_config:read(SpecifiedConfigDir)
-%       catch X:Reason ->
-%         erlang:display({error, {babysitter_config, {error, X, Reason}}}),
-%         ok
-%       end
-%   end.
+read_bee_configs() ->
+  DefaultConfigDir    = filename:join([?BH_ROOT, "etc", "app_templates"]),
+  
+  Dirs = case config:search_for_application_value(app_config_dir) of
+    undefined -> [DefaultConfigDir];
+    SpecifiedConfigDir -> [DefaultConfigDir,SpecifiedConfigDir]
+  end,
+  lists:map(fun(Dir) ->
+    try
+      beehive_bee_object_config:read(SpecifiedConfigDir)
+    catch X:Reason ->
+      erlang:display({error, {babysitter_config, {error, X, Reason}}}),
+      ok
+    end
+  end, Dirs).

@@ -15,7 +15,7 @@ get(_, _Data) ->
 
 % /system/reload/config
 post(["reload", "config"], _Data) ->
-  node_manager:read_babysitter_config(),
+  node_manager:read_bee_configs(),
   {ok, "reloaded"};
 post(["reload"], Data) ->
   auth_utils:run_if_admin(fun(_) ->
