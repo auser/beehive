@@ -29,7 +29,7 @@ end).
   get_next_available/1,
   notify/1,
   current_load_of_node/0,
-  read_bee_configs/0
+  read_bee_configs/0, reload_system/0
 ]).
 
 %% gen_server callbacks
@@ -305,9 +305,16 @@ read_bee_configs() ->
   end,
   lists:map(fun(Dir) ->
     try
-      beehive_bee_object_config:read(SpecifiedConfigDir)
+      beehive_bee_object_config:read(Dir)
     catch X:Reason ->
       erlang:display({error, {babysitter_config, {error, X, Reason}}}),
       ok
     end
   end, Dirs).
+
+reload_system() ->
+  case config:search_for_application_value(erlang_modules_dir) of
+    undefined -> ok;
+    Dir -> code:add_pathz(Dir)
+  end,
+  read_bee_configs().

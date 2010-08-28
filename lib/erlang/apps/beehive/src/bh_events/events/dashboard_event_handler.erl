@@ -36,7 +36,7 @@ get_latest_events() ->
 %% this function is called to initialize the event handler.
 %%--------------------------------------------------------------------
 init([]) ->
-  ?DASHBOARD_EVENTS_TABLE = ets:new(?DASHBOARD_EVENTS_TABLE, [public,named_table]),
+  beehive_ets_helper:spawn_and_monitor(?DASHBOARD_EVENTS_TABLE, [?DASHBOARD_EVENTS_TABLE]),
   {ok, #state{}}.
 
 %%--------------------------------------------------------------------

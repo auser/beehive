@@ -17,6 +17,9 @@ get(_, _Data) ->
 post(["reload", "config"], _Data) ->
   node_manager:read_bee_configs(),
   {ok, "reloaded"};
+post(["reload", "system"], _Data) ->
+  node_manager:reload_system(),
+  {ok, "reloaded"};
 post(["reload"], Data) ->
   auth_utils:run_if_admin(fun(_) ->
     misc_utils:reload_all()
