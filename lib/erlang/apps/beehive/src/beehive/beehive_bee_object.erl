@@ -640,6 +640,8 @@ from_proplists([{pre,V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_
 from_proplists([{post,V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{post = V});
 from_proplists([{os_pid,V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{os_pid = V});
 from_proplists([{pid,V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{pid = V});
+from_proplists([{deploy_env, V}|Rest], BeeObject) ->
+  from_proplists(Rest, BeeObject#bee_object{deploy_env = V});
 from_proplists([{Other,V}|Rest], BeeObject) ->
   CurrentEnv = case BeeObject#bee_object.env of
     undefined -> [];
@@ -664,6 +666,8 @@ to_proplist([pre|Rest], #bee_object{pre = V} = Bo, Acc) -> to_proplist(Rest, Bo,
 to_proplist([post|Rest], #bee_object{post = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{post, V}|Acc]);
 to_proplist([os_pid|Rest], #bee_object{os_pid = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{os_pid, V}|Acc]);
 to_proplist([pid|Rest], #bee_object{pid = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{pid, V}|Acc]);
+to_proplist([deploy_env|Rest], #bee_object{deploy_env = V} = Bo, Acc) ->
+  to_proplist(Rest, Bo, [{deploy_env, V}|Acc]);
 to_proplist([env|Rest], #bee_object{env = V} = Bo, Acc) -> to_proplist(Rest, Bo, lists:flatten([V|Acc]));
 to_proplist([_H|Rest], BeeObject, Acc) -> to_proplist(Rest, BeeObject, Acc).
 
