@@ -207,6 +207,8 @@ from_proplists([{routing_param, V}|Rest], App) ->
   from_proplists(Rest, App#app{routing_param = V});
 from_proplists([{branch, V}|Rest], App) ->
   from_proplists(Rest, App#app{branch = V});
+from_proplists([{deploy_env, V}|Rest], App) ->
+  from_proplists(Rest, App#app{deploy_env = V});
 from_proplists([_Other|Rest], App) -> from_proplists(Rest, App).
 
 
@@ -237,6 +239,8 @@ to_proplist([routing_param|Rest], #app{routing_param = Value} = App, Acc) ->
   to_proplist(Rest, App, [{routing_param, Value}|Acc]);
 to_proplist([branch|Rest], #app{branch = Value} = App, Acc) ->
   to_proplist(Rest, App, [{branch, Value}|Acc]);
+to_proplist([deploy_env|Rest], #app{deploy_env = Value} = App, Acc) ->
+  to_proplist(Rest, App, [{deploy_env, Value}|Acc]);
 to_proplist([_H|T], App, Acc) -> to_proplist(T, App, Acc).
 
 %%-------------------------------------------------------------------
