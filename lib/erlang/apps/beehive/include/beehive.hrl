@@ -75,7 +75,7 @@
   os_pid,       % os pid of the running bee_object
   pid,          % pid of running bee_object
   env = [],     % more environment variables
-  deploy_env
+  deploy_env = "production"
 }).
 
 % Application configuration

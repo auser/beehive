@@ -225,7 +225,7 @@ start(Type, Name, Port, From) ->
         try
           {Pid, Ref, Tag} =
             async_command("/bin/sh",
-                          [ScriptFilename],
+                          [ScriptFilename, BeeObject#bee_object.deploy_env],
                           BeeDir,
                           [{pidfile, PidFilename}|to_proplist(BeeObject)],
                           From),
@@ -620,7 +620,8 @@ config_props() ->
 template_command_string(Str, Props) when is_list(Props) -> mustache:render(Str, dict:from_list(Props)).
 chop(ListofStrings) -> string:strip(ListofStrings, right, $\n).
 
-from_proplists(Propslist) -> from_proplists(Propslist, #bee_object{}).
+from_proplists(Propslist) -> 
+  from_proplists(Propslist, #bee_object{deploy_env = "production"}).
 from_proplists([], BeeObject) -> validate_bee_object(BeeObject);
 from_proplists([{name, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{name = V});
 from_proplists([{branch, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{branch = V});
