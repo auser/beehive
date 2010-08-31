@@ -12,6 +12,7 @@
       %th owners
       %th updated_at
       %th type
+      %th deploy_env
       %th delete
   %tfoot
     %tr
@@ -24,7 +25,8 @@
       %td= application.template
       %td= application.owners
       %td= application.updated_at
-      %td= application.type
+      %td= application.dynamic
+      %td= application.deploy_env
       %td= link_to("delete?", "#/apps/delete/"+ application.name)
 
 :if application.latest_error != "undefined"
