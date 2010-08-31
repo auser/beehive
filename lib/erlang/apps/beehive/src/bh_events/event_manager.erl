@@ -33,7 +33,20 @@
 start_link() ->
   O = gen_event:start_link({local, ?SERVER}),
   % Add the defined event handlers
-  lists:map(fun(Handler) -> add_handler(Handler) end, ?EVENT_HANDLERS),
+  
+  Handlers = case config:search_for_application_value(event_handlers) of
+    undefined -> ?EVENT_HANDLERS;
+    OtherHandlers -> lists:flatten([OtherHandlers,?EVENT_HANDLERS])
+  end,
+  lists:map(fun(H) ->
+    ?LOG(debug, "Added event handler: ~p", [H]),
+    try
+      add_handler(H)
+    catch X:Reason ->
+      erlang:display({error, {event_manager, {error, X, Reason}}}),
+      ok
+    end
+  end, Handlers),
   O.
 
 %%-------------------------------------------------------------------

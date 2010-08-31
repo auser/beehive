@@ -1,21 +1,23 @@
-%%%-------------------------------------------------------------------
-%%% File    : node_event_handler.erl
-%%% Author  : Ari Lerner
-%%% Description : 
-%%%
-%%% Created :  Mon Nov  2 12:13:56 PST 2009
-%%%-------------------------------------------------------------------
-
--module (node_event_handler).
-
+-module (dummy_event_handler).
 -include ("beehive.hrl").
 -include ("common.hrl").
 
 -behaviour(gen_event).
+-define (SERVER, ?MODULE).
+-record (state, {
+  received_messages = [],
+  last_received_time
+}).
+
+-export ([get_messages/0]).
 
 %% gen_event callbacks
 -export([init/1, handle_event/2, handle_call/2, handle_info/2, terminate/2, code_change/3]).
 
+
+get_messages() ->
+  gen_event:call(global:whereis_name(?SERVER), ?SERVER, {get_messages}, 10000).
+  
 %%====================================================================
 %% gen_event callbacks
 %%====================================================================
@@ -25,7 +27,11 @@
 %% this function is called to initialize the event handler.
 %%--------------------------------------------------------------------
 init([]) ->
-  {ok, 500}.
+  global:register_name(?SERVER, self()),
+  {ok, #state{
+    received_messages = [],
+    last_received_time = date_util:time_right_now()
+  }}.
 
 %%--------------------------------------------------------------------
 %% Function:
@@ -35,33 +41,12 @@ init([]) ->
 %% Description:Whenever an event manager receives an event sent using
 %% gen_event:notify/2 or gen_event:sync_notify/2, this function is called for
 %% each installed event handler to handle the event.
-%%--------------------------------------------------------------------
-handle_event({update_node_stats, Time}, State) ->
-  % Get the cpu average
-  CpuAvg = cpu_sup:avg1(),
-  
-  % Get the free memory
-  MemoryList  = memsup:get_system_memory_data(),
-  TotalMem    = proplists:get_value(total_memory, MemoryList),
-  FreeMem     = proplists:get_value(free_memory, MemoryList),
-  Total         = (FreeMem/TotalMem)*100,
-  
-  % Store!
-  bh_node_stats_srv:node_stat({node_stat, cpu, CpuAvg, Time}),
-  bh_node_stats_srv:node_stat({node_stat, mem, Total, Time}),
-  
-  {ok, State};
-
-handle_event({node_joined, JoiningPid}, State) ->
-  ?LOG(debug, "node_joined: ~p", [JoiningPid]),
-  {ok, State};
-
-handle_event({node_left, LeavingPid, Reason}, State) ->
-  ?LOG(debug, "node_left: ~p because ~p", [LeavingPid, Reason]),
-  {ok, State};
-  
-handle_event(_Event, State) ->
-  {ok, State}.
+%%--------------------------------------------------------------------  
+handle_event(Event, #state{received_messages = ReceivedMessages} = State) ->
+  {ok, State#state{
+    received_messages = [Event|ReceivedMessages],
+    last_received_time = date_util:time_right_now()
+  }}.
 
 %%--------------------------------------------------------------------
 %% Function:
@@ -73,6 +58,9 @@ handle_event(_Event, State) ->
 %% gen_event:call/3,4, this function is called for the specified event
 %% handler to handle the request.
 %%--------------------------------------------------------------------
+handle_call({get_messages}, #state{received_messages = ReceivedMessages} = State) ->
+  {ok, ReceivedMessages, State};
+  
 handle_call(_Request, State) ->
   Reply = ok,
   {ok, Reply, State}.

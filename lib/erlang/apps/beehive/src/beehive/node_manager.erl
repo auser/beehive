@@ -28,7 +28,8 @@ end).
   dump/1,
   get_next_available/1,
   notify/1,
-  current_load_of_node/0
+  current_load_of_node/0,
+  read_bee_configs/0, reload_system/0
 ]).
 
 %% gen_server callbacks
@@ -118,8 +119,16 @@ seed_pids(_State) ->
 is_a(Type) -> 
   gen_cluster:call(seed_pid(), {is_a, Type}).
 
+%%-------------------------------------------------------------------
+%% @spec (Msg) ->    ok
+%% @doc Send a message across all the event_manager pids
+%%      In the system
+%% @end
+%%-------------------------------------------------------------------
 notify(Msg) ->
-  rpc:call(node(seed_pid()), event_manager, notify, [Msg]),    
+  lists:map(fun(P) ->
+    rpc:cast(node(P), event_manager, notify, [Msg])
+  end, seed_pids({})),
   ok.
 
 %%-------------------------------------------------------------------
@@ -129,9 +138,9 @@ notify(Msg) ->
 %% @end
 %%-------------------------------------------------------------------
 current_load_of_node() ->
-  Cpu = cpu_sup:avg1(),
-  CurrentMemProplist = memsup:get_system_memory_data(),
-  SystemMem = proplist:get_value(system_total_memory, CurrentMemProplist),
+  % Cpu = cpu_sup:avg1(),
+  % CurrentMemProplist = memsup:get_system_memory_data(),
+  % SystemMem = proplist:get_value(system_total_memory, CurrentMemProplist),
   % Put an algorithm here
   % and return the float
   0.5.
@@ -269,6 +278,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 handle_join(JoiningPid, State) ->
   ?TRACE("~p:~p handle join called: ~p~n", [?MODULE, ?LINE, JoiningPid]),
+  ?NOTIFY({node_joined, JoiningPid}),
   {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -280,6 +290,7 @@ handle_join(JoiningPid, State) ->
 %%--------------------------------------------------------------------
 handle_leave(LeavingPid, Info, State) ->
   ?TRACE("~p:~p handle leave called: ~p, Info: ~p~n", [?MODULE, ?LINE, LeavingPid, Info]),
+  ?NOTIFY({node_left, LeavingPid, Info}),
   {ok, State}.
 
 
@@ -295,17 +306,25 @@ get_server_load([H|Rest], Acc) ->
   Stat = rpc:call(node(H), ?MODULE, current_load_of_node, []),
   get_server_load(Rest, [{H, Stat}|Acc]).
 
-% read_babysitter_config() ->
-%   DefaultConfigDir    = filename:join([?BH_ROOT, "etc", "app_templates"]),
-%   babysitter_config:read(DefaultConfigDir),
-%   
-%   case config:search_for_application_value(app_config_dir) of
-%     undefined -> ok;
-%     SpecifiedConfigDir ->
-%       try
-%         babysitter_config:read(SpecifiedConfigDir)
-%       catch X:Reason ->
-%         erlang:display({error, {babysitter_config, {error, X, Reason}}}),
-%         ok
-%       end
-%   end.
+read_bee_configs() ->
+  DefaultConfigDir    = filename:join([?BH_ROOT, "etc", "app_templates"]),
+  
+  Dirs = case config:search_for_application_value(app_config_dir) of
+    undefined -> [DefaultConfigDir];
+    SpecifiedConfigDir -> [DefaultConfigDir,SpecifiedConfigDir]
+  end,
+  lists:map(fun(Dir) ->
+    try
+      beehive_bee_object_config:read(Dir)
+    catch X:Reason ->
+      erlang:display({error, {babysitter_config, {error, X, Reason}}}),
+      ok
+    end
+  end, Dirs).
+
+reload_system() ->
+  case config:search_for_application_value(erlang_modules_dir) of
+    undefined -> ok;
+    Dir -> code:add_pathz(Dir)
+  end,
+  read_bee_configs().
