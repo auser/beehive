@@ -22,5 +22,11 @@
       :each type in app_types
         %option= type
     %br
+    %label Branch:
+    %input{ type: "text", name: "branch", value: "master" }
+    %br
+    %label Deploy Env (RAILS_ENV/RACK_ENV):
+    %input{ type: "text", name: "deploy_env", value: "production" }
+    %br
 
     %input{ type: "submit", value: "Create App"}

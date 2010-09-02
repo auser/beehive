@@ -14,6 +14,7 @@
       %th owners
       %th updated_at
       %th type
+      %th deploy_env
       %th latest_error
   %tfoot
     %tr
@@ -28,4 +29,5 @@
         %td= app.owners
         %td= app.updated_at
         %td= app.dynamic
+        %td= app.deploy_env
         %td= app.latest_error.timestamp

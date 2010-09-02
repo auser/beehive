@@ -228,7 +228,7 @@ start(Type, Name, Port, From) ->
         try
           {Pid, Ref, Tag} =
             async_command("/bin/sh",
-                          [ScriptFilename],
+                          [ScriptFilename, BeeObject#bee_object.deploy_env],
                           BeeDir,
                           [{pidfile, PidFilename}|to_proplist(BeeObject)],
                           From),
@@ -623,7 +623,8 @@ config_props() ->
 template_command_string(Str, Props) when is_list(Props) -> mustache:render(Str, dict:from_list(Props)).
 chop(ListofStrings) -> string:strip(ListofStrings, right, $\n).
 
-from_proplists(Propslist) -> from_proplists(Propslist, #bee_object{}).
+from_proplists(Propslist) -> 
+  from_proplists(Propslist, #bee_object{deploy_env = "production"}).
 from_proplists([], BeeObject) -> validate_bee_object(BeeObject);
 from_proplists([{name, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{name = V});
 from_proplists([{branch, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{branch = V});
@@ -640,6 +641,8 @@ from_proplists([{pre,V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_
 from_proplists([{post,V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{post = V});
 from_proplists([{os_pid,V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{os_pid = V});
 from_proplists([{pid,V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{pid = V});
+from_proplists([{deploy_env, V}|Rest], BeeObject) ->
+  from_proplists(Rest, BeeObject#bee_object{deploy_env = V});
 from_proplists([{Other,V}|Rest], BeeObject) ->
   CurrentEnv = case BeeObject#bee_object.env of
     undefined -> [];
@@ -664,6 +667,8 @@ to_proplist([pre|Rest], #bee_object{pre = V} = Bo, Acc) -> to_proplist(Rest, Bo,
 to_proplist([post|Rest], #bee_object{post = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{post, V}|Acc]);
 to_proplist([os_pid|Rest], #bee_object{os_pid = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{os_pid, V}|Acc]);
 to_proplist([pid|Rest], #bee_object{pid = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{pid, V}|Acc]);
+to_proplist([deploy_env|Rest], #bee_object{deploy_env = V} = Bo, Acc) ->
+  to_proplist(Rest, Bo, [{deploy_env, V}|Acc]);
 to_proplist([env|Rest], #bee_object{env = V} = Bo, Acc) -> to_proplist(Rest, Bo, lists:flatten([V|Acc]));
 to_proplist([_H|Rest], BeeObject, Acc) -> to_proplist(Rest, BeeObject, Acc).
 

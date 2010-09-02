@@ -74,7 +74,8 @@
   post,
   os_pid,       % os pid of the running bee_object
   pid,          % pid of running bee_object
-  env = []      % more environment variables
+  env = [],     % more environment variables
+  deploy_env = "production"
 }).
 
 % Application configuration
@@ -92,7 +93,8 @@
   revision,                         % revision of the latest working push
   updated_at,
   latest_error  = undefined,        % last error that occured on the app
-  template      = default           % default app
+  template      = default,          % default app
+  deploy_env    = "production"
 }).
 
 
