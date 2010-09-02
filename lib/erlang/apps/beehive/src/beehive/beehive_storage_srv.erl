@@ -215,7 +215,7 @@ handle_vote(_Msg, State) ->
 %%--------------------------------------------------------------------
 fetch_bee(#app{name = Name} = App, Caller, _State) ->
   case lists:filter(fun(Pid) -> rpc:call(node(Pid), ?MODULE, has_bee_named, [Name]) end, seed_pids({})) of
-    [] -> beehive_bee_object:bundle(apps:to_proplist(App), Caller);
+    [] -> {error, does_not_exist};% beehive_bee_object:bundle(apps:to_proplist(App), Caller);
     [H|_ServerPids] ->
       % For now we won't verify the receipt of the bee
       % we'll assume that it will be sent across the wire for simplicity
