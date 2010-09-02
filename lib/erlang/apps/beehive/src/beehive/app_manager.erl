@@ -641,11 +641,11 @@ try_to_reconnect_to_bee(B, Num) ->
 
 % Cleanup the bee. Remove traces of the bee from the system
 cleanup_bee(#bee{status = terminated} = B) ->
-  ?QSTORE:delete_queue(?WAIT_DB, B#bee.app_name);
+  ?QSTORE:delete_queue(?WAIT_DB, B#bee.id);
   % bees:delete(B);
 cleanup_bee(B) ->
   (catch app_manager:request_to_terminate_bee(B, self())),
-  ?QSTORE:delete_queue(?WAIT_DB, B#bee.app_name).
+  ?QSTORE:delete_queue(?WAIT_DB, B#bee.id).
   % bees:delete(B).
 
 % Starting

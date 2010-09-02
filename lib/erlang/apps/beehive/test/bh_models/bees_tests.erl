@@ -20,7 +20,8 @@ starting_test_() ->
           fun find_by_id/0,
           fun find_all_grouped_by_host/0,
           fun build_app_env/0,
-          fun validate_bee/0
+          fun validate_bee/0,
+          fun delete_bee/0
         ]}
     ]
   }.
@@ -83,4 +84,17 @@ validate_bee() ->
   beehive_db_srv:delete_all(bee),
   {ok, Bee} = bees:create(#bee{app_name = "boxcar", host="127.0.0.1", port=9001}),
   ?assert(Bee#bee.id =:= {"boxcar", "127.0.0.1", 9001}),
+  passed.
+
+delete_bee() ->
+  bh_test_util:setup(bee),
+  ?assertMatch([], bees:all()),
+  {ok, Bee} = bees:create(#bee{app_name = "boxcar"}),
+  ?assertMatch([Bee], bees:all()),
+  bees:delete(Bee),
+  ?assertMatch([], bees:all()),
+  {ok, BeeName} = bees:create(#bee{app_name = "nametest"}),
+  ?assertMatch([BeeName], bees:all()),
+  bees:delete("nametest"),
+  ?assertMatch([], bees:all()),
   passed.

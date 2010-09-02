@@ -27,4 +27,6 @@ if [ -f ".gems" ]; then
   done < ".gems"
 fi
 
+eval "mkdir -p log"
+
 echo "Built rails app"

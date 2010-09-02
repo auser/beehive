@@ -30,7 +30,7 @@ module Beehive
       end
 
       def new_bee
-        r = post("bees/new.json",
+        r = post("bees.json",
                  { "app_name" => @app_name,
                    "host" => @app_host,
                    "port" => @default_app_port,
@@ -42,4 +42,4 @@ module Beehive
   end
 end
 
-# curl -i -XPOST -d"{\"app_name\":\"testapp\", \"host\":\"google.com\", \"port\":\"80\"}" localhost:8080/bees/new
+# curl -i -XPOST -d"{\"app_name\":\"testapp\", \"host\":\"google.com\", \"port\":\"80\"}" localhost:8080/bees.json
