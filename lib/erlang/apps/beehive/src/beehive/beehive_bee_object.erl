@@ -107,14 +107,10 @@ clone(#bee_object{template=Type, bundle_dir=BundleDir, revision=Rev}=BeeObject, 
 % bundle it using a temp file
 bundle(E) -> bundle(E, undefined).
 
-<<<<<<< HEAD
 bundle(App, From) when is_record(App, app) ->
   bundle(from_proplists(apps:to_proplist(App)), From);
   
 bundle(Proplists, From) when is_list(Proplists) ->  
-=======
-bundle(Proplists, From) when is_list(Proplists) ->
->>>>>>> 663df429b4cb729c283227eda11589d9d42b247b
   BeeObject = from_proplists(Proplists),
   bundle(BeeObject, From);
 
