@@ -228,7 +228,7 @@ start(Type, Name, Port, From) ->
         try
           {Pid, Ref, Tag} =
             async_command("/bin/sh",
-                          [ScriptFilename, BeeObject#bee_object.deploy_env],
+                          [ScriptFilename],
                           BeeDir,
                           [{pidfile, PidFilename}|to_proplist(BeeObject)],
                           From),

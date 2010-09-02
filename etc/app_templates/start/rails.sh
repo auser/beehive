@@ -1,7 +1,7 @@
 #!/bin/sh -e
 
 echo "Starting rails '$NAME' in $RUN_DIR"
-export RAILS_ENV=$1
+export RAILS_ENV=$DEPLOY_ENV
 export GEM_HOME=$RUN_DIR/.beehive_gem_home
 export GEM_PATH=$RUN_DIR/.beehive_gem_home:`gem env path`
 export PATH=$RUN_DIR/.beehive_gem_home/bin:$PATH
