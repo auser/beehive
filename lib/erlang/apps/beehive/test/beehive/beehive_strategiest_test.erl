@@ -3,7 +3,6 @@
 -include ("beehive.hrl").
 
 setup() ->
-  erlang:display({beehive_strategiest_tests_erl}),
   ok.
   
 teardown(_X) ->
