@@ -480,7 +480,7 @@ try_to_connect_to_new_instance(Bee, Attempts) ->
       gen_tcp:close(Sock),
       ready;
     _ -> 
-      timer:sleep(200),
+      timer:sleep(300),
       try_to_connect_to_new_instance(Bee, Attempts - 1)
   end.
   

@@ -232,48 +232,74 @@ start(Type, Name, Port, From) ->
                           BeeDir,
                           [{pidfile, PidFilename}|to_proplist(BeeObject)],
                           From),
-          % Hardcoded delays... eww
-          timer:sleep(500),
-          OsPid = case read_pid_file_or_retry(PidFilename, 500) of
-            {error, _} ->
-              timer:sleep(100),
-              read_pid_file_or_retry(PidFilename, 500);
-            PidInt -> PidInt
+          % First, let's try to infer what app the user means by looking up the application
+          App = case apps:find_by_name(Name) of
+            {error, not_found} -> #app{template = Type, name = Name};
+            RealApp -> RealApp
+          end,
+          % Because we are spawning off into a new process, we also want to make sure we can connect to the 
+          % newly spawned bee. Here we'll spawn off a connector process
+          BuiltBee = bees:from_bee_object(BeeObject, App),
+          Bee = BuiltBee#bee{host = bh_host:myip()},
+          app_manager:spawn_update_bee_status(Bee, self(), 200),
+          % Now, let's wait to make sure that the spawn comes back with a success.
+          % If it does come back that it can be connected to, then we know it's started, let's
+          % grab the pid file and report back to the caller that the object has started
+          Continue = receive
+            {updated_bee_status, ready} ->
+              OPid = case read_pid_file_or_retry(PidFilename, 500) of
+                {error, _} ->
+                  timer:sleep(100),
+                  read_pid_file_or_retry(PidFilename, 500),
+                  true;
+                PidInt -> PidInt
+              end,
+              RealBeeObject = BeeObject#bee_object{os_pid = OPid, template = Type},
+              write_info_about_bee(RealBeeObject),
+              send_to(Self, {started_bee_object, RealBeeObject}),
+              RealBeeObject;
+            {updated_bee_status, _otherstatus} = T ->
+              send_to(Self, {stopped, {error, T}});
+            X ->
+              erlang:display({received, X, after_spawn})
+            after 100000 ->
+              false
           end,
           file:delete(ScriptFilename),
           file:delete(PidFilename),
-
-          RealBeeObject = BeeObject#bee_object{os_pid = OsPid, template = Type},
-          write_info_about_bee(RealBeeObject),
-          send_to(Self, {started_bee_object, RealBeeObject}),
-
-          cmd_receive(Pid, [], From, fun(Msg) ->
-            case Msg of
-              {'DOWN', Ref, process, Pid, {Tag, Data}} -> Data;
-              {'DOWN', Ref, process, Pid, Reason} ->
-                send_to(From, {stopped, {Name, Reason}});
-              {stop, Caller} ->
-                ?DEBUG_PRINT({cmd_received,{stop, Caller}, OsPid}),
-                case OsPid of
-                  IntPid when is_integer(IntPid) andalso IntPid > 1 ->
-                    run_kill_on_pid(OsPid, BeeDir, RealBeeObject),
-                    send_to(Caller, {stopped, RealBeeObject});
-                  _ -> ok
-                end;
-              _E ->
-                % run_kill_on_pid(OsPid, BeeDir, RealBeeObject),
-                ok
+          case Continue of
+            false -> 
+              Self ! {stopped, {error, "Timeout in starting"}},
+              stopped;
+            #bee_object{os_pid = OsPid} = RBeeObject when is_record(RBeeObject, bee_object) ->
+                cmd_receive(Pid, [], From, fun(Msg) ->
+                  case Msg of
+                    {'DOWN', Ref, process, Pid, {Tag, Data}} -> Data;
+                    {'DOWN', Ref, process, Pid, Reason} ->
+                      send_to(From, {stopped, {Name, Reason}});
+                    {stop, Caller} ->
+                      ?DEBUG_PRINT({cmd_received,{stop, Caller}, OsPid}),
+                      case OsPid of
+                        IntPid when is_integer(IntPid) andalso IntPid > 1 ->
+                          run_kill_on_pid(OsPid, BeeDir, RBeeObject),
+                          send_to(Caller, {stopped, RBeeObject});
+                        _ -> ok
+                      end;
+                    _E ->
+                      % run_kill_on_pid(OsPid, BeeDir, RealBeeObject),
+                      ok
+                  end
+                end)
+              end
+            after
+              % Just in case
+              file:delete(ScriptFilename)
             end
-          end)
-        after
-          % Just in case
-          file:delete(ScriptFilename)
-        end
       end),
       F = fun(This) ->
         receive
-          {started_bee_object, SentRealBeeObject} ->
-            From ! {started, SentRealBeeObject#bee_object{pid = CmdProcessPid}};
+          {started_bee_object, SentRealBeeObject} -> From ! {started, SentRealBeeObject#bee_object{pid = CmdProcessPid}};
+          {stopped, {error, _Reason}} = T -> From ! T;
           _X -> This(This)
         end
       end,
