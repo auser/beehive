@@ -87,6 +87,7 @@ clone(#bee_object{template=Type, bundle_dir=BundleDir, revision=Rev}=BeeObject, 
     case ensure_repos_exists(BeeObject, From) of
       {error, _Reason} = T2 ->
         ?DEBUG_PRINT({error, ensure_repos_exists, T2}),
+        ?LOG(debug, "ensure_repos_exists(~p, ~p) returned the error: ~p", [BeeObject, From, T2]),
         T2;
       Out ->
         case Rev of
@@ -130,6 +131,7 @@ bundle(#bee_object{template=Type, bundle_dir=NBundleDir} = BeeObject, From) when
         {error, Reason} -> {error, {bundle, Reason}};
         BeforeBundle ->
           % Run the bundle pre config first, then the bundle command
+          ?LOG(debug, "Running before bundle script: ~p", [BeforeBundle]),
           case run_in_directory_with_file(BeeObject, From, NBundleDir, BeforeBundle) of
             {error, _} = T2 -> T2;
             _BeforeActionOut ->
@@ -137,6 +139,7 @@ bundle(#bee_object{template=Type, bundle_dir=NBundleDir} = BeeObject, From) when
               Proplist = to_proplist(BeeObject),
               Str = template_command_string(SquashCmd, Proplist),
 
+              ?LOG(debug, "Bundling calling: ~p", [Str]),
               cmd(Str, NBundleDir, Proplist, From),
 
               run_hook_action(post, BeeObject, From),
@@ -496,14 +499,24 @@ check_type_from_the_url_string(Str, [H|Rest]) ->
 
 % Ensure the repos exists with the current revision clone
 ensure_repos_exists(#bee_object{bundle_dir = BundleDir} = BeeObject, From) ->
-  ensure_directory_exists(BundleDir),
+  % ensure_directory_exists(BundleDir),
+  ?LOG(debug, "ensure_repos_exists on directory: ~p is ~p", [BundleDir, filelib:is_dir(BundleDir)]),
   case filelib:is_dir(BundleDir) of
     true -> update_repos(BeeObject, From);
     false -> clone_repos(BeeObject, From)
   end.
 
 % Checkout the repos using the config method
-clone_repos(BeeObject, From)   -> run_action_in_directory(clone, BeeObject, From).
+clone_repos(#bee_object{bundle_dir = BundleDir, vcs_type = VcsType} = BeeObject, From)   -> 
+    case proplists:get_value(clone, config_props(VcsType)) of
+    undefined -> throw({error, action_not_defined, clone});
+    FoundAction ->
+      Str = template_command_string(FoundAction, to_proplist(BeeObject)),
+      ?LOG(debug, "clone in directory: ~p: ~p", [Str, FoundAction]),
+      run_command_in_directory(Str, filename:dirname(BundleDir), From, BeeObject)
+  end.
+
+  %run_action_in_directory(clone, BeeObject#bee_object{bundle_dir = filename:dirname(CurrentDirName)}, From).
 update_repos(BeeObject, From)  -> run_action_in_directory(update, BeeObject, From).
 
 ensure_repos_is_current_repos(#bee_object{revision = Rev} = BeeObject) when is_record(BeeObject, bee_object) ->
@@ -534,7 +547,7 @@ run_action_in_directory(Action, #bee_object{vcs_type = VcsType, bundle_dir = Bun
     undefined -> throw({error, action_not_defined, Action});
     FoundAction ->
       Str = template_command_string(FoundAction, to_proplist(BeeObject)),
-      ?DEBUG_PRINT({run_action_in_directory, action, Action, Str}),
+      ?LOG(debug, "run_action_in_directory: ~p ~p: ~p", [Action, Str, FoundAction]),
       run_command_in_directory(Str, BundleDir, From, BeeObject)
   end.
 
@@ -570,6 +583,7 @@ cmd(Str, Cd, Envs, From) ->
   end.
 
 cmd(Cmd, Args, Cd, Envs, From) ->
+  ?LOG(debug, "cmd called with: ~p, ~p, ~p, ~p, ~p", [Cmd, Args, Cd, Envs, From]),
   {Pid, Ref, Tag} = async_command(Cmd, Args, Cd, Envs, From),
   receive
     {'DOWN', Ref, process, Pid, {Tag, Data}} -> Data;
@@ -676,7 +690,8 @@ from_proplists([{Other,V}|Rest], BeeObject) ->
   end,
   from_proplists(Rest, BeeObject#bee_object{env = [{Other,V}|CurrentEnv]}).
 
-to_proplist(BeeObject) -> to_proplist(record_info(fields, bee_object), BeeObject, []).
+to_proplist(BeeObject) -> 
+  lists:filter(fun({_K,V}) -> V =/= undefined end, to_proplist(record_info(fields, bee_object), BeeObject, [])).
 to_proplist([], _BeeObject, Acc) -> Acc;
 to_proplist([name|Rest], #bee_object{name = Name} = Bo, Acc) -> to_proplist(Rest, Bo, [{name, Name}|Acc]);
 to_proplist([branch|Rest], #bee_object{branch = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{branch, V}|Acc]);

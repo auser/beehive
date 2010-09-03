@@ -130,7 +130,9 @@ handle_call({build_bee, App, Caller}, _From, State) ->
 handle_call({fetch_or_build_bee, App, Caller}, _From, State) ->
   Resp = case fetch_bee(App, Caller, State) of
     {error, _} -> internal_build_bee(App, Caller, State);
-    T -> T
+    T ->
+	?LOG(debug, "fetch_bee(~p, ~p) returned ~p", [App, Caller, T]), 
+	T
   end,
   {reply, Resp, State};
 handle_call(_Request, _From, State) ->
@@ -213,14 +215,18 @@ handle_vote(_Msg, State) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-fetch_bee(#app{name = Name} = App, Caller, _State) ->
+fetch_bee(#app{name = Name} = _App, Caller, _State) ->
   case lists:filter(fun(Pid) -> rpc:call(node(Pid), ?MODULE, has_bee_named, [Name]) end, seed_pids({})) of
-    [] -> {error, does_not_exist};% beehive_bee_object:bundle(apps:to_proplist(App), Caller);
+    [] -> 
+      ?LOG(debug, "lists:filter on seed_pids([]) [~p] returned []", [seed_pids({})]),
+      {error, does_not_exist};% beehive_bee_object:bundle(apps:to_proplist(App), Caller);
     [H|_ServerPids] ->
       % For now we won't verify the receipt of the bee
       % we'll assume that it will be sent across the wire for simplicity
       % TODO: Add error checking to fetch_bee
-      rpc:call(node(H), beehive_bee_object, send_bee_object, [node(Caller), Name, Caller])
+      O = rpc:call(node(H), beehive_bee_object, send_bee_object, [node(Caller), Name, Caller]),
+      ?LOG(debug, "rpc:call(~p, beehive_bee_object, send_bee_object, [~p, ~p, ~p]) returned ~p", [node(H), node(Caller), Name, Caller]),
+      O
   end.
   
 %%-------------------------------------------------------------------
@@ -233,7 +239,9 @@ fetch_bee(#app{name = Name} = App, Caller, _State) ->
 internal_build_bee(App, Caller, _State) ->
   case handle_repos_lookup(App) of
     {ok, ReposUrl} ->
-      beehive_bee_object:bundle(apps:to_proplist(App#app{url = ReposUrl}), Caller);
+      O = beehive_bee_object:bundle(apps:to_proplist(App#app{url = ReposUrl}), Caller),
+      ?LOG(debug, "internal_build_bee(~p, ~p) returned {ok, ~p} and bundle returned ~p", [App, Caller, ReposUrl, O]),
+      O;
     {error, _} = T -> T
     %   case babysitter_integration:command(bundle, App#app{url = ReposUrl}, unusued, Proplist) of
     %     {ok, _OsPid, 0} ->
