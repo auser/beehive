@@ -264,7 +264,8 @@ start(Type, Name, Port, From) ->
             {updated_bee_status, _otherstatus} = T ->
               send_to(Self, {stopped, {error, T}});
             X ->
-              erlang:display({received, X, after_spawn})
+              erlang:display({received, X, after_spawn}),
+              false
             after 100000 ->
               false
           end,
