@@ -45,6 +45,7 @@ end()).
   end
 end()).
 
+-define (APP_PING_TIMEOUT, 180*1000).
 -define (BEEHIVE_BEE_OBJECT_INFO_TABLE, 'beehive_bee_object_info').
 -define (BEEHIVE_BEE_OBJECT_INFO_TABLE_PROCESS, 'beehive_bee_object_info_process').
 
@@ -266,7 +267,7 @@ start(Type, Name, Port, From) ->
             X ->
               erlang:display({received, X, after_spawn}),
               false
-            after 100000 ->
+            after ?APP_PING_TIMEOUT ->
               false
           end,
           file:delete(ScriptFilename),
@@ -584,7 +585,7 @@ cmd(Str, Cd, Envs, From) ->
   end.
 
 cmd(Cmd, Args, Cd, Envs, From) ->
-  ?LOG(debug, "cmd called with: ~p, ~p, ~p, ~p, ~p", [Cmd, Args, Cd, Envs, From]),
+  ?LOG(debug, "cmd called with: ~p, ~p, ~p, ~p", [Cmd, Args, Cd, From]),
   {Pid, Ref, Tag} = async_command(Cmd, Args, Cd, Envs, From),
   receive
     {'DOWN', Ref, process, Pid, {Tag, Data}} -> Data;
