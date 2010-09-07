@@ -592,7 +592,7 @@ cmd(Cmd, Args, Cd, Envs, From) ->
 receive_response(Cmd, Args, _Cd, _Envs, _From) ->
   receive
     {'DOWN', Ref, process, Pid, {Tag, Data}} -> 
-      ?LOG(info, "Got 'DOWN' status for cmd: ~p ~p: ~p", [Cmd, Args, Data]),
+      ?LOG(debug, "Got 'DOWN' status for cmd: ~p ~p: ~p", [Cmd, Args, Data]),
       Data;
     {'DOWN', Ref, process, Pid, Reason} -> exit(Reason);
     {ok, Data} ->
