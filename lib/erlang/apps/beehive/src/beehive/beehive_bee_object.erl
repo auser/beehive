@@ -587,11 +587,17 @@ cmd(Str, Cd, Envs, From) ->
 cmd(Cmd, Args, Cd, Envs, From) ->
   ?LOG(debug, "cmd called with: ~p, ~p, ~p, ~p", [Cmd, Args, Cd, From]),
   {Pid, Ref, Tag} = async_command(Cmd, Args, Cd, Envs, From),
+  receive_response(Cmd, Args, Cd, Envs, From).
+
+receive_response(Cmd, Args, _Cd, _Envs, _From) ->
   receive
     {'DOWN', Ref, process, Pid, {Tag, Data}} -> 
       ?LOG(info, "Got 'DOWN' status for cmd: ~p ~p: ~p", [Cmd, Args, Data]),
       Data;
-    {'DOWN', Ref, process, Pid, Reason} -> exit(Reason)
+    {'DOWN', Ref, process, Pid, Reason} -> exit(Reason);
+    {ok, Data} ->
+      ?LOG(info, "~p ~p logged data: ~p", [Cmd, Args, Data]),
+      receive_response(Cmd, Args, _Cd, _Envs, _From)
   end.
 
 async_command(Cmd, Args, Cd, Envs, From) ->

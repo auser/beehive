@@ -23,6 +23,8 @@ stress_apps() ->
     app_manager:request_to_start_new_bee_by_app(RealApp, self()),
     receive
       {bee_started_normally, Bee, _App} -> {RealApp, Bee}
+    after 2000 ->
+      erlang:display({stress_apps, bee_didnt_stop, N})
     end
   end, lists:seq(1,5)),
   lists:map(fun({_RealApp, Bee}) ->
