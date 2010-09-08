@@ -307,7 +307,6 @@ stop(#bee{pid = Pid} = Bee, From) when is_record(Bee, bee) ->
 stop(#bee_object{pid = Pid} = BeeObject, From) when is_record(BeeObject, bee_object) ->
   stop(Pid, From);
 stop(Pid, From) when is_pid(Pid) ->
-  erlang:display({bee_object,stop,Pid,From}),
   send_to(Pid, {stop, self()}),
   receive
     {stopped, #bee_object{name = Name} = RealBeeObject} ->
