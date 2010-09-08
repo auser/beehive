@@ -181,7 +181,7 @@ pending({updated_bee_status, broken}, State) ->
 pending({updated_bee_status, BackendStatus}, #state{app = App, bee = Bee, from = From, caller = Caller, latest_sha = Sha, updating = Updating} = State) ->
   ?LOG(debug, "Application started ~p: ~p", [BackendStatus, App#app.name]),
   % App started normally
-  bees:save(Bee),
+  bees:save(Bee#bee{status = BackendStatus}),
   case Updating of
     true -> From ! {bee_updated_normally, Bee#bee{status = BackendStatus}, App#app{revision = Sha}, Caller};
     false -> From ! {bee_started_normally, Bee#bee{status = BackendStatus}, App#app{revision = Sha}, Caller}

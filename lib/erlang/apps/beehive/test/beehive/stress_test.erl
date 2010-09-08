@@ -74,7 +74,7 @@ start_new_bee_by_app(App) ->
 terminate_bees([]) -> ok;
 terminate_bees([Bee|Rest]) ->
   case Bee of
-    {RealApp, RealBee} -> 
+    {RealApp, RealBee} ->
       terminate_bee(RealBee),
       apps:delete(RealApp);
     RealBee when is_record(RealBee, bee) -> terminate_bee(RealBee)

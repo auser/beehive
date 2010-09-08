@@ -263,49 +263,39 @@ start(Type, Name, Port, From) ->
               send_to(Self, {started_bee_object, RealBeeObject}),
               RealBeeObject;
             {updated_bee_status, _otherstatus} = T ->
-              send_to(Self, {stopped, {error, T}});
+              send_to(Self, {stopped, {error, T}}),
+              run_kill_on_pid(unused, BeeDir, BeeObject),
+              false;
             X ->
               erlang:display({received, X, after_spawn}),
               false
             after ?APP_PING_TIMEOUT ->
+              run_kill_on_pid(unused, BeeDir, BeeObject),
               false
           end,
           file:delete(ScriptFilename),
           file:delete(PidFilename),
           case Continue of
-            false -> 
-              Self ! {stopped, {error, "Timeout in starting"}},
-              stopped;
             #bee_object{os_pid = OsPid} = RBeeObject when is_record(RBeeObject, bee_object) ->
-                cmd_receive(Pid, [], From, fun(Msg) ->
-                  case Msg of
-                    {'DOWN', Ref, process, Pid, {Tag, Data}} -> Data;
-                    {'DOWN', Ref, process, Pid, Reason} ->
-                      send_to(From, {stopped, {Name, Reason}});
-                    {stop, Caller} ->
-                      ?DEBUG_PRINT({cmd_received,{stop, Caller}, OsPid}),
-                      case OsPid of
-                        IntPid when is_integer(IntPid) andalso IntPid > 1 ->
-                          run_kill_on_pid(OsPid, BeeDir, RBeeObject),
-                          send_to(Caller, {stopped, RBeeObject});
-                        _ -> ok
-                      end;
-                    _E ->
-                      % run_kill_on_pid(OsPid, BeeDir, RealBeeObject),
-                      ok
-                  end
-                end)
-              end
-            after
-              % Just in case
-              file:delete(ScriptFilename)
+              ?LOG(debug, "successfully started and taking over ~p", [Name]),
+              takeover_process_by_monitor(Name, Pid, OsPid, BeeDir, RBeeObject, From);
+            false -> 
+              erlang:display({dont,continue,Continue}),
+              Self ! {stopped, {error, "Timeout in starting"}},
+              stopped
             end
+          after
+            % Just in case
+            file:delete(ScriptFilename)
+          end
       end),
       F = fun(This) ->
         receive
           {started_bee_object, SentRealBeeObject} -> From ! {started, SentRealBeeObject#bee_object{pid = CmdProcessPid}};
           {stopped, {error, _Reason}} = T -> From ! T;
           _X -> This(This)
+        after ?APP_PING_TIMEOUT ->
+          From ! {error, app_ping_timeout}
         end
       end,
       F(F)
@@ -317,6 +307,7 @@ stop(#bee{pid = Pid} = Bee, From) when is_record(Bee, bee) ->
 stop(#bee_object{pid = Pid} = BeeObject, From) when is_record(BeeObject, bee_object) ->
   stop(Pid, From);
 stop(Pid, From) when is_pid(Pid) ->
+  erlang:display({bee_object,stop,Pid,From}),
   send_to(Pid, {stop, self()}),
   receive
     {stopped, #bee_object{name = Name} = RealBeeObject} ->
@@ -884,3 +875,23 @@ run_kill_on_pid(_OsPid, BeeDir, RealBeeObject) ->
 log_bee_event(Data) ->
   LogFile = filename:join(?BEEHIVE_HOME, "logs/bee_events.log"),
   file:write_file(LogFile, Data, [append]).
+
+takeover_process_by_monitor(Name, Pid, OsPid, BeeDir, RBeeObject, From) ->
+  cmd_receive(Pid, [], From, fun(Msg) ->
+    case Msg of
+      {'DOWN', Ref, process, Pid, {Tag, Data}} -> Data;
+      {'DOWN', Ref, process, Pid, Reason} ->
+        send_to(From, {stopped, {Name, Reason}});
+      {stop, Caller} ->
+        ?LOG(debug, "~p was asked to stop by ~p - ~p", [RBeeObject#bee_object.port, Name, Caller, OsPid]),
+        ?DEBUG_PRINT({cmd_received,{stop, Caller}, OsPid}),
+        case OsPid of
+          IntPid when is_integer(IntPid) andalso IntPid > 1 ->
+            run_kill_on_pid(OsPid, BeeDir, RBeeObject),
+            send_to(Caller, {stopped, RBeeObject});
+          _ -> ok
+        end;
+      _E ->
+        takeover_process_by_monitor(Name, Pid, OsPid, BeeDir, RBeeObject, From)
+    end
+  end).

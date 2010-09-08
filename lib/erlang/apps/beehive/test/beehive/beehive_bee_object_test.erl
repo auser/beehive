@@ -181,24 +181,21 @@ mount_t() ->
   passed.
 
 start_t() ->
-  try
-    Host = "127.0.0.1",
-    Port = 9192,
-    beehive_bee_object:bundle([{type, rack}|git_repos_props()]),
-    Pid = spawn(fun() -> responding_loop([]) end),
-    beehive_bee_object:start(rack, "beehive_bee_object_test_app", Port, Pid),
-    timer:sleep(600),
-    case catch gen_tcp:connect(Host, Port, [binary]) of
-      {ok, Sock} -> 
-        gen_tcp:close(Sock),
-        ?assert(true);
-      {error,econnrefused} -> 
-        ?assert(false)
-    end,
-    ?DEBUG_PRINT({start_t, passed})
-  after
-    beehive_bee_object:stop("beehive_bee_object_test_app")
+  Host = "127.0.0.1",
+  Port = 9192,
+  beehive_bee_object:bundle([{type, rack}|git_repos_props()]),
+  Pid = spawn(fun() -> responding_loop([]) end),
+  {started, BeeObject} = beehive_bee_object:start(rack, "beehive_bee_object_test_app", Port, Pid),
+  timer:sleep(600),
+  case catch gen_tcp:connect(Host, Port, [binary]) of
+    {ok, Sock} -> 
+      gen_tcp:close(Sock),
+      beehive_bee_object:stop(BeeObject),
+      ?assert(true);
+    {error,econnrefused} -> 
+      ?assert(false)
   end,
+  ?DEBUG_PRINT({start_t, passed}),
   % case bh_test_util:try_to_fetch_url_or_retry(get, [{host, "127.0.0.1"}, {port, Port}, {path, "/"}], 20) of
   %   {ok, _Headers, Body} ->
   %     ?assertEqual("Hello world", Body),
@@ -215,19 +212,16 @@ stop_t() ->
   Name = "app_intended_to_test_stopping",
   NewProps = [{name, Name},{url, ReposUrl},{vcs_type, git},{type, rack},{fixture_dir, fixture_dir()}],
   Pid = spawn(fun() -> responding_loop([]) end),
-  try
-    beehive_bee_object:bundle(NewProps, Pid),
-    beehive_bee_object:start(rack, Name, Port, Pid),
-    timer:sleep(100),
-    Q = beehive_bee_object:stop(Name, Pid),
-    ?DEBUG_PRINT({beehive_bee_object,stop,Q,Name,Pid}),
-    timer:sleep(500),
-    GenTcpOut = gen_tcp:connect(Host, Port, [binary]),
-    ?assertMatch({ok, _},  GenTcpOut),
-    gen_tcp:close(element(2, GenTcpOut))
-  after
-    beehive_bee_object:stop(Name, Pid)
-  end,
+  beehive_bee_object:bundle(NewProps, Pid),
+  {started, BeeObject} = beehive_bee_object:start(rack, Name, Port, Pid),
+  timer:sleep(100),
+  Q = beehive_bee_object:stop(Name, Pid),
+  ?DEBUG_PRINT({beehive_bee_object,stop,Q,BeeObject#bee_object.pid,Name,Pid}),
+  timer:sleep(500),
+  GenTcpOut = gen_tcp:connect(Host, Port, [binary]),
+  ?assertMatch({ok, _},  GenTcpOut),
+  gen_tcp:close(element(2, GenTcpOut)),
+  beehive_bee_object:stop(BeeObject, Pid),
   ?DEBUG_PRINT({stop_t, passed}),
   passed.
 
@@ -291,7 +285,7 @@ responding_loop(Acc) ->
       From ! {ok, Acc},
       responding_loop(Acc);
     {data, Data} -> 
-      ?DEBUG_PRINT({got, Data}),
+      ?DEBUG_PRINT({got,responding_loop,Data}),
       responding_loop([Data|Acc])
   end.
 
