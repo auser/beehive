@@ -122,6 +122,7 @@ write(Level, _File, _Line, Message, State) ->
   FlatMsg = io_lib:format("[~s] [~p] ~s\r\n", [httpd_util:rfc1123_date(), Level, Message]),
   Msg = erlang:iolist_to_binary(FlatMsg),
   disk_log:blog(Level, Msg),
+  log_bee_event(FlatMsg),
   State.
 
 % write_to_console(Msg) -> io:format("~s", [Msg]).
@@ -138,3 +139,7 @@ make_log(LogPath, LogName) ->
   end, [File]),
   File.
   % ensure_logfile_exists(FullFilepath).
+
+log_bee_event(Data) ->
+  LogFile = filename:join(?BEEHIVE_HOME, "logs/bee_events.log"),
+  file:write_file(LogFile, Data, [append]).
