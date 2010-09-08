@@ -122,7 +122,10 @@ write(Level, _File, _Line, Message, State) ->
   FlatMsg = io_lib:format("[~s] [~p] ~s\r\n", [httpd_util:rfc1123_date(), Level, Message]),
   Msg = erlang:iolist_to_binary(FlatMsg),
   disk_log:blog(Level, Msg),
-  log_bee_event(FlatMsg),
+  case Level of
+    debug -> log_bee_event(FlatMsg);
+    _ -> ok 
+  end,
   State.
 
 % write_to_console(Msg) -> io:format("~s", [Msg]).
