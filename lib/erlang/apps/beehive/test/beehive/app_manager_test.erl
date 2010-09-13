@@ -52,7 +52,8 @@ start_new_instance_t_failing_app() ->
   bh_test_util:delete_all(app),
   DummyApp = bh_test_util:dummy_app(),
   {error, ErrorObj} = start_dummy_app(
-    DummyApp#app{url = "http://this.does/not/exist", name = "doesnt_exist"}, 
+    DummyApp#app{repo_url = "http://this.does/not/exist", 
+                 name = "doesnt_exist"}, 
   self()),
   % It should fail when fetching
   ?assertEqual(ErrorObj#app_error.stage, fetching),

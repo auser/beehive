@@ -399,7 +399,7 @@ info(Name) when is_list(Name) ->
     _ ->
       case catch find_bee_file(Name) of
         {error, not_found} -> {error, not_found};
-        T -> write_info_about_bee(#bee_object{bee_file = T, name = Name, vcs_type = git})
+        T -> write_info_about_bee(#bee_object{bee_file = T, name = Name, repo_type = git})
       end
   end;
 info(_Else) ->
@@ -472,14 +472,14 @@ run_hook_action_str(CmdStr, #bee_object{bundle_dir = BundleDir} = BeeObject, Fro
       end
   end.
 % Check the url from the type
-extract_vcs_type(undefined, Url) when is_list(Url) ->
+extract_repo_type(undefined, Url) when is_list(Url) ->
   case check_type_from_the_url_string(Url, ["git://", "svn://"]) of
     "git://" -> git;
     "svn://" -> svn;
-    unknown -> throw({error, unknown_vcs_type})
+    unknown -> throw({error, unknown_repo_type})
   end;
-extract_vcs_type(VcsType, _Url) when is_atom(VcsType) -> VcsType;
-extract_vcs_type(_, _) -> unknown.
+extract_repo_type(RepoType, _Url) when is_atom(RepoType) -> RepoType;
+extract_repo_type(_, _) -> unknown.
 
 % Attempt to extract the type of the vcs from the url
 check_type_from_the_url_string(_Str, []) -> unknown;
@@ -499,7 +499,7 @@ ensure_repos_exists(#bee_object{bundle_dir = BundleDir} = BeeObject, From) ->
   end.
 
 % Checkout the repos using the config method
-clone_repos(#bee_object{bundle_dir = BundleDir, vcs_type = VcsType} = BeeObject, From)   -> 
+clone_repos(#bee_object{bundle_dir = BundleDir, repo_type = VcsType} = BeeObject, From)   -> 
     case proplists:get_value(clone, config_props(VcsType)) of
     undefined -> throw({error, action_not_defined, clone});
     FoundAction ->
@@ -534,7 +534,7 @@ get_current_sha(BeeObject) ->
 % Run in the directory given in the proplists
 % Action
 % Props
-run_action_in_directory(Action, #bee_object{vcs_type = VcsType, bundle_dir = BundleDir} = BeeObject, From) ->
+run_action_in_directory(Action, #bee_object{repo_type = VcsType, bundle_dir = BundleDir} = BeeObject, From) ->
   case proplists:get_value(Action, config_props(VcsType)) of
     undefined -> throw({error, action_not_defined, Action});
     FoundAction ->
@@ -650,7 +650,7 @@ ensure_directory_exists(Dir) ->
 % Pull off the config_props for the specific vcs
 config_props(VcsType) ->
   case  proplists:get_value(VcsType, config_props()) of
-    undefined -> throw({error, unknown_vcs_type});
+    undefined -> throw({error, unknown_repo_type});
     Props -> Props
   end.
 
@@ -669,8 +669,8 @@ from_proplists([], BeeObject) -> validate_bee_object(BeeObject);
 from_proplists([{name, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{name = V});
 from_proplists([{branch, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{branch = V});
 from_proplists([{revision, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{revision = V});
-from_proplists([{vcs_type, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{vcs_type = V});
-from_proplists([{url, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{url = V});
+from_proplists([{repo_type, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{repo_type = V});
+from_proplists([{repo_url, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{repo_url = V});
 from_proplists([{template, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{template = V});
 from_proplists([{run_dir, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{run_dir = V});
 from_proplists([{bundle_dir, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{bundle_dir = V});
@@ -696,8 +696,8 @@ to_proplist([], _BeeObject, Acc) -> Acc;
 to_proplist([name|Rest], #bee_object{name = Name} = Bo, Acc) -> to_proplist(Rest, Bo, [{name, Name}|Acc]);
 to_proplist([branch|Rest], #bee_object{branch = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{branch, V}|Acc]);
 to_proplist([revision|Rest], #bee_object{revision = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{revision, V}|Acc]);
-to_proplist([vcs_type|Rest], #bee_object{vcs_type = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{vcs_type, V}|Acc]);
-to_proplist([url|Rest], #bee_object{url = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{url, V}|Acc]);
+to_proplist([repo_type|Rest], #bee_object{repo_type = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{repo_type, V}|Acc]);
+to_proplist([repo_url|Rest], #bee_object{repo_url = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{repo_url, V}|Acc]);
 to_proplist([template|Rest], #bee_object{template = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{template, V}|Acc]);
 to_proplist([run_dir|Rest], #bee_object{run_dir = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{run_dir, V}|Acc]);
 to_proplist([bundle_dir|Rest], #bee_object{bundle_dir = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{bundle_dir, V}|Acc]);
@@ -733,9 +733,9 @@ validate_bee_object([bee_file|Rest], #bee_object{bee_file=undefined} = BeeObject
   validate_bee_object(Rest, BeeObject#bee_object{bee_file = BeeFile});
 
 % TRy to extract the type
-validate_bee_object([vcs_type|Rest], #bee_object{vcs_type=Type, url=Url} = BeeObject) ->
-  FoundType = extract_vcs_type(Type, Url),
-  validate_bee_object(Rest, BeeObject#bee_object{vcs_type = FoundType});
+validate_bee_object([repo_type|Rest], #bee_object{repo_type=Type, repo_url=Url} = BeeObject) ->
+  FoundType = extract_repo_type(Type, Url),
+  validate_bee_object(Rest, BeeObject#bee_object{repo_type = FoundType});
 validate_bee_object([pid|Rest], #bee_object{pid = Pid} = BeeObject) when is_list(Pid) ->
   validate_bee_object(Rest, BeeObject#bee_object{pid = list_to_pid(Pid)});
 validate_bee_object([], BeeObject) ->  BeeObject;

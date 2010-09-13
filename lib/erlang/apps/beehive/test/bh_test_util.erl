@@ -132,7 +132,7 @@ context_run(Count, Fun) ->
 
 % FIXTURE
 dummy_git_repos_url() ->
-  ReposDir = filename:join([?BH_ROOT, "test", "fixtures", "incredibly_simple_rack_app"]),
+  ReposDir = filename:join([?BH_ROOT, "test", "fixtures", "incredibly_simple_rack_app", ".git"]),
   lists:concat(["file://", ReposDir]).
   
 dummy_app() ->
@@ -142,7 +142,7 @@ dummy_app() ->
   %   App1 ->
   %     {ok, App1}
   % end,
-  apps:new(#app{name = "test_app", url = dummy_git_repos_url()}).
+  apps:new(#app{name = "test_app", repo_url = dummy_git_repos_url()}).
 
 dummy_user() ->
   {ok, User} = case users:find_by_email("test@getbeehive.com") of

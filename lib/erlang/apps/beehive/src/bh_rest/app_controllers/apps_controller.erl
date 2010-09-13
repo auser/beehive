@@ -95,7 +95,7 @@ delete(_Path, _Data) -> "unhandled".
 compile_app_details(App) ->
   [ 
     {"name", App#app.name}, 
-    {"url", App#app.url}, 
+    {"repo_url", App#app.repo_url}, 
     {"routing_param", App#app.routing_param}, 
     {"owners", lists:map(fun(Owner) -> Owner#user.email end, user_apps:get_owners(App))}, 
     {"updated_at", App#app.updated_at},

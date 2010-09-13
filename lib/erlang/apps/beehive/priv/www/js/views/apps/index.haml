@@ -23,7 +23,7 @@
     :each app in apps
       %tr
         %td= link_to(app.name, "#/apps/" + app.name)
-        %td= app.url
+        %td= app.repo_url
         %td= app.branch
         %td= app.template
         %td= app.owners

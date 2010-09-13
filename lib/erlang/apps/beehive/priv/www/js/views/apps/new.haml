@@ -9,11 +9,11 @@
     %br
     
     %label App URL:
-    %input{ type: "text", name: "url" }
+    %input{ type: "text", name: "repo_url" }
     %br
     
     %label VCS type
-    %select{name: "vcs_type"}
+    %select{name: "repo_type"}
       :each type in vcs_types
         %option= type
     

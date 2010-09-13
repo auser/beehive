@@ -25,7 +25,7 @@ post("/new", Data) ->
   
   Name      = proplists:get_value(name, Data),
   Path      = proplists:get_value(path, Data),
-  Url       = proplists:get_value(url, Data),
+  Url       = proplists:get_value(repo_url, Data),
   Hostname  = proplists:get_value(hostname, Data),
   Instances = proplists:get_value(instances, Data),
   Timeout   = proplists:get_value(timeout, Data),
@@ -38,7 +38,7 @@ post("/new", Data) ->
   ConfigProplist = [
     {name, Name},
     {path, Path},
-    {url, Url},
+    {repo_url, Url},
     {hostname, Hostname},
     {instances, Instances},
     {timeout, Timeout},

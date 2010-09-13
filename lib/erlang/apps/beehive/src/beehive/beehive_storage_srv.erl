@@ -239,11 +239,11 @@ fetch_bee(#app{name = Name} = _App, Caller, _State) ->
 internal_build_bee(App, Caller, _State) ->
   case handle_repos_lookup(App) of
     {ok, ReposUrl} ->
-      O = beehive_bee_object:bundle(apps:to_proplist(App#app{url = ReposUrl}), Caller),
+      O = beehive_bee_object:bundle(apps:to_proplist(App#app{repo_url = ReposUrl}), Caller),
       ?LOG(debug, "internal_build_bee(~p, ~p) returned {ok, ~p} and bundle returned ~p", [App, Caller, ReposUrl, O]),
       O;
     {error, _} = T -> T
-    %   case babysitter_integration:command(bundle, App#app{url = ReposUrl}, unusued, Proplist) of
+    %   case babysitter_integration:command(bundle, App#app{repo_url = ReposUrl}, unusued, Proplist) of
     %     {ok, _OsPid, 0} ->
     %       case fetch_bee(App, State) of
     %         {bee_built, _Resp} = T -> T;
@@ -282,7 +282,7 @@ handle_repos_lookup(App) ->
 
 handle_offsite_repos_lookup([]) -> false;
 handle_offsite_repos_lookup(App) when is_record(App, app) ->
-  App#app.url;
+  App#app.repo_url;
 handle_offsite_repos_lookup(AppName) ->
   case apps:find_by_name(AppName) of
     App when is_record(App, app) -> 

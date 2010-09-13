@@ -112,7 +112,7 @@ put_app_bad_token() ->
   App = bh_test_util:dummy_app(),
   {ok, Header, _Resp} =
     perform_put(App#app.name, [{token, ""},
-                               {url, "newurl"}]),
+                               {repo_url, "newurl"}]),
   ?assertEqual("HTTP/1.0 401 Unauthorized", Header),
   passed.
 

@@ -57,7 +57,7 @@ handle_event({app, Event, App}, State) when is_record(App, app) ->
     {event, Event}, 
     {app, [
       {name, App#app.name}, 
-      {url, App#app.url}, 
+      {url, App#app.repo_url}, 
       {updated_at, App#app.updated_at}
       ]
     }],

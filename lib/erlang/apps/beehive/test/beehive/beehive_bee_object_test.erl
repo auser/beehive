@@ -58,7 +58,7 @@ git_clone() ->
   {{Year, Month, Day}, {Hour, Minute, Second}} = erlang:universaltime(),
   Ts = lists:flatten(io_lib:format("~w~2..0w~2..0w~2..0w~2..0w~2..0w", [Year, Month, Day, Hour, Minute, Second])),
   
-  ReposDir = proplists:get_value(url, git_repos_props()),
+  ReposDir = proplists:get_value(repo_url, git_repos_props()),
   
   os:cmd([
     "cd ", ReposDir, " && echo '", Ts, "' > LATEST_REV && git commit -a -m 'updated time for beehive_bee_object_test_app purposes'"
@@ -151,7 +151,7 @@ responding_from() ->
 ls_bee() ->
   ReposUrl = bh_test_util:dummy_git_repos_url(),
   
-  NewProps = [{name, "crazy_name-045"},{url, ReposUrl},{vcs_type, git}],
+  NewProps = [{name, "crazy_name-045"},{repo_url, ReposUrl},{repo_type, git}],
   beehive_bee_object:bundle([{type, python}|NewProps], self()),
   F = fun(This) ->    
     receive
@@ -210,7 +210,7 @@ stop_t() ->
   Port = 9191,
   ReposUrl = bh_test_util:dummy_git_repos_url(),
   Name = "app_intended_to_test_stopping",
-  NewProps = [{name, Name},{url, ReposUrl},{vcs_type, git},{type, rack},{fixture_dir, fixture_dir()}],
+  NewProps = [{name, Name},{repo_url, ReposUrl},{repo_type, git},{type, rack},{fixture_dir, fixture_dir()}],
   Pid = spawn(fun() -> responding_loop([]) end),
   beehive_bee_object:bundle(NewProps, Pid),
   {started, BeeObject} = beehive_bee_object:start(rack, Name, Port, Pid),
@@ -237,7 +237,7 @@ send_t() ->
   beehive_bee_object:bundle([{type, rack}|git_repos_props()]),
   timer:sleep(500),
   BeeObject = beehive_bee_object:get_bee_object(node(self()), "beehive_bee_object_test_app"),
-  ?assertEqual(git, BeeObject#bee_object.vcs_type),
+  ?assertEqual(git, BeeObject#bee_object.repo_type),
   ?assertEqual(rack, BeeObject#bee_object.template),
   BeeFile = BeeObject#bee_object.bee_file,
   ?assert(filelib:is_file(BeeFile)),
@@ -257,7 +257,7 @@ have_bee_t() ->
 git_repos_props() ->
   ReposUrl = bh_test_util:dummy_git_repos_url(),
   [
-    {name, "beehive_bee_object_test_app"}, {vcs_type, git}, {url, ReposUrl},
+    {name, "beehive_bee_object_test_app"}, {repo_type, git}, {repo_url, ReposUrl},
     {fixture_dir, fixture_dir()}
   ].
 
