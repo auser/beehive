@@ -28,7 +28,7 @@ module Beehive
 
       def new_app
         params = {"repo_url" => @repo_url,"token" => @token }
-        params.merge!({"name" => @name}) if @name
+        params["name"] = @name if @name
         r = post("apps.json", params)
       end
 
