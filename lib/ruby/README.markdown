@@ -4,7 +4,6 @@ beehive gem
 A ruby command line client library for beehive.
 
 
-
 README todos:
 ===
 
