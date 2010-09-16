@@ -62,8 +62,8 @@
   name,         % name of the bee
   branch,       % branch to checkout
   revision,     % revision
-  vcs_type,     % git | svn
-  url,          % url
+  repo_type,    % git | svn
+  repo_url,     % url
   template,     % type of app to match conf files
   run_dir,      % location of the unpacked bee_file
   bundle_dir,   % location of the root of the bundle
@@ -81,8 +81,8 @@
 % Application configuration
 -record (app, {
   name,
-  url,
-  vcs_type      = git,              % git | svn | etc.
+  repo_url,
+  repo_type     = git,              % git | svn | etc.
   dynamic       = dynamic,          % dynamic | static (if this is set to static, we cannot launch a new one)
   routing_param = 'Host',
   timeout,

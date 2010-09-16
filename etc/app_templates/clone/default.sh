@@ -1,3 +1,3 @@
 #!/bin/sh -e
 
-echo "cloning... `pwd` $URL"
+echo "cloning... `pwd` $REPO_URL"

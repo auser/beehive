@@ -52,23 +52,23 @@ test_save_app_with_same_name() ->
   % Delete all
   bh_test_util:delete_all(app),
   lists:map(fun(App) -> apps:delete(App) end, apps:all()),
-  {ok, App3} = apps:create(#app{name="test_app", url="http://github.com/auser/test_app1.git"}),
-  {ok, App4} = apps:create(#app{name="test_app", url="http://github.com/auser/test_app2.git"}),
+  {ok, App3} = apps:create(#app{name="test_app", repo_url="http://github.com/auser/test_app1.git"}),
+  {ok, App4} = apps:create(#app{name="test_app", repo_url="http://github.com/auser/test_app2.git"}),
   ?assert(App3#app.name == "test_app"),
   ?assert(App4#app.name =/= "test_app"),
   passed.
   
 test_save_app_with_upper_case_name() ->
   bh_test_util:delete_all(app),
-  {ok, App} = apps:create(#app{name="TestApp", url="http://github.com/auser/test_app2.git"}),
+  {ok, App} = apps:create(#app{name="TestApp", repo_url="http://github.com/auser/test_app2.git"}),
   ?assertEqual("testapp", App#app.name),
   passed.
 
 test_branch() ->
   lists:map(fun(App) -> apps:delete(App) end, apps:all()),
-  {ok, App1} = apps:create(#app{name="test_app", url="http://github.com/auser/test_app1.git"}),
+  {ok, App1} = apps:create(#app{name="test_app", repo_url="http://github.com/auser/test_app1.git"}),
   ?assert(App1#app.branch == "master"),
-  {ok, App2} = apps:create(#app{name="test_app/other_branch", url="http://github.com/auser/test_app1.git"}),
+  {ok, App2} = apps:create(#app{name="test_app/other_branch", repo_url="http://github.com/auser/test_app1.git"}),
   ?assert(App2#app.branch == "other_branch"),
   passed.
 

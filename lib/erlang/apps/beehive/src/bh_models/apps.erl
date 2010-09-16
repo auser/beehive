@@ -162,7 +162,7 @@ build_app_env(App, Other) ->
 
   lists:flatten([
                  build_env({name, App#app.name}),
-                 build_env({repos, App#app.url}),
+                 build_env({repos, App#app.repo_url}),
                  build_env({revision, App#app.revision}),
                  build_env({path, BeehivePath}),
                  build_env({branch, App#app.branch}),
@@ -186,9 +186,9 @@ build_env({Key, Value}) ->
 from_proplists(Proplists) -> from_proplists(Proplists, #app{}).
 from_proplists([], App)  -> App;
 from_proplists([{name, V}|Rest], App) -> from_proplists(Rest, App#app{name = V});
-from_proplists([{url, V}|Rest], App) -> from_proplists(Rest, App#app{url = V});
-from_proplists([{vcs_type, V}|Rest], App) ->
-  from_proplists(Rest, App#app{vcs_type = V});
+from_proplists([{repo_url, V}|Rest], App) -> from_proplists(Rest, App#app{repo_url = V});
+from_proplists([{repo_type, V}|Rest], App) ->
+  from_proplists(Rest, App#app{repo_type = V});
 from_proplists([{template, V}|Rest], App) ->
   from_proplists(Rest, App#app{template = V});
 from_proplists([{timeout, V}|Rest], App) ->
@@ -217,10 +217,10 @@ to_proplist(App) -> to_proplist(record_info(fields, app), App, []).
 to_proplist([], _App, Acc) -> Acc;
 to_proplist([name|Rest], #app{name = Name} = App, Acc) ->
   to_proplist(Rest, App, [{name, Name}|Acc]);
-to_proplist([url|Rest], #app{url = Value} = App, Acc) ->
-  to_proplist(Rest, App, [{url, Value}|Acc]);
-to_proplist([vcs_type|Rest], #app{vcs_type = Value} = App, Acc) ->
-  to_proplist(Rest, App, [{vcs_type, Value}|Acc]);
+to_proplist([repo_url|Rest], #app{repo_url = Value} = App, Acc) ->
+  to_proplist(Rest, App, [{repo_url, Value}|Acc]);
+to_proplist([repo_type|Rest], #app{repo_type = Value} = App, Acc) ->
+  to_proplist(Rest, App, [{repo_type, Value}|Acc]);
 to_proplist([timeout|Rest], #app{timeout = Value} = App, Acc) ->
   to_proplist(Rest, App, [{timeout, Value}|Acc]);
 to_proplist([sticky|Rest], #app{sticky = Value} = App, Acc) ->
@@ -257,14 +257,14 @@ validate_app([branch|Rest], #app{branch = undefined} = App) ->
   validate_app(Rest, App#app{branch = "master"});
 validate_app([branch|Rest], #app{branch = _V} = App) ->
   validate_app(Rest, App);
-%% Validate the url
-validate_app([url|Rest], #app{url = _Url} = App) ->
+%% Validate the repo_url
+validate_app([repo_url|Rest], #app{repo_url = _Url} = App) ->
   validate_app(Rest, App);
 %% Validate the type, it can only be either static or dynamic
-validate_app([vcs_type|Rest], #app{vcs_type = git} = App) ->
+validate_app([repo_type|Rest], #app{repo_type = git} = App) ->
   validate_app(Rest, App);
-validate_app([vcs_type|Rest], #app{vcs_type = _Else} = App) ->
-  validate_app(Rest, App#app{vcs_type = git});
+validate_app([repo_type|Rest], #app{repo_type = _Else} = App) ->
+  validate_app(Rest, App#app{repo_type = git});
 %% Validate the timeout
 validate_app([timeout|Rest], #app{timeout = undefined} = App) ->
   validate_app(Rest, App#app{timeout = 10*1000});
