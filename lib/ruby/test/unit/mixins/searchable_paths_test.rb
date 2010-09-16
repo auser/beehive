@@ -36,7 +36,7 @@ class SearchablePathsTest < Test::Unit::TestCase
     @template = TestFile.new
     @cloud    = TestFile2.new
   end
-    
+
   def teardown
     FileUtils.rm_rf(PATH_TEST_ROOT)
   end
@@ -46,7 +46,7 @@ class SearchablePathsTest < Test::Unit::TestCase
     assert_equal ["templates"], TestFile.searchable_paths_dirs
     assert_equal ["clouds", "/"], TestFile2.searchable_paths_dirs
   end
-  
+
   def test_should_be_able_to_find_a_template
     assert_not_nil @template.find_file("apache.conf")
     assert_equal PATH_ONE/:templates/'apache.conf', @template.find_file("apache.conf")
@@ -67,9 +67,9 @@ class SearchablePathsTest < Test::Unit::TestCase
   end
 
   def test_should_look_in_the_additional_search_paths_first
-    FileUtils.mkdir_p(PATH_ONE/'extra')                     
+    FileUtils.mkdir_p(PATH_ONE/'extra')
     File.write_to_file(PATH_ONE/'extra'/'clouds.rb')
     assert_equal @cloud.find_file("clouds.rb", [PATH_ONE/'extra']), PATH_ONE/'extra'/'clouds.rb'
   end
-  
+
 end
