@@ -5,7 +5,7 @@ module Beehive
 
       def run(o={})
         commands = build_help.map do |klass|
-          "#{klass.to_s.top_class}          #{klass.description}"
+          "#{klass.to_s.top_class.ljust(20)}#{klass.description}"
         end.join("\n")
         colored_say o[:msg] if o[:msg]
         colored_say "<line>
@@ -14,7 +14,7 @@ module Beehive
 Commands
 
 #{commands}
-Help            Display this screen
+Help                Display this screen
 "
       end
 
@@ -26,6 +26,13 @@ Help            Display this screen
           !klass.respond_to?(:description)
         end
       end
+
+      def colored_say str
+        out = Colors.process(str)
+        puts out
+        Colors.reset!
+      end
+
     end
   end
 end
