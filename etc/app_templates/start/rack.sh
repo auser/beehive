@@ -2,7 +2,7 @@
 
 echo "Starting rack '$NAME'"
 
-export RACK_ENV=$1
+export RACK_ENV=$DEPLOY_ENV
 
 echo $$ > $PIDFILE
 if [ -f config.ru ]; then

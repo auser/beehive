@@ -21,6 +21,5 @@ starting_test_() ->
 
 start_up_t() ->
   {ok, Sock} = gen_tcp:connect("127.0.0.1", 9148, [binary]),
-  erlang:display({socket, Sock}),
   gen_tcp:close(Sock),
   passed.
