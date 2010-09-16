@@ -5,7 +5,7 @@ module Beehive
 
       def run(o={})
         commands = build_help.map do |klass|
-          "#{klass.to_s.top_class.ljust(20)}#{klass.description}"
+          "#{klass.to_s.top_class.underscore.ljust(20)}#{klass.description}"
         end.join("\n")
         colored_say o[:msg] if o[:msg]
         colored_say "<line>
@@ -14,7 +14,7 @@ module Beehive
 Commands
 
 #{commands}
-Help                Display this screen
+help                Display this screen
 <line>
 All commands support a -h flag for usage details
 "

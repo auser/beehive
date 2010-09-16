@@ -19,4 +19,8 @@ class String
     gsub(/(^|_|-)(.)/) { $2.upcase }
   end
 
+  def underscore
+    gsub(/([a-z])([A-Z])/) {"#{$1}_#{$2}" }.downcase
+  end
+
 end
