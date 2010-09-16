@@ -17,12 +17,26 @@ help                Display this screen
 All commands support a -h flag for usage details
 
 
+.beehive file
+===
+
+The gem supports a .beehive file in your home directory.
+It expects a yaml format, and allows you to set user, password and
+host fields.  Setting these in the .beehive config file negates the
+need for command arguments of the same name.
+
+Example:
+
+    ---
+    host: myhost.com:4999
+    user: auser
+    password: alsomyemailpassword
+
+
 README todos:
 ===
 
-* Outline commands
 * Dependencies
-* .beehive config file explanation
 
 Gem todos:
 ===
