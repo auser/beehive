@@ -15,6 +15,8 @@ Commands
 
 #{commands}
 Help                Display this screen
+<line>
+All commands support a -h flag for usage details
 "
       end
 
