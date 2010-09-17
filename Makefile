@@ -28,4 +28,4 @@ rel_erlang:
 
 test: deps compile
 	@./test/bootstrap.sh
-	@./rebar skip_deps=true eunit
+	@./rebar skip_deps=true eunit suite=$(suite)
