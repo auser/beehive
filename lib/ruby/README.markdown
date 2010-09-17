@@ -33,10 +33,11 @@ Example:
     password: alsomyemailpassword
 
 
-README todos:
+Gem Dependencies
 ===
 
-* Dependencies
+ * json_pure
+ * rest-client
 
 Gem todos:
 ===
