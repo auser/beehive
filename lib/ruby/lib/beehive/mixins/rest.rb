@@ -1,7 +1,7 @@
 require "rubygems"
 require 'rest_client'
 require "yaml"
-require "yajl/json_gem"
+require "json/pure"
 require "pp"
 
 module Beehive
