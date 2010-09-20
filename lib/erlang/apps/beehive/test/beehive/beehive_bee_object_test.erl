@@ -46,6 +46,7 @@ all_test_() ->
         ,fun cleanup_t/0
         ,fun send_t/0
         ,fun have_bee_t/0
+        ,fun start_bee_with_no_object_in_memory/0
         % ,fun git_clone_with_errors/0
       ]
     }
@@ -186,7 +187,8 @@ start_t() ->
     Port = 9192,
     beehive_bee_object:bundle([{type, rack}|git_repos_props()]),
     Pid = spawn(fun() -> responding_loop([]) end),
-    beehive_bee_object:start(rack, "beehive_bee_object_test_app", Port, Pid),
+    App = #app{template = rack, name = "beehive_bee_object_test_app"},
+    beehive_bee_object:start(App, Port, Pid),
     timer:sleep(600),
     case catch gen_tcp:connect(Host, Port, [binary]) of
       {ok, Sock} -> 
@@ -217,7 +219,8 @@ stop_t() ->
   Pid = spawn(fun() -> responding_loop([]) end),
   try
     beehive_bee_object:bundle(NewProps, Pid),
-    beehive_bee_object:start(rack, Name, Port, Pid),
+    App = #app{template = rack, name = Name},
+    beehive_bee_object:start(App, Port, Pid),
     timer:sleep(100),
     Q = beehive_bee_object:stop(Name, Pid),
     ?DEBUG_PRINT({beehive_bee_object,stop,Q,Name,Pid}),
@@ -254,6 +257,23 @@ have_bee_t() ->
   ?assert(beehive_bee_object:have_bee("beehive_bee_object_test_app") =:= true),
   ?assert(beehive_bee_object:have_bee("weird_app_name") =:= false),
   passed.
+
+start_bee_with_no_object_in_memory() ->
+  DummyApp = bh_test_util:dummy_app("nonprod_app"),
+  DummyApp1 = DummyApp#app{deploy_env = "nonprod"},
+  apps:save(DummyApp1),
+  App = apps:find_by_name(DummyApp1#app.name),
+  beehive_bee_object:bundle(apps:to_proplist(App)),
+
+  %% Actually deleting the reference from the bobject store
+  ets:delete('beehive_bee_object_info', App#app.name),
+
+  Pid = spawn(fun() -> responding_loop([]) end),
+  Foo = beehive_bee_object:start(App, 9876, Pid),
+  passed.
+  
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
