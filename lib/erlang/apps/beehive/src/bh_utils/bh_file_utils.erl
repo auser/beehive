@@ -14,6 +14,16 @@
 root_dir(Path) ->
   filename:join([?BEEHIVE_HOME, Path]).
 
+find_git_root("/") -> {error, no_git_root};
+find_git_root(Path) ->
+  case filelib:is_dir(filename:join([Path, ".git"])) of
+    true -> Path;
+    false ->
+      Split = filename:split(Path),
+      NewPath = lists:sublist(Split,1,length(Split)-1),
+      find_git_root(filename:join(NewPath))
+  end.
+
 relative_or_abs_path(List) ->
   case abs_or_relative_filepath(List) of
     true -> List;

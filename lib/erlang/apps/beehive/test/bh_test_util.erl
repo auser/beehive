@@ -1,6 +1,11 @@
 -module (bh_test_util).
 -author("Ari Lerner <arilerner@mac.com>").
 -compile(export_all).
+
+-ifndef(BHTEST).
+-define (BHTEST, true).
+-endif.
+
 -include ("beehive.hrl").
 -include ("common.hrl").
 
@@ -135,14 +140,9 @@ dummy_git_repos_url() ->
   ReposDir = filename:join([?BH_ROOT, "test", "fixtures", "incredibly_simple_rack_app", ".git"]),
   lists:concat(["file://", ReposDir]).
   
-dummy_app() ->
-  % {ok, App} = case apps:find_by_name("test_app") of
-  %   not_found ->
-  %
-  %   App1 ->
-  %     {ok, App1}
-  % end,
-  apps:new(#app{name = "test_app", repo_url = dummy_git_repos_url()}).
+dummy_app(Name) ->
+  apps:new(#app{name = Name, repo_url = dummy_git_repos_url()}).
+dummy_app() -> dummy_app("test_app").
 
 dummy_user() ->
   {ok, User} = case users:find_by_email("test@getbeehive.com") of

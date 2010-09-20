@@ -11,10 +11,10 @@
         end,
         case MessageLevel of
           do_not_print -> ok;
-          _ -> 
+          _ ->
             erlang:apply(error_logger, MessageLevel, [
-              lists:concat(["[", LogLevel, "] module: ", ?MODULE, 
-                            "~n	line: ", ?LINE, "~n", LogFormat, 
+              lists:concat(["[", LogLevel, "] module: ", ?MODULE,
+                            "~n	line: ", ?LINE, "~n", LogFormat,
                             "~n"]), LogArgs]
             )
         end
@@ -35,18 +35,29 @@ end()).
   erlang:apply(Mod, Fun, Args)).
 -endif.
 
+-ifdef(BHTEST).
 % Root of the modules
--define (BH_ROOT, fun() ->
-  case code:priv_dir(beehive) of
-    {error, bad_name} -> filename:join([filename:dirname(code:which(?MODULE)), "..", ".."]);
-    Dir -> filename:join([filename:dirname(Dir), "..", "..", "..", ".."])
-  end
-end()).
+-define (BH_ROOT,
+         fun() ->
+             bh_file_utils:find_git_root(code:which(?MODULE))
+            end()).
+-else.
+-define (BH_ROOT,
+         fun() ->
 
+             case code:priv_dir(beehive) of
+               {error, bad_name} ->
+                 filename:join([filename:dirname(code:which(?MODULE)), "..", ".."]);
+               Dir ->
+                 filename:join([filename:dirname(Dir), "..", "..", "..", ".."])
+             end
+         end()).
+
+-endif.
 % Defined beehive home path
 -define (BEEHIVE_HOME, fun() ->
   case application:get_env(beehive, beehive_home) of
-    undefined -> 
+    undefined ->
       case os:getenv("BEEHIVE_HOME") of
         false -> "/var/lib/beehive";
         E -> E
@@ -64,7 +75,7 @@ end()).
 -define (SHELL_SCRIPT (Name), fun() ->
   case file:read_file(?SHELL_SCRIPT_PATH(Name)) of
     {ok, Binary} -> erlang:binary_to_list(Binary);
-    {error, Reason} -> 
+    {error, Reason} ->
       ?LOG(error, "Could not file shell_script named: ~p", [?SHELL_SCRIPT_PATH(Name)]),
       throw({error, shell_script, Reason})
     end
