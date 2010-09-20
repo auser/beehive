@@ -140,7 +140,7 @@ preparing({launch}, #state{app = App} = State) ->
   Self = self(),  
   Port = bh_host:unused_port(),
   ?LOG(debug, "beehive_bee_object:start(~p, ~p, ~p, ~p)", [App#app.template, App#app.name, Port, Self]),
-  beehive_bee_object:start(App#app.template, App#app.name, Port, Self),
+  beehive_bee_object:start(App, Port, Self),
   {next_state, launching, State};
 
 preparing({start_new}, State) ->
@@ -152,7 +152,7 @@ preparing(_Other, State) ->
 
 updating({bee_built, _Info}, #state{app = App} = State) ->
   Port = bh_host:unused_port(),
-  beehive_bee_object:start(App#app.template, App#app.name, Port, self()),
+  beehive_bee_object:start(App, Port, self()),
   {next_state, launching, State};
 
 updating(Msg, State) ->

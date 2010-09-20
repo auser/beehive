@@ -13,7 +13,7 @@
   clone/1,clone/2,
   bundle/1,bundle/2,
   mount/2, mount/3,
-  start/3, start/4,
+  start/2, start/3,
   stop/1, stop/2,
   unmount/2, unmount/3,
   have_bee/1,
@@ -111,8 +111,8 @@ bundle(E) -> bundle(E, undefined).
 
 bundle(App, From) when is_record(App, app) ->
   bundle(from_proplists(apps:to_proplist(App)), From);
-  
-bundle(Proplists, From) when is_list(Proplists) ->  
+
+bundle(Proplists, From) when is_list(Proplists) ->
   BeeObject = from_proplists(Proplists),
   bundle(BeeObject, From);
 
@@ -154,7 +154,6 @@ bundle(#bee_object{template=Type, bundle_dir=NBundleDir} = BeeObject, From) when
 write_info_about_bee(#bee_object{
                         bee_file = BeeFile,
                         name = Name} = BeeObject) ->
-
   Dict = case ets:lookup(?BEEHIVE_BEE_OBJECT_INFO_TABLE, Name) of
     [] -> dict:new();
     [{Name, D}|_] -> D
@@ -212,17 +211,18 @@ mount(Type, Name, From) ->
   end.
 
 % Start the beefile
-start(Type, Name, Port) -> start(Type, Name, Port, undefined).
-start(Type, Name, Port, From) ->
+start(App, Port) -> start(App, Port, undefined).
+start(App, Port, From) ->
+  Type = App#app.template,
+  Name = App#app.name,
   case beehive_bee_object_config:get_or_default(start, Type) of
     {error, _} = T -> throw(T);
     StartScript ->
       mount(Type, Name),
       BeeDir = find_mounted_bee(Name),
-      FoundBeeObject = find_bee(Name),
+      FoundBeeObject = find_bee(App),
       Self = self(),
       BeeObject = FoundBeeObject#bee_object{port = Port, run_dir = BeeDir},
-
       {ok, PidFilename, PidIo} = temp_file(),
       file:close(PidIo),
       % BeeObject = from_proplists([{name, Name}, {template, Type}, {bee_file, BeeFile}, {run_dir, BeeDir}, {port, Port}]),
@@ -393,6 +393,20 @@ info(BeeObject) when is_record(BeeObject, bee_object) ->
         dict:to_list(TheReturnedDict)
     end
   end;
+info(App) when is_record(App, app) ->
+  Name = App#app.name,
+  case ets:lookup(?BEEHIVE_BEE_OBJECT_INFO_TABLE, Name) of
+    [{Name, Dict}|_Rest] ->
+      dict:to_list(Dict);
+    _ ->
+      case catch find_bee_file(Name) of
+        {error, not_found} -> {error, not_found};
+        T ->
+          BeeObj = from_proplists(apps:to_proplist(App)),
+          write_info_about_bee(BeeObj#bee_object{bee_file = T})
+      end
+  end;
+
 info(Name) when is_list(Name) ->
   case ets:lookup(?BEEHIVE_BEE_OBJECT_INFO_TABLE, Name) of
     [{Name, Dict}|_Rest] -> dict:to_list(Dict);
@@ -663,7 +677,7 @@ config_props() ->
 template_command_string(Str, Props) when is_list(Props) -> mustache:render(Str, dict:from_list(Props)).
 chop(ListofStrings) -> string:strip(ListofStrings, right, $\n).
 
-from_proplists(Propslist) -> 
+from_proplists(Propslist) ->
   from_proplists(Propslist, #bee_object{deploy_env = "production"}).
 from_proplists([], BeeObject) -> validate_bee_object(BeeObject);
 from_proplists([{name, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{name = V});
@@ -690,7 +704,7 @@ from_proplists([{Other,V}|Rest], BeeObject) ->
   end,
   from_proplists(Rest, BeeObject#bee_object{env = [{Other,V}|CurrentEnv]}).
 
-to_proplist(BeeObject) -> 
+to_proplist(BeeObject) ->
   lists:filter(fun({_K,V}) -> V =/= undefined end, to_proplist(record_info(fields, bee_object), BeeObject, [])).
 to_proplist([], _BeeObject, Acc) -> Acc;
 to_proplist([name|Rest], #bee_object{name = Name} = Bo, Acc) -> to_proplist(Rest, Bo, [{name, Name}|Acc]);
@@ -779,6 +793,11 @@ find_bee_file(Name) ->
     true -> BeeFile
   end.
 
+find_bee(App) when is_record(App, app) ->
+  case info(App) of
+    {error, Reason} -> {error, {not_found, Reason}};
+    List -> from_proplists(List)
+  end;
 find_bee(Name) ->
   case info(Name) of
     {error, Reason} -> {error, {not_found, Reason}};
