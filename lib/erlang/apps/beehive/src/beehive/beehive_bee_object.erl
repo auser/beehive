@@ -365,13 +365,6 @@ cleanup(Name, Caller) ->
     {error, _} -> ok;
     MountDir -> ?DEBUG_RM(MountDir)
   end,
-  % In this case, beefile is name
-  % case catch find_bee_file(Name) of
-  %   {error, _} -> ok;
-  %   Beefile ->
-  %     file:delete(Beefile),
-  %     send_to(Caller, {cleaned_up, Name})
-  % end.
   send_to(Caller, {cleaned_up, Name}).
 
 % Get information about the Beefile
@@ -505,7 +498,6 @@ check_type_from_the_url_string(Str, [H|Rest]) ->
 
 % Ensure the repos exists with the current revision clone
 ensure_repos_exists(#bee_object{bundle_dir = BundleDir} = BeeObject, From) ->
-  % ensure_directory_exists(BundleDir),
   ?LOG(debug, "ensure_repos_exists on directory: ~p is ~p", [BundleDir, filelib:is_dir(BundleDir)]),
   case filelib:is_dir(BundleDir) of
     true -> update_repos(BeeObject, From);
@@ -523,7 +515,6 @@ clone_repos(#bee_object{bundle_dir = BundleDir, repo_type = RepoType} = BeeObjec
       run_command_in_directory(Str, filename:dirname(BundleDir), From, BeeObject)
   end.
 
-  %run_action_in_directory(clone, BeeObject#bee_object{bundle_dir = filename:dirname(CurrentDirName)}, From).
 update_repos(BeeObject, From)  -> run_action_in_directory(update, BeeObject, From).
 
 ensure_repos_is_current_repos(#bee_object{revision = Rev} = BeeObject) when is_record(BeeObject, bee_object) ->
