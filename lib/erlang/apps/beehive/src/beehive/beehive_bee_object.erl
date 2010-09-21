@@ -64,9 +64,9 @@ init() ->
 ls() -> ls(config:search_for_application_value(squashed_dir, ?BEEHIVE_DIR("squashed"))).
 ls(BeeDir) ->
   lists:map(fun(Filepath) ->
-    Filename = filename:basename(Filepath),
-    string:sub_string(Filename, 1, length(Filename) - length(".bee"))
-  end, filelib:wildcard(filename:join([BeeDir, "*.bee"]))).
+                Filename = filename:basename(Filepath),
+                string:sub_string(Filename, 1, length(Filename) - length(".bee"))
+            end, filelib:wildcard(filename:join([BeeDir, "*.bee"]))).
 
 % Create a new object from a directory or from a url
 % This will clone the repository and ensure that the given
@@ -513,8 +513,9 @@ ensure_repos_exists(#bee_object{bundle_dir = BundleDir} = BeeObject, From) ->
   end.
 
 % Checkout the repos using the config method
-clone_repos(#bee_object{bundle_dir = BundleDir, repo_type = VcsType} = BeeObject, From)   ->
-    case proplists:get_value(clone, config_props(VcsType)) of
+clone_repos(#bee_object{bundle_dir = BundleDir, repo_type = VcsType} = BeeObject,
+            From)   ->
+  case proplists:get_value(clone, config_props(VcsType)) of
     undefined -> throw({error, action_not_defined, clone});
     FoundAction ->
       Str = template_command_string(FoundAction, to_proplist(BeeObject)),
