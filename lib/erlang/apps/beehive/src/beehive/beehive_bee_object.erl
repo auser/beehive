@@ -513,9 +513,9 @@ ensure_repos_exists(#bee_object{bundle_dir = BundleDir} = BeeObject, From) ->
   end.
 
 % Checkout the repos using the config method
-clone_repos(#bee_object{bundle_dir = BundleDir, repo_type = VcsType} = BeeObject,
+clone_repos(#bee_object{bundle_dir = BundleDir, repo_type = RepoType} = BeeObject,
             From)   ->
-  case proplists:get_value(clone, config_props(VcsType)) of
+  case proplists:get_value(clone, config_props(RepoType)) of
     undefined -> throw({error, action_not_defined, clone});
     FoundAction ->
       Str = template_command_string(FoundAction, to_proplist(BeeObject)),
@@ -549,8 +549,8 @@ get_current_sha(BeeObject) ->
 % Run in the directory given in the proplists
 % Action
 % Props
-run_action_in_directory(Action, #bee_object{repo_type = VcsType, bundle_dir = BundleDir} = BeeObject, From) ->
-  case proplists:get_value(Action, config_props(VcsType)) of
+run_action_in_directory(Action, #bee_object{repo_type = RepoType, bundle_dir = BundleDir} = BeeObject, From) ->
+  case proplists:get_value(Action, config_props(RepoType)) of
     undefined -> throw({error, action_not_defined, Action});
     FoundAction ->
       Str = template_command_string(FoundAction, to_proplist(BeeObject)),
@@ -663,8 +663,8 @@ ensure_directory_exists(Dir) ->
   end.
 
 % Pull off the config_props for the specific vcs
-config_props(VcsType) ->
-  case  proplists:get_value(VcsType, config_props()) of
+config_props(RepoType) ->
+  case  proplists:get_value(RepoType, config_props()) of
     undefined -> throw({error, unknown_repo_type});
     Props -> Props
   end.
@@ -675,7 +675,8 @@ config_props() ->
   C.
 
 % String things
-template_command_string(Str, Props) when is_list(Props) -> mustache:render(Str, dict:from_list(Props)).
+template_command_string(Str, Props) when is_list(Props) ->
+  mustache:render(Str, dict:from_list(Props)).
 chop(ListofStrings) -> string:strip(ListofStrings, right, $\n).
 
 from_proplists(Propslist) ->
