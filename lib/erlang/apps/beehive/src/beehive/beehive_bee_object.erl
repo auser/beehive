@@ -353,7 +353,7 @@ unmount(Type, Name, Caller) ->
     T2 ->
       run_command_in_directory(Str, MountDir, Caller, BeeObject),
       run_hook_action(post, BeeObject, Caller),
-
+      
       send_to(Caller, {unmounted, BeeObject}),
       T2
   end.
@@ -367,24 +367,25 @@ cleanup(Name, Caller) ->
   end,
   send_to(Caller, {cleaned_up, Name}).
 
-% Get information about the Beefile
+%% Get information about the Beefile
 info(BeeObject) when is_record(BeeObject, bee_object) ->
   case ets:lookup(?BEEHIVE_BEE_OBJECT_INFO_TABLE, BeeObject#bee_object.name) of
     [] ->
       write_info_about_bee(BeeObject),
       to_list(BeeObject);
     ReturnedBeeObjects ->
-      case lists:filter(fun({_Name, Dict}) ->
-          case dict:is_key(port, Dict) of
-            true -> dict:fetch(port, Dict) =:= BeeObject#bee_object.port;
-            false -> true
-          end
-        end, ReturnedBeeObjects) of
-      [{_AName, ReturnedDict}|_Rest] -> dict:to_list(ReturnedDict);
-      _ ->
-        TheReturnedDict = element(2, hd(ReturnedBeeObjects)),
-        dict:to_list(TheReturnedDict)
-    end
+      case lists:filter(
+             fun({_Name, Dict}) ->
+                 case dict:is_key(port, Dict) of
+                   true -> dict:fetch(port, Dict) =:= BeeObject#bee_object.port;
+                   false -> true
+                 end
+             end, ReturnedBeeObjects) of
+        [{_AName, ReturnedDict}|_Rest] -> dict:to_list(ReturnedDict);
+        _ ->
+          TheReturnedDict = element(2, hd(ReturnedBeeObjects)),
+          dict:to_list(TheReturnedDict)
+      end
   end;
 info(App) when is_record(App, app) ->
   Name = App#app.name,
