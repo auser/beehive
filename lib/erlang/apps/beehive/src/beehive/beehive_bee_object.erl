@@ -815,6 +815,7 @@ find_bee_file(Name) ->
     true -> BeeFile
   end.
 
+%% A BeeRef can be either an App name or an App record.
 find_bee(BeeRef) ->
   case info(BeeRef) of
     {error, Reason} -> {error, {not_found, Reason}};
