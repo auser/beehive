@@ -178,26 +178,29 @@ write_info_about_bee(#bee_object{
   ets:insert(?BEEHIVE_BEE_OBJECT_INFO_TABLE, [{Name, NewDict}]),
   dict:to_list(NewDict).
 
-% Mount the bee
+%% Mount the bee
 mount(App) -> mount(App, undefined).
 mount(App, From) ->
-  Type = App#app.template,
   Name = App#app.name,
-  case beehive_bee_object_config:get_or_default(mount, Type) of
+  case beehive_bee_object_config:get_or_default(mount, App#app.template) of
     {error, _} = T ->
       send_to(From, T),
       throw(T);
     AfterMountScript ->
       BeeFile = find_bee_file(Name),
-      MountRootDir = config:search_for_application_value(run_dir, ?BEEHIVE_DIR("run")),
+      MountRootDir = config:search_for_application_value(run_dir,
+                                                         ?BEEHIVE_DIR("run")),
       MountDir = filename:join([MountRootDir, Name]),
       MountCmd = proplists:get_value(mount, config_props()),
 
-      % I *think* this should happen here
+      %% I *think* this should happen here
       ?DEBUG_RM(MountDir),
-      BeeObject = from_proplists([{name, Name}, {template, Type}, {bee_file, BeeFile},
-                                  {run_dir, MountDir}, {bundle_dir, filename:dirname(BeeFile)}
-                                ]),
+      AppProplist = apps:to_proplist(App),
+      BeeObject = from_proplists(lists:append(AppProplist,
+                                              [{bee_file, BeeFile},
+                                               {run_dir, MountDir},
+                                               {bundle_dir, filename:dirname(BeeFile)}]
+                                )),
 
       run_hook_action(pre, BeeObject, From),
       Str = template_command_string(MountCmd, to_proplist(BeeObject)),
@@ -227,7 +230,7 @@ start(App, Port, From) ->
       BeeObject = FoundBeeObject#bee_object{port = Port, run_dir = BeeDir},
       {ok, PidFilename, PidIo} = temp_file(),
       file:close(PidIo),
-      % BeeObject = from_proplists([{name, Name}, {template, Type}, {bee_file, BeeFile}, {run_dir, BeeDir}, {port, Port}]),
+
       CmdProcessPid = spawn(fun() ->
         {ok, ScriptFilename, ScriptIo} = temp_file(),
         file:write(ScriptIo, StartScript),
@@ -238,7 +241,7 @@ start(App, Port, From) ->
                           BeeDir,
                           [{pidfile, PidFilename}|to_proplist(BeeObject)],
                           From),
-          % Because we are spawning off into a new process, we also want to make sure we can connect to the 
+          % Because we are spawning off into a new process, we also want to make sure we can connect to the
           % newly spawned bee. Here we'll spawn off a connector process
           BuiltBee = bees:from_bee_object(BeeObject, App),
           Bee = BuiltBee#bee{host = bh_host:myip()},
@@ -276,7 +279,7 @@ start(App, Port, From) ->
             #bee_object{os_pid = OsPid} = RBeeObject when is_record(RBeeObject, bee_object) ->
               ?LOG(debug, "successfully started and taking over ~p", [Name]),
               takeover_process_by_monitor(Name, Pid, OsPid, BeeDir, RBeeObject, From);
-            false -> 
+            false ->
               erlang:display({dont,continue,Continue}),
               Self ! {stopped, {error, "Timeout in starting"}},
               stopped
@@ -510,7 +513,7 @@ ensure_repos_exists(#bee_object{bundle_dir = BundleDir} = BeeObject, From) ->
   end.
 
 % Checkout the repos using the config method
-clone_repos(#bee_object{bundle_dir = BundleDir, repo_type = VcsType} = BeeObject, From)   -> 
+clone_repos(#bee_object{bundle_dir = BundleDir, repo_type = VcsType} = BeeObject, From)   ->
     case proplists:get_value(clone, config_props(VcsType)) of
     undefined -> throw({error, action_not_defined, clone});
     FoundAction ->
@@ -592,7 +595,7 @@ cmd(Cmd, Args, Cd, Envs, From) ->
 
 receive_response(Cmd, Args, _Cd, _Envs, _From) ->
   receive
-    {'DOWN', Ref, process, Pid, {Tag, Data}} -> 
+    {'DOWN', Ref, process, Pid, {Tag, Data}} ->
       ?LOG(debug, "Got 'DOWN' status for cmd: ~p ~p: ~p", [Cmd, Args, Data]),
       Data;
     {'DOWN', Ref, process, Pid, Reason} -> exit(Reason);
@@ -712,9 +715,9 @@ to_proplist([branch|Rest], #bee_object{branch = V} = Bo, Acc) ->
   to_proplist(Rest, Bo, [{branch, V}|Acc]);
 to_proplist([revision|Rest], #bee_object{revision = V} = Bo, Acc) ->
   to_proplist(Rest, Bo, [{revision, V}|Acc]);
-to_proplist([repo_type|Rest], #bee_object{repo_type = V} = Bo, Acc) -> 
+to_proplist([repo_type|Rest], #bee_object{repo_type = V} = Bo, Acc) ->
   to_proplist(Rest, Bo, [{repo_type, V}|Acc]);
-to_proplist([repo_url|Rest], #bee_object{repo_url = V} = Bo, Acc) -> 
+to_proplist([repo_url|Rest], #bee_object{repo_url = V} = Bo, Acc) ->
   to_proplist(Rest, Bo, [{repo_url, V}|Acc]);
 to_proplist([template|Rest], #bee_object{template = V} = Bo, Acc) ->
   to_proplist(Rest, Bo, [{template, V}|Acc]);
