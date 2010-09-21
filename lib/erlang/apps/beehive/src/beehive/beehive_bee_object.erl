@@ -138,7 +138,7 @@ bundle(#bee_object{template=Type, bundle_dir=NBundleDir} = BeeObject, From) when
             _BeforeActionOut ->
               SquashCmd = proplists:get_value(bundle, config_props()),
               Proplist = to_proplist(BeeObject),
-              Str = template_command_string(SquashCmd, Proplist),
+              Str = render_command_string(SquashCmd, Proplist),
 
               ?LOG(debug, "Bundling calling: ~p", [Str]),
               cmd(Str, NBundleDir, Proplist, From),
@@ -203,7 +203,7 @@ mount(App, From) ->
                                 )),
 
       run_hook_action(pre, BeeObject, From),
-      Str = template_command_string(MountCmd, to_proplist(BeeObject)),
+      Str = render_command_string(MountCmd, to_proplist(BeeObject)),
       ?DEBUG_PRINT({mount,run_dir,MountDir,Str}),
       ok = ensure_directory_exists(filename:join([MountDir, "dummy_dir"])),
       case run_command_in_directory(Str, MountDir, From, BeeObject) of
@@ -345,7 +345,7 @@ unmount(Type, Name, Caller) ->
                             ]),
 
   run_hook_action(pre, BeeObject, Caller),
-  Str = template_command_string(UnMountCmd, to_proplist(BeeObject)),
+  Str = render_command_string(UnMountCmd, to_proplist(BeeObject)),
   ?DEBUG_PRINT({run_dir, MountDir, Str}),
   ok = ensure_directory_exists(filename:join([MountDir, "dummy_dir"])),
   case run_in_directory_with_file(BeeObject, Caller, MountDir, BeforeUnMountScript) of
@@ -518,7 +518,7 @@ clone_repos(#bee_object{bundle_dir = BundleDir, repo_type = RepoType} = BeeObjec
   case proplists:get_value(clone, config_props(RepoType)) of
     undefined -> throw({error, action_not_defined, clone});
     FoundAction ->
-      Str = template_command_string(FoundAction, to_proplist(BeeObject)),
+      Str = render_command_string(FoundAction, to_proplist(BeeObject)),
       ?LOG(debug, "clone in directory: ~p: ~p", [Str, FoundAction]),
       run_command_in_directory(Str, filename:dirname(BundleDir), From, BeeObject)
   end.
@@ -553,7 +553,7 @@ run_action_in_directory(Action, #bee_object{repo_type = RepoType, bundle_dir = B
   case proplists:get_value(Action, config_props(RepoType)) of
     undefined -> throw({error, action_not_defined, Action});
     FoundAction ->
-      Str = template_command_string(FoundAction, to_proplist(BeeObject)),
+      Str = render_command_string(FoundAction, to_proplist(BeeObject)),
       ?LOG(debug, "run_action_in_directory: ~p ~p: ~p", [Action, Str, FoundAction]),
       run_command_in_directory(Str, BundleDir, From, BeeObject)
   end.
@@ -674,8 +674,11 @@ config_props() ->
   {ok, C} = file:consult(filename:join([Dir, "etc", "beehive_bee_object_config.conf"])),
   C.
 
-% String things
-template_command_string(Str, Props) when is_list(Props) ->
+%% Render strings from templates currently defined
+%% in etc/beehive_bee_object_config.
+%%
+%% Props => Should be a proplist generated from beehive_bee_object:to_proplist
+render_command_string(Str, Props) when is_list(Props) ->
   mustache:render(Str, dict:from_list(Props)).
 chop(ListofStrings) -> string:strip(ListofStrings, right, $\n).
 
