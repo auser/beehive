@@ -12,7 +12,7 @@
   % Actions
   clone/1,clone/2,
   bundle/1,bundle/2,
-  mount/2, mount/3,
+  mount/1, mount/2,
   start/2, start/3,
   stop/1, stop/2,
   unmount/2, unmount/3,
@@ -179,8 +179,10 @@ write_info_about_bee(#bee_object{
   dict:to_list(NewDict).
 
 % Mount the bee
-mount(Type, Name) -> mount(Type, Name, undefined).
-mount(Type, Name, From) ->
+mount(App) -> mount(App, undefined).
+mount(App, From) ->
+  Type = App#app.template,
+  Name = App#app.name,
   case beehive_bee_object_config:get_or_default(mount, Type) of
     {error, _} = T ->
       send_to(From, T),
@@ -218,7 +220,7 @@ start(App, Port, From) ->
   case beehive_bee_object_config:get_or_default(start, Type) of
     {error, _} = T -> throw(T);
     StartScript ->
-      mount(Type, Name),
+      mount(App),
       BeeDir = find_mounted_bee(Name),
       FoundBeeObject = find_bee(App),
       Self = self(),

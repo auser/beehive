@@ -176,7 +176,8 @@ ls_bee() ->
 mount_t() ->
   beehive_bee_object:bundle([{type, rack}|git_repos_props()]),
   BeeDir = filename:join([related_dir(), "run"]),
-  beehive_bee_object:mount(rack, "beehive_bee_object_test_app"),
+  beehive_bee_object:mount(#app{template = rack,
+                                name= "beehive_bee_object_test_app"}),
   ?assert(filelib:is_dir(BeeDir)),
   ?DEBUG_PRINT({mount_t, passed}),
   passed.
