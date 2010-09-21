@@ -705,40 +705,62 @@ from_proplists([{Other,V}|Rest], BeeObject) ->
   from_proplists(Rest, BeeObject#bee_object{env = [{Other,V}|CurrentEnv]}).
 
 to_proplist(BeeObject) ->
-  lists:filter(fun({_K,V}) -> V =/= undefined end, to_proplist(record_info(fields, bee_object), BeeObject, [])).
+  lists:filter(fun({_K,V}) ->
+                   V =/= undefined end,
+               to_proplist(record_info(fields, bee_object), BeeObject, [])).
 to_proplist([], _BeeObject, Acc) -> Acc;
-to_proplist([name|Rest], #bee_object{name = Name} = Bo, Acc) -> to_proplist(Rest, Bo, [{name, Name}|Acc]);
-to_proplist([branch|Rest], #bee_object{branch = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{branch, V}|Acc]);
-to_proplist([revision|Rest], #bee_object{revision = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{revision, V}|Acc]);
-to_proplist([repo_type|Rest], #bee_object{repo_type = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{repo_type, V}|Acc]);
-to_proplist([repo_url|Rest], #bee_object{repo_url = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{repo_url, V}|Acc]);
-to_proplist([template|Rest], #bee_object{template = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{template, V}|Acc]);
-to_proplist([run_dir|Rest], #bee_object{run_dir = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{run_dir, V}|Acc]);
-to_proplist([bundle_dir|Rest], #bee_object{bundle_dir = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{bundle_dir, V}|Acc]);
-to_proplist([bee_size|Rest], #bee_object{bee_size = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{bee_size, V}|Acc]);
-to_proplist([bee_file|Rest], #bee_object{bee_file = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{bee_file, V}|Acc]);
-to_proplist([port|Rest], #bee_object{port = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{port, V}|Acc]);
-to_proplist([pre|Rest], #bee_object{pre = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{pre, V}|Acc]);
-to_proplist([post|Rest], #bee_object{post = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{post, V}|Acc]);
-to_proplist([os_pid|Rest], #bee_object{os_pid = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{os_pid, V}|Acc]);
-to_proplist([pid|Rest], #bee_object{pid = V} = Bo, Acc) -> to_proplist(Rest, Bo, [{pid, V}|Acc]);
+to_proplist([name|Rest], #bee_object{name = Name} = Bo, Acc) ->
+  to_proplist(Rest, Bo, [{name, Name}|Acc]);
+to_proplist([branch|Rest], #bee_object{branch = V} = Bo, Acc) ->
+  to_proplist(Rest, Bo, [{branch, V}|Acc]);
+to_proplist([revision|Rest], #bee_object{revision = V} = Bo, Acc) ->
+  to_proplist(Rest, Bo, [{revision, V}|Acc]);
+to_proplist([repo_type|Rest], #bee_object{repo_type = V} = Bo, Acc) -> 
+  to_proplist(Rest, Bo, [{repo_type, V}|Acc]);
+to_proplist([repo_url|Rest], #bee_object{repo_url = V} = Bo, Acc) -> 
+  to_proplist(Rest, Bo, [{repo_url, V}|Acc]);
+to_proplist([template|Rest], #bee_object{template = V} = Bo, Acc) ->
+  to_proplist(Rest, Bo, [{template, V}|Acc]);
+to_proplist([run_dir|Rest], #bee_object{run_dir = V} = Bo, Acc) ->
+  to_proplist(Rest, Bo, [{run_dir, V}|Acc]);
+to_proplist([bundle_dir|Rest], #bee_object{bundle_dir = V} = Bo, Acc) ->
+  to_proplist(Rest, Bo, [{bundle_dir, V}|Acc]);
+to_proplist([bee_size|Rest], #bee_object{bee_size = V} = Bo, Acc) ->
+  to_proplist(Rest, Bo, [{bee_size, V}|Acc]);
+to_proplist([bee_file|Rest], #bee_object{bee_file = V} = Bo, Acc) ->
+  to_proplist(Rest, Bo, [{bee_file, V}|Acc]);
+to_proplist([port|Rest], #bee_object{port = V} = Bo, Acc) ->
+  to_proplist(Rest, Bo, [{port, V}|Acc]);
+to_proplist([pre|Rest], #bee_object{pre = V} = Bo, Acc) ->
+  to_proplist(Rest, Bo, [{pre, V}|Acc]);
+to_proplist([post|Rest], #bee_object{post = V} = Bo, Acc) ->
+  to_proplist(Rest, Bo, [{post, V}|Acc]);
+to_proplist([os_pid|Rest], #bee_object{os_pid = V} = Bo, Acc) ->
+  to_proplist(Rest, Bo, [{os_pid, V}|Acc]);
+to_proplist([pid|Rest], #bee_object{pid = V} = Bo, Acc) ->
+  to_proplist(Rest, Bo, [{pid, V}|Acc]);
 to_proplist([deploy_env|Rest], #bee_object{deploy_env = V} = Bo, Acc) ->
   to_proplist(Rest, Bo, [{deploy_env, V}|Acc]);
-to_proplist([env|Rest], #bee_object{env = V} = Bo, Acc) -> to_proplist(Rest, Bo, lists:flatten([V|Acc]));
+to_proplist([env|Rest], #bee_object{env = V} = Bo, Acc) ->
+  to_proplist(Rest, Bo, lists:flatten([V|Acc]));
 to_proplist([_H|Rest], BeeObject, Acc) -> to_proplist(Rest, BeeObject, Acc).
 
 validate_bee_object(BeeObject) when is_record(BeeObject, bee_object) ->
   validate_bee_object(record_info(fields, bee_object), BeeObject).
-validate_bee_object([name|_Rest], #bee_object{name = undefined} = _BeeObject) -> throw({error, no_name_given});
-validate_bee_object([bundle_dir|Rest], #bee_object{bundle_dir = undefined, name = Name} = BeeObject) ->
+validate_bee_object([name|_Rest], #bee_object{name = undefined} = _BeeObject) ->
+ throw({error, no_name_given});
+validate_bee_object([bundle_dir|Rest],
+                    #bee_object{bundle_dir = undefined, name = Name} = BeeObject) ->
   RootDir = config:search_for_application_value(squashed_dir, ?BEEHIVE_DIR("squashed")),
   RealBundleDir = filename:join([RootDir, Name]),
   validate_bee_object(Rest, BeeObject#bee_object{bundle_dir = RealBundleDir});
-validate_bee_object([run_dir|Rest], #bee_object{run_dir = undefined} = BeeObject) ->
+validate_bee_object([run_dir|Rest],
+                    #bee_object{run_dir = undefined} = BeeObject) ->
   RunDir = config:search_for_application_value(run_dir, ?BEEHIVE_DIR("run")),
   validate_bee_object(Rest, BeeObject#bee_object{run_dir = RunDir});
 % Validate branch
-validate_bee_object([branch|Rest], #bee_object{branch = undefined} = BeeObject) ->
+validate_bee_object([branch|Rest],
+                    #bee_object{branch = undefined} = BeeObject) ->
   validate_bee_object(Rest, BeeObject#bee_object{branch = "master"});
 % Validate the bee_file
 validate_bee_object([bee_file|Rest], #bee_object{bee_file=undefined} = BeeObject) ->
@@ -781,9 +803,9 @@ valid_env_prop(_, undefined) -> false;
 valid_env_prop(_, _) -> true.
 
 to_list(undefined) -> "";
-to_list(Int) when is_integer(Int) -> erlang:integer_to_list(Int);
-to_list(Atom) when is_atom(Atom) -> erlang:atom_to_list(Atom);
-to_list(List) when is_list(List) -> List.
+to_list(Int)  when is_integer(Int) -> erlang:integer_to_list(Int);
+to_list(Atom) when is_atom(Atom)   -> erlang:atom_to_list(Atom);
+to_list(List) when is_list(List)   -> List.
 
 find_bee_file(Name) ->
   BundleDir = config:search_for_application_value(squashed_dir, ?BEEHIVE_DIR("squashed")),
