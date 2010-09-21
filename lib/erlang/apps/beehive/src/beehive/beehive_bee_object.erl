@@ -236,11 +236,6 @@ start(App, Port, From) ->
                           BeeDir,
                           [{pidfile, PidFilename}|to_proplist(BeeObject)],
                           From),
-          % First, let's try to infer what app the user means by looking up the application
-          App = case apps:find_by_name(Name) of
-            {error, not_found} -> #app{template = Type, name = Name};
-            RealApp -> RealApp
-          end,
           % Because we are spawning off into a new process, we also want to make sure we can connect to the 
           % newly spawned bee. Here we'll spawn off a connector process
           BuiltBee = bees:from_bee_object(BeeObject, App),

@@ -186,7 +186,7 @@ start_t() ->
   Port = 9192,
   beehive_bee_object:bundle([{type, rack}|git_repos_props()]),
   Pid = spawn(fun() -> responding_loop([]) end),
-  {started, BeeObject} = beehive_bee_object:start(rack, "beehive_bee_object_test_app", Port, Pid),
+  {started, BeeObject} = beehive_bee_object:start(#app{template=rack, name="beehive_bee_object_test_app"}, Port, Pid),
   timer:sleep(600),
   case catch gen_tcp:connect(Host, Port, [binary]) of
     {ok, Sock} -> 
@@ -214,7 +214,7 @@ stop_t() ->
   NewProps = [{name, Name},{repo_url, ReposUrl},{repo_type, git},{type, rack},{fixture_dir, fixture_dir()}],
   Pid = spawn(fun() -> responding_loop([]) end),
   beehive_bee_object:bundle(NewProps, Pid),
-  {started, BeeObject} = beehive_bee_object:start(rack, Name, Port, Pid),
+  {started, BeeObject} = beehive_bee_object:start(#app{template=rack,name= Name}, Port, Pid),
   timer:sleep(100),
   Q = beehive_bee_object:stop(Name, Pid),
   ?DEBUG_PRINT({beehive_bee_object,stop,Q,BeeObject#bee_object.pid,Name,Pid}),
