@@ -815,13 +815,8 @@ find_bee_file(Name) ->
     true -> BeeFile
   end.
 
-find_bee(App) when is_record(App, app) ->
-  case info(App) of
-    {error, Reason} -> {error, {not_found, Reason}};
-    List -> from_proplists(List)
-  end;
-find_bee(Name) ->
-  case info(Name) of
+find_bee(BeeRef) ->
+  case info(BeeRef) of
     {error, Reason} -> {error, {not_found, Reason}};
     List -> from_proplists(List)
   end.
