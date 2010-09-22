@@ -6,6 +6,7 @@
 -author("David M. Guttman <davidmguttman@gmail.com>").
 
 -behaviour(gen_server).
+-include ("common.hrl").
 -include ("http.hrl").
 
 %% API
@@ -62,7 +63,7 @@ start_link() ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
-  Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
+  Dir = ?BH_ROOT,
   Docroot = filename:join([Dir, "priv", "www"]),
   Port = config:search_for_application_value(dashboard_port, 4998),
 	

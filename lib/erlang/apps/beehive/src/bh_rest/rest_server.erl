@@ -53,7 +53,7 @@ init([]) ->
   
   printer:banner(Settings),
   
-  Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
+  Dir = ?BH_ROOT,
   Docroot = filename:join([Dir, "priv", "www"]),
   
   WebServer = case WebServerName of
