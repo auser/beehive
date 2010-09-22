@@ -21,10 +21,7 @@ clean:
 rel: all
 	@(cp -Rf ./etc ./rel/files/etc)
 	@(make rel_erlang)
-	# @(mkdir -p ./rel/beehive/etc)
-	# @(cp -Rf etc/* ./rel/beehive/etc)
-	# @(cp -Rf bin/* ./rel/beehive/bin)
-	# @(chmod u+x ./rel/beehive/bin/*)
+	@(chmod u+x ./rel/beehive/bin/*)
 
 rel_erlang:
 	@./rebar generate force=1
