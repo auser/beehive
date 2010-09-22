@@ -21,7 +21,9 @@ clean:
 rel: all
 	@(cp -Rf etc/app_templates rel/overlay/etc)
 	@(make rel_erlang)
-	@(chmod u+x ./rel/beehive/bin/beehive)
+	@(cp -Rf bin/* ./rel/beehive/bin)
+	@(chmod u+x ./rel/beehive/bin/start_beehive)
+	@(chmod u+x ./rel/beehive/bin/stop_beehive)
 
 rel_erlang:
 	@./rebar generate force=1
