@@ -20,6 +20,7 @@ clean:
 
 rel: all
 	@(cp -Rf etc/app_templates rel/overlay/etc)
+	@(cp -f etc/beehive_bee_object_config.conf rel/overlay/etc)
 	@(make rel_erlang)
 	@(cp -Rf bin/* ./rel/beehive/bin)
 	@(chmod u+x ./rel/beehive/bin/start_beehive)
