@@ -19,17 +19,19 @@ clean:
 	@./rebar clean
 
 rel: all
-	@(cp -Rf etc/app_templates rel/overlay/etc)
-	@(cp -f etc/beehive_bee_object_config.conf rel/overlay/etc)
+	@(cp -Rf ./etc ./rel/files/etc)
 	@(make rel_erlang)
-	@(cp -Rf bin/* ./rel/beehive/bin)
-	@(chmod u+x ./rel/beehive/bin/start_beehive)
-	@(chmod u+x ./rel/beehive/bin/stop_beehive)
-	@(mkdir -p ./builds)
-	@(tar -C rel -c beehive | gzip > ./builds/${PACKAGE_NAME}-${PACKAGE_VERSION}.tar.gz)
+	# @(mkdir -p ./rel/beehive/etc)
+	# @(cp -Rf etc/* ./rel/beehive/etc)
+	# @(cp -Rf bin/* ./rel/beehive/bin)
+	# @(chmod u+x ./rel/beehive/bin/*)
 
 rel_erlang:
 	@./rebar generate force=1
+
+package:
+	@(mkdir -p ./builds)
+	@(tar -C rel -c beehive | gzip > ./builds/${PACKAGE_NAME}-${PACKAGE_VERSION}.tar.gz)
 
 test: deps compile
 	@./test/bootstrap.sh
