@@ -235,7 +235,7 @@ start(App, Port, From) ->
         {ok, ScriptFilename, ScriptIo} = temp_file(),
         file:write(ScriptIo, StartScript),
         try
-          {Pid, Ref, Tag} =
+          {Pid, _Ref, _Tag} =
             async_command("/bin/sh",
                           [ScriptFilename],
                           BeeDir,
@@ -582,15 +582,15 @@ cmd(Str, Cd, Envs, From) ->
 
 cmd(Cmd, Args, Cd, Envs, From) ->
   ?LOG(debug, "cmd called with: ~p, ~p, ~p, ~p", [Cmd, Args, Cd, From]),
-  {Pid, Ref, Tag} = async_command(Cmd, Args, Cd, Envs, From),
+  {_Pid, _Ref, _Tag} = async_command(Cmd, Args, Cd, Envs, From),
   receive_response(Cmd, Args, Cd, Envs, From).
 
 receive_response(Cmd, Args, _Cd, _Envs, _From) ->
   receive
-    {'DOWN', Ref, process, Pid, {Tag, Data}} ->
+    {'DOWN', _Ref, process, _Pid, {_Tag, Data}} ->
       ?LOG(debug, "Got 'DOWN' status for cmd: ~p ~p: ~p", [Cmd, Args, Data]),
       Data;
-    {'DOWN', Ref, process, Pid, Reason} -> exit(Reason);
+    {'DOWN', _Ref, process, _Pid, Reason} -> exit(Reason);
     {ok, Data} ->
       ?LOG(info, "~p ~p logged data: ~p", [Cmd, Args, Data]),
       receive_response(Cmd, Args, _Cd, _Envs, _From)
@@ -911,8 +911,8 @@ log_bee_event(Data) ->
 takeover_process_by_monitor(Name, Pid, OsPid, BeeDir, RBeeObject, From) ->
   cmd_receive(Pid, [], From, fun(Msg) ->
     case Msg of
-      {'DOWN', Ref, process, Pid, {Tag, Data}} -> Data;
-      {'DOWN', Ref, process, Pid, Reason} ->
+      {'DOWN', _Ref, process, Pid, {_Tag, Data}} -> Data;
+      {'DOWN', _Ref, process, Pid, Reason} ->
         send_to(From, {stopped, {Name, Reason}});
       {stop, Caller} ->
         ?LOG(debug, "~p was asked to stop by ~p - ~p", [RBeeObject#bee_object.port, Name, Caller, OsPid]),
