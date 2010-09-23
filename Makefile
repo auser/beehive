@@ -1,4 +1,4 @@
-PACKAGE_NAME = babysitter
+PACKAGE_NAME = beehive
 PACKAGE_VERSION = 0.1
 
 .PHONY: deps compile rel test
@@ -19,12 +19,16 @@ clean:
 	@./rebar clean
 
 rel: all
-	@(cp -Rf etc/app_templates rel/overlay/etc)
+	@(cp -Rf ./etc ./rel/files/etc)
 	@(make rel_erlang)
-	@(chmod u+x ./rel/beehive/bin/beehive)
+	@(chmod u+x ./rel/beehive/bin/*)
 
 rel_erlang:
 	@./rebar generate force=1
+
+package:
+	@(mkdir -p ./builds)
+	@(tar -C rel -c beehive | gzip > ./builds/${PACKAGE_NAME}-${PACKAGE_VERSION}.tar.gz)
 
 test: deps compile
 	@./test/bootstrap.sh

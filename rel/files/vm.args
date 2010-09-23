@@ -1,6 +1,6 @@
 
 ## Name of the node
--sname beehive
+-name beehive@127.0.0.1
 
 ## Cookie for distributed erlang
 -setcookie beehive
@@ -19,4 +19,5 @@
 ## Tweak GC to run more often
 -env ERL_FULLSWEEP_AFTER 10
 
--seed $BEEHIVE_SEED_NODE
+## include more deps
+-pa deps/*/ebin
