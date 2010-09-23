@@ -182,7 +182,7 @@ mount_t() ->
   ?DEBUG_PRINT({mount_t, passed}),
   [{Name, Bob}|_Rest] =
     ets:lookup('beehive_bee_object_info',
-               "beehive_bee_object_test_app"),
+               proplists:get_value(name, Params)),
   ProplistBob = dict:to_list(Bob),
   ?assertEqual("staging", proplists:get_value(deploy_env, ProplistBob)),
   passed.
