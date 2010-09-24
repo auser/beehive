@@ -172,14 +172,14 @@ validate_user_app(Else) -> Else.
 
 validate_user_app([], UserApp) ->  UserApp;
 %% Validate the user_email
-validate_user_app([user_email|Rest], #user_app{user_email = undefined} = _UserApp) -> {error, no_user_email_given};
+validate_user_app([user_email|_Rest], #user_app{user_email = undefined} = _UserApp) -> {error, no_user_email_given};
 validate_user_app([user_email|Rest], #user_app{user_email = Email} = UserApp) ->
   case users:find_by_email(Email) of
     [] -> {error, user_not_found};
     _User -> validate_user_app(Rest, UserApp)
   end;
 %% Validate the app
-validate_user_app([app_name|Rest], #user_app{app_name = undefined} = UserApp) -> 
+validate_user_app([app_name|_Rest], #user_app{app_name = undefined}) -> 
   {error, no_app_name_given};
 validate_user_app([app_name|Rest], #user_app{app_name = AppName} = UserApp) ->
   case apps:find_by_name(AppName) of

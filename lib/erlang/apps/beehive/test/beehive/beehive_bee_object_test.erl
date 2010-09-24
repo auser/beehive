@@ -5,7 +5,7 @@
 -define (DEBUG, false).
 -define (CLEANUP, fun() ->
   case ?DEBUG of
-    false -> 
+    false ->
       lists:map(fun(Dir) -> clean_up_dir(Dir) end, ["squashed", "run"]);
     true -> ok
   end
@@ -22,7 +22,7 @@ setup() ->
   bh_test_util:setup([]),
   beehive_bee_object:init(),
   ok.
-  
+
 teardown(_X) ->
   ?CLEANUP,
   ok.
@@ -58,9 +58,9 @@ git_clone() ->
   % Update the repos
   {{Year, Month, Day}, {Hour, Minute, Second}} = erlang:universaltime(),
   Ts = lists:flatten(io_lib:format("~w~2..0w~2..0w~2..0w~2..0w~2..0w", [Year, Month, Day, Hour, Minute, Second])),
-  
+
   ReposDir = proplists:get_value(repo_url, git_repos_props()),
-  
+
   os:cmd([
     "cd ", ReposDir, " && echo '", Ts, "' > LATEST_REV && git commit -a -m 'updated time for beehive_bee_object_test_app purposes'"
   ]),
@@ -70,7 +70,7 @@ git_clone() ->
   beehive_bee_object:clone([{revision, Rev}|git_repos_props()], Pid),
   timer:sleep(500),
   ?assertEqual(Rev, get_current_revision(git)),
-  
+
   % Do run it with an after command
   beehive_bee_object:clone([{post, "touch NEW_FILE"}|git_repos_props()]),
   timer:sleep(200), % let it work
@@ -135,7 +135,7 @@ bundle_type() ->
   ?assertEqual({error, not_found}, beehive_bee_object:info("no-app-here")),
   ?DEBUG_PRINT({bundle_type, passed}),
   passed.
-  
+
 responding_from() ->
   Pid = spawn(fun() -> responding_loop([]) end),
   beehive_bee_object:bundle([{type, rails}|git_repos_props()], Pid),
@@ -151,16 +151,16 @@ responding_from() ->
 
 ls_bee() ->
   ReposUrl = bh_test_util:dummy_git_repos_url(),
-  
+
   NewProps = [{name, "crazy_name-045"},{repo_url, ReposUrl},{repo_type, git}],
   beehive_bee_object:bundle([{type, python}|NewProps], self()),
-  F = fun(This) ->    
+  F = fun(This) ->
     receive
-      {data, Data} -> 
+      {data, Data} ->
         ?DEBUG_PRINT({got, data, Data}),
         This(This);
       {port_closed, _} -> This(This);
-      {error, Reason} -> 
+      {error, Reason} ->
         erlang:display({error, Reason});
       X ->
         erlang:display({bundling,got,X})
@@ -174,12 +174,17 @@ ls_bee() ->
   passed.
 
 mount_t() ->
-  beehive_bee_object:bundle([{type, rack}|git_repos_props()]),
+  Params = [{type, rack},{deploy_env, "staging"}|git_repos_props()],
+  beehive_bee_object:bundle(Params),
   BeeDir = filename:join([related_dir(), "run"]),
-  beehive_bee_object:mount(#app{template = rack,
-                                name= "beehive_bee_object_test_app"}),
+  beehive_bee_object:mount(apps:new(Params)),
   ?assert(filelib:is_dir(BeeDir)),
   ?DEBUG_PRINT({mount_t, passed}),
+  [{Name, Bob}|_Rest] =
+    ets:lookup('beehive_bee_object_info',
+               proplists:get_value(name, Params)),
+  ProplistBob = dict:to_list(Bob),
+  ?assertEqual("staging", proplists:get_value(deploy_env, ProplistBob)),
   passed.
 
 start_t() ->
@@ -190,11 +195,11 @@ start_t() ->
   {started, BeeObject} = beehive_bee_object:start(#app{template=rack, name="beehive_bee_object_test_app"}, Port, Pid),
   timer:sleep(600),
   case catch gen_tcp:connect(Host, Port, [binary]) of
-    {ok, Sock} -> 
+    {ok, Sock} ->
       gen_tcp:close(Sock),
       beehive_bee_object:stop(BeeObject),
       ?assert(true);
-    {error,econnrefused} -> 
+    {error,econnrefused} ->
       ?assert(false)
   end,
   ?DEBUG_PRINT({start_t, passed}),
@@ -202,7 +207,7 @@ start_t() ->
   %   {ok, _Headers, Body} ->
   %     ?assertEqual("Hello world", Body),
   %     passed;
-  %   _ -> 
+  %   _ ->
   %     ?assertEqual(failed, connect)
   % end,
   passed.
@@ -234,7 +239,7 @@ cleanup_t() ->
   beehive_bee_object:cleanup("beehive_bee_object_test_app"),
   ?assert(filelib:is_file(filename:join([related_dir(), "run", "beehive_bee_object_test_app"])) =:= false),
   passed.
-  
+
 send_t() ->
   beehive_bee_object:bundle([{type, rack}|git_repos_props()]),
   timer:sleep(500),
@@ -289,7 +294,7 @@ get_current_revision(git) ->
 clean_up_dir(Dir) ->
   rm_rf(filename:join([related_dir(),Dir])).
 
-rm_rf(Dir) -> 
+rm_rf(Dir) ->
   bh_file_utils:rm_rf(Dir).
 
 fixture_dir() ->
@@ -299,14 +304,14 @@ fixture_dir() ->
 responding_loop(Acc) ->
   receive
     kill -> ok;
-    {acc, From} -> 
+    {acc, From} ->
       From ! {ok, Acc},
       responding_loop(Acc);
-    {data, Data} -> 
+    {data, Data} ->
       ?DEBUG_PRINT({got,responding_loop,Data}),
       responding_loop([Data|Acc])
   end.
 
-related_dir() -> 
+related_dir() ->
   {ok, Dir} = application:get_env(beehive, beehive_home),
   Dir.

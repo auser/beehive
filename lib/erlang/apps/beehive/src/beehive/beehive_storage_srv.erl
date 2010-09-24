@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% File    : bh_storage_srv.erl
 %%% Author  : Ari Lerner
-%%% Description : 
+%%% Description :
 %%%
 %%% Created :  Thu Dec  3 10:38:18 PST 2009
 %%%-------------------------------------------------------------------
@@ -72,7 +72,7 @@ fetch_or_build_bee(App, Caller) ->
 %%-------------------------------------------------------------------
 %% @spec (Name) ->    true | false
 %% @doc Report if the bee has been bundled on this beehive_storage_srv
-%%      
+%%
 %% @end
 %%-------------------------------------------------------------------
 has_bee_named(Name) -> lists:member(Name, beehive_bee_object:ls()).
@@ -93,9 +93,9 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
   SquashedDir = config:search_for_application_value(squashed_storage, ?BEEHIVE_DIR("squashed")),
-  
+
   bh_file_utils:ensure_dir_exists([SquashedDir]),
-  
+
   {ok, #state{
     squashed_disk = SquashedDir
   }}.
@@ -111,7 +111,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({build_bee, App, Caller}, _From, State) ->
   Resp = case internal_build_bee(App, Caller, State) of
-    {error, {ExitCode, Reasons}} -> 
+    {error, {ExitCode, Reasons}} ->
       Error = #app_error{
         stage = bundle, % erm?
         stdout = lists:reverse(Reasons),
@@ -126,12 +126,12 @@ handle_call({build_bee, App, Caller}, _From, State) ->
       {ok, NewApp, Bee}
   end,
   {reply, Resp, State};
-  
+
 handle_call({fetch_or_build_bee, App, Caller}, _From, State) ->
   Resp = case fetch_bee(App, Caller, State) of
     {error, _} -> internal_build_bee(App, Caller, State);
     T ->
-	?LOG(debug, "fetch_bee(~p, ~p) returned ~p", [App, Caller, T]), 
+	?LOG(debug, "fetch_bee(~p, ~p) returned ~p", [App, Caller, T]),
 	T
   end,
   {reply, Resp, State};
@@ -186,7 +186,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 %%--------------------------------------------------------------------
-%% Function: handle_join(JoiningPid, Pidlist, State) -> {ok, State} 
+%% Function: handle_join(JoiningPid, Pidlist, State) -> {ok, State}
 %%     JoiningPid = pid(),
 %%     Pidlist = list() of pids()
 %% Description: Called whenever a node joins the cluster via this node
@@ -198,7 +198,7 @@ handle_join(_JoiningPid, State) ->
   {noreply, State}.
 
 %%--------------------------------------------------------------------
-%% Function: handle_leave(LeavingPid, Pidlist, Info, State) -> {ok, State} 
+%% Function: handle_leave(LeavingPid, Pidlist, Info, State) -> {ok, State}
 %%     JoiningPid = pid(),
 %%     Pidlist = list() of pids()
 %% Description: Called whenever a node joins the cluster via another node and
@@ -216,24 +216,26 @@ handle_vote(_Msg, State) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 fetch_bee(#app{name = Name} = _App, Caller, _State) ->
-  case lists:filter(fun(Pid) -> rpc:call(node(Pid), ?MODULE, has_bee_named, [Name]) end, seed_pids({})) of
-    [] -> 
+  case lists:filter(fun(Pid) ->
+                        rpc:call(node(Pid), ?MODULE, has_bee_named, [Name])
+                    end, seed_pids({})) of
+    [] ->
       ?LOG(debug, "lists:filter on seed_pids([]) [~p] returned []", [seed_pids({})]),
-      {error, does_not_exist};% beehive_bee_object:bundle(apps:to_proplist(App), Caller);
+      {error, does_not_exist};
     [H|_ServerPids] ->
       % For now we won't verify the receipt of the bee
       % we'll assume that it will be sent across the wire for simplicity
       % TODO: Add error checking to fetch_bee
       O = rpc:call(node(H), beehive_bee_object, send_bee_object, [node(Caller), Name, Caller]),
-      ?LOG(debug, "rpc:call(~p, beehive_bee_object, send_bee_object, [~p, ~p, ~p]) returned ~p", [node(H), node(Caller), Name, Caller]),
+      ?LOG(debug, "rpc:call(~p, beehive_bee_object, send_bee_object, [~p, ~p, ~p]) returned ~p", [node(H), node(Caller), Name, Caller, O]),
       O
   end.
-  
+
 %%-------------------------------------------------------------------
 %% @spec (App::app(), State) ->    {ok, Value}
 %% @doc This will call the bundle task on the application template
 %%  and bundle the application into a known file: NAME.bee
-%%      
+%%
 %% @end
 %%-------------------------------------------------------------------
 internal_build_bee(App, Caller, _State) ->
@@ -270,12 +272,12 @@ internal_build_bee(App, Caller, _State) ->
     %   end;
     % {error, _} = T -> T
   end.
-  
+
 handle_repos_lookup(App) ->
   case config:search_for_application_value(git_store, offsite) of
-    offsite -> 
+    offsite ->
       {ok, handle_offsite_repos_lookup(App)};
-    _ -> 
+    _ ->
       io:format("Looking in local repos not yet supported~n"),
       {error, repos_not_found}
   end.
@@ -285,7 +287,7 @@ handle_offsite_repos_lookup(App) when is_record(App, app) ->
   App#app.repo_url;
 handle_offsite_repos_lookup(AppName) ->
   case apps:find_by_name(AppName) of
-    App when is_record(App, app) -> 
+    App when is_record(App, app) ->
       handle_offsite_repos_lookup(App);
     _ -> false
   end.

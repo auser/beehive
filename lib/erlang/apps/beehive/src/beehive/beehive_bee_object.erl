@@ -118,7 +118,9 @@ bundle(Proplists, From) when is_list(Proplists) ->
 
 % Take a url and clone/1 it and then bundle the directory
 % based on the configuration directive
-bundle(#bee_object{template=Type, bundle_dir=NBundleDir} = BeeObject, From) when is_record(BeeObject, bee_object) ->
+bundle(#bee_object{template=Type, bundle_dir=NBundleDir} = BeeObject, From)
+  when is_record(BeeObject, bee_object) ->
+  ?LOG(debug, "Bundling with bee object: ~p", [BeeObject]),
   case clone(BeeObject#bee_object{pre = undefined, post = undefined}, From) of
     {error, {_ExitStatus, _Reason}} = CloneError ->
       % Cleanup and send error
@@ -235,7 +237,7 @@ start(App, Port, From) ->
         {ok, ScriptFilename, ScriptIo} = temp_file(),
         file:write(ScriptIo, StartScript),
         try
-          {Pid, Ref, Tag} =
+          {Pid, _Ref, _Tag} =
             async_command("/bin/sh",
                           [ScriptFilename],
                           BeeDir,
@@ -407,7 +409,16 @@ info(Name) when is_list(Name) ->
     _ ->
       case catch find_bee_file(Name) of
         {error, not_found} -> {error, not_found};
-        T -> write_info_about_bee(#bee_object{bee_file = T, name = Name, repo_type = git})
+        T ->
+          case apps:find_by_name(Name) of
+            App when is_record(App, app)->
+              BeeObject = from_proplists(apps:to_proplist(App)),
+              write_info_about_bee(BeeObject#bee_object{bee_file = T});
+            _ ->
+              write_info_about_bee(#bee_object{bee_file = T,
+                                               name = Name,
+                                               repo_type = git})
+          end
       end
   end;
 info(_Else) ->
@@ -583,15 +594,15 @@ cmd(Str, Cd, Envs, From) ->
 
 cmd(Cmd, Args, Cd, Envs, From) ->
   ?LOG(debug, "cmd called with: ~p, ~p, ~p, ~p", [Cmd, Args, Cd, From]),
-  {Pid, Ref, Tag} = async_command(Cmd, Args, Cd, Envs, From),
+  {_Pid, _Ref, _Tag} = async_command(Cmd, Args, Cd, Envs, From),
   receive_response(Cmd, Args, Cd, Envs, From).
 
 receive_response(Cmd, Args, _Cd, _Envs, _From) ->
   receive
-    {'DOWN', Ref, process, Pid, {Tag, Data}} ->
+    {'DOWN', _Ref, process, _Pid, {_Tag, Data}} ->
       ?LOG(debug, "Got 'DOWN' status for cmd: ~p ~p: ~p", [Cmd, Args, Data]),
       Data;
-    {'DOWN', Ref, process, Pid, Reason} -> exit(Reason);
+    {'DOWN', _Ref, process, _Pid, Reason} -> exit(Reason);
     {ok, Data} ->
       ?LOG(info, "~p ~p logged data: ~p", [Cmd, Args, Data]),
       receive_response(Cmd, Args, _Cd, _Envs, _From)
@@ -814,6 +825,7 @@ find_bee_file(Name) ->
 
 %% A BeeRef can be either an App name or an App record.
 find_bee(BeeRef) ->
+  ?LOG(debug, "calling find_bee with ~p",[BeeRef]),
   case info(BeeRef) of
     {error, Reason} -> {error, {not_found, Reason}};
     List -> from_proplists(List)
@@ -912,8 +924,8 @@ log_bee_event(Data) ->
 takeover_process_by_monitor(Name, Pid, OsPid, BeeDir, RBeeObject, From) ->
   cmd_receive(Pid, [], From, fun(Msg) ->
     case Msg of
-      {'DOWN', Ref, process, Pid, {Tag, Data}} -> Data;
-      {'DOWN', Ref, process, Pid, Reason} ->
+      {'DOWN', _Ref, process, Pid, {_Tag, Data}} -> Data;
+      {'DOWN', _Ref, process, Pid, Reason} ->
         send_to(From, {stopped, {Name, Reason}});
       {stop, Caller} ->
         ?LOG(debug, "~p was asked to stop by ~p - ~p", [RBeeObject#bee_object.port, Name, Caller, OsPid]),
