@@ -225,7 +225,7 @@ fetch_bee(#app{name = Name} = _App, Caller, _State) ->
       % we'll assume that it will be sent across the wire for simplicity
       % TODO: Add error checking to fetch_bee
       O = rpc:call(node(H), beehive_bee_object, send_bee_object, [node(Caller), Name, Caller]),
-      ?LOG(debug, "rpc:call(~p, beehive_bee_object, send_bee_object, [~p, ~p, ~p]) returned ~p", [node(H), node(Caller), Name, Caller]),
+      ?LOG(debug, "rpc:call(~p, beehive_bee_object, send_bee_object, [~p, ~p, ~p]) returned ~p", [node(H), node(Caller), Name, Caller, O]),
       O
   end.
   
