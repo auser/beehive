@@ -118,7 +118,9 @@ bundle(Proplists, From) when is_list(Proplists) ->
 
 % Take a url and clone/1 it and then bundle the directory
 % based on the configuration directive
-bundle(#bee_object{template=Type, bundle_dir=NBundleDir} = BeeObject, From) when is_record(BeeObject, bee_object) ->
+bundle(#bee_object{template=Type, bundle_dir=NBundleDir} = BeeObject, From)
+  when is_record(BeeObject, bee_object) ->
+  ?LOG(debug, "Bundling with bee object: ~p", [BeeObject]),
   case clone(BeeObject#bee_object{pre = undefined, post = undefined}, From) of
     {error, {_ExitStatus, _Reason}} = CloneError ->
       % Cleanup and send error
@@ -406,7 +408,16 @@ info(Name) when is_list(Name) ->
     _ ->
       case catch find_bee_file(Name) of
         {error, not_found} -> {error, not_found};
-        T -> write_info_about_bee(#bee_object{bee_file = T, name = Name, repo_type = git})
+        T ->
+          case apps:find_by_name(Name) of
+            App when is_record(App, app)->
+              BeeObject = from_proplists(apps:to_proplist(App)),
+              write_info_about_bee(BeeObject#bee_object{bee_file = T});
+            _ ->
+              write_info_about_bee(#bee_object{bee_file = T,
+                                               name = Name,
+                                               repo_type = git})
+          end
       end
   end;
 info(_Else) ->
@@ -813,6 +824,7 @@ find_bee_file(Name) ->
 
 %% A BeeRef can be either an App name or an App record.
 find_bee(BeeRef) ->
+  ?LOG(debug, "calling find_bee with ~p",[BeeRef]),
   case info(BeeRef) of
     {error, Reason} -> {error, {not_found, Reason}};
     List -> from_proplists(List)
