@@ -1,10 +1,10 @@
-module Beehive
+module BeehiveClient
   module Command
 
     class Base
 
-      include Beehive::Connection
-      include Beehive::Rest
+      include BeehiveClient::Connection
+      include BeehiveClient::Rest
 
       attr_accessor :args, :host, :user, :keypair, :prefix
 
@@ -18,10 +18,10 @@ module Beehive
       def parse_args(&block)
         options = {}
         opts = OptionParser.new {|opts|
-          opts.on('-v', '--verbose') {|v| Beehive.verbose = true}
-          opts.on('-e', '--very_verbose') {|v| Beehive.very_verbose = true}
-          opts.on('-d', '--debugging') {|v| Beehive.debugging = true}
-          opts.on('-r', '--very_debugging') {|v| Beehive.very_debugging = true}
+          opts.on('-v', '--verbose') {|v| BeehiveClient.verbose = true}
+          opts.on('-e', '--very_verbose') {|v| BeehiveClient.very_verbose = true}
+          opts.on('-d', '--debugging') {|v| BeehiveClient.debugging = true}
+          opts.on('-r', '--very_debugging') {|v| BeehiveClient.very_debugging = true}
 
           opts.on("-o host", "--host host", 'The remote host') {|u| @host = u }
           opts.on("-u user", "--user user", 'Your user') {|u| @user = u }
@@ -37,7 +37,6 @@ module Beehive
 
           block.call(opts) if block
         }.parse! @args
-
         opts
       end
 

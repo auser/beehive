@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+
+require "beehive_client"
+require 'beehive_client/cli'
+
+args = ARGV.dup
+command = args.shift.strip rescue 'help'
+
+BeehiveClient::Cli.run(command, args)

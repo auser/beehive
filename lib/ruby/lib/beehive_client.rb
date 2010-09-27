@@ -1,10 +1,8 @@
-$:.unshift(File.dirname(__FILE__)+"/beehive")
-
 %w(core mixins helpers).each do |ty|
-  Dir[File.dirname(__FILE__)+"/beehive/#{ty}/*"].each {|lib| require lib }
+  Dir[File.dirname(__FILE__)+"/beehive_client/#{ty}/*"].each {|lib| require lib }
 end
 
-module Beehive
+module BeehiveClient
 
   class << self
     attr_accessor :verbose, :very_verbose, :debugging, :very_debugging

@@ -1,4 +1,4 @@
-module Beehive
+module BeehiveClient
   module Command
 
     class Help < Base
@@ -9,7 +9,7 @@ module Beehive
         end.join("\n")
         colored_say o[:msg] if o[:msg]
         colored_say "<line>
-<yellow>Beehive</yellow>
+<yellow>BeehiveClient</yellow>
 <line>
 Commands
 

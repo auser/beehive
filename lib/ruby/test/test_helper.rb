@@ -1,5 +1,5 @@
 require 'test/unit'
-require 'beehive'
+require 'beehive_client'
 
 class Test::Unit::TestCase
   # Helpers

@@ -1,4 +1,4 @@
-module Beehive
+module BeehiveClient
   module Command
 
     class Apps < Base
@@ -11,7 +11,6 @@ module Beehive
 
       def run
         parse_args
-
         pp apps_list
       end
 

@@ -4,7 +4,7 @@ require "yaml"
 require "json/pure"
 require "pp"
 
-module Beehive
+module BeehiveClient
   module Rest
 
      # REST Methods
