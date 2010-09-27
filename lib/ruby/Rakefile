@@ -52,24 +52,3 @@ rescue LoadError
     abort "RCov is not available. In order to run rcov, you must: sudo gem install spicycode-rcov"
   end
 end
-
-namespace :erl do
-  desc "Build erlang"
-  task :build do
-    puts `cd lib/erlang && make`
-  end
-  task :run => [:build] do
-    Kernel.system "cd lib/erlang/scripts && ./start_router.sh"
-  end
-end
-
-namespace :deploy do
-  desc "Clean erlang"
-  task :clean do
-    Kernel.system "cd lib/erlang && make clean"
-  end
-  desc "Package erlang for deployment"
-  task :pkg => :clean do
-    Kernel.system "tar -cvzf pkg/router.tgz lib/erlang"
-  end
-end
