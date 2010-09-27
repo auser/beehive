@@ -11,15 +11,15 @@ class Object
     puts "[VERY DEBUG] -- #{m.is_a?(String) ? m : m.inspect}" if very_debugging?
   end
   def verbose?
-    Beehive.verbose ||= false
+    BeehiveClient.verbose ||= false
   end
   def very_verbose?
-    (Beehive.very_verbose ||= false)
+    (BeehiveClient.very_verbose ||= false)
   end
   def debugging?
-    (Beehive.debugging ||= false)
+    (BeehiveClient.debugging ||= false)
   end
   def very_debugging?
-    (Beehive.very_debugging ||= false)
+    (BeehiveClient.very_debugging ||= false)
   end
 end

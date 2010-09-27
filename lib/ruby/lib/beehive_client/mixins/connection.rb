@@ -1,6 +1,6 @@
 require "open3"
 
-module Beehive
+module BeehiveClient
   module Connection
 
     attr_reader :host, :user

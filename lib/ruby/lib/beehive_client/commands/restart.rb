@@ -1,4 +1,4 @@
-module Beehive
+module BeehiveClient
   module Command
 
     class Restart < Base
