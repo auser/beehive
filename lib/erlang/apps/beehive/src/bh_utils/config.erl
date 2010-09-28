@@ -35,12 +35,12 @@ search_for_application_value_on_env(Param) ->
   end.
 
 search_for_application_value_from_config(Param) ->
-	case config:get(Param) of
-	  undefined -> false;
-		{error, _} -> false;
-		{ok, undefined} -> false;
-		{ok, V} -> V
-	end.
+  case config:get(Param) of
+    undefined -> false;
+    {error, _} -> false;
+    {ok, undefined} -> false;
+    {ok, V} -> V
+  end.
 
 % BEEHIVE_HOME === config:search_for_application_value(home, "/tmp/beehive"),
 search_for_application_value_from_environment(Param) ->
