@@ -32,4 +32,8 @@ package:
 
 test: deps compile
 	@./test/bootstrap.sh
+    ifdef suite
 	@./rebar skip_deps=true eunit suite=$(suite)
+    else
+	@./rebar skip_deps=true eunit
+    endif
