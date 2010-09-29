@@ -31,13 +31,13 @@ test_parse_route_from_request() ->
 
 
 test_split_off_first_subdir() ->
-  Path = "/rservices/v1/getLocations?g=foo",
+  Path = "/service1/v1/endpoint?q=foo",
   [Subdir| RestOfPath] =
     http_request_decoder:split_off_first_subdirectory(Path),
-  ?assertEqual("rservices", Subdir),
-  ?assertEqual("/v1/getLocations?g=foo", RestOfPath),
-  ShortPath = "/syndication",
-  ["syndication"|RestOfShortPath] =
+  ?assertEqual("service1", Subdir),
+  ?assertEqual("/v1/endpoint?q=foo", RestOfPath),
+  ShortPath = "/service2",
+  ["service2"|RestOfShortPath] =
     http_request_decoder:split_off_first_subdirectory(ShortPath),
   ?assertEqual("/", RestOfShortPath),
   passed.
