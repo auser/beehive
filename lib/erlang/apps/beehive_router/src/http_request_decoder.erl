@@ -1,4 +1,4 @@
- %%%-------------------------------------------------------------------
+%%%-------------------------------------------------------------------
 %%% File    : http_request_decoder.erl
 %%% Author  : Ari Lerner
 %%% Description :
@@ -25,7 +25,6 @@
 % routing key and the full request to the calling process
 handle_request(ClientSock) ->
   Req = beehive_request:new(ClientSock),
-
   RoutingParameter = misc_utils:to_atom(config:search_for_application_value(routing_parameter, 'Host')),
   case RoutingParameter of
     'Host' ->
