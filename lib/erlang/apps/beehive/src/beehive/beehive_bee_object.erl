@@ -243,9 +243,13 @@ start(App, Port, From) ->
                           BeeDir,
                           [{pidfile, PidFilename}|to_proplist(BeeObject)],
                           From,
-                          fun({data, Data}) ->
-                              List = binary_to_list(Data),
-                              log_bee_event(List, App#app.name)
+                          fun(Tuple) ->
+                              case Tuple of
+                                {data, Data} ->
+                                  List = binary_to_list(Data),
+                                  log_bee_event(List, App#app.name);
+                                _Else -> undefined
+                              end
                           end),
           % Because we are spawning off into a new process, we also want to make sure we can connect to the
           % newly spawned bee. Here we'll spawn off a connector process
