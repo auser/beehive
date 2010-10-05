@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% File    : app_controller.erl
 %%% Author  : Ari Lerner
-%%% Description : 
+%%% Description :
 %%%
 %%% Created :  Fri Nov 13 11:43:43 PST 2009
 %%%-------------------------------------------------------------------
@@ -13,6 +13,17 @@
 -export ([get/2, post/2, put/2, delete/2]).
 
 
+%% FIXME: LogFile gets built in beehive_bee_object too
+get([Name, "bee_logs"], _Data) ->
+  LogFile = filename:join([?BEEHIVE_HOME, "logs/bee_events", Name]),
+  case(filelib:is_file(LogFile)) of
+    true ->
+      case(file:read_file(LogFile)) of
+        {ok, Data} -> Data;
+        {error, _Err} -> {error, unreadable_log_file}
+      end;
+    false -> {error, file_not_found}
+  end;
 get([Name], _Data) ->
   case apps:find_by_name(Name) of
     not_found -> {error, "App not found"};
@@ -20,7 +31,7 @@ get([Name], _Data) ->
       AppDetails = compile_app_details(App),
       {"application", AppDetails}
   end;
-get(_, _Data) -> 
+get(_, _Data) ->
   All = apps:all(),
   {"apps", lists:map(fun(A) ->
       compile_app_details(A)
@@ -32,14 +43,14 @@ post([], Data) ->
     {error, _,_} = Error -> Error;
     ReqUser ->
       case app_manager:add_application(Data, ReqUser) of
-        {ok, App} when is_record(App, app) -> 
+        {ok, App} when is_record(App, app) ->
           {ok, created};
           % case rebuild_bee(App) of
           %   ok -> {app, misc_utils:to_bin(App#app.name)};
           %   _ -> {error, "there was an error"}
           % end;
         {error, app_exists} -> {error, "App exists already"};
-        E -> 
+        E ->
           ?LOG(error, "Unknown error adding app: ~p", [E]),
           {error, "Unknown error adding app. The error has been logged"}
       end
@@ -58,7 +69,7 @@ post([Name, "deploy"], _Data) ->
     {ok, _} -> {app, <<"updated">>};
     Error -> {app, Error}
   end;
-    
+
 post([Name, "expand"], _Data) ->
   case apps:expand_by_name(Name) of
     {ok, _} -> {"app", <<"Expanding...">>};
@@ -72,7 +83,7 @@ put([Name], Data) ->
     {error, _, _} = Error -> Error;
     _ReqUser ->
       case app_manager:update_application(Name, Data) of
-        {ok, App} when is_record(App, app) -> 
+        {ok, App} when is_record(App, app) ->
           % rebuild_bee(App),
           {updated, App#app.name};
         _ -> {error, "There was an error adding bee"}
@@ -93,11 +104,11 @@ delete(_Path, _Data) -> "unhandled".
 
 % Internal
 compile_app_details(App) ->
-  [ 
-    {"name", App#app.name}, 
-    {"repo_url", App#app.repo_url}, 
-    {"routing_param", App#app.routing_param}, 
-    {"owners", lists:map(fun(Owner) -> Owner#user.email end, user_apps:get_owners(App))}, 
+  [
+    {"name", App#app.name},
+    {"repo_url", App#app.repo_url},
+    {"routing_param", App#app.routing_param},
+    {"owners", lists:map(fun(Owner) -> Owner#user.email end, user_apps:get_owners(App))},
     {"updated_at", App#app.updated_at},
     {"branch", App#app.branch},
     {"deploy_env", App#app.deploy_env},
