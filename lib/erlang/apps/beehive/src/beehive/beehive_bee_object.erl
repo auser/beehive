@@ -242,7 +242,11 @@ start(App, Port, From) ->
                           [ScriptFilename],
                           BeeDir,
                           [{pidfile, PidFilename}|to_proplist(BeeObject)],
-                          From),
+                          From,
+                          fun({data, Data}) ->
+                              List = binary_to_list(Data),
+                              log_bee_event(List, App#app.name)
+                          end),
           % Because we are spawning off into a new process, we also want to make sure we can connect to the
           % newly spawned bee. Here we'll spawn off a connector process
           BuiltBee = bees:from_bee_object(BeeObject, App),
@@ -594,7 +598,7 @@ cmd(Str, Cd, Envs, From) ->
 
 cmd(Cmd, Args, Cd, Envs, From) ->
   ?LOG(debug, "cmd called with: ~p, ~p, ~p, ~p", [Cmd, Args, Cd, From]),
-  {_Pid, _Ref, _Tag} = async_command(Cmd, Args, Cd, Envs, From),
+  {_Pid, _Ref, _Tag} = async_command(Cmd, Args, Cd, Envs, From, undefined),
   receive_response(Cmd, Args, Cd, Envs, From).
 
 receive_response(Cmd, Args, _Cd, _Envs, _From) ->
@@ -608,28 +612,27 @@ receive_response(Cmd, Args, _Cd, _Envs, _From) ->
       receive_response(Cmd, Args, _Cd, _Envs, _From)
   end.
 
-async_command(Cmd, Args, Cd, Envs, From) ->
+async_command(Cmd, Args, Cd, Envs, From, Fun) ->
   Tag = make_ref(),
   {Pid, Ref} = erlang:spawn_monitor(fun() ->
-    Rv = cmd_sync(Cmd, Args, Cd, build_envs(Envs), From),
+    Rv = cmd_sync(Cmd, Args, Cd, build_envs(Envs), From, Fun),
     exit({Tag, Rv})
   end),
   {Pid, Ref, Tag}.
 
-cmd_sync(Cmd, Args, Cd, Envs, From) ->
+cmd_sync(Cmd, Args, Cd, Envs, From, Fun) ->
   StdOpts = [binary, stderr_to_stdout, use_stdio, exit_status, stream, eof, {args, Args}, {env, Envs}],
   Opts = case Cd of
     undefined -> StdOpts;
     _ -> [{cd, Cd}|StdOpts]
   end,
   P = open_port({spawn_executable, os:find_executable(Cmd)},Opts),
-  cmd_receive(P, [], From, undefined).
+  cmd_receive(P, [], From, Fun).
 
 cmd_receive(Port, Acc, From, Fun) ->
   receive
     {Port, {data, Data}}      ->
       List = binary_to_list(Data),
-      log_bee_event(List),
       send_to(From, {data, List}),
       run_function(Fun, {data, Data}),
       cmd_receive(Port, [List|Acc], From, Fun);
@@ -917,8 +920,9 @@ run_kill_on_pid(_OsPid, BeeDir, RealBeeObject) ->
   %     ok
   % end.
 
-log_bee_event(Data) ->
-  LogFile = filename:join(?BEEHIVE_HOME, "logs/bee_events.log"),
+log_bee_event(Data, Name) ->
+  LogFile = filename:join([?BEEHIVE_HOME, "logs/bee_events", Name]),
+  ensure_directory_exists(LogFile),
   file:write_file(LogFile, Data, [append]).
 
 takeover_process_by_monitor(Name, Pid, OsPid, BeeDir, RBeeObject, From) ->
