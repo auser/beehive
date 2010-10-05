@@ -13,9 +13,8 @@
 -export ([get/2, post/2, put/2, delete/2]).
 
 
-%% FIXME: LogFile gets built in beehive_bee_object too
 get([Name, "bee_logs"], _Data) ->
-  LogFile = filename:join([?BEEHIVE_HOME, "logs/bee_events", Name]),
+  LogFile = beehive_bee_object:bee_log_file(Name),
   case(filelib:is_file(LogFile)) of
     true ->
       case(file:read_file(LogFile)) of

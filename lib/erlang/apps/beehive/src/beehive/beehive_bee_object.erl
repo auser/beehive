@@ -19,7 +19,8 @@
   have_bee/1,
   info/1,
   cleanup/1, cleanup/2,
-  ls/1, ls/0
+  ls/1, ls/0,
+  bee_log_file/1
 ]).
 
 % Transportation
@@ -925,9 +926,12 @@ run_kill_on_pid(_OsPid, BeeDir, RealBeeObject) ->
   % end.
 
 log_bee_event(Data, Name) ->
-  LogFile = filename:join([?BEEHIVE_HOME, "logs/bee_events", Name]),
+  LogFile = bee_log_file(Name),
   ensure_directory_exists(LogFile),
   file:write_file(LogFile, Data, [append]).
+
+bee_log_file(Name) ->
+  filename:join([?BEEHIVE_HOME, "logs/bee_events", Name]).
 
 takeover_process_by_monitor(Name, Pid, OsPid, BeeDir, RBeeObject, From) ->
   cmd_receive(Pid, [], From, fun(Msg) ->
