@@ -1,2 +1,6 @@
 %h3
   Log
+%h4 Bee Event Logs by app
+%ul
+  :each app in apps
+    %li= link_to(app.name, "#/log/" + app.name)

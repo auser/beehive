@@ -77,7 +77,7 @@ get_bee_logs() ->
     bh_test_util:fetch_url(get,
                            [{path, "/apps/app/bee_logs.json"}]),
   ?assertEqual("HTTP/1.0 200 OK", Header),
-  ?assertMatch("Some log data",
+  ?assertMatch([{"bee_log", "Some log data"}],
                bh_test_util:response_json(Response)),
   passed.
 

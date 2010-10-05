@@ -18,7 +18,7 @@ get([Name, "bee_logs"], _Data) ->
   case(filelib:is_file(LogFile)) of
     true ->
       case(file:read_file(LogFile)) of
-        {ok, Data} -> Data;
+        {ok, Data} -> {bee_log, Data};
         {error, _Err} -> {error, unreadable_log_file}
       end;
     false -> {error, file_not_found}
