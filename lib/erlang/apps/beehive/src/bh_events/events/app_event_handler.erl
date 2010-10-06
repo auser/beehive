@@ -63,10 +63,10 @@ handle_event({app, updated_revision, App}, State) ->
 
 % THIS NEEDS TO BE FEDERATED...
 handle_event({app, request_to_start_new_bee, App}, State) when is_record(App, app) ->
-  app_manager:request_to_start_new_bee_by_app(App),
+  app_manager:request_to_start_new_bee_by_app(App, self()),
   {ok, State};
 handle_event({app, request_to_start_new_bee, Hostname}, State) ->
-  app_manager:request_to_start_new_bee_by_name(Hostname),
+  app_manager:request_to_start_new_bee_by_name(Hostname, self()),
   {ok, State};
 
 handle_event(_Event, State) ->
