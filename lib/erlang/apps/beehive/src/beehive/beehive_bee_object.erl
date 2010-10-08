@@ -249,7 +249,7 @@ start(App, Port, From) ->
                                 {data, Data} ->
                                   List = binary_to_list(Data),
                                   log_bee_event(List, App#app.name);
-                                _Else -> undefined
+                                _Else -> ok
                               end
                           end),
           % Because we are spawning off into a new process, we also want to make sure we can connect to the
@@ -579,7 +579,6 @@ run_command_in_directory(Cmd, Dir, From, BeeObject) ->
   cmd(Cmd, Dir, to_proplist(BeeObject), From).
 
 % Run file
-run_in_directory_with_file(_BeeObject, _From, _Dir, undefined) -> ok;
 run_in_directory_with_file(BeeObject, From, Dir, Str) ->
   {ok, Filename, Io} = temp_file(),
   RealStr = case string:str(Str, "#!/bin/") of
