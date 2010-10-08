@@ -136,7 +136,15 @@ bundle(#bee_object{template=Type, bundle_dir=NBundleDir} = BeeObject, From)
         BeforeBundle ->
           % Run the bundle pre config first, then the bundle command
           ?LOG(debug, "Running before bundle script: ~p", [BeforeBundle]),
-          case run_in_directory_with_file(BeeObject, From, NBundleDir, BeforeBundle) of
+          LogFun = fun(Tuple) ->
+                       case Tuple of
+                         {data, Data} ->
+                           List = binary_to_list(Data),
+                           log_bee_event(List, BeeObject#bee_object.name);
+                         _Else -> ok
+                       end
+                   end,
+          case run_in_directory_with_file(BeeObject, From, NBundleDir, BeforeBundle, LogFun) of
             {error, _} = T2 -> T2;
             _BeforeActionOut ->
               SquashCmd = proplists:get_value(bundle, config_props()),
@@ -144,7 +152,7 @@ bundle(#bee_object{template=Type, bundle_dir=NBundleDir} = BeeObject, From)
               Str = render_command_string(SquashCmd, Proplist),
 
               ?LOG(debug, "Bundling calling: ~p", [Str]),
-              cmd(Str, NBundleDir, Proplist, From),
+              cmd(Str, NBundleDir, Proplist, From, LogFun),
 
               run_hook_action(post, BeeObject, From),
               ?DEBUG_RM(NBundleDir),
@@ -209,7 +217,15 @@ mount(App, From) ->
       Str = render_command_string(MountCmd, to_proplist(BeeObject)),
       ?DEBUG_PRINT({mount,run_dir,MountDir,Str}),
       ok = ensure_directory_exists(filename:join([MountDir, "dummy_dir"])),
-      case run_command_in_directory(Str, MountDir, From, BeeObject) of
+      LogFun = fun(Tuple) ->
+                   case Tuple of
+                     {data, Data} ->
+                       List = binary_to_list(Data),
+                       log_bee_event(List, Name);
+                     _Else -> ok
+                   end
+               end,
+      case run_command_in_directory(Str, MountDir, From, BeeObject, LogFun) of
         {error, _Reason} = T1 -> T1;
         T2 ->
           run_in_directory_with_file(BeeObject, From, MountDir, AfterMountScript),
@@ -571,15 +587,20 @@ run_action_in_directory(Action, #bee_object{repo_type = RepoType, bundle_dir = B
   end.
 
 % Run a command in the directory
+run_command_in_directory(Cmd, Dir, From, BeeObject) -> 
+  run_command_in_directory(Cmd, Dir, From, BeeObject, undefined).
+
 % [] would happen if there is an empty command
-run_command_in_directory([], _Dir, _From, _BeeObject) -> ok;
-run_command_in_directory(Cmd, Dir, From, BeeObject) ->
+run_command_in_directory([], _Dir, _From, _BeeObject, _Fun) -> ok;
+run_command_in_directory(Cmd, Dir, From, BeeObject, Fun) ->
   ?DEBUG_PRINT({run_command_in_directory, Dir, Cmd, From}),
   ensure_directory_exists(filename:join([Dir, "does_not_exist"])),
-  cmd(Cmd, Dir, to_proplist(BeeObject), From).
+  cmd(Cmd, Dir, to_proplist(BeeObject), From, Fun).
 
 % Run file
 run_in_directory_with_file(BeeObject, From, Dir, Str) ->
+  run_in_directory_with_file(BeeObject, From, Dir, Str, undefined).
+run_in_directory_with_file(BeeObject, From, Dir, Str, Fun) ->
   {ok, Filename, Io} = temp_file(),
   RealStr = case string:str(Str, "#!/bin/") of
     0 -> lists:flatten(["#!/bin/sh -e\n", Str]);
@@ -587,7 +608,8 @@ run_in_directory_with_file(BeeObject, From, Dir, Str) ->
   end,
   file:write(Io, RealStr),
   try
-    run_command_in_directory(lists:flatten(["/bin/sh ", Filename]), Dir, From, BeeObject)
+    run_command_in_directory(lists:flatten(["/bin/sh ", Filename]),
+                             Dir, From, BeeObject, Fun)
   after
     file:delete(Filename)
   end.
@@ -601,9 +623,19 @@ cmd(Str, Cd, Envs, From) ->
   end.
 
 cmd(Cmd, Args, Cd, Envs, From) ->
+  case string:words(Cmd) of
+    1 -> cmd(Cmd, Args, Cd, Envs, From, undefined);
+    _ ->
+      [Exec|Rest] = string:tokens(Cmd, " "),
+      cmd(Exec, Rest, Args, Cd, Envs, From)
+  end.
+
+cmd(Cmd, Args, Cd, Envs, From, Fun) ->
   ?LOG(debug, "cmd called with: ~p, ~p, ~p, ~p", [Cmd, Args, Cd, From]),
-  {_Pid, _Ref, _Tag} = async_command(Cmd, Args, Cd, Envs, From, undefined),
+  ?LOG(debug, "envs: ~p", [Envs]),
+  {_Pid, _Ref, _Tag} = async_command(Cmd, Args, Cd, Envs, From, Fun),
   receive_response(Cmd, Args, Cd, Envs, From).
+  
 
 receive_response(Cmd, Args, _Cd, _Envs, _From) ->
   receive
@@ -925,6 +957,7 @@ run_kill_on_pid(_OsPid, BeeDir, RealBeeObject) ->
   % end.
 
 log_bee_event(Data, Name) ->
+  ?LOG(debug, "Logging at ~p", [Name]),
   LogFile = bee_log_file(Name),
   ensure_directory_exists(LogFile),
   file:write_file(LogFile, Data, [append]).

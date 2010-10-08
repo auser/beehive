@@ -88,7 +88,8 @@ start_dummy_app(App, _From) ->
     {bee_started_normally, Bee, _App} ->
       bees:save(Bee),
       {ok, App, Bee};
-    {error, ErrorObj} -> {error, ErrorObj};
+    {error, ErrorObj} -> 
+      {error, ErrorObj};
     X ->
       erlang:display({start_dummy_app, X}),
       X
