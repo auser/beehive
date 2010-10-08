@@ -136,14 +136,8 @@ bundle(#bee_object{template=Type, bundle_dir=NBundleDir} = BeeObject, From)
         BeforeBundle ->
           % Run the bundle pre config first, then the bundle command
           ?LOG(debug, "Running before bundle script: ~p", [BeforeBundle]),
-          LogFun = fun(Tuple) ->
-                       case Tuple of
-                         {data, Data} ->
-                           List = binary_to_list(Data),
-                           log_bee_event(List, BeeObject#bee_object.name);
-                         _Else -> ok
-                       end
-                   end,
+          LogFun =
+            fun(Tuple) -> log_shell_output(Tuple, BeeObject#bee_object.name) end,
           case run_in_directory_with_file(BeeObject, From, NBundleDir, BeforeBundle, LogFun) of
             {error, _} = T2 -> T2;
             _BeforeActionOut ->
@@ -217,14 +211,8 @@ mount(App, From) ->
       Str = render_command_string(MountCmd, to_proplist(BeeObject)),
       ?DEBUG_PRINT({mount,run_dir,MountDir,Str}),
       ok = ensure_directory_exists(filename:join([MountDir, "dummy_dir"])),
-      LogFun = fun(Tuple) ->
-                   case Tuple of
-                     {data, Data} ->
-                       List = binary_to_list(Data),
-                       log_bee_event(List, Name);
-                     _Else -> ok
-                   end
-               end,
+      LogFun =
+        fun(Tuple) -> log_shell_output(Tuple, Name) end,
       case run_command_in_directory(Str, MountDir, From, BeeObject, LogFun) of
         {error, _Reason} = T1 -> T1;
         T2 ->
@@ -260,14 +248,7 @@ start(App, Port, From) ->
                           BeeDir,
                           [{pidfile, PidFilename}|to_proplist(BeeObject)],
                           From,
-                          fun(Tuple) ->
-                              case Tuple of
-                                {data, Data} ->
-                                  List = binary_to_list(Data),
-                                  log_bee_event(List, App#app.name);
-                                _Else -> ok
-                              end
-                          end),
+                          fun(Tuple) -> log_shell_output(Tuple, Name) end),
           % Because we are spawning off into a new process, we also want to make sure we can connect to the
           % newly spawned bee. Here we'll spawn off a connector process
           BuiltBee = bees:from_bee_object(BeeObject, App),
@@ -380,7 +361,7 @@ unmount(Type, Name, Caller) ->
     T2 ->
       run_command_in_directory(Str, MountDir, Caller, BeeObject),
       run_hook_action(post, BeeObject, Caller),
-      
+
       send_to(Caller, {unmounted, BeeObject}),
       T2
   end.
@@ -587,7 +568,7 @@ run_action_in_directory(Action, #bee_object{repo_type = RepoType, bundle_dir = B
   end.
 
 % Run a command in the directory
-run_command_in_directory(Cmd, Dir, From, BeeObject) -> 
+run_command_in_directory(Cmd, Dir, From, BeeObject) ->
   run_command_in_directory(Cmd, Dir, From, BeeObject, undefined).
 
 % [] would happen if there is an empty command
@@ -635,7 +616,7 @@ cmd(Cmd, Args, Cd, Envs, From, Fun) ->
   ?LOG(debug, "envs: ~p", [Envs]),
   {_Pid, _Ref, _Tag} = async_command(Cmd, Args, Cd, Envs, From, Fun),
   receive_response(Cmd, Args, Cd, Envs, From).
-  
+
 
 receive_response(Cmd, Args, _Cd, _Envs, _From) ->
   receive
@@ -955,6 +936,14 @@ run_kill_on_pid(_OsPid, BeeDir, RealBeeObject) ->
   %   after 5000 ->
   %     ok
   % end.
+
+log_shell_output(Tuple, Name) ->
+  case Tuple of
+    {data, Data} ->
+      List = binary_to_list(Data),
+      log_bee_event(List, Name);
+    _Else -> ok
+  end.
 
 log_bee_event(Data, Name) ->
   ?LOG(debug, "Logging at ~p", [Name]),
