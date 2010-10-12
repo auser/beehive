@@ -69,7 +69,7 @@ post([], Data) ->
                                           {user, [{email, User#user.email}]};
                                         E ->
                                           io:format("Error: ~p~n", [E]),
-                                          {error, "There was an error adding bee"}
+                                          {error, "There was an error creating user"}
                                       end
                                   end
                               end
