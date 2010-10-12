@@ -21,6 +21,13 @@ This will start beehive on your local machine with the root /var/lib/beehive. If
 
     export BEEHIVE_HOME=/tmp/beehive
 
+## Running tests ##
+
+     make test
+
+Make sure you have ruby gems rack and thin installed.  Various tests
+depend up them, and tests likely won't complete properly without them.
+
 How it works
 ===
 

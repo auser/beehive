@@ -321,13 +321,13 @@ handle_info({bee_updated_normally, #bee{revision = Sha} = Bee, #app{name = AppNa
     RealBee when is_record(RealBee, bee) -> bees:save(RealBee#bee{lastresp_time = date_util:now_to_seconds()});
     _ -> ok
   end,
-  Caller ! {bee_updated_normally, Bee, App},
+  send_to(Caller, {bee_updated_normally, Bee, App}),
   ok = kill_other_bees(Bee),
   {noreply, State};
 
 handle_info({bee_started_normally, Bee, App, Caller}, State) ->
   ?LOG(debug, "Bee started normally: ~p", [Bee]),
-  Caller ! {bee_started_normally, Bee, App},
+  send_to(Caller, {bee_started_normally, Bee, App}),
   {noreply, State};
 
 % {error, {updating, {error, {babysitter, {app,"fake-lvpae",
@@ -358,10 +358,8 @@ handle_info({app_launcher_fsm, error, {error, broken_start}, Props}, State) ->
   {ok, _NewApp} = apps:save(App#app{latest_error = Error}),
   % run_app_kill_fsm(Bee, self()),
   
-  case proplists:get_value(caller, Props) of
-    undefined -> ok;
-    Pid when is_pid(Pid) -> Pid ! {error, broken_start}
-  end,
+  Pid = proplists:get_value(caller, Props),
+  send_to(Pid, {error, broken_start}),
   
   {noreply, State};
 
@@ -381,7 +379,7 @@ handle_info({app_launcher_fsm, error, {StateName, Code}, Props}, State) ->
   {ok, _NewApp} = apps:save(App#app{latest_error = Error}),
   
   % Send to the caller
-  From ! {error, Error},
+  send_to(From, {error, Error}),
   
   run_app_kill_fsm(Bee, self()),
   {noreply, State};
@@ -468,7 +466,7 @@ spawn_update_bee_status(Bee, From, Nums) ->
       _ -> Bee
     end,
     bees:save(RealBee#bee{status = BeeStatus}),
-    From ! {updated_bee_status, BeeStatus}
+    send_to(From, {updated_bee_status, BeeStatus})
   end).
 
 % Try to connect to the application instance while it's booting up
@@ -731,3 +729,8 @@ run_app_kill_fsm(SentBee, Caller) ->
       end;
     _ -> ok
   end.
+
+%% copy/pasted straight out of beehive_bee_object - find a common home for this
+send_to(undefined, _Msg) -> ok;
+send_to(From, Msg) ->
+  From ! Msg.

@@ -1,6 +1,7 @@
 -module (apps_controller_test).
 -include_lib("eunit/include/eunit.hrl").
 -include ("beehive.hrl").
+-include ("common.hrl").
 
 setup() ->
   bh_test_util:dummy_user(),                    % test@getbeehive.com
@@ -22,6 +23,8 @@ starting_test_() ->
      fun get_index/0,
      fun get_index_with_name/0,
      fun get_index_with_wrong_name/0,
+     fun get_bee_logs/0,
+     fun get_bee_logs_with_wrong_name/0,
      fun post_create_new_app/0,
      fun post_create_new_app_bad_token/0,
      fun post_create_new_app_no_token/0,
@@ -65,6 +68,29 @@ get_index_with_wrong_name() ->
   ?assertMatch([{"error", "App not found"}],
                bh_test_util:response_json(Response)),
   passed.
+
+get_bee_logs() ->
+  LogFile = filename:join([?BEEHIVE_HOME, "logs/bee_events", "app"]),
+  filelib:ensure_dir(LogFile),
+  file:write_file(LogFile, "Some log data"),
+  {ok, Header, Response} =
+    bh_test_util:fetch_url(get,
+                           [{path, "/apps/app/bee_logs.json"}]),
+  ?assertEqual("HTTP/1.0 200 OK", Header),
+  ?assertMatch([{"bee_log", "Some log data"}],
+               bh_test_util:response_json(Response)),
+  passed.
+
+
+get_bee_logs_with_wrong_name() ->
+  {ok, Header, Response} =
+    bh_test_util:fetch_url(get,
+                           [{path, "/apps/unfound_app/bee_logs.json"}]),
+  ?assertEqual("HTTP/1.0 404 Object Not Found", Header),
+  ?assertMatch([{"error", "file_not_found"}],
+               bh_test_util:response_json(Response)),
+  passed.
+
 
 post_create_new_app() ->
   User = bh_test_util:dummy_user(),
