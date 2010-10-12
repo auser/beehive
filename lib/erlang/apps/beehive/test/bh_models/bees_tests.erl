@@ -65,7 +65,8 @@ find_all_grouped_by_host() ->
 
 build_app_env() ->
   beehive_db_srv:delete_all(bee),
-  {ok, App} = apps:create([{name, "test_app"}]),
+  {ok, App} = apps:create([{name, "test_app"},
+                           {repo_url, bh_test_util:dummy_git_repos_url()}]),
   {ok, Bee} = bees:create(#bee{app_name = "test_app", host = "127.0.0.2"}),
   {ok, _App, Env} = bees:build_app_env(Bee, App),
   lists:map(fun({Key, Value}) ->

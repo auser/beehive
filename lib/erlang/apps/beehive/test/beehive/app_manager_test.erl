@@ -29,7 +29,9 @@ instance()->
 add_application() ->
   bh_test_util:delete_all(app),
   User = bh_test_util:dummy_user(),
-  O = app_manager:add_application([{name, "bobby-bobbie-o"}], User),
+  O = app_manager:add_application([{name, "bobby-bobbie-o"},
+                                  {repo_url, bh_test_util:dummy_git_repos_url()}],
+                                   User),
   ?assert(element(1, O) =:= ok),
   passed.
 

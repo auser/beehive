@@ -488,6 +488,9 @@ internal_add_application(ConfigProplist, UserEmail) ->
     {ok, NewApp} when is_record(NewApp, app) ->
       {ok, _UserApp} = user_apps:create(UserEmail, NewApp),
       {ok, NewApp};
+    Err = {error, Details} -> 
+      erlang:display({apps,validation,failed,Details}),
+      Err;
     E ->
       erlang:display({apps,create,failed,E}),
       {error, E}

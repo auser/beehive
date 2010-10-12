@@ -15,6 +15,7 @@ starting_test_() ->
     fun setup/0,
     fun teardown/1,
     [
+      fun test_create/0,
       fun test_save/0,
       fun test_save_app_with_same_name/0,
       fun test_save_app_with_upper_case_name/0,
@@ -24,11 +25,21 @@ starting_test_() ->
     ]
   }.
 
+test_create() ->
+  {ok, App} = apps:create([{name, "created"}, {repo_url, "http://someurl.com"}]),
+  ?assertEqual("created", App#app.name),
+  ?assertEqual("http://someurl.com", App#app.repo_url),
+
+  ?assertEqual({error, {invalid_app,no_repo_url_given}}, 
+               apps:create([{name, "nourl"}])),
+  passed.
+
 test_save() ->
   % Delete all
   Table = app,
   bh_test_util:delete_all(Table),
-  {ok, App1} = apps:save(#app{name="test_app"}),
+  {ok, App1} = apps:save(#app{name="test_app", 
+                              repo_url=bh_test_util:dummy_git_repos_url()}),
   ?assert(App1#app.branch =:= "master"),
   % Hardcode search in ets
   Results1 = lists:map(
@@ -38,7 +49,9 @@ test_save() ->
   [FoundApp1|_Rest] = Results1,
   ?assertEqual(FoundApp1#app.name, App1#app.name),
   % save via proplists
-  Props = [{name, "another_app"}, {min_instances, 1}, {max_instances, 10}],
+  Props = [{name, "another_app"}, 
+           {repo_url, bh_test_util:dummy_git_repos_url()},
+           {min_instances, 1}, {max_instances, 10}],
   App2 = apps:new(Props),
   apps:save(Props),
   % Another hardcoded search in ets

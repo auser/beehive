@@ -49,6 +49,7 @@ post([], Data) ->
           %   _ -> {error, "there was an error"}
           % end;
         {error, app_exists} -> {error, "App exists already"};
+        Err = {error, _} -> Err;
         E ->
           ?LOG(error, "Unknown error adding app: ~p", [E]),
           {error, "Unknown error adding app. The error has been logged"}

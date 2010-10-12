@@ -37,8 +37,11 @@ create(App) ->
   case new(App) of
     NewApp when is_record(NewApp, app) ->
       ValidAppWithName = validate_unique_name(NewApp),
-      NewApp1 = validate_app(ValidAppWithName),
-      save(NewApp1);
+      case validate_app(ValidAppWithName) of
+        {error, ValE} -> {error, ValE};
+        ValidApp      -> save(ValidApp)
+      end;
+    Err = {error, _} -> Err;
     E -> {error, E}
   end.
 
@@ -258,6 +261,8 @@ validate_app([branch|Rest], #app{branch = undefined} = App) ->
 validate_app([branch|Rest], #app{branch = _V} = App) ->
   validate_app(Rest, App);
 %% Validate the repo_url
+validate_app([repo_url|_Rest], #app{repo_url = undefined} = _App) ->
+  {error, {invalid_app, no_repo_url_given}};
 validate_app([repo_url|Rest], #app{repo_url = _Url} = App) ->
   validate_app(Rest, App);
 %% Validate the type, it can only be either static or dynamic

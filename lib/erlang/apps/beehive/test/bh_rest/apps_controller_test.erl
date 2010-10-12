@@ -26,6 +26,7 @@ starting_test_() ->
      fun get_bee_logs/0,
      fun get_bee_logs_with_wrong_name/0,
      fun post_create_new_app/0,
+     fun post_create_new_app_no_repo_url/0,
      fun post_create_new_app_bad_token/0,
      fun post_create_new_app_no_token/0,
      fun put_app/0,
@@ -96,22 +97,36 @@ post_create_new_app() ->
   User = bh_test_util:dummy_user(),
   {ok, Header, Response} =
     perform_post_create([{app_name, "creationtest"},
-                        {token, User#user.token}]),
+                         {repo_url, bh_test_util:dummy_git_repos_url()},
+                         {token, User#user.token}]),
   ?assertEqual("HTTP/1.0 200 OK", Header),
   ?assertMatch([{"ok","created"}],
-                bh_test_util:response_json(Response)),
+               bh_test_util:response_json(Response)),
+  passed.
+
+post_create_new_app_no_repo_url() ->
+  User = bh_test_util:dummy_user(),
+  {ok, Header, Response} =
+    perform_post_create([{app_name, "creationtest"},
+                         {token, User#user.token}]),
+  ?assertEqual("HTTP/1.0 404 Object Not Found", Header),
+
+  ?assertMatch([{"error",[{"invalid_app", "no_repo_url_given"}]}],
+               cbh_test_util:response_json(Response)),
   passed.
 
 post_create_new_app_no_token() ->
   {ok, Header, _Response} =
-    perform_post_create([{app_name, "creationtest"}]),
+    perform_post_create([{app_name, "creationtest"},
+                         {repo_url, bh_test_util:dummy_git_repos_url()}]),
   ?assertEqual("HTTP/1.0 401 Unauthorized", Header),
   passed.
 
 post_create_new_app_bad_token() ->
   {ok, Header, _Response} =
     perform_post_create([{app_name, "creationtest"},
-                        {token, "badtoken"}]),
+                         {repo_url, bh_test_util:dummy_git_repos_url()},
+                         {token, "badtoken"}]),
   ?assertEqual("HTTP/1.0 401 Unauthorized", Header),
   passed.
 
@@ -150,9 +165,9 @@ delete_app() ->
   {ok, Header, Response} =
     bh_test_util:fetch_url(delete,
                            [{path, lists:flatten(["/apps/",
-                                                 App#app.name,
-                                                 ".json?token=",
-                                                 User#user.token])}]),
+                                                  App#app.name,
+                                                  ".json?token=",
+                                                  User#user.token])}]),
   ?assertEqual("HTTP/1.0 200 OK", Header),
   ?assertMatch(not_found, apps:find_by_name(App#app.name)),
   passed.
@@ -163,8 +178,8 @@ delete_app_no_token() ->
   {ok, Header, _Response} =
     bh_test_util:fetch_url(delete,
                            [{path, lists:flatten(["/apps/",
-                                                 App#app.name,
-                                                 ".json?token="])}]),
+                                                  App#app.name,
+                                                  ".json?token="])}]),
   ?assertEqual("HTTP/1.0 401 Unauthorized", Header),
   passed.
 
