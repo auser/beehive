@@ -329,3 +329,10 @@ caption {
   width: 600px;
   font-size: 0.8em;
 }
+
+
+
+#error {
+    color: red;
+    font-weight: bold;
+}
