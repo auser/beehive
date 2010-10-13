@@ -45,6 +45,11 @@ test_name_validation() ->
   {ok, App2} = apps:create([{name, "with_underscore"},
                            {repo_url, "http://someurl.com"}]),
   ?assertEqual("with-underscore", App2#app.name),
+
+  {ok, App3} = apps:create([{name, "with space"},
+                           {repo_url, "http://someurl.com"}]),
+  ?assertEqual("with-space", App3#app.name),
+
   passed.
 
 test_save() ->

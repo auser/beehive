@@ -314,7 +314,7 @@ validate_unique_name(#app{name = Name} = App) ->
               [A,B] -> App#app{name = generate_unique_name(A, 5), branch = B}
             end,
   UniqName = UniqApp#app.name,
-  UniqApp#app{name = re:replace(UniqName, "[\\._]", "-", [{return, list}])}.
+  UniqApp#app{name = re:replace(UniqName, "[\\._ ]", "-", [{return, list}])}.
 
 %%-------------------------------------------------------------------
 %% @spec (Name) ->    {ok, Value}
