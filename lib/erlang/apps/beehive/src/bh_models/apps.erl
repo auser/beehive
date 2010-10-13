@@ -261,10 +261,13 @@ validate_app([branch|Rest], #app{branch = undefined} = App) ->
 validate_app([branch|Rest], #app{branch = _V} = App) ->
   validate_app(Rest, App);
 %% Validate the repo_url
-validate_app([repo_url|_Rest], #app{repo_url = undefined} = _App) ->
-  {error, {invalid_app, no_repo_url_given}};
-validate_app([repo_url|Rest], #app{repo_url = _Url} = App) ->
-  validate_app(Rest, App);
+validate_app([repo_url|Rest], #app{repo_url = Url} = App) ->
+  case Url of
+    undefined -> {error, {invalid_app, no_repo_url_given}};
+    ""        -> {error, {invalid_app, no_repo_url_given}};
+    []        -> {error, {invalid_app, no_repo_url_given}};
+    _ -> validate_app(Rest, App)
+  end;
 %% Validate the type, it can only be either static or dynamic
 validate_app([repo_type|Rest], #app{repo_type = git} = App) ->
   validate_app(Rest, App);

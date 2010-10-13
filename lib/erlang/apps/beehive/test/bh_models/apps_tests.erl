@@ -33,6 +33,8 @@ test_create() ->
 
   ?assertEqual({error, {invalid_app,no_repo_url_given}}, 
                apps:create([{name, "nourl"}])),
+  ?assertEqual({error, {invalid_app,no_repo_url_given}},
+               apps:create([{name, "nourl"}, {repo_url, ""}])),
   passed.
 
 test_name_validation() ->
