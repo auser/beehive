@@ -112,7 +112,7 @@ post_create_new_app_no_repo_url() ->
   ?assertEqual("HTTP/1.0 404 Object Not Found", Header),
 
   ?assertMatch([{"error",[{"invalid_app", "no_repo_url_given"}]}],
-               cbh_test_util:response_json(Response)),
+               bh_test_util:response_json(Response)),
   passed.
 
 post_create_new_app_no_token() ->

@@ -306,10 +306,12 @@ validate_app([_H|Rest], App) -> validate_app(Rest, App).
 validate_unique_name(#app{name = undefined} = App) ->
   App#app{name = generate_unique_name(5)};
 validate_unique_name(#app{name = Name} = App) ->
-  case string:tokens(Name, "/") of
-    [N] -> App#app{name = generate_unique_name(N, 5)};
-    [A,B] -> App#app{name = generate_unique_name(A, 5), branch = B}
-  end.
+  UniqApp = case string:tokens(Name, "/") of
+              [N] -> App#app{name = generate_unique_name(N, 5)};
+              [A,B] -> App#app{name = generate_unique_name(A, 5), branch = B}
+            end,
+  UniqName = UniqApp#app.name,
+  UniqApp#app{name = re:replace(UniqName, "[\\._]", "-", [{return, list}])}.
 
 %%-------------------------------------------------------------------
 %% @spec (Name) ->    {ok, Value}

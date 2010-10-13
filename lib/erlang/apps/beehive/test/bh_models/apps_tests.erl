@@ -16,6 +16,7 @@ starting_test_() ->
     fun teardown/1,
     [
       fun test_create/0,
+      fun test_name_validation/0,
       fun test_save/0,
       fun test_save_app_with_same_name/0,
       fun test_save_app_with_upper_case_name/0,
@@ -34,11 +35,21 @@ test_create() ->
                apps:create([{name, "nourl"}])),
   passed.
 
+test_name_validation() ->
+  {ok, App} = apps:create([{name, "with.dot"},
+                           {repo_url, "http://someurl.com"}]),
+  ?assertEqual("with-dot", App#app.name),
+
+  {ok, App2} = apps:create([{name, "with_underscore"},
+                           {repo_url, "http://someurl.com"}]),
+  ?assertEqual("with-underscore", App2#app.name),
+  passed.
+
 test_save() ->
   % Delete all
   Table = app,
   bh_test_util:delete_all(Table),
-  {ok, App1} = apps:save(#app{name="test_app", 
+  {ok, App1} = apps:save(#app{name="test-app",
                               repo_url=bh_test_util:dummy_git_repos_url()}),
   ?assert(App1#app.branch =:= "master"),
   % Hardcode search in ets
@@ -65,29 +76,29 @@ test_save_app_with_same_name() ->
   % Delete all
   bh_test_util:delete_all(app),
   lists:map(fun(App) -> apps:delete(App) end, apps:all()),
-  {ok, App3} = apps:create(#app{name="test_app", repo_url="http://github.com/auser/test_app1.git"}),
-  {ok, App4} = apps:create(#app{name="test_app", repo_url="http://github.com/auser/test_app2.git"}),
-  ?assert(App3#app.name == "test_app"),
-  ?assert(App4#app.name =/= "test_app"),
+  {ok, App3} = apps:create(#app{name="test-app", repo_url="http://github.com/auser/test-app1.git"}),
+  {ok, App4} = apps:create(#app{name="test-app", repo_url="http://github.com/auser/test-app2.git"}),
+  ?assert(App3#app.name == "test-app"),
+  ?assert(App4#app.name =/= "test-app"),
   passed.
   
 test_save_app_with_upper_case_name() ->
   bh_test_util:delete_all(app),
-  {ok, App} = apps:create(#app{name="TestApp", repo_url="http://github.com/auser/test_app2.git"}),
+  {ok, App} = apps:create(#app{name="TestApp", repo_url="http://github.com/auser/test-app2.git"}),
   ?assertEqual("testapp", App#app.name),
   passed.
 
 test_branch() ->
   lists:map(fun(App) -> apps:delete(App) end, apps:all()),
-  {ok, App1} = apps:create(#app{name="test_app", repo_url="http://github.com/auser/test_app1.git"}),
+  {ok, App1} = apps:create(#app{name="test-app", repo_url="http://github.com/auser/test-app1.git"}),
   ?assert(App1#app.branch == "master"),
-  {ok, App2} = apps:create(#app{name="test_app/other_branch", repo_url="http://github.com/auser/test_app1.git"}),
+  {ok, App2} = apps:create(#app{name="test-app/other_branch", repo_url="http://github.com/auser/test-app1.git"}),
   ?assert(App2#app.branch == "other_branch"),
   passed.
 
 test_delete_app() ->
   lists:map(fun(App) -> apps:delete(App) end, apps:all()),
-  {ok, App1} = apps:save(#app{name = "test_app"}),
+  {ok, App1} = apps:save(#app{name = "test-app"}),
   ?assert(apps:all() == [App1]),
   apps:delete(App1),
   ?assert(apps:all() == []),
@@ -95,8 +106,8 @@ test_delete_app() ->
 
 test_read_app() ->
   bh_test_util:delete_all(app),
-  {ok, App1} = apps:save(#app{name = "test_app"}),
-  FoundApp1 = apps:find_by_name("test_app"),
+  {ok, App1} = apps:save(#app{name = "test-app"}),
+  FoundApp1 = apps:find_by_name("test-app"),
   ?assertEqual(App1#app.name, FoundApp1#app.name),
   passed.
 
