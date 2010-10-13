@@ -12,13 +12,19 @@ var apps_controller = function(app) {
   this.get('#/apps/new', function(context) {
     app_types = ["rack", "rails", "other"];
     vcs_types = ["git"];
+    this.error = false;
   });
 
   this.post('#/apps/create', function(context) {
     var new_app = this.params;
     new_app.token = Sammy.current_user["token"];
     this.post_page("/apps.json", new_app, context, "response");
-    this.redirect('#/apps');
+      if(context['error']) {
+          this.error = true;
+          this.template = "apps/new";
+      } else {
+          this.redirect('#/apps');
+      }
   });
 
   this.get('#/apps/delete/:name', function(context) {

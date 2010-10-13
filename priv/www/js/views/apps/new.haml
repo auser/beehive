@@ -1,6 +1,9 @@
 %h3
   New App
 
+:if error
+  #error Failed to create app.  Name and repo url are required.
+
 #new_app
   %form{ action: "#/apps/create", method: "post" }
     
@@ -8,7 +11,7 @@
     %input{ type: "text", name: "name" }    
     %br
     
-    %label App URL:
+    %label App Repo URL:
     %input{ type: "text", name: "repo_url" }
     %br
     
