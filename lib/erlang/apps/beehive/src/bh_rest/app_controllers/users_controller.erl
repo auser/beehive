@@ -39,7 +39,7 @@ get(_, _Data) ->
 post([Name, "keys", "new"], Data) ->
   auth_utils:run_if_admin(fun(_) ->
                               case proplists:get_value(key, Data) of
-                                undefined -> error("No key defined");
+                                undefined -> app_error("No key defined");
                                 Key ->
                                   case users:find_by_email(Name) of
                                     User when is_record(User, user) ->
@@ -47,10 +47,10 @@ post([Name, "keys", "new"], Data) ->
                                         User when is_record(User, user) ->
                                           [{"user", User#user.email}, {"key", "added key"}];
                                         _Else ->
-                                          error("There was an error adding bee")
+                                          app_error("There was an error adding bee")
                                       end;
                                     _E ->
-                                      error("Error finding user")
+                                      app_error("Error finding user")
                                   end
                               end
                           end, Data);
@@ -78,7 +78,7 @@ post([], Data) ->
 
 post(Path, _Data) ->
   io:format("Path: ~p~n", [Path]),
-  error("unhandled").
+  app_error("unhandled").
 put(_Path, _Data) -> "unhandled".
 
 delete([], Data) ->
@@ -92,5 +92,5 @@ delete([], Data) ->
                           end, Data);
 delete(_Path, _Data) -> "unhandled".
 
-error(Msg) ->
+app_error(Msg) ->
   {struct, [{error, misc_utils:to_bin(Msg)}]}.

@@ -11,6 +11,8 @@
 -module (beehive_control).
 -include ("beehive.hrl").
 
+-compile({no_auto_import,[error/1, error/2]}).
+
 % Command-line interface
 -export ([
   get_config_option/1

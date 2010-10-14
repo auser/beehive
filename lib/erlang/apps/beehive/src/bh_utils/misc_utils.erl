@@ -2,6 +2,8 @@
 -include ("common.hrl").
 -compile (export_all).
 
+-compile({no_auto_import, [max/2]}).
+
 -define (ADJECTIVES, [
   "fast", "quick", "clean", "positive", "generous", "silly", "enjoyable", "friendly", "flighty", "handsome", "hot", "adorable", "cool", "cold", "odd"
 ]).

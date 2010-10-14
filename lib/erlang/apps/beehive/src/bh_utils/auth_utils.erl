@@ -9,6 +9,7 @@
 -module (auth_utils).
 -include ("beehive.hrl").
 -compile(export_all).
+-compile({no_auto_import,[error/1]}).
 
 % Only run if there is a user associated with given token
 get_authorized_user(Data) ->

@@ -15,9 +15,9 @@
 get(_, _Data) -> 
   {events, dashboard_event_handler:get_latest_events()}.
 
-post(_Path, _Data) -> error("unhandled").
-put(_Path, _Data) -> error("unhandled").
-delete(_Path, _Data) -> error("unhandled").
+post(_Path, _Data) -> app_error("unhandled").
+put(_Path, _Data) -> app_error("unhandled").
+delete(_Path, _Data) -> app_error("unhandled").
 
-error(Msg) ->
+app_error(Msg) ->
   {error, misc_utils:to_bin(Msg)}.

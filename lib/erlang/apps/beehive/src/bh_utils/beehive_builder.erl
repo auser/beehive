@@ -2,6 +2,8 @@
 -include ("beehive.hrl").
 -include ("common.hrl").
 
+-compile({no_auto_import,[error/1, error/2]}).
+
 -record (params, {
   command   = undefined,
   app_file,
