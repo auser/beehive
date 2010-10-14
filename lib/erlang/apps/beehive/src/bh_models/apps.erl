@@ -264,7 +264,6 @@ validate_app([branch|Rest], #app{branch = _V} = App) ->
 validate_app([repo_url|Rest], #app{repo_url = Url} = App) ->
   case Url of
     undefined -> {error, {invalid_app, no_repo_url_given}};
-    ""        -> {error, {invalid_app, no_repo_url_given}};
     []        -> {error, {invalid_app, no_repo_url_given}};
     _ -> validate_app(Rest, App)
   end;

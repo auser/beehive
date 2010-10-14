@@ -595,14 +595,9 @@ run_in_directory_with_file(BeeObject, From, Dir, Str, Fun) ->
     file:delete(Filename)
   end.
 
-% Synchronus command
-cmd(Str, Cd, Envs, From) ->
-  [Exec|Rest] = string:tokens(Str, " "),
-  case catch cmd(Exec, Rest, Cd, Envs, From) of
-    {'EXIT', T} -> {error, T};
-    E -> E
-  end.
-
+%% Synchronus command
+%% Case statement happens because sometimes we don't receive Cmd and Args,
+%% but Cmd and Args rolled into one list in the first argument.
 cmd(Cmd, Args, Cd, Envs, From) ->
   case string:words(Cmd) of
     1 -> cmd(Cmd, Args, Cd, Envs, From, undefined);
