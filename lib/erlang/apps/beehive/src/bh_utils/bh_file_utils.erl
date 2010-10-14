@@ -35,7 +35,7 @@ relative_or_abs_path(List) ->
       end
   end.
 
-% Find a file either absolute or relative
+%% Find a file either absolute or relative
 abs_or_relative_filepath(P) ->
   case filelib:is_file(P) of
     true -> P;
@@ -46,7 +46,7 @@ abs_or_relative_filepath(P) ->
       end
   end.
 
-% Get the relative path joined with the filename
+%% Get the relative path joined with the filename
 relative_path(P) ->
   filename:join([filename:absname(""), P]).
 
@@ -62,8 +62,7 @@ is_symlink(Path) ->
   end.
 
 file_type(Path) ->
-  IsRegular = filelib:is_regular(Path),
-  case IsRegular of
+  case filelib:is_regular(Path) of
     true -> file;
     false ->
       case is_symlink(Path) of
@@ -87,12 +86,12 @@ walk(Path, Level, Fun) ->
       Fun({directory, Level, Path})
   end.
 
-% DELETE ALL
+%% DELETE ALL
 rm_rf(Dir) ->
-  bh_file_utils:walk(Dir, 0, fun({Type, _Level, Path}) ->
-                                 case Type of
-                                   directory -> file:del_dir(Path);
-                                   _ -> file:delete(Path)
-                                 end
-                             end),
+  walk(Dir, 0, fun({Type, _Level, Path}) ->
+                   case Type of
+                     directory -> file:del_dir(Path);
+                     _ -> file:delete(Path)
+                   end
+               end),
   file:del_dir(Dir).
