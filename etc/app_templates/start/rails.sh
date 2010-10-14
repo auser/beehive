@@ -8,9 +8,12 @@ export PATH=$RUN_DIR/.beehive_gem_home/bin:$PATH
 
 echo $$ > $PIDFILE
 
-if [ -f start.sh ]; then
-  echo "Using start.sh file"
-  exec /bin/sh start.sh
+if [ -f beehive_start.sh ]; then
+  echo "Using beehive_start.sh file"
+  exec /bin/sh beehive_start.sh
+elif [ -f beehive/start.sh ]; then
+  echo "Using beehive/start.sh file"
+  exec /bin/sh beehive/start.sh
 else
   echo "./script/server -p $PORT -e $RAILS_ENV"
   exec ./script/server -p $PORT -e $RAILS_ENV
