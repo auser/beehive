@@ -14,7 +14,6 @@ starting_test_() ->
       fun teardown/1,
       [
         fun test_generate_unique_name/0,
-        fun chop/0,
         fun propmerge/0,
         fun update_proplist/0
       ]
@@ -25,15 +24,6 @@ test_generate_unique_name() ->
   A = misc_utils:generate_unique_name("butter", 2),
   ?assert(string:left(A, 6) == "butter"),
   ?assert(erlang:length(A) =/= 6),
-  passed.
-
-chop() ->
-  ?assertEqual([{hi, "guys"}], misc_utils:chop(["hi guys"])),
-  ?assertEqual([{hi, ""}], misc_utils:chop(["hi"])),
-  ?assertEqual([{hello, "world"}, {how, "areyou"}], misc_utils:chop(["hello world\n how areyou"])),
-  ?assertEqual([{newlines, "are"}, {only, "friendly"}], misc_utils:chop(["newlines are  \n  only friendly"])),
-  ?assertEqual([{path, "/Users/arilerner/Sites/get\ beehive.com"}], misc_utils:chop(["path /Users/arilerner/Sites/get beehive.com"])),
-  ?assertEqual([{omg, "what the eff"}, {call, "ghostbusters"}], misc_utils:chop(["omg what the eff\ncall ghostbusters"])),
   passed.
 
 propmerge() ->

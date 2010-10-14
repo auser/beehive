@@ -33,19 +33,6 @@ random_word(List) ->
   lists:nth(random:uniform(erlang:length(List)), List).
 
 
-%% Take a list of strings, separated by newlines and 
-%% divy them up such that the first 
-chop(ListofStrings) ->
-  Tokens = string:tokens(string:join(ListofStrings, "\n"), "\n"),
-  lists:flatten(lists:map(fun(List) ->
-    [D|Rest] = string:tokens(List, " "),
-    Val = case Rest of
-      [] -> "";
-      _ -> string:join(Rest, " ")
-    end,
-    {erlang:list_to_atom(D), Val}
-  end, Tokens)).
-  
 %% clean up the tempfile, if necessary
 cleanup_tempfile(Tempfile) ->
   case filelib:is_file(Tempfile) of
