@@ -1,4 +1,4 @@
-beehive gem
+beehive-client gem
 ===
 
 A ruby command line client library for beehive.
