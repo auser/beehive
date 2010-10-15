@@ -261,7 +261,6 @@ start(App, Port, From) ->
             {updated_bee_status, ready} ->
               OPid = case read_pid_file_or_retry(PidFilename, 500) of
                 {error, _} ->
-                  timer:sleep(100),
                   read_pid_file_or_retry(PidFilename, 500),
                   true;
                 PidInt -> PidInt
