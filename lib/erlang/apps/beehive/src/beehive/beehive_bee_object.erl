@@ -703,21 +703,36 @@ chop(ListofStrings) -> string:strip(ListofStrings, right, $\n).
 from_proplists(Propslist) ->
   from_proplists(Propslist, #bee_object{deploy_env = "production"}).
 from_proplists([], BeeObject) -> validate_bee_object(BeeObject);
-from_proplists([{name, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{name = V});
-from_proplists([{branch, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{branch = V});
-from_proplists([{revision, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{revision = V});
-from_proplists([{repo_type, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{repo_type = V});
-from_proplists([{repo_url, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{repo_url = V});
-from_proplists([{template, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{template = V});
-from_proplists([{run_dir, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{run_dir = V});
-from_proplists([{bundle_dir, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{bundle_dir = V});
-from_proplists([{bee_size, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{bee_size = V});
-from_proplists([{bee_file, V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{bee_file = V});
-from_proplists([{port,V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{port = V});
-from_proplists([{pre,V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{pre = V});
-from_proplists([{post,V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{post = V});
-from_proplists([{os_pid,V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{os_pid = V});
-from_proplists([{pid,V}|Rest], BeeObject) -> from_proplists(Rest, BeeObject#bee_object{pid = V});
+from_proplists([{name, V}|Rest], BeeObject) ->
+  from_proplists(Rest, BeeObject#bee_object{name = V});
+from_proplists([{branch, V}|Rest], BeeObject) ->
+  from_proplists(Rest, BeeObject#bee_object{branch = V});
+from_proplists([{revision, V}|Rest], BeeObject) ->
+  from_proplists(Rest, BeeObject#bee_object{revision = V});
+from_proplists([{repo_type, V}|Rest], BeeObject) ->
+  from_proplists(Rest, BeeObject#bee_object{repo_type = V});
+from_proplists([{repo_url, V}|Rest], BeeObject) ->
+  from_proplists(Rest, BeeObject#bee_object{repo_url = V});
+from_proplists([{template, V}|Rest], BeeObject) ->
+  from_proplists(Rest, BeeObject#bee_object{template = V});
+from_proplists([{run_dir, V}|Rest], BeeObject) ->
+  from_proplists(Rest, BeeObject#bee_object{run_dir = V});
+from_proplists([{bundle_dir, V}|Rest], BeeObject) ->
+  from_proplists(Rest, BeeObject#bee_object{bundle_dir = V});
+from_proplists([{bee_size, V}|Rest], BeeObject) ->
+  from_proplists(Rest, BeeObject#bee_object{bee_size = V});
+from_proplists([{bee_file, V}|Rest], BeeObject) ->
+  from_proplists(Rest, BeeObject#bee_object{bee_file = V});
+from_proplists([{port,V}|Rest], BeeObject) ->
+  from_proplists(Rest, BeeObject#bee_object{port = V});
+from_proplists([{pre,V}|Rest], BeeObject) ->
+  from_proplists(Rest, BeeObject#bee_object{pre = V});
+from_proplists([{post,V}|Rest], BeeObject) ->
+  from_proplists(Rest, BeeObject#bee_object{post = V});
+from_proplists([{os_pid,V}|Rest], BeeObject) ->
+  from_proplists(Rest, BeeObject#bee_object{os_pid = V});
+from_proplists([{pid,V}|Rest], BeeObject) ->
+  from_proplists(Rest, BeeObject#bee_object{pid = V});
 from_proplists([{deploy_env, V}|Rest], BeeObject) ->
   from_proplists(Rest, BeeObject#bee_object{deploy_env = V});
 from_proplists([{Other,V}|Rest], BeeObject) ->
@@ -883,7 +898,7 @@ ets_process_restarter() ->
   receive
     {'EXIT', Pid, normal} -> % not a crash
       ok;
-    {'EXIT', Pid, shutdown} -> % manual termination, not a crash
+    {'EXIT', Pid, shutdown} -> % manual nation, not a crash
       ok;
     {'EXIT', Pid, _} ->
       unregister(?BEEHIVE_BEE_OBJECT_INFO_TABLE_PROCESS),

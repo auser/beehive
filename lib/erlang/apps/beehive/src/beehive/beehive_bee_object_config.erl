@@ -19,24 +19,25 @@
 %%-------------------------------------------------------------------
 %% @spec () ->    {ok, Value}
 %% @doc Init the config
-%%      
+%%
 %% @end
 %%-------------------------------------------------------------------
 init() ->
   case catch ets:info(?BEEHIVE_BEE_OBJECT_CONFIG_DB) of
-    undefined -> ets:new(?BEEHIVE_BEE_OBJECT_CONFIG_DB, [set, named_table, public]);
+    undefined -> ets:new(?BEEHIVE_BEE_OBJECT_CONFIG_DB,
+                         [set, named_table, public]);
     _ -> ok
   end.
 
 %%-------------------------------------------------------------------
 %% @spec (Dir::list()) -> {ok, FileNames}
-%% @doc Take a directory of files and read and parse them into the 
+%% @doc Take a directory of files and read and parse them into the
 %%      ets database.
 %% @end
 %%-------------------------------------------------------------------
 read(Dir) ->
   init(),
-  lists:foreach(fun(F) -> 
+  lists:foreach(fun(F) ->
     case filelib:is_dir(F) of
       true -> read_dir(F);
       false -> ok
@@ -58,7 +59,7 @@ get_or_default(Type, Key) ->
 %%                                              | {error, no_action}
 %%                                              | {error, not_found}
 %% @doc Fetch a configuration value from the ets table
-%%      
+%%
 %% @end
 %%-------------------------------------------------------------------
 get(Type, Key) ->
@@ -70,21 +71,21 @@ get(Type, Key) ->
         false -> {error, not_found}
       end
   end.
-  
+
 %%-------------------------------------------------------------------
 %% @spec () ->    List::list()
 %% @doc List all the config
-%%      
+%%
 %% @end
 %%-------------------------------------------------------------------
 list_configs() ->
   List = ets:tab2list(?BEEHIVE_BEE_OBJECT_CONFIG_DB),
   lists:map(fun({Name, _Config}) -> Name end, List).
-  
+
 %%-------------------------------------------------------------------
 %% @spec (Type) ->    List::list()
-%% @doc 
-%%      
+%% @doc
+%%
 %% @end
 %%-------------------------------------------------------------------
 list_actions(Type) ->
@@ -96,7 +97,7 @@ list_actions(Type) ->
 %%-------------------------------------------------------------------
 %% @spec (State::string()) ->    {ok, Value}
 %% @doc Get the raw stored dict
-%%      
+%%
 %% @end
 %%-------------------------------------------------------------------
 get_raw_config(Type) ->
@@ -108,7 +109,7 @@ get_raw_config(Type) ->
 %%-------------------------------------------------------------------
 %% @spec (Dir::list()) -> {ok, Files::list()}
 %% @doc Read a directory and parse the the conf files
-%%      
+%%
 %% @end
 %%-------------------------------------------------------------------
 read_dir(Dir) ->
@@ -117,28 +118,32 @@ read_dir(Dir) ->
     [{Dirname, Dict}] -> Dict;
     _E -> dict:new()
   end,
-  Files = lists:filter(fun(F) -> filelib:is_file(F) end, filelib:wildcard(lists:flatten([Dir, "/*", ?CONF_EXTENSION]))),
+  Files = lists:filter(fun(F) -> filelib:is_file(F) end,
+                       filelib:wildcard(
+                         lists:flatten([Dir, "/*", ?CONF_EXTENSION]))),
   {ok, NewDict} = read_files(FoundDict, Files),
   ets:insert(?BEEHIVE_BEE_OBJECT_CONFIG_DB, [{Dirname, NewDict}]).
 
 %%-------------------------------------------------------------------
 %% @spec (Files::list(), Acc::list()) -> {ok, Files}
 %% @doc Take a list of files and parse them into the config db
-%%      
+%%
 %% @end
 %%-------------------------------------------------------------------
 read_files(Dict, []) -> {ok, Dict};
 read_files(Dict, [File|Rest]) ->
   {Filename, Config} = read_config_file(File),
   init(),
-  Type = erlang:list_to_atom(string:sub_string(Filename, 1, length(Filename) - length(filename:extension(Filename)))),
+  Type = list_to_atom(
+           string:sub_string(Filename, 1,
+                             length(Filename) - length(filename:extension(Filename)))),
   read_files(dict:store(Type, Config, Dict), Rest).
 
 %%-------------------------------------------------------------------
 %% @spec (Filepath::string()) ->    ok
 %%                                | {error, Reason}
 %% @doc Parse the file at Filepath
-%%      
+%%
 %% @end
 %%-------------------------------------------------------------------
 read_config_file(Filepath) ->
@@ -146,6 +151,6 @@ read_config_file(Filepath) ->
     false -> {error, {unknown_type, Filepath}};
     true ->
       {ok, Binary} = file:read_file(Filepath),
-      Lines = string:tokens(erlang:binary_to_list(Binary), "\n"),
+      Lines = string:tokens(binary_to_list(Binary), "\n"),
       {filename:basename(Filepath), string:join(Lines, "\n")}
   end.
