@@ -3,7 +3,6 @@ module BeehiveClient
 
     class Base
 
-      include BeehiveClient::Connection
       include BeehiveClient::Rest
 
       attr_accessor :args, :host, :user, :keypair, :prefix
@@ -18,11 +17,6 @@ module BeehiveClient
       def parse_args(&block)
         options = {}
         opts = OptionParser.new {|opts|
-          opts.on('-v', '--verbose') {|v| BeehiveClient.verbose = true}
-          opts.on('-e', '--very_verbose') {|v| BeehiveClient.very_verbose = true}
-          opts.on('-d', '--debugging') {|v| BeehiveClient.debugging = true}
-          opts.on('-r', '--very_debugging') {|v| BeehiveClient.very_debugging = true}
-
           opts.on("-o host", "--host host", 'The remote host') {|u| @host = u }
           opts.on("-u user", "--user user", 'Your user') {|u| @user = u }
           opts.on("-p password", "--password password", 'Your password') {|u| @password = u }
