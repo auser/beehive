@@ -525,7 +525,8 @@ ensure_repos_exists(#bee_object{bundle_dir = BundleDir} = BeeObject, From) ->
   end.
 
 % Checkout the repos using the config method
-clone_repos(#bee_object{bundle_dir = BundleDir, repo_type = RepoType} = BeeObject,
+clone_repos(#bee_object{bundle_dir = BundleDir,
+                        repo_type = RepoType} = BeeObject,
             From)   ->
   case proplists:get_value(clone, config_props(RepoType)) of
     undefined -> throw({error, action_not_defined, clone});
@@ -560,12 +561,16 @@ get_current_sha(BeeObject) ->
 % Run in the directory given in the proplists
 % Action
 % Props
-run_action_in_directory(Action, #bee_object{repo_type = RepoType, bundle_dir = BundleDir} = BeeObject, From) ->
+run_action_in_directory(Action,
+                        #bee_object{repo_type = RepoType,
+                                    bundle_dir = BundleDir} = BeeObject,
+                        From) ->
   case proplists:get_value(Action, config_props(RepoType)) of
     undefined -> throw({error, action_not_defined, Action});
     FoundAction ->
       Str = render_command_string(FoundAction, to_proplist(BeeObject)),
-      ?LOG(debug, "run_action_in_directory: ~p ~p: ~p", [Action, Str, FoundAction]),
+      ?LOG(debug, "run_action_in_directory: ~p ~p: ~p",
+           [Action, Str, FoundAction]),
       run_command_in_directory(Str, BundleDir, From, BeeObject)
   end.
 

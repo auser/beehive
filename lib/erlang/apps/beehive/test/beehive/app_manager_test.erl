@@ -46,22 +46,22 @@ start_new_instance_t() ->
       ?assertEqual("Hello World test_app", hd(lists:reverse(Body))),
       % os:cmd(lists:flatten(["kill ", integer_to_list(Bee#bee.os_pid)])),
       passed;
-    _ -> 
+    _ ->
       ?assertEqual(failed, connect)
   end.
-  
+
 start_new_instance_t_failing_app() ->
   bh_test_util:delete_all(app),
   DummyApp = bh_test_util:dummy_app(),
   {error, ErrorObj} = start_dummy_app(
-    DummyApp#app{repo_url = "http://this.does/not/exist", 
-                 name = "doesnt_exist"}, 
+    DummyApp#app{repo_url = "http://this.does/not/exist",
+                 name = "doesnt_exist"},
   self()),
   % It should fail when fetching
   ?assertEqual(ErrorObj#app_error.stage, fetching),
   ?assertEqual(ErrorObj#app_error.exit_status, 128),
   passed.
-  
+
 teardown_an_instance_t() ->
   % {ok, _App, Bee} = start_dummy_app(self()),
   App = bh_test_util:dummy_app(),
@@ -84,13 +84,13 @@ teardown_an_instance_t() ->
   passed.
 
 start_dummy_app(From) -> start_dummy_app(bh_test_util:dummy_app(), From).
-start_dummy_app(App, _From) -> 
+start_dummy_app(App, _From) ->
   app_manager:request_to_start_new_bee_by_app(App, self()),
   receive
     {bee_started_normally, Bee, _App} ->
       bees:save(Bee),
       {ok, App, Bee};
-    {error, ErrorObj} -> 
+    {error, ErrorObj} ->
       {error, ErrorObj};
     X ->
       erlang:display({start_dummy_app, X}),
@@ -105,7 +105,7 @@ try_to_fetch_url_or_retry(Method, Args, Times) ->
     {ok, _Headers, _Body} = T -> T;
     _E -> try_to_fetch_url_or_retry(Method, Args, Times - 1)
   end.
-  
-related_dir() -> 
+
+related_dir() ->
   {ok, Dir} = application:get_env(beehive, beehive_home),
   Dir.
