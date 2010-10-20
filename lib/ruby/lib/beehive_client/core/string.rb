@@ -10,17 +10,5 @@ class String
     File.join(self, o.to_s)
   end
 
-  def top_class
-    self.split("::")[-1]
-  end
-
-  # foo_bar => FooBar
-  def camelcase
-    gsub(/(^|_|-)(.)/) { $2.upcase }
-  end
-
-  def underscore
-    gsub(/([a-z])([A-Z])/) {"#{$1}_#{$2}" }.downcase
-  end
 
 end

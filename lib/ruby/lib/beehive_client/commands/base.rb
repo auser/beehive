@@ -1,3 +1,5 @@
+require 'optparse'
+
 module BeehiveClient
   module Command
 
@@ -38,12 +40,14 @@ module BeehiveClient
         @tmp_dir ||= "/tmp/beehive"
       end
 
-      def self.inherited(base)
-        base_classes << base
+      def self.inherited(klass)
+        top_class = klass.name.split("::").last.
+          gsub(/([a-z])([A-Z])/) {"#{$1}_#{$2}" }.downcase
+        commands[top_class] = klass
       end
 
-      def self.base_classes
-        @@base_classes ||= []
+      def self.commands
+        @@commands ||= {}
       end
 
       def user
