@@ -39,7 +39,7 @@ all_test_() ->
         ,fun responding_from/0
         ,fun ls_bee/0
         % Type tests
-        ,fun bundle_type/0
+        ,fun bundle_template/0
         ,fun mount_t/0
         ,fun start_t/0
         ,fun stop_t/0
@@ -57,7 +57,8 @@ git_clone() ->
   ?DEBUG_PRINT({starting, git_clone}),
   % Update the repos
   {{Year, Month, Day}, {Hour, Minute, Second}} = erlang:universaltime(),
-  Ts = lists:flatten(io_lib:format("~w~2..0w~2..0w~2..0w~2..0w~2..0w", [Year, Month, Day, Hour, Minute, Second])),
+  Ts = lists:flatten(io_lib:format("~w~2..0w~2..0w~2..0w~2..0w~2..0w",
+                                   [Year, Month, Day, Hour, Minute, Second])),
 
   ReposDir = proplists:get_value(repo_url, git_repos_props()),
 
@@ -120,20 +121,23 @@ git_bundle_with_errors() ->
   ?DEBUG_PRINT({git_bundle_with_errors, passed}),
   passed.
 
-bundle_type() ->
-  ?DEBUG_PRINT({starting, bundle_type}),
+bundle_template() ->
+  ?DEBUG_PRINT({starting, bundle_template}),
   BeeFile = filename:join([related_dir(), "squashed", "beehive_bee_object_test_app.bee"]),
-  beehive_bee_object:bundle([{type, rails}|git_repos_props()]),
+  beehive_bee_object:bundle([{template, rails}|git_repos_props()]),
   % Run it with a before
   % Untar and ensure the file is there
   BeeDir = filename:join([related_dir(), "squashed", "testing_rack_out"]),
   file:make_dir(BeeDir),
-  O = string:tokens(os:cmd(["tar -C ", BeeDir," -zxf ", BeeFile, " && ls ", BeeDir]), "\n"),
+  O = string:tokens(
+        os:cmd(["tar -C ", BeeDir," -zxf ", BeeFile, " && ls ", BeeDir]), "\n"),
   ?assert(lists:member("config.ru", O)),
   % Let's make sure beehive_bee_object:info/1 works
-  ?assertEqual("master", proplists:get_value(branch, beehive_bee_object:info("beehive_bee_object_test_app"))),
+  ?assertEqual("master",
+               proplists:get_value(branch,
+                                   beehive_bee_object:info("beehive_bee_object_test_app"))),
   ?assertEqual({error, not_found}, beehive_bee_object:info("no-app-here")),
-  ?DEBUG_PRINT({bundle_type, passed}),
+  ?DEBUG_PRINT({bundle_template, passed}),
   passed.
 
 responding_from() ->

@@ -249,14 +249,17 @@ start(App, Port, From) ->
                           [{pidfile, PidFilename}|to_proplist(BeeObject)],
                           From,
                           fun(Tuple) -> log_shell_output(Tuple, Name) end),
-          % Because we are spawning off into a new process, we also want to make sure we can connect to the
-          % newly spawned bee. Here we'll spawn off a connector process
+          %% Because we are spawning off into a new process, we also
+          %% want to make sure we can connect to the newly spawned
+          %% bee. Here we'll spawn off a connector process
           BuiltBee = bees:from_bee_object(BeeObject, App),
           Bee = BuiltBee#bee{host = bh_host:myip()},
           app_manager:spawn_update_bee_status(Bee, self(), 200),
-          % Now, let's wait to make sure that the spawn comes back with a success.
-          % If it does come back that it can be connected to, then we know it's started, let's
-          % grab the pid file and report back to the caller that the object has started
+          %% Now, let's wait to make sure that the spawn comes back
+          %% with a success.  If it does come back that it can be
+          %% connected to, then we know it's started, let's grab the
+          %% pid file and report back to the caller that the object has
+          %% started
           Continue = receive
             {updated_bee_status, ready} ->
               OPid = case read_pid_file_or_retry(PidFilename, 500) of
