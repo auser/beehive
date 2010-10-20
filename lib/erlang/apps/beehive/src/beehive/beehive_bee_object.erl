@@ -486,10 +486,14 @@ save_bee_object(Contents, #bee_object{bee_file = To} = BeeObject) ->
 %%%%%%%%%%%%%%%%%
 % HELPERS
 %%%%%%%%%%%%%%%%%
-run_hook_action(pre, BeeObject, From) -> run_hook_action_str(BeeObject#bee_object.pre, BeeObject, From);
-run_hook_action(post, BeeObject, From) -> run_hook_action_str(BeeObject#bee_object.post, BeeObject, From).
+run_hook_action(pre, BeeObject, From) ->
+  run_hook_action_str(BeeObject#bee_object.pre, BeeObject, From);
+run_hook_action(post, BeeObject, From) ->
+  run_hook_action_str(BeeObject#bee_object.post, BeeObject, From).
 
-run_hook_action_str(CmdStr, #bee_object{bundle_dir = BundleDir} = BeeObject, From) ->
+run_hook_action_str(CmdStr,
+                    #bee_object{bundle_dir = BundleDir} = BeeObject,
+                    From) ->
   case CmdStr of
     undefined -> ok;
     _ ->
@@ -696,7 +700,8 @@ config_props(RepoType) ->
 
 config_props() ->
   Dir =?BH_ROOT,
-  {ok, C} = file:consult(filename:join([Dir, "etc", "beehive_bee_object_config.conf"])),
+  {ok, C} =
+    file:consult(filename:join([Dir, "etc", "beehive_bee_object_config.conf"])),
   C.
 
 %% Render strings from templates currently defined
