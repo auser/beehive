@@ -1,4 +1,6 @@
 require 'optparse'
+require 'pp'
+require 'yaml'
 
 module BeehiveClient
   module Command

@@ -1,8 +1,5 @@
-require "rubygems"
 require 'rest_client'
-require "yaml"
 require "json/pure"
-require "pp"
 
 module BeehiveClient
   module Rest
