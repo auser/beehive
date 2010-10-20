@@ -21,5 +21,3 @@ TODO:
 * Branch deployments
 * Make SHA (git) more flexible and work within the directory
 * bh_rest stuff in beehive isn't really restful.  Odd http statuses and inconsistent response bodies.
-* Better logging of bundle/start scripts.  Right now a lot of data on errors just vanishes.
-* flexible environment setting.  I don't always want to run an app in production env.
