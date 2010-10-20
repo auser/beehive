@@ -16,24 +16,30 @@ setup(Proplist) when is_list(Proplist) ->
   Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
   ConfigFile = filename:join([Dir, "test", "fixtures", "beehive.cfg"]),
 
-  application:set_env(beehive, node_type,     proplists:get_value(node_type, Proplist, test_type)),
-  application:set_env(beehive, config_file,   proplists:get_value(config_file, Proplist, ConfigFile)),
-  application:set_env(beehive, beehive_home,  proplists:get_value(beehive_home, Proplist, "/tmp/beehive/test")),
-  application:set_env(beehive, database_dir,  proplists:get_value(database_dir, Proplist, "/tmp/beehive/test/test_db")),
+  application:set_env(beehive, node_type,
+                      proplists:get_value(node_type, Proplist, test_type)),
+  application:set_env(beehive, config_file,
+                      proplists:get_value(config_file, Proplist, ConfigFile)),
+  application:set_env(beehive, beehive_home,
+                      proplists:get_value(beehive_home, Proplist,
+                                          "/tmp/beehive/test")),
+  application:set_env(beehive, database_dir,
+                      proplists:get_value(database_dir, Proplist,
+                                          "/tmp/beehive/test/test_db")),
   application:start(sasl),
   beehive:start([{beehive_db_srv, testing}]),
 
-                                                % erlang:display({beehive_db_srv, init_databases, start}),
-                                                % beehive_db_srv:init_databases(),
-                                                % erlang:display({beehive_db_srv, init_databases, done}),
+  %% erlang:display({beehive_db_srv, init_databases, start}),
+  %% beehive_db_srv:init_databases(),
+  %% erlang:display({beehive_db_srv, init_databases, done}),
   timer:sleep(200),
-                                                % We don't need any error output here
+  %% We don't need any error output here
   inets:start(),
   ok;
 
 setup(Table) ->
-                                                % beehive_db_srv:start_link(),
-                                                % application:start(sasl),
+  %% beehive_db_srv:start_link(),
+  %% application:start(sasl),
   setup(),
   clear_table(Table),
   ok.
@@ -83,7 +89,7 @@ fetch_url(Method, Props) ->
 request(Sock, Acc) ->
   receive
     {tcp, Sock, Data} ->
-                                                % Received data
+      %% Received data
       request(Sock, [binary_to_list(Data)|Acc]);
     {tcp_closed, Sock} ->
       parse_http_request(lists:flatten(lists:reverse(Acc)));
@@ -138,7 +144,7 @@ context_run(Count, Fun) ->
   Fun(),
   shutdown(Nodes).
 
-                                                % FIXTURE
+%% FIXTURE
 dummy_git_repos_url() ->
   ReposDir = filename:join([?BH_ROOT, "test", "fixtures", "incredibly_simple_rack_app.git"]),
   lists:concat(["file://", ReposDir]).
@@ -148,37 +154,33 @@ dummy_app(Name) ->
 dummy_app() -> dummy_app("test_app").
 
 dummy_user() ->
-  {ok, User} = case users:find_by_email("test@getbeehive.com") of
-                 not_found ->
-                   UserC = #user{email    = "test@getbeehive.com",
-                                 password = "test",
-                                 token    = "dummytoken" },
-                   users:create(UserC);
-                 U1 -> {ok, U1}
-               end,
-  User.
+  create_user(#user{email    = "test@getbeehive.com",
+                    password = "test",
+                    token    = "dummytoken" }).
 
 admin_user() ->
+  create_user(#user{email    = "admin@getbeehive.com",
+                    password = "admin",
+                    token    = "token",
+                    level    = ?ADMIN_USER_LEVEL
+                   }).
+
+create_user(NewUser) ->
   {ok, User} =
-    case users:find_by_email("admin@getbeehive.com") of
+    case users:find_by_email(NewUser#user.email) of
       not_found ->
-        UserC = #user{email    = "admin@getbeehive.com",
-                      password = "admin",
-                      token    = "token",
-                      level    = ?ADMIN_USER_LEVEL
-                     },
-        users:create(UserC);
+        users:create(NewUser);
       U1 -> {ok, U1}
     end,
   User.
 
-                                                % Utils
+%% Utils
 delete_all(Table) ->
-  Pluralized = erlang:list_to_atom(lists:append([erlang:atom_to_list(Table), "s"])),
+  Pluralized =
+    erlang:list_to_atom(lists:append([erlang:atom_to_list(Table), "s"])),
   lists:map(fun(O) ->
                 Pluralized:delete(O)
             end, Pluralized:all()).
-                                                % beehive_db_srv:delete_all(Table).
 
 response_json(Response) ->
   Json = lists:last(Response),
