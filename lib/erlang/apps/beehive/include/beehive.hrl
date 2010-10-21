@@ -10,7 +10,7 @@
 -define (MAX_BACKENDS_PER_HOST, 100).
 
 % Get the fields of a record into a proplist
--define(rec_info(T,R),lists:zip(record_info(fields,T),tl(tuple_to_list(R)))). 
+-define(rec_info(T,R),lists:zip(record_info(fields,T),tl(tuple_to_list(R)))).
 
 % Messages
 -define (NEEDS_BACKEND_MSG, needs_bee).
@@ -32,8 +32,8 @@
 -define (QSTORE, queue_store).
 
 % Application bee
-% Yes, the id is redundant, optimization of this might be ideal... i.e. remove the host/port/app_name
-% fields
+% Yes, the id is redundant, optimization of this might
+% be ideal... i.e. remove the host/port/app_name fields
 -record (bee, {
   id,                       % tuple id of the app_name, host and port {app_name, host, port}
   app_name,                 % name of the app this bee supports
@@ -131,7 +131,7 @@
   act_timeout = (120*1000),		% Activity timeout (ms)
   acceptor,				            % Pid of listener proc
   start_time  = 0,            % Proxy start timestamp
-  to_timer 				            % Timeout timer ref
+  to_timer				            % Timeout timer ref
 }).
 
 % Stats for a bee
