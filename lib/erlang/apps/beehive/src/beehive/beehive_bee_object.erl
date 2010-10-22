@@ -249,14 +249,17 @@ start(App, Port, From) ->
                           [{pidfile, PidFilename}|to_proplist(BeeObject)],
                           From,
                           fun(Tuple) -> log_shell_output(Tuple, Name) end),
-          % Because we are spawning off into a new process, we also want to make sure we can connect to the
-          % newly spawned bee. Here we'll spawn off a connector process
+          %% Because we are spawning off into a new process, we also
+          %% want to make sure we can connect to the newly spawned
+          %% bee. Here we'll spawn off a connector process
           BuiltBee = bees:from_bee_object(BeeObject, App),
           Bee = BuiltBee#bee{host = bh_host:myip()},
           app_manager:spawn_update_bee_status(Bee, self(), 200),
-          % Now, let's wait to make sure that the spawn comes back with a success.
-          % If it does come back that it can be connected to, then we know it's started, let's
-          % grab the pid file and report back to the caller that the object has started
+          %% Now, let's wait to make sure that the spawn comes back
+          %% with a success.  If it does come back that it can be
+          %% connected to, then we know it's started, let's grab the
+          %% pid file and report back to the caller that the object has
+          %% started
           Continue = receive
             {updated_bee_status, ready} ->
               OPid = case read_pid_file_or_retry(PidFilename, 500) of
@@ -483,10 +486,14 @@ save_bee_object(Contents, #bee_object{bee_file = To} = BeeObject) ->
 %%%%%%%%%%%%%%%%%
 % HELPERS
 %%%%%%%%%%%%%%%%%
-run_hook_action(pre, BeeObject, From) -> run_hook_action_str(BeeObject#bee_object.pre, BeeObject, From);
-run_hook_action(post, BeeObject, From) -> run_hook_action_str(BeeObject#bee_object.post, BeeObject, From).
+run_hook_action(pre, BeeObject, From) ->
+  run_hook_action_str(BeeObject#bee_object.pre, BeeObject, From);
+run_hook_action(post, BeeObject, From) ->
+  run_hook_action_str(BeeObject#bee_object.post, BeeObject, From).
 
-run_hook_action_str(CmdStr, #bee_object{bundle_dir = BundleDir} = BeeObject, From) ->
+run_hook_action_str(CmdStr,
+                    #bee_object{bundle_dir = BundleDir} = BeeObject,
+                    From) ->
   case CmdStr of
     undefined -> ok;
     _ ->
@@ -522,7 +529,8 @@ ensure_repos_exists(#bee_object{bundle_dir = BundleDir} = BeeObject, From) ->
   end.
 
 % Checkout the repos using the config method
-clone_repos(#bee_object{bundle_dir = BundleDir, repo_type = RepoType} = BeeObject,
+clone_repos(#bee_object{bundle_dir = BundleDir,
+                        repo_type = RepoType} = BeeObject,
             From)   ->
   case proplists:get_value(clone, config_props(RepoType)) of
     undefined -> throw({error, action_not_defined, clone});
@@ -557,12 +565,16 @@ get_current_sha(BeeObject) ->
 % Run in the directory given in the proplists
 % Action
 % Props
-run_action_in_directory(Action, #bee_object{repo_type = RepoType, bundle_dir = BundleDir} = BeeObject, From) ->
+run_action_in_directory(Action,
+                        #bee_object{repo_type = RepoType,
+                                    bundle_dir = BundleDir} = BeeObject,
+                        From) ->
   case proplists:get_value(Action, config_props(RepoType)) of
     undefined -> throw({error, action_not_defined, Action});
     FoundAction ->
       Str = render_command_string(FoundAction, to_proplist(BeeObject)),
-      ?LOG(debug, "run_action_in_directory: ~p ~p: ~p", [Action, Str, FoundAction]),
+      ?LOG(debug, "run_action_in_directory: ~p ~p: ~p",
+           [Action, Str, FoundAction]),
       run_command_in_directory(Str, BundleDir, From, BeeObject)
   end.
 
@@ -688,7 +700,8 @@ config_props(RepoType) ->
 
 config_props() ->
   Dir =?BH_ROOT,
-  {ok, C} = file:consult(filename:join([Dir, "etc", "beehive_bee_object_config.conf"])),
+  {ok, C} =
+    file:consult(filename:join([Dir, "etc", "beehive_bee_object_config.conf"])),
   C.
 
 %% Render strings from templates currently defined

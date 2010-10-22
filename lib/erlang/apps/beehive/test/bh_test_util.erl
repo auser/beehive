@@ -16,24 +16,30 @@ setup(Proplist) when is_list(Proplist) ->
   Dir = filename:dirname(filename:dirname(code:which(?MODULE))),
   ConfigFile = filename:join([Dir, "test", "fixtures", "beehive.cfg"]),
 
-  application:set_env(beehive, node_type,     proplists:get_value(node_type, Proplist, test_type)),
-  application:set_env(beehive, config_file,   proplists:get_value(config_file, Proplist, ConfigFile)),
-  application:set_env(beehive, beehive_home,  proplists:get_value(beehive_home, Proplist, "/tmp/beehive/test")),
-  application:set_env(beehive, database_dir,  proplists:get_value(database_dir, Proplist, "/tmp/beehive/test/test_db")),
+  application:set_env(beehive, node_type,
+                      proplists:get_value(node_type, Proplist, test_type)),
+  application:set_env(beehive, config_file,
+                      proplists:get_value(config_file, Proplist, ConfigFile)),
+  application:set_env(beehive, beehive_home,
+                      proplists:get_value(beehive_home, Proplist,
+                                          "/tmp/beehive/test")),
+  application:set_env(beehive, database_dir,
+                      proplists:get_value(database_dir, Proplist,
+                                          "/tmp/beehive/test/test_db")),
   application:start(sasl),
   beehive:start([{beehive_db_srv, testing}]),
 
-  % erlang:display({beehive_db_srv, init_databases, start}),
-  % beehive_db_srv:init_databases(),
-  % erlang:display({beehive_db_srv, init_databases, done}),
+  %% erlang:display({beehive_db_srv, init_databases, start}),
+  %% beehive_db_srv:init_databases(),
+  %% erlang:display({beehive_db_srv, init_databases, done}),
   timer:sleep(200),
-  % We don't need any error output here
+  %% We don't need any error output here
   inets:start(),
   ok;
 
 setup(Table) ->
-  % beehive_db_srv:start_link(),
-  % application:start(sasl),
+  %% beehive_db_srv:start_link(),
+  %% application:start(sasl),
   setup(),
   clear_table(Table),
   ok.
@@ -55,7 +61,8 @@ fetch_url(Method, Props) ->
   Params  = lists:flatten(lists:map(fun({Key, Value}) ->
                                         lists:flatten([atom_to_list(Key),
                                                        "=", Value, "&"])
-                                    end, proplists:get_value(params, Props, []))),
+                                    end,
+                                    proplists:get_value(params, Props, []))),
   case gen_tcp:connect(Host, Port, [binary]) of
     {ok, Sock} ->
 
@@ -68,6 +75,7 @@ fetch_url(Method, Props) ->
            lists:map(fun({Key, Value}) ->
                          lists:flatten([Key, ": ", Value, "\n"])
                      end, Headers),
+           lists:flatten(["Host: ", Host, ":", integer_to_list(Port), "\n"]),
            lists:flatten(["Content-Length: ", integer_to_list(erlang:length(Params))]),
            "\r\n\r\n",
            Params,
@@ -80,20 +88,21 @@ fetch_url(Method, Props) ->
 
 request(Sock, Acc) ->
   receive
-	  {tcp, Sock, Data} ->
-      % Received data
+    {tcp, Sock, Data} ->
+      %% Received data
       request(Sock, [binary_to_list(Data)|Acc]);
     {tcp_closed, Sock} ->
       parse_http_request(lists:flatten(lists:reverse(Acc)));
-  	{tcp_error, Sock} ->
+    {tcp_error, Sock} ->
       {error, Sock};
-  	Else ->
-  	  erlang:display({got, Else}),
-  	  request(Sock, Acc)
-  % If there is no activity for a while and the socket has not already closed,
-  % we'll assume that the connection is tired and should close, so we'll close it
+    Else ->
+      erlang:display({got, Else}),
+      request(Sock, Acc)
+      %% If there is no activity for a while and the socket has not
+      %% already closed, we'll assume that the connection is tired and
+      %% should close, so we'll close it
   after 1000 ->
-    {error, timeout}
+      {error, timeout}
   end.
 
 parse_http_request(Acc) ->
@@ -115,9 +124,9 @@ start(Count, _Mod, Count, Acc) -> {ok, Acc};
 start(Count, Mod, CurrentCount, Acc) ->
   Name = erlang:list_to_atom(lists:flatten(["node", erlang:integer_to_list(CurrentCount)])),
   Seed = case erlang:length(Acc) of
-    0 -> undefined;
-    _ -> whereis(erlang:hd(Acc))
-  end,
+           0 -> undefined;
+           _ -> whereis(erlang:hd(Acc))
+         end,
   {ok, _NodePid} = Mod:start_named(Name, [{seed, Seed}]),
   start(Count, Mod, CurrentCount + 1, [Name|Acc]).
 
@@ -135,47 +144,43 @@ context_run(Count, Fun) ->
   Fun(),
   shutdown(Nodes).
 
-% FIXTURE
+%% FIXTURE
 dummy_git_repos_url() ->
-  ReposDir = filename:join([?BH_ROOT, "test", "fixtures", "incredibly_simple_rack_app", ".git"]),
+  ReposDir = filename:join([?BH_ROOT, "test", "fixtures", "incredibly_simple_rack_app.git"]),
   lists:concat(["file://", ReposDir]).
-  
+
 dummy_app(Name) ->
   apps:new(#app{name = Name, repo_url = dummy_git_repos_url()}).
 dummy_app() -> dummy_app("test_app").
 
 dummy_user() ->
-  {ok, User} = case users:find_by_email("test@getbeehive.com") of
-    not_found ->
-      UserC = #user{email    = "test@getbeehive.com", 
+  create_user(#user{email    = "test@getbeehive.com",
                     password = "test",
-                    token    = "dummytoken" },
-      users:create(UserC);
-    U1 -> {ok, U1}
-  end,
-  User.
+                    token    = "dummytoken" }).
 
 admin_user() ->
+  create_user(#user{email    = "admin@getbeehive.com",
+                    password = "admin",
+                    token    = "token",
+                    level    = ?ADMIN_USER_LEVEL
+                   }).
+
+create_user(NewUser) ->
   {ok, User} =
-    case users:find_by_email("admin@getbeehive.com") of
+    case users:find_by_email(NewUser#user.email) of
       not_found ->
-        UserC = #user{email    = "admin@getbeehive.com",
-                      password = "admin",
-                      token    = "token",
-                      level    = ?ADMIN_USER_LEVEL
-                     },
-        users:create(UserC);
+        users:create(NewUser);
       U1 -> {ok, U1}
     end,
   User.
 
-% Utils
+%% Utils
 delete_all(Table) ->
-  Pluralized = erlang:list_to_atom(lists:append([erlang:atom_to_list(Table), "s"])),
+  Pluralized =
+    erlang:list_to_atom(lists:append([erlang:atom_to_list(Table), "s"])),
   lists:map(fun(O) ->
-    Pluralized:delete(O)
-  end, Pluralized:all()).
-  % beehive_db_srv:delete_all(Table).
+                Pluralized:delete(O)
+            end, Pluralized:all()).
 
 response_json(Response) ->
   Json = lists:last(Response),
