@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% File    : auth_utils.erl
 %%% Author  : Ari Lerner
-%%% Description : 
+%%% Description :
 %%%
 %%% Created :  Sun Nov 29 23:15:35 PST 2009
 %%%-------------------------------------------------------------------
@@ -58,7 +58,7 @@ run_if_admin(F, Data) ->
       end
   end.
 
-% Check to make sure there are actually users in the system. If there aren't, 
+% Check to make sure there are actually users in the system. If there aren't,
 % any commands will do
 are_there_users() ->
   case length(users:all()) of

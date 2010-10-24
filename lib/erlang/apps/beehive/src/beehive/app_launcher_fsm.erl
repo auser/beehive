@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% File    : app_launcher_fsm.erl
 %%% Author  : Ari Lerner
-%%% Description : 
+%%% Description :
 %%%
 %%% Created :  Wed Nov 18 17:30:15 PST 2009
 %%%-------------------------------------------------------------------
@@ -53,7 +53,7 @@
 start_new(Pid) -> gen_fsm:send_event(Pid, {start_new}).
 update(Pid) -> gen_fsm:send_event(Pid, {update}).
 launch(Pid) -> gen_fsm:send_event(Pid, {launch}).
-  
+
 %%--------------------------------------------------------------------
 %% Function: start_link() -> ok,Pid} | ignore | {error,Error}
 %% Description:Creates a gen_fsm process which calls Module:init/1 to
@@ -80,10 +80,11 @@ init([Proplist]) ->
   Caller = proplists:get_value(caller, Proplist),
   From     = proplists:get_value(from, Proplist),
   Updating = proplists:get_value(updating, Proplist),
-  
+
   beehive_bee_object_config:init(), % JUST IN CASE
   % Only start if there are no other modules registered with the name
-  State = #state{app = App, from = From, caller = Caller, updating = Updating, bee = #bee{}},
+  State = #state{app = App, from = From, caller = Caller,
+                 updating = Updating, bee = #bee{}},
   case global:whereis_name(registered_name(App)) of
     undefined ->
       case App#app.latest_error of
@@ -115,18 +116,19 @@ init([Proplist]) ->
 %% the current state name StateName is called to handle the event. It is also
 %% called if a timeout occurs.
 %%--------------------------------------------------------------------
-fetching({send_bee_object, _Bo}, State) -> 
+fetching({send_bee_object, _Bo}, State) ->
   {next_state, preparing, State};
 fetching({launch}, State) ->
   % If we have not yet fetched the bee, but received a launch request
   % we'll just resend it to ourselves in a little while
-  gen_cluster:run(beehive_storage_srv, {fetch_or_build_bee, State#state.app, self()}),
+  gen_cluster:run(beehive_storage_srv,
+                  {fetch_or_build_bee, State#state.app, self()}),
   % Give it some time to try to fetch again...
   timer:send_after(500, {launch}),
   {next_state, fetching, State};
 fetching({error, Msg}, State) ->
   stop_error({fetching, Msg}, State);
-  
+
 fetching(_Msg, State) ->
   {next_state, fetching, State}.
 
@@ -137,16 +139,17 @@ preparing({update}, #state{app = App} = State) ->
   {next_state, updating, State};
 
 preparing({launch}, #state{app = App} = State) ->
-  Self = self(),  
+  Self = self(),
   Port = bh_host:unused_port(),
-  ?LOG(debug, "beehive_bee_object:start(~p, ~p, ~p, ~p)", [App#app.template, App#app.name, Port, Self]),
+  ?LOG(debug, "beehive_bee_object:start(~p, ~p, ~p, ~p)",
+       [App#app.template, App#app.name, Port, Self]),
   beehive_bee_object:start(App, Port, Self),
   {next_state, launching, State};
 
 preparing({start_new}, State) ->
   self() ! {bee_built, []},
   {next_state, updating, State};
-  
+
 preparing(_Other, State) ->
   {next_state, preparing, State}.
 
@@ -177,22 +180,27 @@ launching(Event, State) ->
 % AFTER THE APPLICATION HAS BEEN 'PENDING'
 pending({updated_bee_status, broken}, State) ->
   stop_error({error, broken_start}, State);
-  
-pending({updated_bee_status, BackendStatus}, #state{app = App, bee = Bee, from = From, caller = Caller, latest_sha = Sha, updating = Updating} = State) ->
+
+pending({updated_bee_status, BackendStatus},
+        #state{app = App, bee = Bee, from = From,
+               caller = Caller, latest_sha = Sha,
+               updating = Updating} = State) ->
   ?LOG(debug, "Application started ~p: ~p", [BackendStatus, App#app.name]),
   % App started normally
   bees:save(Bee#bee{status = BackendStatus}),
   case Updating of
-    true -> From ! {bee_updated_normally, Bee#bee{status = BackendStatus}, App#app{revision = Sha}, Caller};
-    false -> From ! {bee_started_normally, Bee#bee{status = BackendStatus}, App#app{revision = Sha}, Caller}
+    true -> From ! {bee_updated_normally, Bee#bee{status = BackendStatus},
+                    App#app{revision = Sha}, Caller};
+    false -> From ! {bee_started_normally, Bee#bee{status = BackendStatus},
+                     App#app{revision = Sha}, Caller}
   end,
   ok = global:unregister_name(registered_name(App)),
   {stop, normal, State};
-  
+
 pending(Event, State) ->
   ?LOG(debug, "Got uncaught event in pending state: ~p", [Event]),
   {next_state, pending, State}.
-  
+
 state_name(Event, State) ->
   io:format("Uncaught event: ~p while in state: ~p ~n", [Event, state_name]),
   {next_state, state_name, State}.
@@ -261,11 +269,13 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %% other message than a synchronous or asynchronous event
 %% (or a system message).
 %%--------------------------------------------------------------------
-handle_info({data, Msg}, StateName, #state{output = CurrOut} = State) -> 
+handle_info({data, Msg}, StateName, #state{output = CurrOut} = State) ->
   {next_state, StateName, State#state{output = [Msg|CurrOut]}};
-handle_info({port_closed, _Port}, StateName, State) -> {next_state, StateName, State};
+handle_info({port_closed, _Port}, StateName, State) ->
+  {next_state, StateName, State};
 handle_info(Info, StateName, State) ->
-  ?LOG(debug, "~p received handle_info: ~p in state ~p", [?MODULE, Info, StateName]),
+  ?LOG(debug, "~p received handle_info: ~p in state ~p",
+       [?MODULE, Info, StateName]),
   apply(?MODULE, StateName, [Info, State]).
   % {next_state, StateName, State}.
 
@@ -292,8 +302,11 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-stop_error(Msg, #state{from = From, caller = Caller, app = App, bee = Bee, output = Output} = State) ->
-  Tuple = {?MODULE, error, Msg, [{app, App}, {bee, Bee}, {output, lists:reverse(Output)}, {caller, Caller}]},
+stop_error(Msg, #state{from = From, caller = Caller,
+                       app = App, bee = Bee, output = Output} = State) ->
+  Tuple = {?MODULE, error, Msg,
+           [{app, App}, {bee, Bee},
+            {output, lists:reverse(Output)}, {caller, Caller}]},
   From ! Tuple,
   {stop, Tuple, State}.
 
