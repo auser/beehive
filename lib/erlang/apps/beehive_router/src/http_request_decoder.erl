@@ -20,12 +20,15 @@
           split_off_first_subdirectory/1
 ]).
 
-% Take the connecting socket and handle the request. Get the request up until the end of the headers
-% Take off the 'Host' parameter (or other sepcified parameter) from the header and return the
-% routing key and the full request to the calling process
+%% Take the connecting socket and handle the request. Get the request
+%% up until the end of the headers Take off the 'Host' parameter (or
+%% other sepcified parameter) from the header and return the routing
+%% key and the full request to the calling process
 handle_request(ClientSock) ->
   Req = beehive_request:new(ClientSock),
-  RoutingParameter = misc_utils:to_atom(config:search_for_application_value(routing_parameter, 'Host')),
+  RoutingParameter =
+    misc_utils:to_atom(
+      config:search_for_application_value(routing_parameter, 'Host')),
   case RoutingParameter of
     'Host' ->
       HeaderVal = mochiweb_headers:get_value(RoutingParameter, Req:get(headers)),
@@ -64,7 +67,7 @@ build_request_headers(Req, ReqPath) ->
    headers_to_list(NewHeaders)
   ].
 
-% Replace values in a proplist
+%% Replace values in a proplist
 replace_values_in_prolists(PropList, OriginalHeaders) ->
   lists:flatten(lists:map(fun({K,V}) ->
       OldHeaders = case proplists:is_defined(K, OriginalHeaders) of
@@ -74,17 +77,19 @@ replace_values_in_prolists(PropList, OriginalHeaders) ->
       [{K, V}|OldHeaders]
     end, PropList)).
 
-% Turn a tuple string of the version into a string
+%% Turn a tuple string of the version into a string
 version({1,1}) -> "1.1";
 version(_) -> "1.0".
 
-% Turn a proplist of headers into a string
+%% Turn a proplist of headers into a string
 headers_to_list(Headers) ->
-  F = fun ({K, V}, Acc) -> [misc_utils:to_list(K), <<": ">>, misc_utils:to_list(V), <<"\r\n">> | Acc] end,
+  F = fun ({K, V}, Acc) ->
+          [misc_utils:to_list(K), <<": ">>, misc_utils:to_list(V), <<"\r\n">> | Acc]
+      end,
   lists:foldl(F, [<<"\r\n">>], Headers).
 
-% HTTP
-% We strip off the port, just in case
+%% HTTP
+%% We strip off the port, just in case
 %%-------------------------------------------------------------------
 %% @spec (Hostname, BaseDomain) ->    Domain
 %% @doc Parse the domain from the base domain
@@ -93,7 +98,8 @@ headers_to_list(Headers) ->
 %% @end
 %%-------------------------------------------------------------------
 parse_route_from_request(undefined, _) -> default;
-parse_route_from_request(HostName, undefined) -> parse_route_from_request_without_base_domain(HostName);
+parse_route_from_request(HostName, undefined) ->
+  parse_route_from_request_without_base_domain(HostName);
 parse_route_from_request(HostName, BaseDomain) ->
   [NoPortHostname|_] = string:tokens(HostName, ":"),
   O = string:tokens(NoPortHostname, "."),
@@ -113,9 +119,12 @@ parse_route_from_request_without_base_domain1([], _Acc)     -> default;
 parse_route_from_request_without_base_domain1(["localhost"], Acc) ->
   parse_route_from_request_without_base_domain2(Acc);
 
-parse_route_from_request_without_base_domain1(["com"], Acc) -> parse_route_from_request_without_base_domain2(Acc);
-parse_route_from_request_without_base_domain1(["org"], Acc) -> parse_route_from_request_without_base_domain2(Acc);
-parse_route_from_request_without_base_domain1(["net"], Acc) -> parse_route_from_request_without_base_domain2(Acc);
+parse_route_from_request_without_base_domain1(["com"], Acc) ->
+  parse_route_from_request_without_base_domain2(Acc);
+parse_route_from_request_without_base_domain1(["org"], Acc) ->
+  parse_route_from_request_without_base_domain2(Acc);
+parse_route_from_request_without_base_domain1(["net"], Acc) ->
+  parse_route_from_request_without_base_domain2(Acc);
 parse_route_from_request_without_base_domain1([H|Rest], Acc) ->
   parse_route_from_request_without_base_domain1(Rest, [H|Acc]).
 

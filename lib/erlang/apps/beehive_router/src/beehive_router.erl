@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% File    : bh_router.erl
 %%% Author  : Ari Lerner
-%%% Description : 
+%%% Description :
 %%%
 %%% Created :  Thu Dec  3 01:03:25 PST 2009
 %%%-------------------------------------------------------------------
@@ -12,7 +12,7 @@
 
 -export([start/2, stop/1]).
 
-start(_Type, Args) -> 
+start(_Type, Args) ->
   beehive_router_sup:start_link(Args).
 
 stop(_State) -> ok.

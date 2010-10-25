@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% File    : bh_router_sup.erl
 %%% Author  : Ari Lerner
-%%% Description : 
+%%% Description :
 %%%
 %%% Created :  Wed Dec  2 20:13:46 PST 2009
 %%%-------------------------------------------------------------------
@@ -48,17 +48,17 @@ start_link(Args) ->
 %%--------------------------------------------------------------------
 init(_Args) ->
   Dashboard = ?CHILD(beehive_dashboard_sup, worker),
-  
+
   ShouldRunDashboard = config:search_for_application_value(dashboard, true),
-  
+
   Children = lists:flatten([
     ?CHILD(tcp_socket_server_sup, worker),
     ?CHILD(bh_node_stats_srv, worker),
     ?IF(ShouldRunDashboard, Dashboard, [])
   ]),
-  
+
   {ok,{{one_for_one,5,10}, Children}}.
-  
+
 
 %%====================================================================
 %% Internal functions

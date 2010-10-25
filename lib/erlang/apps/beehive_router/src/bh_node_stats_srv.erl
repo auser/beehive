@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% File    : bh_node_stats_srv.erl
 %%% Author  : Ari Lerner
-%%% Description : 
+%%% Description :
 %%%
 %%% Created :  Sun Dec 13 20:51:11 PST 2009
 %%%-------------------------------------------------------------------
@@ -32,7 +32,9 @@
 %%====================================================================
 %% API
 %%====================================================================
-node_stat({node_stat, Key, Value, Time})        -> gen_server:cast(?SERVER, {node_stat, Key, Value, Time}).
+node_stat({node_stat, Key, Value, Time})        ->
+  gen_server:cast(?SERVER, {node_stat, Key, Value, Time}).
+
 node_dump() -> gen_server:call(?SERVER, {node_dump}).
 node_dump(Key) -> gen_server:call(?SERVER, {node_dump, Key}).
 node_dump(Key, Range) -> gen_server:call(?SERVER, {node_dump, Key, Range}).
@@ -58,13 +60,13 @@ start_link() ->
 init([]) ->
   io:format("Starting bh_node_stats_srv~n"),
   process_flag(trap_exit, true),
-  
+
   application:start(os_mon),
-  
+
   State = #state{
     node_stats  = dict:new()
   },
-  
+
   {ok, State}.
 
 %%--------------------------------------------------------------------
@@ -78,7 +80,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({node_dump}, _From, #state{node_stats = Dict} = State) ->
   {reply, dict:to_list(Dict), State};
-  
+
 handle_call({node_dump, Key}, _From, #state{node_stats = Dict} = State) ->
   Reply = case dict:find(Key, Dict) of
     error -> [];
@@ -86,7 +88,8 @@ handle_call({node_dump, Key}, _From, #state{node_stats = Dict} = State) ->
   end,
   {reply, Reply, State};
 
-handle_call({node_dump, Key, Range}, _From, #state{node_stats = Dict} = State) ->
+handle_call({node_dump, Key, Range},
+            _From, #state{node_stats = Dict} = State) ->
   StatsList = case dict:find(Key, Dict) of
     error -> [];
     {ok, E} -> E
@@ -139,7 +142,3 @@ terminate(_Reason, _State) ->
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
-
-%%--------------------------------------------------------------------
-%%% Internal functions
-%%--------------------------------------------------------------------
