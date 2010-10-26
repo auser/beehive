@@ -81,17 +81,25 @@ find_user_app(UserEmail, AppName) ->
 %% Get the owners of a specific app
 get_owners(App) ->
   UserApps = find_all_by_app_name(App#app.name),
-  OwnerApps = lists:filter(fun(UserApp) -> UserApp#user_app.level < ?CONTRIBUTOR_APP_ROLE end, UserApps),
-  lists:map(fun(UserApp) -> users:find_by_email(UserApp#user_app.user_email) end, OwnerApps).
+  OwnerApps =
+    lists:filter(fun(UserApp) ->
+                     UserApp#user_app.level < ?CONTRIBUTOR_APP_ROLE
+                 end, UserApps),
+  lists:map(fun(UserApp) ->
+                users:find_by_email(UserApp#user_app.user_email) end,
+            OwnerApps).
 
 %% Get the users associated with the app
 get_users(App) ->
   UserApps = find_all_by_app_name(App#app.name),
-  lists:map(fun(UserApp) -> users:find_by_email(UserApp#user_app.user_email) end, UserApps).
+  lists:map(fun(UserApp) ->
+                users:find_by_email(UserApp#user_app.user_email) end,
+            UserApps).
 
 %% Insert a new user
 create(UsersApp) when is_record(UsersApp, user_app) ->
-  case catch ?DB:write(user_app, UsersApp#user_app.app_name, validate_user_app(UsersApp)) of
+  case catch ?DB:write(user_app, UsersApp#user_app.app_name,
+                       validate_user_app(UsersApp)) of
     ok -> {ok, UsersApp};
     Else -> {error, Else}
   end;
@@ -132,11 +140,14 @@ save(Else) -> {error, {cannot_save, Else}}.
 
 
 new([]) -> error;
-new(UsersApp) when is_record(UsersApp, user_app) -> validate_user_app(UsersApp);
-new(Proplist) when is_list(Proplist) -> validate_user_app(from_proplists(Proplist));
+new(UsersApp) when is_record(UsersApp, user_app) ->
+  validate_user_app(UsersApp);
+new(Proplist) when is_list(Proplist) ->
+  validate_user_app(from_proplists(Proplist));
 new(Else) -> {error, {cannot_make_user_app, Else}}.
 
-delete(UsersApp) when is_record(UsersApp, user_app) -> ?DB:delete(user_app, UsersApp);
+delete(UsersApp) when is_record(UsersApp, user_app) ->
+  ?DB:delete(user_app, UsersApp);
 delete([]) -> invalid;
 delete(Else) -> {error, {cannot_delete, Else}}.
 
@@ -167,19 +178,23 @@ to_proplist([level|Rest], #user_app{level=Level} = UserApp, Acc) ->
   to_proplist(Rest, UserApp, [{level, Level}|Acc]);
 to_proplist([_Else|Rest], UserApp, Acc) -> to_proplist(Rest, UserApp, Acc).
 
-validate_user_app(UserApp) when is_record(UserApp, user_app) -> validate_user_app(record_info(fields, user_app), UserApp);
+
+validate_user_app(UserApp) when is_record(UserApp, user_app) ->
+  validate_user_app(record_info(fields, user_app), UserApp);
 validate_user_app(Else) -> Else.
 
 validate_user_app([], UserApp) ->  UserApp;
 %% Validate the user_email
-validate_user_app([user_email|_Rest], #user_app{user_email = undefined} = _UserApp) -> {error, no_user_email_given};
+validate_user_app([user_email|_Rest],
+                  #user_app{user_email = undefined} = _UserApp) ->
+  {error, no_user_email_given};
 validate_user_app([user_email|Rest], #user_app{user_email = Email} = UserApp) ->
   case users:find_by_email(Email) of
     [] -> {error, user_not_found};
     _User -> validate_user_app(Rest, UserApp)
   end;
 %% Validate the app
-validate_user_app([app_name|_Rest], #user_app{app_name = undefined}) -> 
+validate_user_app([app_name|_Rest], #user_app{app_name = undefined}) ->
   {error, no_app_name_given};
 validate_user_app([app_name|Rest], #user_app{app_name = AppName} = UserApp) ->
   case apps:find_by_name(AppName) of
@@ -187,7 +202,7 @@ validate_user_app([app_name|Rest], #user_app{app_name = AppName} = UserApp) ->
     _App -> validate_user_app(Rest, UserApp)
   end;
 %% Validate the level
-validate_user_app([level|Rest], #user_app{level = undefined} = UserApp) -> 
+validate_user_app([level|Rest], #user_app{level = undefined} = UserApp) ->
   validate_user_app(Rest, UserApp#user_app{level = ?REGULAR_USER_LEVEL});
 
 %% Validate others?

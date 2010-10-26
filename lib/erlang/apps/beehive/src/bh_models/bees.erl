@@ -135,7 +135,8 @@ find_all_grouped_by_host1(#bee{host=Host} = B, Acc) ->
   [{Host, [B], 1}|Acc].
 
 update([], _) -> ok;
-update(Bee, OtherBee) when is_record(Bee, bee) andalso is_record(OtherBee, bee) ->
+update(Bee, OtherBee) when
+    is_record(Bee, bee) andalso is_record(OtherBee, bee) ->
   update(Bee, lists:flatten(to_proplist(OtherBee)));
 update(Bee, NewProps) when is_record(Bee, bee) ->
   NewBee = misc_utils:update_proplist(to_proplist(Bee), NewProps),
@@ -171,10 +172,11 @@ build_app_env(  #bee{ port        = Port,
                     } = _Bee, App) ->
   ScratchDisk = config:search_for_application_value(scratch_dir,
                                                     ?BEEHIVE_DIR("tmp")),
-  RunningDisk = config:search_for_application_value(scratch_dir,
+  RunningDisk = config:search_for_application_value(run_dir,
                                                     ?BEEHIVE_DIR("run")),
-  LogDisk     = config:search_for_application_value(log_path,
-                                                    ?BEEHIVE_DIR("application_logs")),
+  LogDisk     =
+    config:search_for_application_value(log_path,
+                                        ?BEEHIVE_DIR("application_logs")),
 
   WorkingDir = filename:join([ScratchDisk, AppName]),
   RunningDir = filename:join([RunningDisk, AppName]),
@@ -192,13 +194,14 @@ build_app_env(  #bee{ port        = Port,
               ],
 
   EnvOpts = apps:build_app_env(App, OtherOpts),
-  lists:map(fun(Dir) ->
-                file:make_dir(Dir)
-            end, [ScratchDisk, WorkingDir, RunningDisk, RunningDir, LogDisk, LogDir]),
+  lists:foreach(fun(Dir) -> file:make_dir(Dir) end,
+                [ScratchDisk, WorkingDir, RunningDisk,
+                 RunningDir, LogDisk, LogDir]),
   Opts = lists:flatten([{cd, RunningDir}, EnvOpts]),
   {ok, App, Opts}.
 
-%% If erlang had 'meta-programming,' we wouldn't have to do all this work to validate the proplists
+%% If erlang had 'meta-programming,' we wouldn't have to do all this
+%% work to validate the proplists
 from_proplists(Proplists) -> from_proplists(Proplists, #bee{}).
 from_proplists([], Bee)  -> Bee;
 from_proplists([{id, V}|Rest], Bee) ->
@@ -288,8 +291,8 @@ fbo([revision|Rest], #bee_object{revision = Rev} = Bo, App, Bee) ->
   fbo(Rest, Bo, App, Bee#bee{revision = Rev});
 fbo([bee_size|Rest], #bee_object{bee_size = V} = Bo, App, Bee) ->
   fbo(Rest, Bo, App, Bee#bee{bee_size = V});
-fbo([template|Rest], #bee_object{template = undefined} = Bo, #app{template = Type} = App, Bee) ->
-
+fbo([template|Rest], #bee_object{template = undefined} = Bo,
+    #app{template = Type} = App, Bee) ->
   fbo(Rest, Bo, App, Bee#bee{template = Type});
 fbo([template|Rest], #bee_object{template = V} = Bo, App, Bee) ->
   fbo(Rest, Bo, App, Bee#bee{template = V});

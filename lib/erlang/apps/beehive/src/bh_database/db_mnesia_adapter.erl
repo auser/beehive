@@ -19,10 +19,10 @@
 
 -export ([init_databases/0, init_databases/1]).
 
-% API
+%% API
 info(Type) ->
   mnesia:system_info(Type).
-  
+
 start(Nodes) ->
   init_databases(Nodes).
 
@@ -30,7 +30,7 @@ stop() ->
   application:stop(mnesia),
   ok.
 
-% read
+%% read
 read(Table, Key) ->
   {_Time, Value} = timer:tc(mnesia, dirty_read, [{Table, Key}]),
   Value.
@@ -38,10 +38,10 @@ read(Table, Key) ->
 write(_Table, _Key, Record) ->
   {_Time, Value} = timer:tc(mnesia, dirty_write, [Record]),
   Value.
-  % case mnesia:transaction(fun() -> mnesia:write(Record) end) of
-  %   {aborted, Reason} -> {error, Reason};
-  %   {atomic, _} -> ok
-  % end.
+  %% case mnesia:transaction(fun() -> mnesia:write(Record) end) of
+  %%   {aborted, Reason} -> {error, Reason};
+  %%   {atomic, _} -> ok
+  %% end.
 
 match(Pattern) ->
   {_Time, Value} = timer:tc(mnesia, dirty_match_object, [Pattern]),
@@ -64,7 +64,7 @@ delete(Table, Record) ->
 
 run(Fun) ->   qlc:eval( Fun() ).
 
-all(Table) -> 
+all(Table) ->
   Fun = fun() ->
     Query = qlc:q([ Ele || Ele <- mnesia:table(Table) ]),
     qlc:e(Query)
@@ -73,27 +73,28 @@ all(Table) ->
     {aborted, Reason} -> {error, Reason};
     {atomic, V} -> V
   end.
-  
 
-%%% INTERNAL
+
+%%%% INTERNAL
 init_databases() -> init_databases([node(self())]).
 init_databases(Nodes) ->
   ok = ensure_dir(),
   ok = ensure_running(),
   ok = add_slave(Nodes),
   ok = wait_for_tables(),
-  % Add default data
+  %% Add default data
   ok.
 
 dir() ->
-  DefaultDatabaseDir = config:search_for_application_value(database_dir, ?BEEHIVE_DIR("db")),
+  DefaultDatabaseDir = config:search_for_application_value(database_dir,
+                                                           ?BEEHIVE_DIR("db")),
   case application:get_env(mnesia, dir) of
-    {ok, Dir} -> Dir; 
-    _Else -> 
+    {ok, Dir} -> Dir;
+    _Else ->
       application:set_env(mnesia, dir, DefaultDatabaseDir),
       DefaultDatabaseDir
   end.
-  % mnesia:system_info(directory).
+  %% mnesia:system_info(directory).
 
 ensure_running() ->
   case mnesia:system_info(is_running) of
@@ -113,7 +114,7 @@ ensure_dir() ->
     ok -> ok
   end.
 
-% Thanks to RabbitMQ for the idea
+%% Thanks to RabbitMQ for the idea
 add_slave(Nodes) ->
   case mnesia:change_config(extra_db_nodes, Nodes -- [node()]) of
     {ok, []} ->
@@ -140,22 +141,30 @@ add_slave(Nodes) ->
       throw({error, {unable_to_join_db_cluster, Nodes, Reason}})
   end.
 
-% Create the databases
+%% Create the databases
 create_schema() ->
   ensure_not_running(),
   mnesia:create_schema([node()]),
   ensure_running(),
   create_tables().
 
-% Move the database directory to the backup directory and then try to create it to start fresh-like
+%% Move the database directory to the backup directory and then try to
+%% create it to start fresh-like
 move_db() ->
   mnesia:stop(),
   MnesiaDir = filename:dirname(dir() ++ "/"),
   {{Year, Month, Day}, {Hour, Minute, Second}} = erlang:universaltime(),
-  BackupDir = lists:flatten(io_lib:format("~s_~w~2..0w~2..0w~2..0w~2..0w~2..0w", [MnesiaDir, Year, Month, Day, Hour, Minute, Second])),
+  BackupDir =
+    lists:flatten(io_lib:format("~s_~w~2..0w~2..0w~2..0w~2..0w~2..0w",
+                                [MnesiaDir, Year, Month, Day, Hour,
+                                 Minute, Second])),
   case file:rename(MnesiaDir, BackupDir) of
-    ok -> error_logger:warning_msg("moved database from ~s to ~s~n", [MnesiaDir, BackupDir]), ok;
-    {error, Reason} -> throw({error, {cannot_backup_mnesia, MnesiaDir, BackupDir, Reason}})
+    ok ->
+      error_logger:warning_msg("moved database from ~s to ~s~n",
+                               [MnesiaDir, BackupDir]),
+      ok;
+    {error, Reason} ->
+      throw({error, {cannot_backup_mnesia, MnesiaDir, BackupDir, Reason}})
   end,
   ok = ensure_dir(),
   ok = ensure_running(),
@@ -166,13 +175,25 @@ table_names() ->
 
 table_definitions() ->
   [
-    {app, [{attributes, record_info(fields, app)}, {type, set}, {disc_copies, [node()]}]},
-    {bee, [{attributes, record_info(fields, bee)}, {type, set}, {disc_copies, [node()]}]},
-    {user, [{attributes, record_info(fields, user)}, {type, set}, {disc_copies, [node()]}]},
-    {user_app, [{attributes, record_info(fields, user_app)}, {type, set}, {disc_copies, [node()]}]}
+    {app,
+     [{attributes, record_info(fields, app)},
+      {type, set},
+      {disc_copies, [node()]}]},
+    {bee,
+     [{attributes, record_info(fields, bee)},
+      {type, set},
+      {disc_copies, [node()]}]},
+    {user,
+     [{attributes, record_info(fields, user)},
+      {type, set},
+      {disc_copies, [node()]}]},
+    {user_app,
+     [{attributes, record_info(fields, user_app)},
+      {type, set},
+      {disc_copies, [node()]}]}
   ].
 
-% Create the tables
+%% Create the tables
 create_tables() ->
   Databases = table_definitions(),
   lists:foreach(fun({Tab, TabAttr}) ->
@@ -180,10 +201,12 @@ create_tables() ->
       {atomic, ok} -> ok;
       {aborted, _Reason} -> ok %throw({error, {table_creation_failed, Tab, TabAttr, Reason}})
     end,
-    % Pluralize the table (to match the model module)
-    Pluralized = erlang:list_to_atom(lists:append([erlang:atom_to_list(Tab), "s"])),
+    %% Pluralize the table (to match the model module)
+    Pluralized =
+        erlang:list_to_atom(lists:append([erlang:atom_to_list(Tab), "s"])),
     code:load_file(Pluralized),
-    erlang:display({Pluralized,initialize,0, erlang:function_exported(Pluralized, initialize, 0)}),
+    erlang:display({Pluralized,initialize,0,
+                    erlang:function_exported(Pluralized, initialize, 0)}),
     case erlang:function_exported(Pluralized, initialize, 0) of
       true -> Pluralized:initialize();
       false -> ok
@@ -191,7 +214,7 @@ create_tables() ->
   end, Databases),
   ok.
 
-% Create local table copies
+%% Create local table copies
 create_local_table_copies(Type) ->
   lists:foreach(
   fun({Tab, TabDef}) ->
@@ -214,11 +237,11 @@ create_local_table_copies(Type) ->
 
 table_has_copy_type(TabDef, DiscType) -> lists:member(node(), proplists:get_value(DiscType, TabDef, [])).
 
-% Create a copy of the Table locally
+%% Create a copy of the Table locally
 create_local_table_copy(Table, Type) ->
   StorageType = mnesia:table_info(Table, storage_type),
-  {atomic, ok} = 
-    if 
+  {atomic, ok} =
+    if
       StorageType == unknown ->
         mnesia:add_table_copy(Table, node(), Type);
       StorageType /= Type ->
@@ -227,7 +250,7 @@ create_local_table_copy(Table, Type) ->
     end,
   ok.
 
-% Wait for the tables
+%% Wait for the tables
 wait_for_replicated_tables() -> wait_for_tables(table_names()).
 wait_for_tables() -> wait_for_tables(table_names()).
 wait_for_tables(TableNames) ->
@@ -243,7 +266,7 @@ wait_for_tables(TableNames) ->
             [timeout]),
           ok = move_db(),
           ok = create_schema();
-          % throw({error, {timeout_waiting_for_tables, BadTabs}});
+          %% throw({error, {timeout_waiting_for_tables, BadTabs}});
         {error, Reason} -> throw({error, {failed_waiting_for_tables, Reason}})
       end;
     {error, Reason} ->

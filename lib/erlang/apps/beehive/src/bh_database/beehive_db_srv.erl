@@ -22,8 +22,8 @@
 ]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, 
-    handle_info/2, terminate/2, code_change/3]).
+-export([init/1, handle_call/3, handle_cast/2,
+         handle_info/2, terminate/2, code_change/3]).
 
 % For testing
 -export ([init_databases/0]).
@@ -42,7 +42,8 @@
 % Get the status of the db
 status() -> gen_server:call(?SERVER, {status}).
 read(Table, Key) -> gen_server:call(?SERVER, {read, Table, Key}).
-write(Table, Key, Proplist) -> gen_server:call(?SERVER, {write, Table, Key, Proplist}).
+write(Table, Key, Proplist) ->
+  gen_server:call(?SERVER, {write, Table, Key, Proplist}).
 save(Function) -> gen_server:call(?SERVER, {save, Function}).
 delete(Table, Key) -> gen_server:call(?SERVER, {delete, Table, Key}).
 delete_all(Table) -> gen_server:call(?SERVER, {delete_all, Table}).
@@ -59,11 +60,14 @@ info(Type) -> gen_server:call(?SERVER, {info, Type}).
 %%--------------------------------------------------------------------
 start_link() -> start_link(mnesia, []).
 
-start_link(DbAdapter) when is_atom(DbAdapter) -> start_link(erlang:atom_to_list(DbAdapter));
+start_link(DbAdapter) when is_atom(DbAdapter) ->
+  start_link(erlang:atom_to_list(DbAdapter));
 start_link(DbAdapter) -> start_link(DbAdapter, []).
 
-start_link(DbAdapter, Nodes) when is_atom(DbAdapter) -> start_link(erlang:atom_to_list(DbAdapter), Nodes);
-start_link(DbAdapter, Nodes) -> gen_server:start_link({local, ?SERVER}, ?MODULE, [DbAdapter, Nodes], []).
+start_link(DbAdapter, Nodes) when is_atom(DbAdapter) ->
+  start_link(erlang:atom_to_list(DbAdapter), Nodes);
+start_link(DbAdapter, Nodes) ->
+  gen_server:start_link({local, ?SERVER}, ?MODULE, [DbAdapter, Nodes], []).
 
 stop() -> gen_server:cast(?SERVER, {stop}).
 
@@ -79,9 +83,10 @@ stop() -> gen_server:cast(?SERVER, {stop}).
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([DbAdapterName, Nodes]) ->
-  DbAdapter = erlang:list_to_atom(lists:flatten(["db_", DbAdapterName, "_adapter"])),
+  DbAdapter =
+    erlang:list_to_atom(lists:flatten(["db_", DbAdapterName, "_adapter"])),
   init_adapter([node()|Nodes], DbAdapter),
-  
+
   {ok, #state{
     last_trans = next_trans(0),
     adapter = DbAdapter
@@ -152,7 +157,7 @@ handle_info({answer, TransId, Result}, #state{queries = Queries} = State) ->
       ok
   end,
   {noreply, State#state{queries = Q}};
-  
+
 handle_info(Info, State) ->
   erlang:display({?MODULE, handle_info, Info}),
   {noreply, State}.
@@ -182,7 +187,9 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc The directory for the database
 %% @end
 %%-------------------------------------------------------------------
-handle_queued_call(Action, From, Args, #state{adapter = Adapter, queries = OldTransQ, last_trans = LastTrans} = State) ->
+handle_queued_call(Action, From, Args,
+                   #state{adapter = Adapter, queries = OldTransQ,
+                          last_trans = LastTrans} = State) ->
   TransId = next_trans(LastTrans),
   try_to_call(TransId, Adapter, Action, Args),
   {noreply, State#state{queries = queue:in({TransId, From}, OldTransQ)}}.
@@ -191,9 +198,9 @@ try_to_call(TransId, M, F, A) ->
   From = self(),
   spawn(fun() ->
     case erlang:function_exported(M,F,erlang:length(A)) of
-      true -> 
+      true ->
         From ! {answer, TransId, apply(M,F,A)};
-      false -> 
+      false ->
         From ! {answer, TransId, not_found}
     end
   end).
@@ -216,7 +223,7 @@ get_transaction(Q, I, OldQ) ->
 init_adapter(Nodes, DbAdapter) ->
   case erlang:module_loaded(DbAdapter) of
     true -> ok;
-    false -> 
+    false ->
       case code:load_file(DbAdapter) of
         {error, not_purged} -> code:purge(DbAdapter), code:load_file(DbAdapter);
         {error, _Error} = T -> throw(T);

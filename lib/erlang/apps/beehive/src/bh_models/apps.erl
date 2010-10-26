@@ -105,7 +105,8 @@ update_by_name(Name) ->
     not_found -> {error, "Cannot find app to update"};
     App ->
       %% Should this be synchronous or asynchronous?
-      NewApp = App#app{updated_at = date_util:now_to_seconds(), latest_error = undefined, revision = undefined},
+      NewApp = App#app{updated_at = date_util:now_to_seconds(),
+                       latest_error = undefined, revision = undefined},
       ?NOTIFY({app, updated, NewApp}),
       {ok, save(NewApp)}
   end.
@@ -122,14 +123,16 @@ restart_by_name(Name) ->
   case find_by_name(Name) of
     not_found -> {error, "Cannot find app"};
     App ->
-      NewApp = App#app{updated_at = date_util:now_to_seconds(), latest_error = undefined},
+      NewApp = App#app{updated_at = date_util:now_to_seconds(),
+                       latest_error = undefined},
       ?NOTIFY({app, restart, NewApp}),
       {ok, save(NewApp)}
   end.
 
 
 update([], _) -> ok;
-update(App, OtherApp) when is_record(App, app) andalso is_record(OtherApp, app) ->
+update(App, OtherApp) when
+    is_record(App, app) andalso is_record(OtherApp, app) ->
   update(App, to_proplist(OtherApp));
 update(App, NewProps) when is_record(App, app) ->
   NewAppProps = misc_utils:update_proplist(to_proplist(App), NewProps),
@@ -154,8 +157,11 @@ update(Name, NewProps) ->
 %%-------------------------------------------------------------------
 build_app_env(App, Other) ->
   OtherEnvs = lists:map(fun build_env/1, Other),
-  BeehivePath = config:search_for_application_value(path, "/usr/bin:/usr/local/bin:/bin"),
-  LogDisk     = config:search_for_application_value(log_path, ?BEEHIVE_DIR("application_logs")),
+  BeehivePath =
+    config:search_for_application_value(path, "/usr/bin:/usr/local/bin:/bin"),
+  LogDisk     =
+    config:search_for_application_value(log_path,
+                                        ?BEEHIVE_DIR("application_logs")),
   LogDir      = filename:join([LogDisk, App#app.name]),
 
   bh_file_utils:ensure_dir_exists([LogDir, LogDisk]),
@@ -185,11 +191,14 @@ build_env({Key, Value}) ->
                     ]),
   {env, T}.
 
-%% If erlang had 'meta-programming,' we wouldn't have to do all this work to validate the proplists
+%% If erlang had 'meta-programming,' we wouldn't have to do all this
+%% work to validate the proplists
 from_proplists(Proplists) -> from_proplists(Proplists, #app{}).
 from_proplists([], App)  -> App;
-from_proplists([{name, V}|Rest], App) -> from_proplists(Rest, App#app{name = V});
-from_proplists([{repo_url, V}|Rest], App) -> from_proplists(Rest, App#app{repo_url = V});
+from_proplists([{name, V}|Rest], App) ->
+  from_proplists(Rest, App#app{name = V});
+from_proplists([{repo_url, V}|Rest], App) ->
+  from_proplists(Rest, App#app{repo_url = V});
 from_proplists([{repo_type, V}|Rest], App) ->
   from_proplists(Rest, App#app{repo_type = V});
 from_proplists([{template, V}|Rest], App) ->
@@ -252,7 +261,8 @@ to_proplist([_H|T], App, Acc) -> to_proplist(T, App, Acc).
 %%
 %% @end
 %%-------------------------------------------------------------------
-validate_app(App) when is_record(App, app) -> validate_app(record_info(fields, app), App).
+validate_app(App) when is_record(App, app) ->
+  validate_app(record_info(fields, app), App).
 validate_app([], App) ->  App;
 
 %% Validate the branch

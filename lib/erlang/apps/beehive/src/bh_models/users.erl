@@ -49,20 +49,20 @@ find_by_token(Token) ->
     _ -> not_found
   end.
 
-% Does this user exist?
+%% Does this user exist?
 exist(Name) ->
   case find_by_email(Name) of
     not_found -> false;
     _ -> true
   end.
 
-% New
+%% New
 new([]) -> error;
 new(User) when is_record(User, user) -> User;
 new(Proplist) when is_list(Proplist) -> from_proplists(Proplist);
 new(Else) -> {error, {cannot_make_new_user, Else}}.
 
-% Save the user_app
+%% Save the user_app
 save(User) when is_record(User, user) ->
   RealUser = validate_user(User),
   case catch ?DB:write(user, RealUser#user.email, RealUser) of
@@ -71,7 +71,7 @@ save(User) when is_record(User, user) ->
       ?NOTIFY({db, database_not_initialized, user_app}),
       {error, database_not_initialized};
     _E ->
-      % TODO: Investigate why this EVER happens...
+      %% TODO: Investigate why this EVER happens...
       {error, did_not_write}
   end;
 save([]) -> invalid;
@@ -83,7 +83,7 @@ save(Proplists) when is_list(Proplists) ->
 save(Func) when is_function(Func) -> ?DB:save(Func);
 save(Else) -> {error, {cannot_save, Else}}.
 
-% Insert a new user
+%% Insert a new user
 create(Given) ->
   User = new(Given),
   EventMsg = case exist(User#user.email) of
@@ -122,7 +122,7 @@ is_user_token(Email, Token) ->
   end.
 
 
-% Create a new token for the user
+%% Create a new token for the user
 create_new_token_for(Email, Password) ->
   case find_by_email(Email) of
     User when is_record(User, user) ->
@@ -142,9 +142,9 @@ initialize() ->
   end),
   ok.
 
-% Add the initial root user
-% email: root@getbeehive.com
-% password: 098f6bcd4621d373cade4e832627b4f6
+%% Add the initial root user
+%% email: root@getbeehive.com
+%% password: 098f6bcd4621d373cade4e832627b4f6
 add_root_user() ->
   create(new([
     {email, "root@getbeehive.com"},
@@ -167,14 +167,14 @@ from_proplists([{level, V}|Rest], User) ->
 from_proplists([_Other|Rest], User) ->
   from_proplists(Rest, User).
 
-% to_proplist(User) -> to_proplist(record_info(fields, user), User, []).
-% to_proplist([], _User, Acc) -> Acc;
-% to_proplist([_Other|Rest], User, Acc) -> to_proplist(Rest, User, Acc).
+%% to_proplist(User) -> to_proplist(record_info(fields, user), User, []).
+%% to_proplist([], _User, Acc) -> Acc;
+%% to_proplist([_Other|Rest], User, Acc) -> to_proplist(Rest, User, Acc).
 
 validate_user(User) when is_record(User, user) ->
   validate_user(record_info(fields, user), User).
 validate_user([], User) ->  User;
-% Validate the name
+%% Validate the name
 validate_user([email|_Rest], #user{email = undefined} = _User) ->
   throw({error, {invalid_user, no_email_given}});
 validate_user([email|Rest], #user{email = Email} = User) ->
@@ -187,7 +187,7 @@ validate_user([password|Rest], #user{password = undefined} = User) ->
   validate_user(Rest, User#user{password = date_util:now_to_seconds()});
 validate_user([key|Rest], User) -> validate_user(Rest, User);
 validate_user([token|Rest], User) -> validate_user(Rest, User);
-% Validate level
+%% Validate level
 validate_user([level|Rest], #user{level = undefined} = User) ->
   validate_user(Rest, User#user{level = ?REGULAR_USER_LEVEL});
 validate_user([level|Rest], #user{level = Level} = User) when is_integer(Level) ->
@@ -196,5 +196,5 @@ validate_user([level|Rest], #user{level = Level} = User) when is_list(Level) ->
   validate_user(Rest, User#user{level = list_to_integer(Level)});
 validate_user([_|Rest], User) -> validate_user(Rest, User).
 
-% Validate the email (STUB FOR NOW)
+%% Validate the email (STUB FOR NOW)
 validate_email(_Email) -> ok.
