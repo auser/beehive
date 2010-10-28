@@ -17,7 +17,9 @@ Beehive
     make
     ./start_dev.sh
 
-This will start beehive on your local machine with the root /var/lib/beehive. If you want to use a different directory, (such as /tmp/beehive) run:
+This will start beehive on your local machine with the root
+/var/lib/beehive. If you want to use a different directory, (such as
+/tmp/beehive) run:
 
     export BEEHIVE_HOME=/tmp/beehive
 
@@ -41,13 +43,28 @@ The incredibly basic architecture diagram of beehive looks like:
     Storage   Storage   Storage
     ----------------------------
 
-The distributed routing layer, written in erlang uses [Mnesia](http://ftp.sunet.se/pub//lang/erlang/doc/apps/mnesia/index.html), the distributed database management system intelligently routes requests across the bees. The router currently can handle http requests. Because Beehive was written with the intention of being extensible it can be extensible to other protocols. 
+The distributed routing layer, written in erlang uses
+[Mnesia](http://ftp.sunet.se/pub//lang/erlang/doc/apps/mnesia/index.html),
+the distributed database management system intelligently routes
+requests across the bees. The router currently can handle http
+requests. Because Beehive was written with the intention of being
+extensible it can be extensible to other protocols.
 
-It handles pending connections seamlessly and allows for streaming connections. It also keeps track of statistical data available through a web interface. The router itself has a RESTful interface for adding bees, which don't even need to sit inside the Beehive network. This can be useful for putting the router in front of a personal cluster (such as [Eucalyptus](http://www.eucalyptus.com/)) and expanding to the cloud environment (such as [EC2](http://aws.amazon.com/ec2/)) without having to change a line of code. 
+It handles pending connections seamlessly and allows for streaming
+connections. It also keeps track of statistical data available through
+a web interface. The router itself has a RESTful interface for adding
+bees, which don't even need to sit inside the Beehive network. This
+can be useful for putting the router in front of a personal cluster
+(such as [Eucalyptus](http://www.eucalyptus.com/)) and expanding to
+the cloud environment (such as [EC2](http://aws.amazon.com/ec2/))
+without having to change a line of code.
 
 Beehive keeps track of the available bees for the known applications. 
 
-Beehive has an event system that allows for notifications along the system in a nonblocking manner. This way system events, statistic gathering log events can all be handled without affecting the performance of the router, which is tuned for speed. 
+Beehive has an event system that allows for notifications along the
+system in a nonblocking manner. This way system events, statistic
+gathering log events can all be handled without affecting the
+performance of the router, which is tuned for speed.
 
 ---
 
