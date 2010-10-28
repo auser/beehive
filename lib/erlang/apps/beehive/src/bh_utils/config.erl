@@ -12,7 +12,8 @@ init() ->
   end.
 
 % Find the application config value
-search_for_application_value(Param) -> search_for_application_value(Param, undefined).
+search_for_application_value(Param) ->
+  search_for_application_value(Param, undefined).
 search_for_application_value(Param, Default) ->
   case search_for_application_value_from_environment(Param) of
     false ->
@@ -26,7 +27,7 @@ search_for_application_value(Param, Default) ->
       end;
     A -> A
   end.
-  
+
 search_for_application_value_on_env(Param) ->
   case application:get_env(beehive, Param) of
     undefined         -> false;
@@ -47,16 +48,16 @@ search_for_application_value_from_environment(Param) ->
   EnvParam = string:to_upper(lists:flatten(["beehive_", erlang:atom_to_list(Param)])),
   case os:getenv(EnvParam) of
     false -> false;
-    E -> 
+    E ->
       case E of
         "true" -> true;
         "false" -> false;
         Otherwise -> Otherwise
       end
   end.
-  
+
 %%--------------------------------------------------------------------
-%% Function: Read the config file () -> {ok, Config} | 
+%% Function: Read the config file () -> {ok, Config} |
 %%                                      {error, Reason}
 %% Description: Read the configuration data
 %%--------------------------------------------------------------------
@@ -70,7 +71,7 @@ read(ConfigFile) ->
     {error, _} -> [];
     C -> misc_utils:atomize(C, [])
   end.
-  
+
 %%--------------------------------------------------------------------
 %% Function: get (Key, Config) -> {error, not_found} |
 %%                                {ok, Value}
@@ -112,20 +113,20 @@ find_config_file() ->
 
 find_config_file_in_app() ->
   case application:get_env(beehive, config_file) of
-    {ok, Cf} -> 
+    {ok, Cf} ->
       case is_file(Cf) of
         false -> false;
         Else -> Else
       end;
     undefined -> false
   end.
-  
+
 find_config_file_in_beehive_root() ->
   case is_file(?BEEHIVE_DIR("etc/beehive.conf")) of
     false -> false;
     E -> E
   end.
-  
+
 find_config_file_in_etc() ->
   case is_file("/etc/beehive.conf") of
     false -> false;
