@@ -6,7 +6,6 @@
 %% DATABASE STUFF
 -export ([
           create/1,
-          read/1,
           save/1,
           update/2,
           delete/1,
@@ -63,12 +62,6 @@ new([]) -> error;
 new(App) when is_record(App, app) -> validate_app(App);
 new(Proplist) when is_list(Proplist) -> validate_app(from_proplists(Proplist));
 new(Else) -> {error, {cannot_make_new_app, Else}}.
-
-read(Name) ->
-  case find_by_name(Name) of
-    App when is_record(App, app) -> App;
-    _E -> {error, not_found}
-  end.
 
 delete(App) when is_record(App, app) ->
   ?DB:delete(app, App#app.name);

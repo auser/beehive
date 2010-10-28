@@ -45,7 +45,8 @@ search_for_application_value_from_config(Param) ->
 
 % BEEHIVE_HOME === config:search_for_application_value(home, "/tmp/beehive"),
 search_for_application_value_from_environment(Param) ->
-  EnvParam = string:to_upper(lists:flatten(["beehive_", erlang:atom_to_list(Param)])),
+  EnvParam =
+    string:to_upper(lists:flatten(["beehive_", erlang:atom_to_list(Param)])),
   case os:getenv(EnvParam) of
     false -> false;
     E ->

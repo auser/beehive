@@ -12,22 +12,23 @@ teardown(_X) ->
 
 starting_test_() ->
   {foreach,
-    fun setup/0,
-    fun teardown/1,
-    [
-      fun test_create/0,
-      fun test_name_validation/0,
-      fun test_save/0,
-      fun test_save_app_with_same_name/0,
-      fun test_save_app_with_upper_case_name/0,
-      fun test_delete_app/0,
-      fun test_branch/0,
-      fun test_read_app/0
-    ]
+   fun setup/0,
+   fun teardown/1,
+   [
+    fun test_create/0,
+    fun test_name_validation/0,
+    fun test_save/0,
+    fun test_save_app_with_same_name/0,
+    fun test_save_app_with_upper_case_name/0,
+    fun test_delete_app/0,
+    fun test_branch/0,
+    fun test_find_by_name/0
+   ]
   }.
 
 test_create() ->
-  {ok, App} = apps:create([{name, "created"}, {repo_url, "http://someurl.com"}]),
+  {ok, App} =
+    apps:create([{name, "created"}, {repo_url, "http://someurl.com"}]),
   ?assertEqual("created", App#app.name),
   ?assertEqual("http://someurl.com", App#app.repo_url),
 
@@ -43,44 +44,44 @@ test_name_validation() ->
   ?assertEqual("with-dot", App#app.name),
 
   {ok, App2} = apps:create([{name, "with_underscore"},
-                           {repo_url, "http://someurl.com"}]),
+                            {repo_url, "http://someurl.com"}]),
   ?assertEqual("with-underscore", App2#app.name),
 
   {ok, App3} = apps:create([{name, "with space"},
-                           {repo_url, "http://someurl.com"}]),
+                            {repo_url, "http://someurl.com"}]),
   ?assertEqual("with-space", App3#app.name),
 
   passed.
 
 test_save() ->
-  % Delete all
+  %% Delete all
   Table = app,
   bh_test_util:delete_all(Table),
   {ok, App1} = apps:save(#app{name="test-app",
                               repo_url=bh_test_util:dummy_git_repos_url()}),
   ?assert(App1#app.branch =:= "master"),
-  % Hardcode search in ets
+  %% Hardcode search in ets
   Results1 = lists:map(
-    fun({_, R}) -> R end,
-    ets:select(Table, [{{'_', #app{_='_'}}, [], ['$_']}])
-  ),
+               fun({_, R}) -> R end,
+               ets:select(Table, [{{'_', #app{_='_'}}, [], ['$_']}])
+              ),
   [FoundApp1|_Rest] = Results1,
   ?assertEqual(FoundApp1#app.name, App1#app.name),
-  % save via proplists
+  %% save via proplists
   Props = [{name, "another_app"},
            {repo_url, bh_test_util:dummy_git_repos_url()},
            {min_instances, 1}, {max_instances, 10}],
   App2 = apps:new(Props),
   apps:save(Props),
-  % Another hardcoded search in ets
+  %% Another hardcoded search in ets
   Results2 = lists:map(
-    fun({_, R}) -> R#app.name end,
-    ets:select(Table, [{{'_', #app{_='_'}}, [], ['$_']}])
-  ),
+               fun({_, R}) -> R#app.name end,
+               ets:select(Table, [{{'_', #app{_='_'}}, [], ['$_']}])
+              ),
   ?assertEqual([App1#app.name,App2#app.name], lists:reverse(Results2)).
 
 test_save_app_with_same_name() ->
-  % Delete all
+  %% Delete all
   bh_test_util:delete_all(app),
   lists:map(fun(App) -> apps:delete(App) end, apps:all()),
   {ok, App3} =
@@ -121,10 +122,10 @@ test_delete_app() ->
   ?assertEqual(apps:all(), []),
   passed.
 
-test_read_app() ->
+test_find_by_name() ->
   bh_test_util:delete_all(app),
   {ok, App1} = apps:save(#app{name = "test-app"}),
   FoundApp1 = apps:find_by_name("test-app"),
-  ?assertEqual(App1#app.name, FoundApp1#app.name),
+  ?assertEqual(App1, FoundApp1),
+  ?assertEqual(not_found, apps:find_by_name("none")),
   passed.
-
