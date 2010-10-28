@@ -71,6 +71,38 @@ All of the available variables that can be overridden can be
 overridden on the command-line as well. To see all of the available
 variables, run ./start_beehive.sh with the '-h' switch.
 
+
+## Environment Variables
+
+Beehive will use these values if they're found in the environment.
+
+### BEEHIVE_HOME
+
+Sets the base directory for the running beehive instance, which will
+include the DB, running apps and log files.  The default value is
+/var/lib/beehive
+
+### BEEHIVE_ROUTING_PARAM
+
+Defaults to 'Host', which means that the router will use the first
+subdomain of the given url to handle app routing.
+
+Alternate value, provided by BEEHIVE_ROUTING_PARAM is 'subdirectory',
+which will instead expect app names to appear as the first component
+of the path in the url.  http://domain.com/<app-name>/path
+
+### BEEHIVE_DASHBOARD_PORT
+
+Defaults to 4999.  Port that the dashboard app will be listening on.
+
+### BEEHIVE_CLIENT_PORT
+
+Defaults to 8080.  Port that the router will be listening on.
+
+### BEEHIVE_DEBUG
+If BEEHIVE_DEBUG=true, beehive will increase logging output in console/log files.
+
+
 ## Proxy
 
 The proxy can be hot-loaded with new routes simply with a RESTful
