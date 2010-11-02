@@ -131,7 +131,7 @@ stop() ->
   gen_cluster:call(?SERVER, {stop}).
 
 %%-------------------------------------------------------------------
-%% @spec () ->    Seed::list()
+%% @spec (_State) ->    Seed::list()
 %% @doc List of seed pids
 %%
 %% @end

@@ -2,6 +2,7 @@
 %% @author Ari Lerner <arilerner@mac.com>
 %% @copyright 05/03/10 Ari Lerner <arilerner@mac.com>
 %% @doc The basic node_manager to manage the different nodes in beehive
+
 -module (node_manager).
 -include ("beehive.hrl").
 -include ("common.hrl").
@@ -33,7 +34,7 @@ end).
 ]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, 
+-export([init/1, handle_call/3, handle_cast/2,
     handle_info/2, terminate/2, code_change/3]).
 
 % gen_cluster callback
@@ -53,22 +54,19 @@ end).
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-start_link() -> 
+start_link() ->
   start(?SERVER, ?MODULE, [], []).
-start_count(Count) -> 
+start_count(Count) ->
   Pids = lists:map(fun(_X) -> {ok, Pid} = start(?MODULE, ?MODULE, [], []), Pid end, lists:seq(1,Count)),
   {ok, Pids}.
 
 % Start servers
 %%-------------------------------------------------------------------
-%% @spec (Mod)
-%%       (Mod, Args)
-%%       (Mod, Args, Opts)
-%%       (Name, Mod, Args, Opts)
+%% @spec start_server(Mod)
 %%        ->    {ok, Value}
 %%              | {error, Reason}
 %% @doc Start the node_manager
-%%      
+%%
 %% @end
 %%-------------------------------------------------------------------
 start_server(Mod) -> start_server(Mod, [], []).
@@ -78,7 +76,7 @@ start_server(Name, Mod, Args, Opts) -> start(Name, Mod, Args, Opts).
 
 start(Name, Mod, Args, Opts) ->
   Type = config:search_for_application_value(node_type, beehive_router),
-  
+
   RealArgs = lists:flatten([[{node_type, Type}], Args]),
   case whereis(Name) of
     undefined -> gen_cluster:start_link({local, Name}, Mod, RealArgs, Opts);
@@ -88,7 +86,7 @@ start(Name, Mod, Args, Opts) ->
 %%-------------------------------------------------------------------
 %% @spec () ->    List
 %% @doc Get all the servers known by the node_manager
-%%      
+%%
 %% @end
 %%-------------------------------------------------------------------
 get_servers() ->
@@ -116,7 +114,7 @@ seed_pids(_State) ->
       Plist
   end.
 
-is_a(Type) -> 
+is_a(Type) ->
   gen_cluster:call(seed_pid(), {is_a, Type}).
 
 %%-------------------------------------------------------------------
@@ -149,18 +147,18 @@ current_load_of_node() ->
 %% server-specific methods
 %%====================================================================
 %%-------------------------------------------------------------------
-%% @spec (Type) ->    Server Node
+%% @spec (Type) ->   Node
 %% @doc Get the next available server of type::atom()
 %%  This will get the next available server that has the lowest
 %%  projected load
-%%      
+%%
 %% @end
 %%-------------------------------------------------------------------
 get_next_available(Type) -> get_next_available(Type, 3).
 get_next_available(_Type, 0) -> {error, none};
 get_next_available(Type, Count) ->
   case get_servers(Type) of
-    [] -> 
+    [] ->
       % Should we be starting an instance automagically?
       AtomType = erlang:list_to_atom(lists:flatten(["beehive_", erlang:atom_to_list(Type)])),
       ok = application:start(AtomType),
@@ -170,11 +168,11 @@ get_next_available(Type, Count) ->
       [{Node, _Weight}|_Rest] = sort_servers_by_load(Servers),
       Node
   end.
-  
+
 %%-------------------------------------------------------------------
 %% @spec () ->    ok
 %% @doc Stop the node_manager
-%%      
+%%
 %% @end
 %%-------------------------------------------------------------------
 stop() -> gen_cluster:cast(?SERVER, stop).
@@ -193,16 +191,16 @@ stop() -> gen_cluster:cast(?SERVER, stop).
 init(Args) ->
   NodeType = proplists:get_value(node_type, Args, beehive_router),
   sanity_checks:check(NodeType),
-  
+
   timer:send_interval(timer:seconds(30), {update_node_stats}),
-    
+
   beehive_bee_object:init(),
-  
+
   % Start the database and application
   timer:send_interval(timer:minutes(1), {update_node_pings}),
-  
+
   LocalHost = bh_host:myip(),
-  
+
   {ok, #state{
     type = NodeType,
     host = LocalHost
@@ -268,7 +266,7 @@ code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
 
 %%--------------------------------------------------------------------
-%% Function: handle_join(JoiningPid, Pidlist, State) -> {ok, State} 
+%% Function: handle_join(JoiningPid, Pidlist, State) -> {ok, State}
 %%     JoiningPid = pid(),
 %%     Pidlist = list() of pids()
 %% Description: Called whenever a node joins the cluster via this node
@@ -282,7 +280,7 @@ handle_join(JoiningPid, State) ->
   {noreply, State}.
 
 %%--------------------------------------------------------------------
-%% Function: handle_leave(LeavingPid, Pidlist, Info, State) -> {ok, State} 
+%% Function: handle_leave(LeavingPid, Pidlist, Info, State) -> {ok, State}
 %%     JoiningPid = pid(),
 %%     Pidlist = list() of pids()
 %% Description: Called whenever a node joins the cluster via another node and
@@ -297,7 +295,7 @@ handle_leave(LeavingPid, Info, State) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-sort_servers_by_load(Servers) -> 
+sort_servers_by_load(Servers) ->
   lists:sort(fun({_Node1, Load1},{_Node2, Load2}) -> Load1 < Load2 end, get_server_load(Servers, [])).
 
 get_server_load([], Acc) -> Acc;
@@ -308,7 +306,7 @@ get_server_load([H|Rest], Acc) ->
 
 read_bee_configs() ->
   DefaultConfigDir    = filename:join([?BH_ROOT, "etc", "app_templates"]),
-  
+
   Dirs = case config:search_for_application_value(app_config_dir) of
     undefined -> [DefaultConfigDir];
     SpecifiedConfigDir -> [DefaultConfigDir,SpecifiedConfigDir]

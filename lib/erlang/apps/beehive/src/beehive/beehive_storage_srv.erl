@@ -232,7 +232,7 @@ fetch_bee(#app{name = Name} = _App, Caller, _State) ->
   end.
 
 %%-------------------------------------------------------------------
-%% @spec (App::app(), State) ->    {ok, Value}
+%% @spec (App::app(), Caller, State) ->    {ok, Value}
 %% @doc This will call the bundle task on the application template
 %%  and bundle the application into a known file: NAME.bee
 %%

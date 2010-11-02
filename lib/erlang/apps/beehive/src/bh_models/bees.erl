@@ -151,7 +151,7 @@ is_same_as(Bee, Otherbee) ->
   Bee#bee.id == Otherbee#bee.id.
 
 %%-------------------------------------------------------------------
-%% @spec (Bee:app()) ->    {ok, Value}
+%% @spec (Bee::bee()) ->    {ok, Value}
 %% @doc Build environment variables for the application
 %%
 %% @end

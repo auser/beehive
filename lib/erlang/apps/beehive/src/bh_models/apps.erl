@@ -143,7 +143,7 @@ update(Name, NewProps) ->
   end.
 
 %%-------------------------------------------------------------------
-%% @spec (App:app()) ->    {ok, Value}
+%% @spec build_app_env(App::app(),Other::proplist()) ->    {ok, Value}
 %% @doc Build environment variables for the application
 %%
 %% @end
@@ -319,7 +319,7 @@ validate_unique_name(#app{name = Name} = App) ->
   UniqApp#app{name = re:replace(UniqName, "[\\._ ]", "-", [{return, list}])}.
 
 %%-------------------------------------------------------------------
-%% @spec (Name) ->    {ok, Value}
+%% @spec (Name::list(), Num::integer()) ->    {ok, Value}
 %% @doc Generate a unique name based on a given name
 %%
 %% @end

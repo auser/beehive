@@ -183,7 +183,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 %%-------------------------------------------------------------------
-%% @spec () ->    {ok, Value}
+%% @spec (Action::fun(), From::pid(), Args::list(), State) ->
+%%     {ok, Value}
 %% @doc The directory for the database
 %% @end
 %%-------------------------------------------------------------------
