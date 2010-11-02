@@ -10,9 +10,10 @@
 -behaviour(gen_cluster).
 -define (DEBUG, false).
 -define (TRACE(X, M), case ?DEBUG of
-  true -> io:format(user, "TRACE ~p:~p ~p ~p~n", [?MODULE, ?LINE, X, M]);
-  false -> ok
-end).
+                        true -> io:format(user, "TRACE ~p:~p ~p ~p~n",
+                                          [?MODULE, ?LINE, X, M]);
+                        false -> ok
+                      end).
 -define (ERROR_MSG (Msg1), {"ERROR", {"Beehive could not start", Msg1}}).
 
 
@@ -57,7 +58,9 @@ end).
 start_link() ->
   start(?SERVER, ?MODULE, [], []).
 start_count(Count) ->
-  Pids = lists:map(fun(_X) -> {ok, Pid} = start(?MODULE, ?MODULE, [], []), Pid end, lists:seq(1,Count)),
+  Pids = lists:map(fun(_X) ->
+                       {ok, Pid} = start(?MODULE, ?MODULE, [], []), Pid
+                   end, lists:seq(1,Count)),
   {ok, Pids}.
 
 % Start servers
@@ -95,7 +98,8 @@ get_servers() ->
 
 get_servers(router) -> proplists:get_value(bee_store, get_servers(), []);
 get_servers(node) -> proplists:get_value(app_manager, get_servers(), []);
-get_servers(storage) -> proplists:get_value(beehive_storage_srv, get_servers(), []);
+get_servers(storage) ->
+  proplists:get_value(beehive_storage_srv, get_servers(), []);
 
 get_servers(PidType) ->
   case proplists:get_value(PidType, get_servers()) of
@@ -160,7 +164,9 @@ get_next_available(Type, Count) ->
   case get_servers(Type) of
     [] ->
       % Should we be starting an instance automagically?
-      AtomType = erlang:list_to_atom(lists:flatten(["beehive_", erlang:atom_to_list(Type)])),
+      AtomType =
+        erlang:list_to_atom(lists:flatten(["beehive_",
+                                           erlang:atom_to_list(Type)])),
       ok = application:start(AtomType),
       timer:sleep(500),
       get_next_available(Type, Count - 1);
@@ -287,7 +293,8 @@ handle_join(JoiningPid, State) ->
 %%     the joining node is simply announcing its presence.
 %%--------------------------------------------------------------------
 handle_leave(LeavingPid, Info, State) ->
-  ?TRACE("~p:~p handle leave called: ~p, Info: ~p~n", [?MODULE, ?LINE, LeavingPid, Info]),
+  ?TRACE("~p:~p handle leave called: ~p, Info: ~p~n",
+         [?MODULE, ?LINE, LeavingPid, Info]),
   ?NOTIFY({node_left, LeavingPid, Info}),
   {ok, State}.
 
@@ -296,7 +303,9 @@ handle_leave(LeavingPid, Info, State) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 sort_servers_by_load(Servers) ->
-  lists:sort(fun({_Node1, Load1},{_Node2, Load2}) -> Load1 < Load2 end, get_server_load(Servers, [])).
+  lists:sort(fun({_Node1, Load1},{_Node2, Load2}) ->
+                 Load1 < Load2
+             end, get_server_load(Servers, [])).
 
 get_server_load([], Acc) -> Acc;
 get_server_load([H|Rest], Acc) ->
