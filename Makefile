@@ -26,6 +26,9 @@ rel: all
 rel_erlang:
 	@./rebar generate force=1
 
+doc:
+	@./rebar doc skip_deps=true
+
 package:
 	@(mkdir -p ./builds)
 	@(tar -C rel -c beehive | gzip > ./builds/${PACKAGE_NAME}-${PACKAGE_VERSION}.tar.gz)
