@@ -82,6 +82,7 @@ are READMEs in each of the appropriate directories.
   * Mad props for the super smart folks at [Heroku](http://heroku.com) for their sweet architecture ideas and for providing such a rad interface and an unmatched user experience.
   * [Daniel Fischer](http://www.danielfischer.com/) for his web design help
   * AT&T for their support of the project
+  * Beehive is a part of the [Poolparty](http://poolpartyrb.com) project suite.
 
 ### Note on Patches/Pull Requests
  
