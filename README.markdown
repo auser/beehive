@@ -29,7 +29,7 @@ to /var/lib/beehive.
 
      make test
 
-Make sure you have ruby gems rack and thin installed.  Various tests
+*Make sure you have ruby gems rack and thin installed.*  Various tests
 depend up them, and tests likely won't complete properly without them.
 
 How it works
