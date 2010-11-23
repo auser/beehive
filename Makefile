@@ -3,9 +3,9 @@ PACKAGE_VERSION = 0.1
 
 .PHONY: deps compile rel test
 
-all: deps compile
+all: compile
 
-compile:
+compile: deps
 	@./rebar compile
 
 deps:
@@ -33,7 +33,7 @@ package:
 	@(mkdir -p ./builds)
 	@(tar -C rel -c beehive | gzip > ./builds/${PACKAGE_NAME}-${PACKAGE_VERSION}.tar.gz)
 
-test: deps compile
+test: compile
 	@./test/bootstrap.sh
     ifdef suite
 	@./rebar skip_deps=true eunit suite=$(suite)

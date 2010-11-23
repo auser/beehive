@@ -14,14 +14,16 @@ Beehive
 
 ## Quickstart ##
 
-    make
     ./start_dev.sh
 
 This will start beehive on your local machine with the root
-/var/lib/beehive. If you want to use a different directory, (such as
-/tmp/beehive) run:
+/tmp/beehive. If you want to use a different directory, (such as
+something less transient like ~/beehive_data) run:
 
-    export BEEHIVE_HOME=/tmp/beehive
+    export BEEHIVE_HOME=~/beehive_data
+
+When starting beehive in a non-dev mode, the beehive root will default
+to /var/lib/beehive.
 
 ## Running tests ##
 
